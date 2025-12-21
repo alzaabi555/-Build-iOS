@@ -127,7 +127,6 @@ const App: React.FC = () => {
       }
     };
     reader.readAsText(file);
-    // تفريغ المدخل للسماح باختيار نفس الملف مرة أخرى إذا لزم الأمر
     if (event.target) event.target.value = '';
   };
 
@@ -269,12 +268,12 @@ const App: React.FC = () => {
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInfoModal(false)}>
           <div className="bg-white w-full max-w-[320px] rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-             <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Info className="w-8 h-8 text-blue-600" />
+             <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-gray-100 overflow-hidden p-1">
+                <img src="icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[1.25rem]" />
              </div>
              <h3 className="text-lg font-black text-center text-gray-900 mb-2">حول النظام</h3>
-             <p className="text-[10px] text-center text-gray-500 font-bold leading-relaxed mb-6">
-                نظام مدرستي هو تطبيق متطور لإدارة شؤون الطلاب، مصمم خصيصاً لتسهيل مهام المعلمين في رصد الحضور، السلوك، والدرجات بطريقة احترافية.
+             <p className="text-[10px] text-center text-gray-500 font-bold leading-relaxed mb-6 px-2">
+                نظام مدرستي هو تطبيق متطور لإدارة شؤون الطلاب، مصمم خصيصاً لتسهيل مهام المعلمين في رصد الحضور والدرجات بطريقة احترافية.
              </p>
              
              <div className="bg-gray-50 p-4 rounded-2xl space-y-3 mb-6">
