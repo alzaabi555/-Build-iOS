@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Student, GradeRecord } from '../types';
-import { GraduationCap, Plus, Search, CheckCircle2, FileUp, Loader2, X, Download, Edit3, Trash2 } from 'lucide-react';
+import { GraduationCap, Plus, Search, CheckCircle2, FileUp, Loader2, X, Download, Edit3, Trash2, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface GradeBookProps {
@@ -17,7 +17,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
   const [selectedStudentIdForGrades, setSelectedStudentIdForGrades] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   
-  // Grade Form State (Customized for Social Studies)
+  // Grade Form State
   const [subject] = useState('الدراسات الاجتماعية');
   const [category, setCategory] = useState('العرض الشفوي');
   const [score, setScore] = useState('');
@@ -56,7 +56,10 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
   };
 
   const handleSaveGrade = () => {
-    if (!showAddGrade || !score || !maxScore) return;
+    if (!showAddGrade || score === '' || !maxScore) {
+        alert('الرجاء إدخال الدرجة أولاً');
+        return;
+    }
 
     const student = showAddGrade.student;
     const existingGrade = showAddGrade.existingGrade;
@@ -95,7 +98,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         ...student,
         grades: (student.grades || []).filter(g => g.id !== gradeId)
     });
-    // لا نغلق النافذة هنا للسماح للمستخدم برؤية القائمة المحدثة
   };
 
   const handleExcelGradeImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,7 +138,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           }
         }
       });
-      alert('تم استيراد الدرجات بنجاح وتحديث سجلات الطلاب');
+      alert('تم استيراد الدرجات بنجاح');
     } catch (error) {
       alert('خطأ في قراءة ملف الدرجات');
     } finally {
@@ -292,81 +294,91 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         </div>
       )}
 
-      {/* Add / Edit Grade Modal */}
+      {/* Add / Edit Grade Modal - Optimized for iPhone */}
       {showAddGrade && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-end md:items-center justify-center p-0 md:p-6" onClick={() => setShowAddGrade(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
-             <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h3 className="font-black text-gray-900 text-base">{showAddGrade.existingGrade ? 'تعديل الدرجة' : 'رصد درجة جديدة'}</h3>
-                    <p className="text-[10px] text-blue-600 font-bold">{showAddGrade.student.name}</p>
+          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+             {/* Header with Save Button moved to Top Right */}
+             <div className="flex justify-between items-center p-6 border-b border-gray-50 shrink-0">
+                <button onClick={() => setShowAddGrade(null)} className="p-2.5 bg-gray-50 text-gray-400 rounded-2xl active:scale-90 transition-all">
+                    <X className="w-5 h-5" />
+                </button>
+                <div className="text-center">
+                    <h3 className="font-black text-gray-900 text-base">{showAddGrade.existingGrade ? 'تعديل الدرجة' : 'رصد درجة'}</h3>
+                    <p className="text-[10px] text-blue-600 font-bold truncate max-w-[150px]">{showAddGrade.student.name}</p>
                 </div>
-                <button onClick={() => setShowAddGrade(null)} className="p-2 bg-gray-100 rounded-full active:scale-90"><X className="w-4 h-4"/></button>
+                <button 
+                    onClick={handleSaveGrade}
+                    className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white rounded-2xl font-black text-[11px] shadow-lg shadow-blue-100 active:scale-90 transition-all"
+                >
+                    <Check className="w-4 h-4" /> حفظ
+                </button>
              </div>
 
-             <div className="space-y-6">
-                <div className="space-y-2">
-                    <label className="text-[9px] font-black text-gray-400 px-1 uppercase">أداة التقويم</label>
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto no-scrollbar pb-1">
+             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar pb-10">
+                {/* Category Selection */}
+                <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-400 px-1 uppercase tracking-widest">اختر أداة التقويم</label>
+                    <div className="grid grid-cols-2 gap-2">
                         {categories.map(cat => (
                             <button 
                                 key={cat.name}
                                 onClick={() => {
                                     setCategory(cat.name);
                                     setMaxScore(cat.max.toString());
-                                    setScore(''); // مسح الدرجة عند تغيير الأداة لتجنب الأخطاء
                                 }}
-                                className={`p-3 rounded-xl text-[10px] font-black transition-all border ${category === cat.name ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100' : 'bg-gray-50 text-gray-500 border-transparent'}`}
+                                className={`p-4 rounded-2xl text-[10px] font-black transition-all border text-right flex flex-col gap-1 ${category === cat.name ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100' : 'bg-gray-50 text-gray-500 border-transparent active:bg-gray-100'}`}
                             >
-                                {cat.name} ({cat.max})
+                                <span>{cat.name}</span>
+                                <span className={`text-[9px] ${category === cat.name ? 'text-blue-200' : 'text-gray-400'}`}>الدرجة الكلية: {cat.max}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-gray-400 px-1 uppercase">الدرجة</label>
-                            <input 
-                                type="number" 
-                                value={score} 
-                                onChange={e => setScore(e.target.value)} 
-                                placeholder="0" 
-                                className="w-full bg-gray-50 border-none rounded-2xl py-4 text-center font-black text-blue-600 text-lg focus:ring-2 focus:ring-blue-100 outline-none" 
-                            />
+                {/* Score Input Area */}
+                <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-[2rem] p-6 space-y-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 text-center space-y-2">
+                                <label className="text-[10px] font-black text-gray-400">الدرجة المستحقة</label>
+                                <input 
+                                    type="number" 
+                                    value={score} 
+                                    onChange={e => setScore(e.target.value)} 
+                                    placeholder="0" 
+                                    autoFocus
+                                    className="w-full bg-white border-2 border-blue-100 rounded-2xl py-5 text-center font-black text-blue-600 text-3xl focus:border-blue-500 outline-none shadow-sm" 
+                                />
+                            </div>
+                            <div className="w-px h-16 bg-gray-200" />
+                            <div className="flex-1 text-center space-y-2 opacity-50">
+                                <label className="text-[10px] font-black text-gray-400">من إجمالي</label>
+                                <div className="py-5 font-black text-gray-500 text-3xl">{maxScore}</div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-gray-400 px-1 uppercase">النهاية العظمى</label>
-                            <input 
-                                type="number" 
-                                value={maxScore} 
-                                readOnly
-                                className="w-full bg-gray-100 border-none rounded-2xl py-4 text-center font-black text-gray-400 text-lg outline-none" 
-                            />
-                        </div>
-                    </div>
 
-                    {/* Score Presets */}
-                    <div className="flex flex-wrap gap-2 justify-center pt-2">
-                        {getScorePresets().map(preset => (
-                            <button 
-                                key={preset}
-                                onClick={() => setScore(preset.toString())}
-                                className={`w-10 h-10 rounded-full text-[10px] font-black border transition-all ${score === preset.toString() ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-110' : 'bg-white text-blue-600 border-blue-100 active:bg-blue-50'}`}
-                            >
-                                {preset}
-                            </button>
-                        ))}
+                        {/* Presets - Floating bubbles */}
+                        <div className="flex flex-wrap gap-2.5 justify-center pt-2">
+                            {getScorePresets().map(preset => (
+                                <button 
+                                    key={preset}
+                                    onClick={() => setScore(preset.toString())}
+                                    className={`w-12 h-12 rounded-2xl text-xs font-black border transition-all flex items-center justify-center ${score === preset.toString() ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-110' : 'bg-white text-blue-600 border-blue-50 active:bg-blue-50'}`}
+                                >
+                                    {preset}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <button 
-                    onClick={handleSaveGrade}
-                    className="w-full py-4 bg-blue-600 text-white rounded-[1.5rem] font-black text-sm shadow-xl shadow-blue-100 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                    <CheckCircle2 className="w-4 h-4" /> {showAddGrade.existingGrade ? 'تحديث الدرجة' : 'رصد وحفظ'}
-                </button>
+                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                        تأكد من اختيار الدرجة الصحيحة قبل الضغط على حفظ. سيتم تحديث سجل الطالب ومجموعه الكلي تلقائياً.
+                    </p>
+                </div>
              </div>
           </div>
         </div>
