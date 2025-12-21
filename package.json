@@ -5,19 +5,21 @@
   "description": "نظام إدارة الطلاب - تطبيق آيفون",
   "main": "index.html",
   "scripts": {
-    "build": "mkdir -p www && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify && cp index.html manifest.json www/",
+    "build": "npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify && cp index.html manifest.json www/",
+    "prebuild": "mkdir -p www",
     "sync": "npx cap sync"
   },
   "dependencies": {
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/ios": "^6.0.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "lucide-react": "^0.454.0",
-    "recharts": "^2.13.0"
+    "recharts": "^2.15.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0",
-    "esbuild": "^0.25.0"
+    "@capacitor/cli": "^6.2.0",
+    "esbuild": "^0.24.2"
   }
 }
