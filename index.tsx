@@ -23,23 +23,23 @@ if (container) {
       </React.StrictMode>
     );
     
-    // محاولة إخفاء الشاشة بعد استقرار التطبيق
+    // إخفاء شاشة التحميل بمجرد أن يصبح المتصفح جاهزاً
     if (document.readyState === 'complete') {
-        setTimeout(hideLoader, 500);
+      setTimeout(hideLoader, 300);
     } else {
-        window.addEventListener('load', () => setTimeout(hideLoader, 500));
+      window.addEventListener('load', () => setTimeout(hideLoader, 300));
     }
-    
-    // ضمان أخير للإخفاء
-    setTimeout(hideLoader, 2000);
+
+    // صمام أمان إضافي
+    setTimeout(hideLoader, 2500);
     
   } catch (err: any) {
-    console.error("Critical Mount Error:", err);
+    console.error("Mounting error:", err);
     hideLoader();
-    const consoleDiv = document.getElementById('error-console');
-    if (consoleDiv) {
-      consoleDiv.style.display = 'block';
-      consoleDiv.innerHTML += "<div><b>Mount Fail:</b> " + err.message + "</div>";
+    const debugDiv = document.getElementById('debug-console');
+    if (debugDiv) {
+      debugDiv.style.display = 'block';
+      debugDiv.innerHTML += "<div><b>فشل في بناء التطبيق:</b> " + err.message + "</div>";
     }
   }
 } else {
