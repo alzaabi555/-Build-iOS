@@ -15,7 +15,6 @@ import {
   Settings as SettingsIcon,
   ChevronLeft,
   Info,
-  X,
   Trash2,
   Download,
   GraduationCap,
@@ -41,9 +40,8 @@ const App: React.FC = () => {
     return [];
   });
 
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(() => {
-    const saved = localStorage.getItem('selectedStudent');
-    return saved ? JSON.parse(saved) : null;
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(() => {
+    return localStorage.getItem('selectedStudentId');
   });
 
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -51,22 +49,23 @@ const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
+  const selectedStudent = students.find(s => s.id === selectedStudentId) || null;
+
   useEffect(() => {
     localStorage.setItem('studentData', JSON.stringify(students));
     localStorage.setItem('classesData', JSON.stringify(classes));
     localStorage.setItem('activeTab', activeTab);
-    localStorage.setItem('selectedStudent', JSON.stringify(selectedStudent));
+    if (selectedStudentId) {
+      localStorage.setItem('selectedStudentId', selectedStudentId);
+    }
     
     setIsSaving(true);
-    const timeout = setTimeout(() => setIsSaving(false), 1000);
+    const timeout = setTimeout(() => setIsSaving(false), 800);
     return () => clearTimeout(timeout);
-  }, [students, classes, activeTab, selectedStudent]);
+  }, [students, classes, activeTab, selectedStudentId]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
-    if (selectedStudent?.id === updatedStudent.id) {
-      setSelectedStudent(updatedStudent);
-    }
   };
 
   const handleImportStudents = (newStudents: Student[]) => {
@@ -82,48 +81,46 @@ const App: React.FC = () => {
     }
   };
 
-  // ميزة النسخة الاحتياطية (تصدير JSON)
   const handleBackup = () => {
-    const data = {
-      students,
-      classes,
-      exportDate: new Date().toISOString(),
-      appName: "Madrasati System",
-      version: "1.2.0"
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `مدرستي_نسخة_احتياطية_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    alert('تم تصدير النسخة الاحتياطية بنجاح');
+    try {
+      const data = {
+        students,
+        classes,
+        v: "2.0"
+      };
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `نسخة_مدرستي_${new Date().getTime()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      alert('تم حفظ النسخة الاحتياطية بنجاح');
+    } catch (e) {
+      alert('فشل تصدير النسخة');
+    }
   };
 
-  // ميزة استعادة البيانات (استيراد JSON)
   const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        if (json.students && json.classes) {
-          if (confirm('هل أنت متأكد من استعادة هذه النسخة؟ سيتم استبدال كافة البيانات الحالية بالبيانات الموجودة في الملف.')) {
+        if (json.students) {
+          if (confirm('هل تريد استبدال البيانات الحالية بالنسخة الاحتياطية؟')) {
             setStudents(json.students);
-            setClasses(json.classes);
-            alert('تمت استعادة البيانات بنجاح!');
+            setClasses(json.classes || []);
+            alert('تمت الاستعادة بنجاح');
             setShowSettingsModal(false);
           }
         } else {
-          alert('هذا الملف غير صالح أو لا يحتوي على بيانات نظام مدرستي.');
+          alert('الملف غير متوافق مع نظام مدرستي');
         }
       } catch (err) {
-        alert('حدث خطأ أثناء قراءة ملف النسخة الاحتياطية.');
+        alert('الملف غير صالح');
       }
     };
     reader.readAsText(file);
@@ -133,14 +130,14 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard students={students} onSelectStudent={(s) => { setSelectedStudent(s); setActiveTab('report'); }} />;
+        return <Dashboard students={students} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />;
       case 'students':
         return <StudentList 
           students={students} 
           classes={classes}
           onAddClass={handleAddClass}
           onUpdateStudent={handleUpdateStudent} 
-          onViewReport={(s) => { setSelectedStudent(s); setActiveTab('report'); }} 
+          onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
         />;
       case 'attendance':
         return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
@@ -166,14 +163,6 @@ const App: React.FC = () => {
     }
   };
 
-  const navItems = [
-    { id: 'dashboard', icon: BarChart3, label: 'الرئيسية' },
-    { id: 'attendance', icon: CalendarCheck, label: 'الحضور' },
-    { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
-    { id: 'students', icon: Users, label: 'الطلاب' },
-    { id: 'import', icon: FileUp, label: 'استيراد' },
-  ];
-
   return (
     <div className="h-screen w-screen flex flex-col bg-[#f2f2f7] overflow-hidden">
       <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200 z-40 safe-top no-print shrink-0">
@@ -181,39 +170,45 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowInfoModal(true)} 
-                className="p-1.5 bg-blue-50 text-blue-600 rounded-full active:scale-90 transition-all"
+                className="p-1 border border-gray-100 rounded-xl active:scale-90 transition-all overflow-hidden bg-white shadow-sm"
               >
-                  <Info className="w-5 h-5" />
+                  <img src="icon.png" className="w-8 h-8 object-cover rounded-lg" alt="logo" onError={(e) => e.currentTarget.src='https://cdn-icons-png.flaticon.com/512/3532/3532299.png'} />
               </button>
-              <h1 className="text-base font-black text-gray-900">نظام مدرستي</h1>
+              <h1 className="text-sm font-black text-gray-900">نظام مدرستي</h1>
           </div>
           <div className="flex items-center gap-2">
-            {isSaving && <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">محفوظ</span>}
-            <button onClick={() => setShowSettingsModal(true)} className="p-1.5 bg-gray-50 text-gray-400 rounded-full active:scale-90 transition-all">
+            {isSaving && <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
+            <button onClick={() => setShowSettingsModal(true)} className="p-1.5 bg-gray-50 text-gray-400 rounded-full">
               <SettingsIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-4 no-print relative scroll-container">
+      <main className="flex-1 overflow-y-auto px-4 py-4 no-print scroll-container">
         <div className="max-w-md mx-auto w-full pb-20">
           {renderContent()}
         </div>
       </main>
 
-      <nav className="bg-white/95 backdrop-blur-xl border-t border-gray-200 safe-bottom no-print shrink-0 shadow-lg rounded-t-[1.25rem]">
+      <nav className="bg-white/95 backdrop-blur-xl border-t border-gray-200 safe-bottom no-print shrink-0 shadow-lg rounded-t-3xl">
         <div className="flex justify-around items-center py-2 px-1 max-w-md mx-auto">
-          {navItems.map(item => (
+          {[
+            { id: 'dashboard', icon: BarChart3, label: 'الرئيسية' },
+            { id: 'attendance', icon: CalendarCheck, label: 'الحضور' },
+            { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
+            { id: 'students', icon: Users, label: 'الطلاب' },
+            { id: 'import', icon: FileUp, label: 'استيراد' },
+          ].map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
               className={`flex flex-col items-center gap-1 min-w-[55px] py-1 transition-all rounded-xl ${
-                activeTab === item.id ? 'text-blue-600' : 'text-gray-400'
+                activeTab === item.id ? 'text-blue-600 scale-110' : 'text-gray-400'
               }`}
             >
-              <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-              <span className="text-[8px] font-bold">{item.label}</span>
+              <item.icon className="w-5 h-5" />
+              <span className="text-[8px] font-black">{item.label}</span>
             </button>
           ))}
         </div>
@@ -223,43 +218,20 @@ const App: React.FC = () => {
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
           <div className="bg-white w-full max-w-[320px] rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-             <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Database className="w-7 h-7 text-gray-400" />
-             </div>
-             <h3 className="text-base font-black text-gray-900 mb-6 text-center">إدارة بيانات النظام</h3>
-             
+             <h3 className="text-base font-black text-gray-900 mb-6 text-center">إدارة البيانات</h3>
              <div className="space-y-3">
-               <button 
-                onClick={handleBackup} 
-                className="w-full flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-xs active:scale-95 transition-all shadow-sm shadow-blue-100/50"
-               >
-                 <Download className="w-5 h-5"/> نسخة احتياطية (تصدير)
+               <button onClick={handleBackup} className="w-full flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-xs active:scale-95">
+                 <Download className="w-5 h-5"/> نسخة احتياطية
                </button>
-
-               <button 
-                onClick={() => restoreInputRef.current?.click()} 
-                className="w-full flex items-center gap-3 p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-black text-xs active:scale-95 transition-all shadow-sm shadow-emerald-100/50"
-               >
-                 <UploadCloud className="w-5 h-5"/> استعادة البيانات (استيراد)
+               <button onClick={() => restoreInputRef.current?.click()} className="w-full flex items-center gap-3 p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-black text-xs active:scale-95">
+                 <UploadCloud className="w-5 h-5"/> استعادة البيانات
                </button>
                <input type="file" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-
-               <div className="pt-2">
-                 <button 
-                  onClick={() => { if(confirm('هل أنت متأكد من مسح كافة البيانات؟ سيتم حذف جميع الطلاب والسجلات نهائياً ولا يمكن التراجع.')) { localStorage.clear(); location.reload(); } }} 
-                  className="w-full flex items-center gap-3 p-4 bg-rose-50 text-rose-700 rounded-2xl font-black text-xs active:scale-95 transition-all"
-                 >
-                   <Trash2 className="w-5 h-5"/> مسح كافة البيانات
-                 </button>
-               </div>
+               <button onClick={() => { if(confirm('حذف كل البيانات؟')) { localStorage.clear(); location.reload(); } }} className="w-full flex items-center gap-3 p-4 bg-rose-50 text-rose-700 rounded-2xl font-black text-xs active:scale-95">
+                 <Trash2 className="w-5 h-5"/> مسح الذاكرة
+               </button>
              </div>
-
-             <button 
-                onClick={() => setShowSettingsModal(false)}
-                className="w-full mt-6 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-[10px] active:scale-95 transition-all"
-             >
-                إغلاق الإعدادات
-             </button>
+             <button onClick={() => setShowSettingsModal(false)} className="w-full mt-6 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-[10px]">إغلاق</button>
           </div>
         </div>
       )}
@@ -269,40 +241,14 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInfoModal(false)}>
           <div className="bg-white w-full max-w-[320px] rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
              <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-gray-100 overflow-hidden p-1">
-                <img src="icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[1.25rem]" />
+                <img src="icon.png" alt="App Icon" className="w-full h-full object-cover rounded-[1.25rem]" onError={(e) => e.currentTarget.src='https://cdn-icons-png.flaticon.com/512/3532/3532299.png'} />
              </div>
-             <h3 className="text-lg font-black text-center text-gray-900 mb-2">حول النظام</h3>
-             <p className="text-[10px] text-center text-gray-500 font-bold leading-relaxed mb-6 px-2">
-                نظام مدرستي هو تطبيق متطور لإدارة شؤون الطلاب، مصمم خصيصاً لتسهيل مهام المعلمين في رصد الحضور والدرجات بطريقة احترافية.
-             </p>
-             
-             <div className="bg-gray-50 p-4 rounded-2xl space-y-3 mb-6">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                    <span className="text-[9px] font-black text-gray-400">تطوير</span>
-                    <span className="flex items-center gap-1.5 text-[10px] font-black text-gray-900">
-                        <User className="w-3 h-3 text-blue-500" />
-                        محمد الزعابي
-                    </span>
-                </div>
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                    <span className="text-[9px] font-black text-gray-400">الدعم الفني</span>
-                    <a href="tel:98344555" className="flex items-center gap-1.5 text-[10px] font-black text-blue-600">
-                        <Phone className="w-3 h-3" />
-                        98344555
-                    </a>
-                </div>
-                <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-gray-400">الإصدار</span>
-                    <span className="text-[10px] font-black text-gray-900">1.2.0</span>
-                </div>
+             <h3 className="text-lg font-black text-center text-gray-900 mb-2">نظام مدرستي</h3>
+             <div className="bg-gray-50 p-4 rounded-2xl space-y-3 mb-6 text-[10px] font-black">
+                <div className="flex justify-between border-b pb-2"><span>تطوير</span><span className="text-blue-600">محمد الزعابي</span></div>
+                <div className="flex justify-between"><span>الدعم</span><span className="text-gray-900">98344555</span></div>
              </div>
-
-             <button 
-                onClick={() => setShowInfoModal(false)}
-                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-blue-100 active:scale-95 transition-all"
-             >
-                حسناً، فهمت
-             </button>
+             <button onClick={() => setShowInfoModal(false)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs shadow-lg active:scale-95">إغلاق</button>
           </div>
         </div>
       )}

@@ -6,11 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>نظام إدارة الطلاب</title>
   
+  <!-- إعدادات الآيفون والأيقونة -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="مدرستي">
-  
   <link rel="apple-touch-icon" href="icon.png">
+  <link rel="shortcut icon" href="icon.png" type="image/png">
+  
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ffffff">
 
@@ -20,47 +22,25 @@
     :root {
       --sat: env(safe-area-inset-top, 0px);
       --sab: env(safe-area-inset-bottom, 0px);
-      --sar: env(safe-area-inset-right, 0px);
-      --sal: env(safe-area-inset-left, 0px);
     }
     body {
       font-family: 'Tajawal', sans-serif;
       background-color: #f2f2f7;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      height: 100vh;
+      width: 100vw;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      height: 100vh;
-      width: 100vw;
     }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
     
     @media print {
       .no-print { display: none !important; }
-      .print-only { display: block !important; }
-      body, html { 
-        background-color: white !important; 
-        overflow: visible !important; 
-        height: auto !important; 
-        width: auto !important;
-      }
-      #root { 
-        height: auto !important; 
-        overflow: visible !important; 
-        display: block !important;
-      }
-      .scroll-container { 
-        overflow: visible !important; 
-        height: auto !important; 
-      }
-      main { 
-        padding: 0 !important; 
-        margin: 0 !important; 
-      }
-      .max-w-md { 
-        max-width: 100% !important; 
-      }
+      body { background: white !important; overflow: visible !important; height: auto !important; }
+      .scroll-container { overflow: visible !important; height: auto !important; }
     }
     
     .scroll-container {
@@ -68,11 +48,7 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-
     .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .h-screen { height: 100dvh; }
   </style>
 
   <script type="importmap">
