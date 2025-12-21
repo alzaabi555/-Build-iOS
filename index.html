@@ -3,66 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>نظام إدارة الطلاب</title>
-  
+  <title>نظام مدرستي</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="مدرستي">
-  <meta name="mobile-web-app-capable" content="yes">
-  
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="icon" href="icon.png" type="image/png">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
-
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --sat: env(safe-area-inset-top, 0px);
-      --sab: env(safe-area-inset-bottom, 0px);
-    }
-    body {
-      font-family: 'Tajawal', sans-serif;
-      background-color: #f2f2f7;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
+    :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+    body { font-family: 'Tajawal', sans-serif; background-color: #f2f2f7; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
-    
-    html, body, #root {
-      height: 100%;
-      width: 100%;
-      position: fixed;
-    }
-    #root {
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+    html, body, #root { height: 100%; width: 100%; overflow: hidden; position: fixed; }
+    #root { overflow-y: auto; -webkit-overflow-scrolling: touch; }
   </style>
-
   <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.2.0",
-      "react/": "https://esm.sh/react@18.2.0/",
-      "react-dom": "https://esm.sh/react-dom@18.2.0",
-      "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0",
-      "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-      "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
-      "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
-      "xlsx": "https://esm.sh/xlsx@0.18.5"
-    }
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
+    "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
+    "xlsx": "https://esm.sh/xlsx@0.18.5",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
-  </script>
+}
+</script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="antialiased">
+<body>
   <div id="root"></div>
   <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
