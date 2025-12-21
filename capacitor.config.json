@@ -2,6 +2,8 @@
 {
   "appId": "com.madrasati.app",
   "appName": "مدرستي",
-  "webDir": ".",
-  "bundledWebRuntime": false
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
 }
