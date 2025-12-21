@@ -6,7 +6,8 @@ export interface Student {
   classes: string[];
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
-  avatar?: string; // Base64 image string or URL
+  grades: GradeRecord[];
+  avatar?: string;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late';
@@ -24,6 +25,15 @@ export interface BehaviorRecord {
   type: BehaviorType;
   description: string;
   points: number;
+}
+
+export interface GradeRecord {
+  id: string;
+  subject: string;
+  category: string; // مثل: مشاركة، اختبار، مشروع
+  score: number;
+  maxScore: number;
+  date: string;
 }
 
 export interface AppState {

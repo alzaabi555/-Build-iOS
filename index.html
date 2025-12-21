@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -38,8 +39,28 @@
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      body { background-color: white !important; overflow: visible !important; height: auto !important; }
-      #root { height: auto !important; overflow: visible !important; }
+      body, html { 
+        background-color: white !important; 
+        overflow: visible !important; 
+        height: auto !important; 
+        width: auto !important;
+      }
+      #root { 
+        height: auto !important; 
+        overflow: visible !important; 
+        display: block !important;
+      }
+      .scroll-container { 
+        overflow: visible !important; 
+        height: auto !important; 
+      }
+      main { 
+        padding: 0 !important; 
+        margin: 0 !important; 
+      }
+      .max-w-md { 
+        max-width: 100% !important; 
+      }
     }
     
     .scroll-container {
@@ -48,7 +69,9 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* Fix for iOS Safari bottom bars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
     .h-screen { height: 100dvh; }
   </style>
 
