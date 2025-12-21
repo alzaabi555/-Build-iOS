@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -20,21 +20,27 @@ import {
   UploadCloud,
   School,
   User,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // دالة مساعدة مطورة للقراءة الآمنة من LocalStorage مع التحقق من النوع
+  // دالة مطورة جداً لضمان استقرار التطبيق حتى مع وجود بيانات قديمة/تالفة
   const getSafeStorage = (key: string, defaultValue: any) => {
     try {
       const saved = localStorage.getItem(key);
-      if (!saved) return defaultValue;
+      if (!saved || saved === "undefined" || saved === "null") return defaultValue;
+      
       const parsed = JSON.parse(saved);
-      // التحقق من أن البيانات هي مصفوفة إذا كان الافتراضي مصفوفة
-      if (Array.isArray(defaultValue) && !Array.isArray(parsed)) return defaultValue;
+      
+      // إذا كانت القيمة المتوقعة مصفوفة، نضمن أن ما تم استرجاعه هو مصفوفة فعلاً
+      if (Array.isArray(defaultValue) && !Array.isArray(parsed)) {
+        return defaultValue;
+      }
+      
       return parsed;
     } catch (e) {
-      console.error(`Error loading key ${key}:`, e);
+      console.warn(`SafeStorage: Failed to load ${key}, using default.`);
       return defaultValue;
     }
   };
@@ -111,7 +117,7 @@ const App: React.FC = () => {
 
   const handleBackup = () => {
     try {
-      const data = { students, classes, teacherInfo, v: "2.9" };
+      const data = { students, classes, teacherInfo, v: "3.0" };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -129,11 +135,11 @@ const App: React.FC = () => {
       try {
         const json = JSON.parse(e.target?.result as string);
         if (json.students) {
-          if (confirm('هل تريد استعادة البيانات؟ سيتم مسح البيانات الحالية.')) {
+          if (confirm('استعادة البيانات؟ سيتم مسح البيانات الحالية.')) {
             setStudents(json.students);
             setClasses(json.classes || []);
             if (json.teacherInfo) setTeacherInfo(json.teacherInfo);
-            alert('تمت استعادة البيانات بنجاح');
+            alert('تمت استعادة البيانات');
           }
         }
       } catch (err) { alert('الملف غير صالح'); }
@@ -212,17 +218,19 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto px-4 py-4 no-print scroll-container">
         <div className="max-w-md mx-auto w-full pb-28">
-          {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-          {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-          {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
-          {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
-          {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={handleImportStudents} onAddClass={handleAddClass} />}
-          {activeTab === 'report' && selectedStudentId && students.find(s => s.id === selectedStudentId) && (
-            <div className="pb-10">
-              <button onClick={() => setActiveTab('students')} className="flex items-center text-blue-600 mb-5 font-black px-4 py-2 bg-white rounded-2xl shadow-sm border border-gray-50 w-fit active-scale"><ChevronLeft className="w-5 h-5 ml-1" /> العودة</button>
-              <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
-            </div>
-          )}
+          <Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
+            {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
+            {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
+            {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={handleImportStudents} onAddClass={handleAddClass} />}
+            {activeTab === 'report' && selectedStudentId && students.find(s => s.id === selectedStudentId) && (
+              <div className="pb-10">
+                <button onClick={() => setActiveTab('students')} className="flex items-center text-blue-600 mb-5 font-black px-4 py-2 bg-white rounded-2xl shadow-sm border border-gray-50 w-fit active-scale"><ChevronLeft className="w-5 h-5 ml-1" /> العودة</button>
+                <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
+              </div>
+            )}
+          </Suspense>
         </div>
       </main>
 
@@ -251,7 +259,7 @@ const App: React.FC = () => {
                <button onClick={handleBackup} className="w-full flex items-center gap-4 p-4 bg-blue-50 text-blue-700 rounded-[1.8rem] font-black text-xs active-scale"><Download className="w-5 h-5"/> نسخة احتياطية</button>
                <button onClick={() => restoreInputRef.current?.click()} className="w-full flex items-center gap-4 p-4 bg-emerald-50 text-emerald-700 rounded-[1.8rem] font-black text-xs active-scale"><UploadCloud className="w-5 h-5"/> استعادة البيانات</button>
                <input type="file" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-               <button onClick={() => { if(confirm('⚠️ مسح كل البيانات نهائياً؟')) { localStorage.clear(); location.reload(); } }} className="w-full flex items-center gap-4 p-4 bg-rose-50 text-rose-700 rounded-[1.8rem] font-black text-xs active-scale"><Trash2 className="w-5 h-5"/> مسح البيانات</button>
+               <button onClick={() => { if(confirm('مسح كل البيانات نهائياً؟')) { localStorage.clear(); location.reload(); } }} className="w-full flex items-center gap-4 p-4 bg-rose-50 text-rose-700 rounded-[1.8rem] font-black text-xs active-scale"><Trash2 className="w-5 h-5"/> مسح البيانات</button>
              </div>
              <button onClick={() => setShowSettingsModal(false)} className="w-full mt-8 py-4 bg-gray-50 text-gray-400 rounded-[1.5rem] font-black text-[10px]">إغلاق</button>
           </div>

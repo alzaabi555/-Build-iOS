@@ -33,6 +33,7 @@
       overflow: hidden;
       height: 100vh;
       width: 100vw;
+      user-select: none;
     }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
@@ -45,7 +46,7 @@
       .no-print { display: none !important; }
       body, .scroll-container { overflow: visible !important; height: auto !important; }
     }
-    .active-scale:active { transform: scale(0.96); }
+    .active-scale:active { transform: scale(0.96); transition: transform 0.1s; }
   </style>
 
   <script type="importmap">
@@ -56,8 +57,8 @@
       "react-dom": "https://esm.sh/react-dom@18.2.0",
       "react-dom/": "https://esm.sh/react-dom@18.2.0/",
       "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-      "lucide-react": "https://esm.sh/lucide-react@0.454.0?external=react,react-dom",
-      "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
+      "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
+      "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
       "xlsx": "https://esm.sh/xlsx@0.18.5"
     }
   }
@@ -66,7 +67,7 @@
 </head>
 <body class="antialiased">
   <div id="root"></div>
-  <script type="module" src="index.tsx"></script>
+  <script type="module" src="index.js"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
