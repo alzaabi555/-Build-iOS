@@ -19,35 +19,24 @@ import {
   GraduationCap,
   UploadCloud,
   School,
-  User,
-  CheckCircle2,
-  AlertTriangle
+  CheckCircle2
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // دالة مطورة جداً لضمان استقرار التطبيق حتى مع وجود بيانات قديمة/تالفة
   const getSafeStorage = (key: string, defaultValue: any) => {
     try {
       const saved = localStorage.getItem(key);
       if (!saved || saved === "undefined" || saved === "null") return defaultValue;
-      
       const parsed = JSON.parse(saved);
-      
-      // إذا كانت القيمة المتوقعة مصفوفة، نضمن أن ما تم استرجاعه هو مصفوفة فعلاً
-      if (Array.isArray(defaultValue) && !Array.isArray(parsed)) {
-        return defaultValue;
-      }
-      
+      if (Array.isArray(defaultValue) && !Array.isArray(parsed)) return defaultValue;
       return parsed;
     } catch (e) {
-      console.warn(`SafeStorage: Failed to load ${key}, using default.`);
       return defaultValue;
     }
   };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'attendance' | 'grades' | 'import' | 'report'>(() => {
-    const saved = localStorage.getItem('activeTab');
-    return (saved as any) || 'dashboard';
+    return (localStorage.getItem('activeTab') as any) || 'dashboard';
   });
   
   const [students, setStudents] = useState<Student[]>(() => getSafeStorage('studentData', []));
@@ -60,7 +49,6 @@ const App: React.FC = () => {
 
   const [isSetupComplete, setIsSetupComplete] = useState(!!teacherInfo.name && !!teacherInfo.school);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(localStorage.getItem('selectedStudentId'));
-  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
@@ -73,20 +61,17 @@ const App: React.FC = () => {
       localStorage.setItem('teacherName', teacherInfo.name);
       localStorage.setItem('schoolName', teacherInfo.school);
       if (selectedStudentId) localStorage.setItem('selectedStudentId', selectedStudentId);
-      
       setIsSaving(true);
       const timeout = setTimeout(() => setIsSaving(false), 800);
       return () => clearTimeout(timeout);
-    } catch (e) {
-      console.error("Storage Error:", e);
-    }
+    } catch (e) {}
   }, [students, classes, activeTab, selectedStudentId, teacherInfo]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
   };
 
-  const handleAddStudentManually = (name: string, className: string) => {
+  const handleAddStudentManually = (name: string, className: string, phone?: string) => {
     const newStudent: Student = {
       id: Math.random().toString(36).substr(2, 9),
       name,
@@ -94,7 +79,8 @@ const App: React.FC = () => {
       classes: [className],
       attendance: [],
       behaviors: [],
-      grades: []
+      grades: [],
+      parentPhone: phone
     };
     setStudents(prev => [newStudent, ...prev]);
     if (!classes.includes(className)) {
@@ -117,7 +103,7 @@ const App: React.FC = () => {
 
   const handleBackup = () => {
     try {
-      const data = { students, classes, teacherInfo, v: "3.0" };
+      const data = { students, classes, teacherInfo, v: "3.1" };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -155,35 +141,16 @@ const App: React.FC = () => {
         </div>
         <h1 className="text-2xl font-black text-gray-900 mb-2">مرحباً بك في مدرستي</h1>
         <p className="text-[10px] text-gray-400 font-bold mb-10 text-center uppercase tracking-widest">إدارة ذكية لشؤون المعلم والطلاب</p>
-        
         <div className="w-full max-w-sm space-y-5">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 mr-2 flex items-center gap-1 uppercase">اسم المعلم / المعلمة</label>
-            <input 
-              type="text" 
-              className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold outline-none ring-2 ring-transparent focus:ring-blue-500/20 transition-all"
-              placeholder="مثال: أ. أحمد الهاشمي"
-              value={teacherInfo.name}
-              onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})}
-            />
+            <label className="text-[10px] font-black text-gray-400 mr-2 uppercase">اسم المعلم / المعلمة</label>
+            <input type="text" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold outline-none" placeholder="أ. أحمد الهاشمي" value={teacherInfo.name} onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})} />
           </div>
-          
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 mr-2 flex items-center gap-1 uppercase">اسم المدرسة</label>
-            <input 
-              type="text" 
-              className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold outline-none ring-2 ring-transparent focus:ring-blue-500/20 transition-all"
-              placeholder="اسم المدرسة"
-              value={teacherInfo.school}
-              onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})}
-            />
+            <label className="text-[10px] font-black text-gray-400 mr-2 uppercase">اسم المدرسة</label>
+            <input type="text" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold outline-none" placeholder="اسم المدرسة" value={teacherInfo.school} onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})} />
           </div>
-
-          <button 
-            disabled={!teacherInfo.name || !teacherInfo.school}
-            onClick={() => setIsSetupComplete(true)}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-200 active:scale-95 disabled:opacity-50 mt-6 flex items-center justify-center gap-3"
-          >
+          <button disabled={!teacherInfo.name || !teacherInfo.school} onClick={() => setIsSetupComplete(true)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-200 active:scale-95 disabled:opacity-50 mt-6 flex items-center justify-center gap-3">
             بدء الاستخدام <CheckCircle2 className="w-5 h-5" />
           </button>
         </div>
@@ -196,12 +163,7 @@ const App: React.FC = () => {
       <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200 z-40 safe-top no-print shrink-0">
         <div className="px-5 h-16 flex justify-between items-center">
           <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowInfoModal(true)} 
-                className="p-1 border border-gray-100 rounded-xl active-scale transition-all bg-white shadow-sm"
-              >
-                  <img src="icon.png" className="w-9 h-9 object-cover rounded-lg" alt="logo" onError={(e) => e.currentTarget.src='https://cdn-icons-png.flaticon.com/512/3532/3532299.png'} />
-              </button>
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg">م</div>
               <div className="flex flex-col">
                 <h1 className="text-[11px] font-black text-gray-900 truncate max-w-[150px] leading-tight">{teacherInfo.school}</h1>
                 <span className="text-[8px] font-bold text-gray-400">أ. {teacherInfo.name}</span>
@@ -215,7 +177,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
-
       <main className="flex-1 overflow-y-auto px-4 py-4 no-print scroll-container">
         <div className="max-w-md mx-auto w-full pb-28">
           <Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
@@ -233,7 +194,6 @@ const App: React.FC = () => {
           </Suspense>
         </div>
       </main>
-
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-gray-100 safe-bottom no-print z-50 shadow-lg rounded-t-[2.5rem]">
         <div className="flex justify-around items-center py-3 px-2 max-w-md mx-auto">
           {[
@@ -250,21 +210,6 @@ const App: React.FC = () => {
           ))}
         </div>
       </nav>
-
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
-          <div className="bg-white w-full max-w-[320px] rounded-[2.8rem] p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
-             <h3 className="text-base font-black text-gray-900 mb-8 text-center">الإعدادات</h3>
-             <div className="space-y-3">
-               <button onClick={handleBackup} className="w-full flex items-center gap-4 p-4 bg-blue-50 text-blue-700 rounded-[1.8rem] font-black text-xs active-scale"><Download className="w-5 h-5"/> نسخة احتياطية</button>
-               <button onClick={() => restoreInputRef.current?.click()} className="w-full flex items-center gap-4 p-4 bg-emerald-50 text-emerald-700 rounded-[1.8rem] font-black text-xs active-scale"><UploadCloud className="w-5 h-5"/> استعادة البيانات</button>
-               <input type="file" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-               <button onClick={() => { if(confirm('مسح كل البيانات نهائياً؟')) { localStorage.clear(); location.reload(); } }} className="w-full flex items-center gap-4 p-4 bg-rose-50 text-rose-700 rounded-[1.8rem] font-black text-xs active-scale"><Trash2 className="w-5 h-5"/> مسح البيانات</button>
-             </div>
-             <button onClick={() => setShowSettingsModal(false)} className="w-full mt-8 py-4 bg-gray-50 text-gray-400 rounded-[1.5rem] font-black text-[10px]">إغلاق</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

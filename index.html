@@ -34,6 +34,7 @@
       height: 100vh;
       width: 100vw;
       user-select: none;
+      -webkit-user-select: none;
     }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
@@ -47,6 +48,11 @@
       body, .scroll-container { overflow: visible !important; height: auto !important; }
     }
     .active-scale:active { transform: scale(0.96); transition: transform 0.1s; }
+    
+    html, body {
+      position: fixed;
+      overflow: hidden;
+    }
   </style>
 
   <script type="importmap">
@@ -67,7 +73,7 @@
 </head>
 <body class="antialiased">
   <div id="root"></div>
-  <script type="module" src="index.js"></script>
+  <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>

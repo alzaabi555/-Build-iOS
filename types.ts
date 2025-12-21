@@ -7,6 +7,7 @@ export interface Student {
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
   grades: GradeRecord[];
+  parentPhone?: string; // حقل جديد لرقم ولي الأمر
   avatar?: string;
 }
 
@@ -30,7 +31,7 @@ export interface BehaviorRecord {
 export interface GradeRecord {
   id: string;
   subject: string;
-  category: string; // مثل: مشاركة، اختبار، مشروع
+  category: string;
   score: number;
   maxScore: number;
   date: string;
