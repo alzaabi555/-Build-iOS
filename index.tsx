@@ -23,18 +23,23 @@ if (container) {
       </React.StrictMode>
     );
     
-    // إخفاء التحميل بعد نجاح الرندر مباشرة
-    requestAnimationFrame(() => {
-      setTimeout(hideLoader, 500);
-    });
+    // محاولة إخفاء الشاشة بعد استقرار التطبيق
+    if (document.readyState === 'complete') {
+        setTimeout(hideLoader, 500);
+    } else {
+        window.addEventListener('load', () => setTimeout(hideLoader, 500));
+    }
+    
+    // ضمان أخير للإخفاء
+    setTimeout(hideLoader, 2000);
     
   } catch (err: any) {
-    console.error("Mount error:", err);
+    console.error("Critical Mount Error:", err);
     hideLoader();
     const consoleDiv = document.getElementById('error-console');
     if (consoleDiv) {
       consoleDiv.style.display = 'block';
-      consoleDiv.innerText += "\n[MOUNT_FAIL]: " + err.message;
+      consoleDiv.innerHTML += "<div><b>Mount Fail:</b> " + err.message + "</div>";
     }
   }
 } else {
