@@ -27,7 +27,6 @@
     body {
       font-family: 'Tajawal', sans-serif;
       background-color: #f2f2f7;
-      -webkit-tap-highlight-color: transparent;
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -38,16 +37,28 @@
     }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
-    .scroll-container {
-      height: 100%;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+    
+    /* شاشة التحميل */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
     }
-    @media print {
-      .no-print { display: none !important; }
-      body, .scroll-container { overflow: visible !important; height: auto !important; }
+    .loader {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
-    .active-scale:active { transform: scale(0.96); transition: transform 0.1s; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     
     html, body {
       position: fixed;
@@ -56,22 +67,26 @@
   </style>
 
   <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.2.0",
-      "react/": "https://esm.sh/react@18.2.0/",
-      "react-dom": "https://esm.sh/react-dom@18.2.0",
-      "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-      "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
-      "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
-      "xlsx": "https://esm.sh/xlsx@0.18.5"
-    }
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
+    "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
+    "xlsx": "https://esm.sh/xlsx@0.18.5"
   }
-  </script>
+}
+</script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="antialiased">
+  <div id="splash-screen">
+    <div class="loader mb-4"></div>
+    <p style="font-family: 'Tajawal', sans-serif; font-weight: 700; color: #2563eb;">جاري تشغيل النظام...</p>
+  </div>
   <div id="root"></div>
   <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>

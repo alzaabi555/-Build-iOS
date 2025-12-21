@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -14,10 +14,7 @@ import {
   FileUp, 
   Settings as SettingsIcon,
   ChevronLeft,
-  Trash2,
-  Download,
   GraduationCap,
-  UploadCloud,
   School,
   CheckCircle2
 } from 'lucide-react';
@@ -49,9 +46,7 @@ const App: React.FC = () => {
 
   const [isSetupComplete, setIsSetupComplete] = useState(!!teacherInfo.name && !!teacherInfo.school);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(localStorage.getItem('selectedStudentId'));
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -101,38 +96,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBackup = () => {
-    try {
-      const data = { students, classes, teacherInfo, v: "3.1" };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `نسخة_مدرستي_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.json`;
-      link.click();
-    } catch (e) { alert('فشل تصدير النسخة'); }
-  };
-
-  const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target?.result as string);
-        if (json.students) {
-          if (confirm('استعادة البيانات؟ سيتم مسح البيانات الحالية.')) {
-            setStudents(json.students);
-            setClasses(json.classes || []);
-            if (json.teacherInfo) setTeacherInfo(json.teacherInfo);
-            alert('تمت استعادة البيانات');
-          }
-        }
-      } catch (err) { alert('الملف غير صالح'); }
-    };
-    reader.readAsText(file);
-  };
-
   if (!isSetupComplete) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-white px-8">
@@ -171,7 +134,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             {isSaving && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />}
-            <button onClick={() => setShowSettingsModal(true)} className="p-2 bg-gray-50 text-gray-400 rounded-2xl active-scale border border-gray-100">
+            <button className="p-2 bg-gray-50 text-gray-400 rounded-2xl active-scale border border-gray-100">
               <SettingsIcon className="w-5 h-5" />
             </button>
           </div>
@@ -179,19 +142,17 @@ const App: React.FC = () => {
       </header>
       <main className="flex-1 overflow-y-auto px-4 py-4 no-print scroll-container">
         <div className="max-w-md mx-auto w-full pb-28">
-          <Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
-            {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-            {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-            {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
-            {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
-            {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={handleImportStudents} onAddClass={handleAddClass} />}
-            {activeTab === 'report' && selectedStudentId && students.find(s => s.id === selectedStudentId) && (
-              <div className="pb-10">
-                <button onClick={() => setActiveTab('students')} className="flex items-center text-blue-600 mb-5 font-black px-4 py-2 bg-white rounded-2xl shadow-sm border border-gray-50 w-fit active-scale"><ChevronLeft className="w-5 h-5 ml-1" /> العودة</button>
-                <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
-              </div>
-            )}
-          </Suspense>
+          {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+          {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+          {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
+          {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
+          {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={handleImportStudents} onAddClass={handleAddClass} />}
+          {activeTab === 'report' && selectedStudentId && students.find(s => s.id === selectedStudentId) && (
+            <div className="pb-10">
+              <button onClick={() => setActiveTab('students')} className="flex items-center text-blue-600 mb-5 font-black px-4 py-2 bg-white rounded-2xl shadow-sm border border-gray-50 w-fit active-scale"><ChevronLeft className="w-5 h-5 ml-1" /> العودة</button>
+              <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
+            </div>
+          )}
         </div>
       </main>
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-gray-100 safe-bottom no-print z-50 shadow-lg rounded-t-[2.5rem]">
