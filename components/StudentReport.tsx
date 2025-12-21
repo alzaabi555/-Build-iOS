@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useRef } from 'react';
 import { Student } from '../types';
-import { Printer, Award, AlertTriangle, Download, BarChart3, ChevronRight } from 'lucide-react';
+import { Printer, Award, Download, GraduationCap, ArrowLeftRight, CheckCircle, TrendingUp, Calendar, Sigma, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface StudentReportProps {
@@ -8,184 +9,225 @@ interface StudentReportProps {
 }
 
 const StudentReport: React.FC<StudentReportProps> = ({ student }) => {
+  const printRef = useRef<HTMLDivElement>(null);
+
   const attendanceCount = student.attendance.reduce((acc, curr) => {
     acc[curr.status]++;
     return acc;
   }, { present: 0, absent: 0, late: 0 });
 
-  const behaviorData = [
-    { name: 'إيجابي', value: student.behaviors.filter(b => b.type === 'positive').length, color: '#10b981' },
-    { name: 'سلبي', value: student.behaviors.filter(b => b.type === 'negative').length, color: '#ef4444' },
-  ];
+  const socialGrades = (student.grades || []).filter(g => g.subject === 'الدراسات الاجتماعية');
+
+  const subjectsSummary = socialGrades.reduce((acc: any, g) => {
+    if (!acc[g.subject]) acc[g.subject] = { score: 0, max: 0 };
+    acc[g.subject].score += g.score;
+    acc[g.subject].max += g.maxScore;
+    return acc;
+  }, {});
+
+  const gradeChartData = Object.keys(subjectsSummary).map(key => ({
+    name: key,
+    percent: Math.round((subjectsSummary[key].score / subjectsSummary[key].max) * 100)
+  }));
+
+  // حساب المجموع الكلي
+  const totalScore = socialGrades.reduce((acc, g) => acc + g.score, 0);
+  const totalMaxScore = socialGrades.reduce((acc, g) => acc + g.maxScore, 0);
+  const totalPercentage = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
 
   const handlePrint = () => {
-    // Ensuring DOM is ready for print
-    window.requestAnimationFrame(() => {
-      window.print();
-    });
+    // التأكد من تحميل المحتوى قبل فتح نافذة الطباعة
+    window.print();
   };
 
   const handleExportCSV = () => {
     try {
-      const BOM = "\uFEFF"; // Byte Order Mark for Excel Arabic support
-      let csvContent = BOM;
-      csvContent += `تقرير الطالب: ${student.name}\n`;
-      csvContent += `الصف: ${student.grade}\n`;
-      csvContent += `الفصول: ${student.classes?.join(' - ') || 'غير محدد'}\n\n`;
-
-      csvContent += "ملخص الحضور والغياب\n";
-      csvContent += "حاضر,غائب,متأخر\n";
-      csvContent += `${attendanceCount.present},${attendanceCount.absent},${attendanceCount.late}\n\n`;
-
-      csvContent += "سجل السلوكيات\n";
-      csvContent += "التاريخ,النوع,الوصف\n";
-      student.behaviors.forEach(b => {
-        const date = new Date(b.date).toLocaleDateString('ar-EG');
-        const type = b.type === 'positive' ? 'إيجابي' : 'سلبي';
-        csvContent += `${date},${type},"${b.description.replace(/"/g, '""')}"\n`;
+      const BOM = "\uFEFF";
+      let csv = BOM + `تقرير الطالب: ${student.name}\n`;
+      csv += `الفصل: ${student.classes?.join(' - ')}\n`;
+      csv += `التاريخ: ${new Date().toLocaleDateString('ar-EG')}\n\n`;
+      
+      csv += "سجل الدرجات (الدراسات الاجتماعية)\n";
+      csv += "أداة التقويم,الدرجة,من,التاريخ\n";
+      socialGrades.forEach(g => {
+        csv += `${g.category},${g.score},${g.maxScore},${new Date(g.date).toLocaleDateString('ar-EG')}\n`;
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      csv += `\nالمجموع الكلي,${totalScore},${totalMaxScore},${totalPercentage}%\n`;
+      
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
-      link.download = `تقرير_${student.name.replace(/\s+/g, '_')}.csv`;
+      link.setAttribute("href", url);
+      link.setAttribute("download", `تقرير_${student.name}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
     } catch (e) {
-      console.error("Export error:", e);
-      alert('حدث خطأ أثناء محاولة التصدير');
+      alert('خطأ في التصدير');
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-left duration-500 pb-20">
-      {/* Header Info */}
-      <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 no-print"></div>
-        
-        {student.avatar ? (
-          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-white shrink-0 relative z-10">
-            <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-2xl shadow-md shrink-0 relative z-10">
-            {student.name.charAt(0)}
-          </div>
-        )}
-        <div className="relative z-10 min-w-0">
-          <h1 className="text-lg font-black text-gray-900 truncate">{student.name}</h1>
-          <p className="text-gray-400 text-[10px] font-black mt-0.5">
-            {student.grade} • {student.classes?.join(' / ') || 'فصل غير محدد'}
-          </p>
-        </div>
-      </div>
-
-      {/* Action Bar - No Print */}
-      <div className="grid grid-cols-3 gap-3 no-print">
-          <button 
-              onClick={handleExportCSV}
-              className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-all text-blue-600"
-          >
-              <Download className="w-5 h-5 mb-2" />
-              <span className="text-[9px] font-black">تصدير CSV</span>
-          </button>
-          <button 
-              onClick={handlePrint}
-              className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-all text-gray-900"
-          >
-              <Printer className="w-5 h-5 mb-2" />
-              <span className="text-[9px] font-black">طباعة</span>
-          </button>
-          <div className="flex flex-col items-center justify-center p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100 text-white">
-              <Award className="w-5 h-5 mb-2" />
-              <span className="text-[9px] font-black">الرتبة: ممتاز</span>
-          </div>
-      </div>
-
-      {/* Stats Summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100 text-center">
-          <p className="text-[8px] text-emerald-600 font-black mb-1">حضور</p>
-          <p className="text-xl font-black text-emerald-700">{attendanceCount.present}</p>
-        </div>
-        <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100 text-center">
-          <p className="text-[8px] text-rose-600 font-black mb-1">غياب</p>
-          <p className="text-xl font-black text-rose-700">{attendanceCount.absent}</p>
-        </div>
-        <div className="bg-amber-50 p-4 rounded-3xl border border-amber-100 text-center">
-          <p className="text-[8px] text-amber-600 font-black mb-1">تأخر</p>
-          <p className="text-xl font-black text-amber-700">{attendanceCount.late}</p>
-        </div>
-      </div>
-
-      {/* Behavior Analysis Chart */}
-      <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100">
-        <h3 className="font-black mb-5 text-gray-800 text-[11px] flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-500" />
-            تحليل السلوكيات
-        </h3>
-        <div className="h-44 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={behaviorData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} />
-              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
-              <Tooltip cursor={{ fill: '#f8fafc' }} />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={35}>
-                {behaviorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Behavior Timeline */}
-      <div className="space-y-3">
-        <h3 className="font-black text-gray-800 text-[11px] px-1 uppercase tracking-widest">آخر التحديثات السلوكية</h3>
-        {student.behaviors.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-[2rem] border-2 border-dashed border-gray-100">
-              <p className="text-gray-400 text-[10px] font-bold">لا توجد سجلات سلوكية مسجلة</p>
-          </div>
-        ) : (
-          student.behaviors.map(b => (
-            <div key={b.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-start gap-3 active:scale-[0.98] transition-all">
-              <div className={`p-2 rounded-xl shrink-0 ${b.type === 'positive' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                {b.type === 'positive' ? <Award className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex justify-between items-center mb-0.5">
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${b.type === 'positive' ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {b.type === 'positive' ? 'إيجابي' : 'سلبي'}
-                  </span>
-                  <span className="text-[8px] text-gray-400 font-medium">{new Date(b.date).toLocaleDateString('ar-EG')}</span>
+    <div className="space-y-6 pb-20" ref={printRef} id="printable-report">
+      {/* Header Info - Optimized for PDF */}
+      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex items-center justify-between print:border-none print:shadow-none print:p-0 print:mb-8">
+        <div className="flex items-center gap-5">
+            <div className="print:block">
+              {student.avatar ? (
+                <img src={student.avatar} className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-50 shadow-sm print:w-20 print:h-20" />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-lg print:w-20 print:h-20 print:shadow-none">
+                  {student.name.charAt(0)}
                 </div>
-                <p className="text-xs text-gray-700 leading-relaxed font-bold">{b.description}</p>
-              </div>
+              )}
             </div>
-          ))
-        )}
+            <div>
+              <h1 className="text-lg font-black text-gray-900 print:text-2xl">{student.name}</h1>
+              <p className="text-blue-600 text-[10px] font-black uppercase tracking-wide print:text-xs">
+                {student.classes?.join(' / ') || 'عام'} • تقرير مادة الدراسات الاجتماعية
+              </p>
+            </div>
+        </div>
+        <div className="text-left text-[9px] font-bold text-gray-400 print:text-xs print:text-gray-600">
+            {new Date().toLocaleDateString('ar-EG')}
+        </div>
       </div>
 
-      {/* Print-Only Footer */}
-      <div className="hidden print:block mt-20 pt-10 border-t border-gray-200">
-        <div className="grid grid-cols-2 gap-20">
-            <div className="text-center">
-                <div className="border-b border-gray-300 w-32 mx-auto mb-2"></div>
-                <p className="font-black text-xs">توقيع المعلم المربي</p>
+      {/* Action Bar - Hidden in PDF */}
+      <div className="grid grid-cols-2 gap-3 no-print">
+          <button 
+            onClick={handleExportCSV} 
+            className="flex items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-all text-blue-600 font-black text-[11px]"
+          >
+              <Download className="w-4 h-4" /> تصدير CSV
+          </button>
+          <button 
+            onClick={handlePrint} 
+            className="flex items-center justify-center gap-2 p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100 active:scale-95 transition-all text-white font-black text-[11px]"
+          >
+              <Printer className="w-4 h-4" /> حفظ بصيغة PDF
+          </button>
+      </div>
+
+      {/* Grades Summary Chart - Hidden or Simplified in PDF depending on support */}
+      <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden print:border-gray-200 print:shadow-none print:rounded-3xl">
+          <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-gray-800 text-xs flex items-center gap-2 print:text-sm">
+                <TrendingUp className="w-4 h-4 text-blue-500" /> ملخص التحصيل الدراسي
+              </h3>
+              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full print:border print:border-emerald-200">الدراسات الاجتماعية</span>
+          </div>
+          {gradeChartData.length > 0 ? (
+            <div className="h-40 w-full print:h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={gradeChartData} layout="vertical" margin={{ left: -10, right: 30 }}>
+                  <XAxis type="number" domain={[0, 100]} hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: '#6b7280' }} width={80} />
+                  <Bar dataKey="percent" radius={[0, 10, 10, 0]} barSize={18}>
+                    {gradeChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.percent > 50 ? '#3b82f6' : '#f43f5e'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <div className="text-center">
-                <div className="border-b border-gray-300 w-32 mx-auto mb-2"></div>
-                <p className="font-black text-xs">توقيع ولي الأمر</p>
+          ) : (
+            <div className="text-center py-10">
+                <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <GraduationCap className="w-6 h-6 text-gray-200" />
+                </div>
+                <p className="text-gray-400 text-[10px] font-bold">لا توجد درجات مسجلة لهذه المادة</p>
             </div>
+          )}
+      </div>
+
+      {/* Attendance Stats Cards */}
+      <div className="grid grid-cols-3 gap-3 print:gap-4">
+        <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100 text-center shadow-sm print:bg-white print:border-gray-200">
+          <p className="text-[9px] text-emerald-600 font-black mb-1 print:text-gray-500">حاضر</p>
+          <p className="text-xl font-black text-emerald-700 print:text-emerald-600">{attendanceCount.present}</p>
         </div>
-        <div className="mt-16 text-center">
-            <p className="text-[9px] text-gray-400">صدر هذا التقرير آلياً من نظام مدرستي بتاريخ {new Date().toLocaleString('ar-EG')}</p>
+        <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100 text-center shadow-sm print:bg-white print:border-gray-200">
+          <p className="text-[9px] text-rose-600 font-black mb-1 print:text-gray-500">غائب</p>
+          <p className="text-xl font-black text-rose-700 print:text-rose-600">{attendanceCount.absent}</p>
         </div>
+        <div className="bg-amber-50 p-4 rounded-3xl border border-amber-100 text-center shadow-sm print:bg-white print:border-gray-200">
+          <p className="text-[9px] text-amber-600 font-black mb-1 print:text-gray-500">متأخر</p>
+          <p className="text-xl font-black text-amber-700 print:text-amber-600">{attendanceCount.late}</p>
+        </div>
+      </div>
+
+      {/* Detailed Grades Table with Total - Optimized for Document/PDF */}
+      <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm print:border-gray-200 print:shadow-none print:rounded-3xl">
+        <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex justify-between items-center print:bg-gray-50">
+            <h3 className="font-black text-gray-800 text-[11px] flex items-center gap-2 print:text-sm">
+                <FileText className="w-4 h-4 text-blue-500" /> تفاصيل السجل الأكاديمي
+            </h3>
+            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest print:text-gray-500">Detailed Report</span>
+        </div>
+        <div className="divide-y divide-gray-50 print:divide-gray-100">
+          {socialGrades.slice().reverse().map(g => (
+            <div key={g.id} className="p-5 flex items-center justify-between active:bg-gray-50 transition-colors print:py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center print:hidden">
+                    <Calendar className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                    <p className="text-xs font-black text-gray-900 print:text-sm">{g.category}</p>
+                    <p className="text-[9px] text-gray-400 font-bold print:text-[10px]">{new Date(g.date).toLocaleDateString('ar-EG')}</p>
+                </div>
+              </div>
+              <div className="text-left bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 min-w-[70px] text-center print:bg-white print:border-gray-100">
+                <span className="text-xs font-black text-blue-600 print:text-sm">{g.score}</span>
+                <span className="text-[10px] text-gray-300 font-black mx-1">/</span>
+                <span className="text-[10px] font-black text-gray-500 print:text-xs">{g.maxScore}</span>
+              </div>
+            </div>
+          ))}
+          
+          {socialGrades.length > 0 ? (
+            <div className="p-6 bg-blue-600/5 border-t border-blue-100 print:bg-gray-50 print:border-gray-200">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 print:shadow-none">
+                            <Sigma className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black text-gray-900 print:text-sm">مجموع الدرجات الكلي</p>
+                            <p className="text-[9px] text-blue-600 font-bold print:text-[10px]">إجمالي النقاط المحصلة في المادة</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <div className="bg-white px-4 py-2 rounded-2xl border-2 border-blue-200 shadow-sm flex items-center gap-1.5 print:border-gray-300">
+                            <span className="text-lg font-black text-blue-600">{totalScore}</span>
+                            <span className="text-[10px] text-gray-300 font-black">/</span>
+                            <span className="text-sm font-black text-gray-500">{totalMaxScore}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-600 mt-1 bg-emerald-50 px-2 py-0.5 rounded-lg print:border print:border-emerald-100">
+                            التحصيل: {totalPercentage}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+          ) : (
+            <div className="p-12 text-center text-[11px] text-gray-300 font-bold">سجل الدرجات فارغ حالياً</div>
+          )}
+        </div>
+      </div>
+      
+      {/* Footer Signature (Visible in PDF/Print Only) */}
+      <div className="hidden print:flex mt-20 pt-10 border-t-2 border-dashed border-gray-200 justify-between px-10">
+          <div className="text-center">
+              <p className="font-black text-[10px] mb-12 text-gray-400 uppercase tracking-widest">اعتماد معلم المادة</p>
+              <div className="w-40 border-b border-gray-300 mx-auto"></div>
+              <p className="mt-3 text-[11px] font-black text-gray-900">أ. محمد درويش الزعابي</p>
+          </div>
+          <div className="text-center">
+              <p className="font-black text-[10px] mb-12 text-gray-400 uppercase tracking-widest">توقيع ولي الأمر</p>
+              <div className="w-40 border-b border-gray-300 mx-auto"></div>
+              <p className="mt-3 text-[11px] font-black text-gray-900">....................................</p>
+          </div>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Student } from '../types';
-import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, AlertCircle, Plus, LayoutGrid, Check, Info } from 'lucide-react';
+import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, AlertCircle, LayoutGrid, Check, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ExcelImportProps {
@@ -21,7 +21,6 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // التحقق من اختيار فصل قبل البدء
     const finalTargetClass = isCreatingNew ? newClassInput.trim() : targetClass;
     
     if (!finalTargetClass) {
@@ -40,44 +39,48 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
 
       if (jsonData.length === 0) throw new Error('الملف فارغ');
 
-      // إذا كان الفصل جديداً، نقوم بإضافته للقائمة الرسمية أولاً
       if (isCreatingNew && finalTargetClass) {
           onAddClass(finalTargetClass);
       }
 
-      const mappedStudents: Student[] = jsonData.map((row, idx) => {
-        const rowKeys = Object.keys(row);
-        const nameKey = rowKeys.find(k => {
-          const val = k.trim();
-          return ['الاسم', 'اسم الطالب', 'اسم', 'Name', 'Student Name', 'Full Name', 'المتعلم', 'اسم المتعلم'].includes(val);
+      const headerNames = ['الاسم', 'اسم الطالب', 'اسم', 'Name', 'Student Name', 'Full Name', 'المتعلم', 'اسم المتعلم', 'Student'];
+
+      const mappedStudents: Student[] = jsonData
+        .map((row, idx) => {
+          const rowKeys = Object.keys(row);
+          const nameKey = rowKeys.find(k => {
+            const val = k.trim();
+            return headerNames.includes(val);
+          });
+          
+          const gradeKey = rowKeys.find(k => 
+            ['الصف', 'صف', 'Grade', 'Level', 'المرحلة'].includes(k.trim())
+          );
+
+          let studentClasses: string[] = [finalTargetClass];
+          
+          const studentName = String(row[nameKey || ''] || row[rowKeys[0]] || '').trim();
+
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            name: studentName,
+            grade: String(row[gradeKey || ''] || ''),
+            classes: studentClasses,
+            attendance: [],
+            behaviors: [],
+            grades: []
+          };
+        })
+        .filter(student => {
+          // الفلتر الذكي: استبعاد العناوين والأسماء الفارغة
+          return student.name !== '' && !headerNames.includes(student.name);
         });
-        
-        const gradeKey = rowKeys.find(k => 
-          ['الصف', 'صف', 'Grade', 'Level', 'المرحلة'].includes(k.trim())
-        );
 
-        // منطق التعيين: نفضل الفصل المختار في الواجهة، وإذا لم يوجد نأخذ من الإكسل
-        let studentClasses: string[] = [];
-        if (finalTargetClass) {
-            studentClasses = [finalTargetClass];
-        } else {
-            const classKey = rowKeys.find(k => 
-              ['الفصل', 'فصل', 'الشعبة', 'Class', 'Section', 'شعبة'].includes(k.trim())
-            );
-            if (row[classKey || '']) {
-                studentClasses = [String(row[classKey || ''])];
-            }
-        }
-
-        return {
-          id: Math.random().toString(36).substr(2, 9),
-          name: row[nameKey || ''] || row[rowKeys[0]] || `طالب ${idx + 1}`,
-          grade: String(row[gradeKey || ''] || ''),
-          classes: studentClasses,
-          attendance: [],
-          behaviors: []
-        };
-      });
+      if (mappedStudents.length === 0) {
+        alert('لم يتم العثور على أسماء طلاب صالحة في الملف. تأكد من وجود عمود باسم "الاسم".');
+        setImportStatus('error');
+        return;
+      }
 
       onImport(mappedStudents);
       setImportStatus('success');
@@ -95,7 +98,6 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
 
   return (
     <div className="space-y-4">
-      {/* Target Class Selection */}
       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-5">
         <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-gray-900 flex items-center gap-2">
@@ -124,7 +126,6 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                   onChange={(e) => setNewClassInput(e.target.value)}
                   autoFocus
                 />
-                <p className="text-[9px] text-gray-400 font-bold px-2">سيتم إنشاء هذا الفصل وتعيين كافة طلاب الملف إليه.</p>
             </div>
         ) : (
             <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -138,16 +139,10 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                         {targetClass === cls && <Check className="w-3 h-3" />}
                     </button>
                 ))}
-                {existingClasses.length === 0 && (
-                    <div className="col-span-2 text-center py-4 text-gray-400 text-[10px] font-bold">
-                        لا توجد فصول، اضغط "فصل جديد" بالأعلى
-                    </div>
-                )}
             </div>
         )}
       </div>
 
-      {/* File Upload Zone */}
       <div className={`bg-white p-8 rounded-[2rem] border-2 border-dashed flex flex-col items-center text-center shadow-sm relative overflow-hidden transition-colors ${ (isCreatingNew ? newClassInput : targetClass) ? 'border-blue-200 bg-blue-50/10' : 'border-gray-100 opacity-60'}`}>
         <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 relative z-10 border border-gray-50">
           {isImporting ? <Loader2 className="w-7 h-7 text-blue-600 animate-spin" /> : <FileSpreadsheet className="w-7 h-7 text-blue-600" />}
@@ -183,25 +178,15 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
           </div>
           <div>
             <span className="text-[10px] font-black block leading-none">تم الاستيراد بنجاح!</span>
-            <span className="text-[9px] font-bold opacity-80">تم نقل الأسماء إلى فصل {targetClass || newClassInput}</span>
           </div>
         </div>
       )}
 
-      {importStatus === 'error' && (
-        <div className="bg-rose-50 text-rose-700 p-5 rounded-2xl flex items-center gap-4 animate-in fade-in">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span className="text-[10px] font-black">حدث خطأ، تأكد من أن الملف يحتوي على عمود "الاسم".</span>
-        </div>
-      )}
-      
-      {/* Help Tip */}
       <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
           <div className="flex gap-2 items-start">
-              {/* Added Info icon to the import list to fix the missing name error */}
               <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <p className="text-[9px] text-amber-700 font-bold leading-relaxed">
-                  نصيحة: إذا اخترت فصلاً من الأعلى، فسيتم تجاهل أي فصول مذكورة داخل ملف الإكسل وسيتم تعيين الجميع للفصل المختار لضمان دقة التنظيم.
+                  سيقوم النظام تلقائياً بتنظيف البيانات واستبعاد صف العناوين (مثل كلمة "الاسم") لضمان دقة القائمة.
               </p>
           </div>
       </div>
