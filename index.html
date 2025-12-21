@@ -36,17 +36,16 @@
     .dot2 { animation-delay: -0.16s; }
     @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
     
-    /* كاشف الأخطاء الصغير أسفل الشاشة */
     #error-console {
       position: fixed; bottom: 20px; left: 20px; right: 20px;
-      background: rgba(255,255,255,0.9); padding: 10px; border-radius: 10px;
-      font-size: 10px; color: #ef4444; font-family: monospace;
+      background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px;
+      font-size: 11px; color: #ef4444; font-family: monospace;
       z-index: 10001; border: 1px solid #ef4444; display: none;
-      max-height: 80px; overflow-y: auto; text-align: left; direction: ltr;
+      max-height: 120px; overflow-y: auto; text-align: left; direction: ltr;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
   </style>
 
-  <!-- Polyfill لدعم الموديولات على كافة إصدارات آيفون -->
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 
   <script type="importmap">
@@ -66,21 +65,20 @@
 </script>
 
   <script>
-    // تسجيل الأخطاء فوراً في لوحة التحكم المرئية
     function logErrorToScreen(msg) {
-      const console = document.getElementById('error-console');
-      if (console) {
-        console.style.display = 'block';
-        console.innerText += '\n> ' + msg;
+      const consoleDiv = document.getElementById('error-console');
+      if (consoleDiv) {
+        consoleDiv.style.display = 'block';
+        consoleDiv.innerText += '\n> ' + msg;
       }
     }
-    window.onerror = (msg) => logErrorToScreen(msg);
-    window.onunhandledrejection = (e) => logErrorToScreen(e.reason);
+    window.onerror = (msg) => logErrorToScreen("Error: " + msg);
+    window.onunhandledrejection = (e) => logErrorToScreen("Promise Error: " + e.reason);
   </script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <div id="error-console">Log Console:</div>
+  <div id="error-console">نظام تشخيص الأخطاء:</div>
 
   <div id="initial-loader">
     <div style="display: flex; gap: 8px; margin-bottom: 20px;">
@@ -93,9 +91,7 @@
 
   <div id="root"></div>
 
-  <script type="module">
-    import './index.tsx';
-  </script>
+  <script type="module" src="./index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
