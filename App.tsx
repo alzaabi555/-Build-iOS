@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -20,34 +20,56 @@ import {
 } from 'lucide-react';
 
 const App: React.FC = () => {
+  // دالة قراءة آمنة من التخزين المحلي
   const getSafeStorage = (key: string, defaultValue: any) => {
     try {
       const saved = localStorage.getItem(key);
       if (!saved || saved === "undefined" || saved === "null") return defaultValue;
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(defaultValue) && !Array.isArray(parsed)) return defaultValue;
-      return parsed;
+      return JSON.parse(saved);
     } catch (e) {
+      console.warn(`Error reading ${key} from storage:`, e);
       return defaultValue;
     }
   };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'attendance' | 'grades' | 'import' | 'report'>(() => {
-    return (localStorage.getItem('activeTab') as any) || 'dashboard';
+    try {
+      return (localStorage.getItem('activeTab') as any) || 'dashboard';
+    } catch(e) { return 'dashboard'; }
   });
   
   const [students, setStudents] = useState<Student[]>(() => getSafeStorage('studentData', []));
   const [classes, setClasses] = useState<string[]>(() => getSafeStorage('classesData', []));
   
-  const [teacherInfo, setTeacherInfo] = useState({
-    name: localStorage.getItem('teacherName') || '',
-    school: localStorage.getItem('schoolName') || ''
+  const [teacherInfo, setTeacherInfo] = useState(() => {
+    try {
+      return {
+        name: localStorage.getItem('teacherName') || '',
+        school: localStorage.getItem('schoolName') || ''
+      };
+    } catch(e) {
+      return { name: '', school: '' };
+    }
   });
 
   const [isSetupComplete, setIsSetupComplete] = useState(!!teacherInfo.name && !!teacherInfo.school);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(localStorage.getItem('selectedStudentId'));
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(() => {
+    try { return localStorage.getItem('selectedStudentId'); } catch(e) { return null; }
+  });
   const [isSaving, setIsSaving] = useState(false);
 
+  // إخفاء شاشة التحميل عند أول رندرة ناجحة لـ App
+  useEffect(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      setTimeout(() => {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 500);
+      }, 300);
+    }
+  }, []);
+
+  // حفظ البيانات عند التغيير
   useEffect(() => {
     try {
       localStorage.setItem('studentData', JSON.stringify(students));
@@ -56,10 +78,13 @@ const App: React.FC = () => {
       localStorage.setItem('teacherName', teacherInfo.name);
       localStorage.setItem('schoolName', teacherInfo.school);
       if (selectedStudentId) localStorage.setItem('selectedStudentId', selectedStudentId);
+      
       setIsSaving(true);
       const timeout = setTimeout(() => setIsSaving(false), 800);
       return () => clearTimeout(timeout);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Storage save failed:", e);
+    }
   }, [students, classes, activeTab, selectedStudentId, teacherInfo]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {

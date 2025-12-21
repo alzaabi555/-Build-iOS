@@ -1,56 +1,77 @@
-import React from 'react';
+
+import React, { Component, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
-// Error Boundary Props and State interfaces to ensure type safety and fix property access errors
 interface ErrorBoundaryProps {
-  // Fix: Making children optional helps resolve TypeScript errors where children passed via JSX 
-  // are not correctly inferred as part of the props object in certain strict configurations.
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
+  error?: any;
 }
 
-// Error Boundary بسيط لالتقاط الأخطاء في شجرة المكونات
-// Explicitly using interfaces to help TypeScript resolve inherited properties like this.props and this.state
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Explicitly declare props and state to avoid "Property does not exist" errors in strict environments
-  props: ErrorBoundaryProps;
-  state: ErrorBoundaryState = { hasError: false };
+// Fix: Explicitly define types to help TypeScript's inference for Class Components
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Fix: Declaring state as a class property resolves "Property 'state' does not exist" errors
+  state: ErrorBoundaryState = {
+    hasError: false
+  };
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.props = props;
+    // Fix: state is already initialized as a class property above to satisfy TypeScript
   }
 
-  static getDerivedStateFromError(): ErrorBoundaryState { 
-    return { hasError: true }; 
+  // Fix: Static method signature for error handling
+  static getDerivedStateFromError(error: any): ErrorBoundaryState { 
+    return { hasError: true, error }; 
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("React Error Boundary caught an error:", error, errorInfo);
   }
 
   render() {
-    // Checking this.state.hasError
+    // Fix: Access state through 'this.state' which is now explicitly declared in the class
     if (this.state.hasError) {
       return (
-        <div className="h-screen flex flex-col items-center justify-center p-6 text-center bg-gray-50">
+        <div className="h-screen flex flex-col items-center justify-center p-6 text-center bg-gray-50" style={{direction: 'rtl', fontFamily: 'Tajawal, sans-serif'}}>
           <h2 className="text-xl font-black text-rose-600 mb-4">عذراً، حدث خطأ غير متوقع</h2>
-          <p className="text-sm text-gray-500 mb-6 font-bold">قد يكون ذلك بسبب خلل في البيانات المخزنة</p>
+          <p className="text-sm text-gray-500 mb-6 font-bold">قد يكون ذلك بسبب تعارض في إصدارات النظام أو البيانات المخزنة.</p>
           <div className="flex flex-col gap-3 w-full max-w-xs">
-            <button onClick={() => location.reload()} className="py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">إعادة تحميل الصفحة</button>
-            <button onClick={() => { localStorage.clear(); location.reload(); }} className="py-4 bg-gray-200 text-gray-600 rounded-2xl font-black">مسح كافة البيانات (إعادة ضبط)</button>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform"
+            >
+              إعادة تحميل الصفحة
+            </button>
+            <button 
+              onClick={() => { localStorage.clear(); window.location.reload(); }} 
+              className="py-4 bg-gray-200 text-gray-600 rounded-2xl font-black active:scale-95 transition-transform"
+            >
+              مسح الذاكرة وإعادة الضبط
+            </button>
           </div>
+          {/* Fix: safely check for error in state before rendering */}
+          {this.state.error && (
+            <details className="mt-8 text-[8px] text-gray-300 opacity-50 cursor-pointer">
+              <summary>تفاصيل الخطأ التقني</summary>
+              <pre className="mt-2 text-left bg-gray-100 p-2 rounded overflow-auto max-w-full">
+                {this.state.error.toString()}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }
-    // Accessing this.props.children
+    // Fix: Accessing 'this.props' which is inherited from Component
     return this.props.children;
   }
 }
 
 const container = document.getElementById('root');
-const splash = document.getElementById('splash-screen');
-
 if (container) {
   const root = createRoot(container);
   root.render(
@@ -58,12 +79,4 @@ if (container) {
       <App />
     </ErrorBoundary>
   );
-  
-  // إخفاء شاشة التحميل بعد وقت قصير من البدء لضمان ظهور الواجهة
-  setTimeout(() => {
-    if (splash) {
-      splash.style.opacity = '0';
-      setTimeout(() => splash.remove(), 500);
-    }
-  }, 1000);
 }
