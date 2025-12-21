@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -61,7 +61,7 @@ const App: React.FC = () => {
       localStorage.setItem('teacherName', teacherInfo.name);
       localStorage.setItem('schoolName', teacherInfo.school);
     } catch (e) {
-      console.warn("Storage access denied or full", e);
+      console.warn("Storage restricted", e);
     }
   }, [students, classes, activeTab, teacherInfo]);
 
@@ -97,7 +97,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-sm space-y-4">
           <input type="text" className="w-full bg-gray-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border border-transparent focus:border-blue-200 transition-all" placeholder="اسم المعلم" value={teacherInfo.name} onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})} />
           <input type="text" className="w-full bg-gray-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border border-transparent focus:border-blue-200 transition-all" placeholder="اسم المدرسة" value={teacherInfo.school} onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})} />
-          <button onClick={() => setIsSetupComplete(true)} disabled={!teacherInfo.name || !teacherInfo.school} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">دخول <CheckCircle2 className="w-5 h-5" /></button>
+          <button onClick={() => setIsSetupComplete(true)} disabled={!teacherInfo.name || !teacherInfo.school} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 flex items-center justify-center gap-2">دخول <CheckCircle2 className="w-5 h-5" /></button>
         </div>
       </div>
     );
@@ -110,7 +110,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-sm">م</div>
               <div>
-                <h1 className="text-[11px] font-black text-gray-900 leading-tight">{teacherInfo.school}</h1>
+                <h1 className="text-[11px] font-black text-gray-900 leading-tight truncate max-w-[120px]">{teacherInfo.school}</h1>
                 <p className="text-[9px] font-bold text-gray-400">أ. {teacherInfo.name}</p>
               </div>
           </div>
@@ -119,17 +119,19 @@ const App: React.FC = () => {
       </header>
       <main className="flex-1 px-4 py-4 pb-24 overflow-y-auto">
         <div className="max-w-md mx-auto">
-          {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-          {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
-          {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
-          {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
-          {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
-          {activeTab === 'report' && selectedStudentId && (
-            <div>
-              <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-1 text-blue-600 font-bold text-xs"><ChevronLeft className="w-4 h-4" /> العودة للطلاب</button>
-              <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
-            </div>
-          )}
+          <Suspense fallback={<div className="text-center p-10 font-bold text-gray-400 text-xs">جاري التحميل...</div>}>
+            {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
+            {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
+            {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
+            {activeTab === 'report' && selectedStudentId && (
+              <div>
+                <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-1 text-blue-600 font-bold text-xs"><ChevronLeft className="w-4 h-4" /> العودة للطلاب</button>
+                <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
+              </div>
+            )}
+          </Suspense>
         </div>
       </main>
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 safe-bottom z-50">
