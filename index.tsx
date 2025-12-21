@@ -1,5 +1,4 @@
-
-import React, { Component, ReactNode } from 'react';
+import React, { ReactNode, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
@@ -12,19 +11,15 @@ interface ErrorBoundaryState {
   error?: any;
 }
 
-// Fix: Explicitly define types to help TypeScript's inference for Class Components
+// ErrorBoundary class component to catch rendering errors in the application tree
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Declaring state as a class property resolves "Property 'state' does not exist" errors
-  state: ErrorBoundaryState = {
-    hasError: false
-  };
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    // Fix: state is already initialized as a class property above to satisfy TypeScript
+    this.state = {
+      hasError: false
+    };
   }
 
-  // Fix: Static method signature for error handling
   static getDerivedStateFromError(error: any): ErrorBoundaryState { 
     return { hasError: true, error }; 
   }
@@ -34,8 +29,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   render() {
-    // Fix: Access state through 'this.state' which is now explicitly declared in the class
-    if (this.state.hasError) {
+    const { hasError, error } = this.state;
+    const { children } = this.props;
+
+    if (hasError) {
       return (
         <div className="h-screen flex flex-col items-center justify-center p-6 text-center bg-gray-50" style={{direction: 'rtl', fontFamily: 'Tajawal, sans-serif'}}>
           <h2 className="text-xl font-black text-rose-600 mb-4">عذراً، حدث خطأ غير متوقع</h2>
@@ -54,20 +51,19 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               مسح الذاكرة وإعادة الضبط
             </button>
           </div>
-          {/* Fix: safely check for error in state before rendering */}
-          {this.state.error && (
+          {error && (
             <details className="mt-8 text-[8px] text-gray-300 opacity-50 cursor-pointer">
               <summary>تفاصيل الخطأ التقني</summary>
               <pre className="mt-2 text-left bg-gray-100 p-2 rounded overflow-auto max-w-full">
-                {this.state.error.toString()}
+                {error.toString()}
               </pre>
             </details>
           )}
         </div>
       );
     }
-    // Fix: Accessing 'this.props' which is inherited from Component
-    return this.props.children;
+    
+    return children || null;
   }
 }
 
