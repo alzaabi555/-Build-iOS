@@ -1,5 +1,5 @@
 
-name: Build iOS IPA
+name: Build iOS App
 
 on:
   push:
@@ -24,16 +24,12 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      - name: Verify build output
-        run: ls -la www
+      - name: Add and Sync iOS Platform
+        run: |
+          npx cap add ios || true
+          npx cap sync ios
 
-      - name: Add iOS Platform
-        run: npx cap add ios || true
-
-      - name: Capacitor Sync
-        run: npx cap sync ios
-
-      - name: Build Xcode Project
+      - name: Build Xcode Archive
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
                      -scheme App \
@@ -43,8 +39,14 @@ jobs:
                      archive \
                      CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload Build Artifacts
+      - name: Prepare App for Sideloading
+        run: |
+          mkdir -p build/Payload
+          cp -R App.xcarchive/Products/Applications/App.app build/Payload/
+          cd build && zip -r ../StudentManager.ipa Payload/
+
+      - name: Upload IPA (Unsigned)
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app-archive
-          path: App.xcarchive
+          name: StudentManager-Unsigned-IPA
+          path: StudentManager.ipa
