@@ -23,10 +23,23 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'attendance' | 'import' | 'report'>(() => {
     return (localStorage.getItem('activeTab') as any) || 'dashboard';
   });
+  
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('studentData');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [classes, setClasses] = useState<string[]>(() => {
+    const saved = localStorage.getItem('classesData');
+    if (saved) return JSON.parse(saved);
+    const savedStudents = localStorage.getItem('studentData');
+    if (savedStudents) {
+        const parsed: Student[] = JSON.parse(savedStudents);
+        return Array.from(new Set(parsed.flatMap(s => s.classes || []))).sort();
+    }
+    return [];
+  });
+
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(() => {
     const saved = localStorage.getItem('selectedStudent');
     return saved ? JSON.parse(saved) : null;
@@ -39,13 +52,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('studentData', JSON.stringify(students));
+    localStorage.setItem('classesData', JSON.stringify(classes));
     localStorage.setItem('activeTab', activeTab);
     localStorage.setItem('selectedStudent', JSON.stringify(selectedStudent));
     
     setIsSaving(true);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => setIsSaving(false), 1500);
-  }, [students, activeTab, selectedStudent]);
+  }, [students, classes, activeTab, selectedStudent]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
@@ -56,12 +70,22 @@ const App: React.FC = () => {
 
   const handleImportStudents = (newStudents: Student[]) => {
     setStudents(prev => [...prev, ...newStudents]);
+    // تحديث قائمة الفصول بناءً على المستورد لضمان شمولية القائمة
+    const newClassesFromStudents = Array.from(new Set(newStudents.flatMap(s => s.classes || [])));
+    setClasses(prev => Array.from(new Set([...prev, ...newClassesFromStudents])).sort());
     setActiveTab('students');
+  };
+
+  const handleAddClass = (className: string) => {
+    if (!classes.includes(className)) {
+        setClasses(prev => [...prev, className].sort());
+    }
   };
 
   const handleClearData = () => {
     if (window.confirm('هل أنت متأكد من مسح كافة البيانات؟ لا يمكن التراجع عن هذه الخطوة.')) {
       setStudents([]);
+      setClasses([]);
       setSelectedStudent(null);
       localStorage.clear();
       setShowSettingsModal(false);
@@ -69,9 +93,10 @@ const App: React.FC = () => {
   };
 
   const handleBackupData = () => {
-    const dataStr = JSON.stringify(students, null, 2);
+    const data = { students, classes };
+    const dataStr = JSON.stringify(data, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `نسخة_احتياطية_${new Date().toLocaleDateString('ar-EG')}.json`;
+    const exportFileDefaultName = `مدرستي_نسخة_احتياطية_${new Date().toLocaleDateString('ar-EG')}.json`;
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
@@ -85,13 +110,15 @@ const App: React.FC = () => {
       case 'students':
         return <StudentList 
           students={students} 
+          classes={classes}
+          onAddClass={handleAddClass}
           onUpdateStudent={handleUpdateStudent} 
           onViewReport={(s) => { setSelectedStudent(s); setActiveTab('report'); }} 
         />;
       case 'attendance':
-        return <AttendanceTracker students={students} setStudents={setStudents} />;
+        return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'import':
-        return <ExcelImport onImport={handleImportStudents} />;
+        return <ExcelImport existingClasses={classes} onImport={handleImportStudents} onAddClass={handleAddClass} />;
       case 'report':
         return selectedStudent ? (
           <div className="pb-10">
@@ -119,7 +146,6 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#f2f2f7] overflow-hidden">
-      {/* Header with Safe Area Handling */}
       <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200 z-40 safe-top no-print shrink-0">
         <div className="px-5 h-14 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -134,8 +160,8 @@ const App: React.FC = () => {
           
           <div className="flex items-center gap-2">
             {isSaving && (
-              <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
-                حُفظ
+              <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse">
+                جار الحفظ...
               </span>
             )}
             <button onClick={() => setShowSettingsModal(true)} className="p-1.5 bg-gray-50 text-gray-400 rounded-full active:scale-90 transition-all">
@@ -145,14 +171,12 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area - Scrollable */}
       <main className="flex-1 overflow-y-auto px-4 py-4 no-print relative scroll-container">
         <div className="max-w-md mx-auto w-full pb-20">
           {renderContent()}
         </div>
       </main>
 
-      {/* Bottom Navigation with Safe Area Handling */}
       <nav className="bg-white/95 backdrop-blur-xl border-t border-gray-200 safe-bottom no-print shrink-0 shadow-lg rounded-t-[1.25rem]">
         <div className="flex justify-around items-center py-2 px-2 max-w-md mx-auto">
           {navItems.map(item => (
@@ -170,7 +194,6 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* Modals */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
           <div className="bg-white w-full max-w-[300px] rounded-[2rem] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
