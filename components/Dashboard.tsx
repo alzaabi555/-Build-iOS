@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Student } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { FileText, Users, Award, AlertCircle, Sun, Moon, Coffee, Sparkles, School } from 'lucide-react';
+import { Users, Award, AlertCircle, Sun, Moon, Coffee, Sparkles, School } from 'lucide-react';
 
 interface DashboardProps {
   students: Student[];
@@ -14,13 +13,14 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onSel
   const totalStudents = students?.length || 0;
   const hour = new Date().getHours();
   
-  const getGreeting = () => {
-    if (hour < 12) return { text: "صباح الخير", icon: <Sun className="text-amber-400 w-5 h-5" /> };
-    if (hour < 17) return { text: "طاب يومك", icon: <Coffee className="text-orange-400 w-5 h-5" /> };
-    return { text: "مساء الخير", icon: <Moon className="text-indigo-400 w-5 h-5" /> };
+  const getGreetingData = () => {
+    if (hour < 12) return { text: "صباح الخير", icon: Sun, color: "text-amber-400" };
+    if (hour < 17) return { text: "طاب يومك", icon: Coffee, color: "text-orange-400" };
+    return { text: "مساء الخير", icon: Moon, color: "text-indigo-400" };
   };
 
-  const greeting = getGreeting();
+  const greeting = getGreetingData();
+  const GreetingIcon = greeting.icon;
   const today = new Date().toISOString().split('T')[0];
   
   const attendanceToday = students.reduce((acc, s) => {
@@ -55,7 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onSel
       <div className="bg-gradient-to-l from-blue-600 to-indigo-600 rounded-[1.75rem] p-6 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2 opacity-90">
-            {greeting.icon}
+            <GreetingIcon className={`${greeting.color} w-5 h-5`} />
             <span className="text-xs font-black">{greeting.text}</span>
           </div>
           <h2 className="text-xl font-black">أهلاً بك، أ. {teacherInfo?.name || 'محمد'}</h2>
@@ -69,17 +69,17 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onSel
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0"><Award className="text-emerald-500 w-5 h-5" /></div>
           <div><p className="text-gray-400 text-[9px] font-black">إيجابي</p><p className="text-base font-black text-gray-900">{behaviorStats.positive}</p></div>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center shrink-0"><AlertCircle className="text-rose-500 w-5 h-5" /></div>
           <div><p className="text-gray-400 text-[9px] font-black">تنبيهات</p><p className="text-base font-black text-gray-900">{behaviorStats.negative}</p></div>
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100">
+      <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100 shadow-sm">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-xs"><Users className="w-4 h-4 text-blue-500" /> حضور اليوم</h3>
           <span className="text-[9px] bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-black">{new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}</span>
@@ -92,8 +92,8 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onSel
                   data={pieData} 
                   cx="50%" 
                   cy="50%" 
-                  innerRadius={35} 
-                  outerRadius={50} 
+                  innerRadius={30} 
+                  outerRadius={45} 
                   paddingAngle={5} 
                   dataKey="value" 
                   stroke="none"
