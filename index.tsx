@@ -7,10 +7,11 @@ const container = document.getElementById('root');
 const hideLoader = () => {
   const loader = document.getElementById('initial-loader');
   if (loader) {
+    loader.style.transition = 'opacity 0.4s ease';
     loader.style.opacity = '0';
     setTimeout(() => {
       if (loader.parentNode) loader.remove();
-    }, 500);
+    }, 400);
   }
 };
 
@@ -23,17 +24,15 @@ if (container) {
       </React.StrictMode>
     );
     
-    // محاولة إخفاء شاشة التحميل بعد وقت قصير من البدء
-    setTimeout(hideLoader, 800);
+    // إخفاء شاشة التحميل فوراً بعد المعالجة
+    setTimeout(hideLoader, 500);
     
   } catch (err: any) {
     console.error("Mounting error:", err);
-    if ((window as any).logErrorToScreen) {
-      (window as any).logErrorToScreen("فشل في بدء التطبيق: " + err.message);
+    const consoleDiv = document.getElementById('error-console');
+    if (consoleDiv) {
+      consoleDiv.style.display = 'block';
+      consoleDiv.innerText += "\nFail: " + err.message;
     }
-  }
-} else {
-  if ((window as any).logErrorToScreen) {
-    (window as any).logErrorToScreen("خطأ: لم يتم العثور على عنصر root في الصفحة");
   }
 }
