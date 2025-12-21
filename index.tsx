@@ -14,9 +14,6 @@ const hideLoader = () => {
   }
 };
 
-// إزالة قسرية لشاشة التحميل بعد 5 ثوانٍ مهما حدث لضمان عدم تعليق المستخدم
-setTimeout(hideLoader, 5000);
-
 if (container) {
   try {
     const root = ReactDOM.createRoot(container);
@@ -26,16 +23,18 @@ if (container) {
       </React.StrictMode>
     );
     
-    // إخفاء التحميل بعد نجاح البدء بفترة بسيطة لضمان ظهور الواجهة
-    setTimeout(hideLoader, 800);
+    // إخفاء التحميل بعد نجاح الرندر مباشرة
+    requestAnimationFrame(() => {
+      setTimeout(hideLoader, 500);
+    });
     
   } catch (err: any) {
-    console.error("Critical mounting error:", err);
-    hideLoader(); 
+    console.error("Mount error:", err);
+    hideLoader();
     const consoleDiv = document.getElementById('error-console');
     if (consoleDiv) {
       consoleDiv.style.display = 'block';
-      consoleDiv.innerText += "\nخطأ في التشغيل: " + err.message;
+      consoleDiv.innerText += "\n[MOUNT_FAIL]: " + err.message;
     }
   }
 } else {
