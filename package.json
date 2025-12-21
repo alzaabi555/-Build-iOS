@@ -1,21 +1,20 @@
-
 {
   "name": "student-manager-app",
   "version": "1.0.0",
   "description": "نظام إدارة الطلاب - تطبيق آيفون",
   "main": "index.html",
   "scripts": {
-    "build": "npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify && cp index.html manifest.json www/",
+    "build": "npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:lucide-react --external:recharts --external:xlsx && cp index.html manifest.json www/",
     "prebuild": "mkdir -p www",
     "sync": "npx cap sync"
   },
   "dependencies": {
     "@capacitor/core": "^6.2.0",
     "@capacitor/ios": "^6.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "lucide-react": "^0.454.0",
-    "recharts": "^2.15.0",
+    "recharts": "^2.12.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

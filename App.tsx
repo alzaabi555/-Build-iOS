@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, AttendanceStatus, BehaviorType } from './types';
+import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -15,16 +14,12 @@ import {
   ChevronLeft,
   Info,
   X,
-  School,
   User,
-  Database,
   Trash2,
-  Download,
-  Save
+  Download
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Persistence: Load initial state from local storage or defaults
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'attendance' | 'import' | 'report'>(() => {
     return (localStorage.getItem('activeTab') as any) || 'dashboard';
   });
@@ -40,15 +35,13 @@ const App: React.FC = () => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<any>(null);
 
-  // Effect to save data whenever students change
   useEffect(() => {
     localStorage.setItem('studentData', JSON.stringify(students));
     localStorage.setItem('activeTab', activeTab);
     localStorage.setItem('selectedStudent', JSON.stringify(selectedStudent));
     
-    // Visual "Saving" indicator
     setIsSaving(true);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => setIsSaving(false), 1500);
@@ -63,6 +56,7 @@ const App: React.FC = () => {
 
   const handleImportStudents = (newStudents: Student[]) => {
     setStudents(prev => [...prev, ...newStudents]);
+    setActiveTab('students');
   };
 
   const handleClearData = () => {
@@ -77,7 +71,7 @@ const App: React.FC = () => {
   const handleBackupData = () => {
     const dataStr = JSON.stringify(students, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `نسخة_احتياطية_الطلاب_${new Date().toLocaleDateString('ar-EG')}.json`;
+    const exportFileDefaultName = `نسخة_احتياطية_${new Date().toLocaleDateString('ar-EG')}.json`;
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
@@ -100,23 +94,17 @@ const App: React.FC = () => {
         return <ExcelImport onImport={handleImportStudents} />;
       case 'report':
         return selectedStudent ? (
-          <div>
+          <div className="pb-10">
             <button 
               onClick={() => setActiveTab('students')}
-              className="flex items-center text-blue-600 mb-4 no-print"
+              className="flex items-center text-blue-600 mb-4 no-print font-bold px-2 py-1 rounded-lg active:bg-blue-50"
             >
               <ChevronLeft className="w-5 h-5 ml-1" />
-              العودة لقائمة الطلاب
+              العودة للقائمة
             </button>
             <StudentReport student={selectedStudent} />
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-             <BarChart3 className="w-16 h-16 mb-4 opacity-20" />
-             <p>الرجاء اختيار طالب لعرض تقريره</p>
-             <button onClick={() => setActiveTab('students')} className="mt-4 text-blue-600 font-medium">الذهاب للقائمة</button>
-          </div>
-        );
+        ) : null;
       default:
         return <Dashboard students={students} onSelectStudent={() => {}} />;
     }
@@ -130,148 +118,86 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto bg-gray-50 shadow-xl overflow-hidden relative">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-40 px-6 py-4 flex justify-between items-center no-print">
-        <div className="flex items-center gap-2">
-            <button 
-                onClick={() => setShowInfoModal(true)}
-                className="p-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
-            >
-                <Info className="w-5 h-5" />
+    <div className="h-screen w-screen flex flex-col bg-[#f2f2f7] overflow-hidden">
+      {/* Header with Safe Area Handling */}
+      <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200 z-40 safe-top no-print shrink-0">
+        <div className="px-5 h-14 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+              <button 
+                  onClick={() => setShowInfoModal(true)}
+                  className="p-1.5 bg-blue-50 text-blue-600 rounded-full active:scale-90 transition-all"
+              >
+                  <Info className="w-5 h-5" />
+              </button>
+              <h1 className="text-base font-black text-gray-900">نظام مدرستي</h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {isSaving && (
+              <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
+                حُفظ
+              </span>
+            )}
+            <button onClick={() => setShowSettingsModal(true)} className="p-1.5 bg-gray-50 text-gray-400 rounded-full active:scale-90 transition-all">
+              <SettingsIcon className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">نظام مدرستي</h1>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {isSaving && (
-            <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse">
-              <Save className="w-3 h-3" />
-              تم الحفظ
-            </span>
-          )}
-          <button onClick={() => setShowSettingsModal(true)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-            <SettingsIcon className="w-6 h-6 text-gray-400" />
-          </button>
+          </div>
         </div>
       </header>
 
-      {/* Settings Modal (Data Management) */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 no-print">
-          <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-blue-600" />
-                  إدارة البيانات
-                </h3>
-                <button onClick={() => setShowSettingsModal(false)} className="p-1.5 bg-gray-100 rounded-full text-gray-400">
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
+      {/* Main Content Area - Scrollable */}
+      <main className="flex-1 overflow-y-auto px-4 py-4 no-print relative scroll-container">
+        <div className="max-w-md mx-auto w-full pb-20">
+          {renderContent()}
+        </div>
+      </main>
 
-            <div className="space-y-3">
-              <div className="bg-blue-50/50 p-4 rounded-2xl mb-4">
-                <p className="text-[10px] text-blue-600 font-bold mb-1">حالة التخزين</p>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  يتم حفظ جميع التغييرات تلقائياً في متصفحك. يمكنك العودة في أي وقت وستجد بياناتك كما هي.
-                </p>
-              </div>
-
-              <button 
-                onClick={handleBackupData}
-                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                    <Download className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700">نسخة احتياطية</span>
-                </div>
-              </button>
-
-              <button 
-                onClick={handleClearData}
-                className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 rounded-2xl transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
-                    <Trash2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-bold text-red-700">مسح كل البيانات</span>
-                </div>
-              </button>
-            </div>
-
-            <button 
-                onClick={() => setShowSettingsModal(false)}
-                className="mt-8 w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-gray-200 active:scale-95 transition-all"
+      {/* Bottom Navigation with Safe Area Handling */}
+      <nav className="bg-white/95 backdrop-blur-xl border-t border-gray-200 safe-bottom no-print shrink-0 shadow-lg rounded-t-[1.25rem]">
+        <div className="flex justify-around items-center py-2 px-2 max-w-md mx-auto">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id as any)}
+              className={`flex flex-col items-center gap-1 min-w-[60px] py-1 transition-all rounded-xl ${
+                activeTab === item.id ? 'text-blue-600' : 'text-gray-400'
+              }`}
             >
-                تم
+              <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+              <span className="text-[9px] font-bold">{item.label}</span>
             </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Modals */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
+          <div className="bg-white w-full max-w-[300px] rounded-[2rem] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-base font-bold text-gray-900">إدارة البيانات</h3>
+                <button onClick={() => setShowSettingsModal(false)} className="p-1.5 bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
+             </div>
+             <div className="space-y-3">
+               <button onClick={handleBackupData} className="w-full flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-2xl font-bold text-xs"><Download className="w-5 h-5"/> نسخة احتياطية</button>
+               <button onClick={handleClearData} className="w-full flex items-center gap-3 p-4 bg-red-50 text-red-700 rounded-2xl font-bold text-xs"><Trash2 className="w-5 h-5"/> مسح البيانات</button>
+             </div>
           </div>
         </div>
       )}
 
-      {/* Info Modal */}
       {showInfoModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 no-print">
-            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex justify-end mb-2">
-                    <button onClick={() => setShowInfoModal(false)} className="p-1.5 bg-gray-100 rounded-full text-gray-400">
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white mb-4 shadow-lg shadow-blue-100">
-                        <User className="w-10 h-10" />
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-1">محمد درويش الزعابي</h2>
-                    <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1 rounded-full text-sm font-bold mb-6">
-                        <School className="w-4 h-4" />
-                        <span>مدرسة الابداع للبنين</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 leading-relaxed uppercase tracking-widest font-bold">
-                        تطبيق الإدارة المدرسية المتكامل<br/>
-                        نسخة ذكية متطابقة مع iOS
-                    </p>
-                    <button 
-                        onClick={() => setShowInfoModal(false)}
-                        className="mt-6 w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-gray-200"
-                    >
-                        إغلاق
-                    </button>
-                </div>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInfoModal(false)}>
+          <div className="bg-white w-full max-w-[300px] rounded-[2rem] p-8 shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4">
+              <User className="w-8 h-8" />
             </div>
+            <h2 className="text-lg font-bold text-gray-900">محمد درويش الزعابي</h2>
+            <p className="text-blue-600 text-sm font-bold mb-6">مدرسة الابداع للبنين</p>
+            <button onClick={() => setShowInfoModal(false)} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm">إغلاق</button>
+          </div>
         </div>
       )}
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-24 px-4 py-6 no-print">
-        {renderContent()}
-      </main>
-
-      {/* Print View Wrapper */}
-      <div className="hidden print:block bg-white min-h-screen p-8">
-        {activeTab === 'report' && selectedStudent && <StudentReport student={selectedStudent} />}
-      </div>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-lg border-t flex justify-around items-center py-3 px-4 no-print shadow-[0_-5px_20px_rgba(0,0,0,0.05)] rounded-t-[2rem]">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id as any)}
-            className={`flex flex-col items-center gap-1.5 transition-all relative ${
-              activeTab === item.id ? 'text-blue-600 scale-110' : 'text-gray-400'
-            }`}
-          >
-            <item.icon className={`w-6 h-6 ${activeTab === item.id ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-            <span className="text-[10px] font-bold">{item.label}</span>
-            {activeTab === item.id && <div className="absolute -top-3 w-1 h-1 bg-blue-600 rounded-full"></div>}
-          </button>
-        ))}
-      </nav>
     </div>
   );
 };
