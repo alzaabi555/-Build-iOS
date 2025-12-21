@@ -23,40 +23,26 @@
   <style>
     body {
       font-family: 'Tajawal', sans-serif;
-      background-color: #f2f2f7; /* iOS background color */
+      background-color: #f2f2f7;
       -webkit-tap-highlight-color: transparent;
-      user-select: none; /* Prevents text selection for a more app-like feel */
+      user-select: none;
     }
     @media print {
-      .no-print {
-        display: none !important;
-      }
-      .print-only {
-        display: block !important;
-      }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
     }
-    
-    /* Smooth iOS-like scrolling */
-    .overflow-y-auto {
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Fix for notch area on newer iPhones */
-    header {
-      padding-top: env(safe-area-inset-top);
-    }
-    nav {
-      padding-bottom: env(safe-area-inset-bottom);
-    }
+    .overflow-y-auto { -webkit-overflow-scrolling: touch; }
+    header { padding-top: env(safe-area-inset-top); }
+    nav { padding-bottom: env(safe-area-inset-bottom); }
   </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "recharts": "https://esm.sh/recharts@^3.6.0"
   }
 }
 </script>
@@ -64,7 +50,7 @@
 </head>
 <body class="antialiased">
   <div id="root"></div>
-  <!-- هذا السطر ضروري لعمل التطبيق بعد تجميعه للآيفون -->
+  <!-- سيتم إنشاء هذا الملف تلقائياً بواسطة عملية البناء -->
   <script type="module" src="./index.js"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
