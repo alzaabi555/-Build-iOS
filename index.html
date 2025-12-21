@@ -33,6 +33,7 @@
       position: fixed; inset: 0; background: #f2f2f7; 
       display: flex; flex-direction: column; align-items: center; 
       justify-content: center; z-index: 9999;
+      transition: opacity 0.5s ease;
     }
     .loader-dot { width: 12px; height: 12px; background: #2563eb; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
     .dot1 { animation-delay: -0.32s; }
@@ -43,23 +44,22 @@
       position: fixed; top: 10px; left: 10px; right: 10px;
       background: #fee2e2; border: 1px solid #ef4444; padding: 10px; border-radius: 8px;
       font-size: 10px; color: #b91c1c; z-index: 10000; display: none;
-      direction: ltr; text-align: left; overflow: auto; max-height: 100px;
+      direction: ltr; text-align: left; overflow: auto; max-height: 120px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
   </style>
 
   <script>
-    // كاشف أخطاء مرئي في حال فشل التحميل
     window.onerror = function(msg, url, line) {
       var consoleDiv = document.getElementById('error-console');
       if (consoleDiv) {
         consoleDiv.style.display = 'block';
-        consoleDiv.innerText += '\n' + msg + ' (Line: ' + line + ')';
+        consoleDiv.innerText += '\n' + msg + ' (L:' + line + ')';
       }
       return false;
     };
   </script>
 
-  <!-- المحرك الأساسي لتشغيل الموديولات -->
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 
   <script type="importmap">
@@ -80,7 +80,7 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <div id="error-console">خطأ في النظام:</div>
+  <div id="error-console">نظام تشخيص الأخطاء:</div>
 
   <div id="initial-loader">
     <div style="display: flex; gap: 8px; margin-bottom: 20px;">
@@ -88,16 +88,13 @@
       <div class="loader-dot dot2"></div>
       <div class="loader-dot"></div>
     </div>
-    <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري تشغيل النظام...</p>
-    <button onclick="location.reload()" style="margin-top: 20px; font-size: 10px; color: #2563eb; text-decoration: underline;">إعادة تحميل</button>
+    <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري التحميل...</p>
+    <button onclick="location.reload()" style="margin-top: 20px; font-size: 10px; color: #2563eb; font-weight: bold; text-decoration: underline;">إعادة محاولة</button>
   </div>
 
   <div id="root"></div>
 
-  <!-- تشغيل التطبيق كموديول داخلي لضمان التوافق -->
-  <script type="module">
-    import './index.tsx';
-  </script>
+  <script type="module" src="./index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
