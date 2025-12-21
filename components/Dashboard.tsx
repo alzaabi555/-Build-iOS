@@ -10,8 +10,8 @@ interface DashboardProps {
   onSelectStudent: (s: Student) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ students, teacherInfo, onSelectStudent }) => {
-  const totalStudents = students.length;
+const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onSelectStudent }) => {
+  const totalStudents = students?.length || 0;
   const hour = new Date().getHours();
   
   const getGreeting = () => {
@@ -24,6 +24,7 @@ const Dashboard: React.FC<DashboardProps> = ({ students, teacherInfo, onSelectSt
   const today = new Date().toISOString().split('T')[0];
   
   const attendanceToday = students.reduce((acc, s) => {
+    if (!s.attendance) return acc;
     const record = s.attendance.find(a => a.date === today);
     if (record?.status === 'present') acc.present++;
     else if (record?.status === 'absent') acc.absent++;
@@ -39,10 +40,14 @@ const Dashboard: React.FC<DashboardProps> = ({ students, teacherInfo, onSelectSt
   }, { positive: 0, negative: 0 });
 
   const COLORS = ['#10b981', '#f43f5e'];
-  const pieData = [
-    { name: 'حاضر', value: attendanceToday.present || 0 },
-    { name: 'غائب', value: attendanceToday.absent || 0 },
-  ];
+  const hasAttendanceData = attendanceToday.present > 0 || attendanceToday.absent > 0;
+  
+  const pieData = hasAttendanceData 
+    ? [
+        { name: 'حاضر', value: attendanceToday.present },
+        { name: 'غائب', value: attendanceToday.absent },
+      ]
+    : [{ name: 'لا توجد بيانات', value: 1 }];
 
   return (
     <div className="space-y-5 animate-in fade-in duration-500">
@@ -53,10 +58,10 @@ const Dashboard: React.FC<DashboardProps> = ({ students, teacherInfo, onSelectSt
             {greeting.icon}
             <span className="text-xs font-black">{greeting.text}</span>
           </div>
-          <h2 className="text-xl font-black">أهلاً بك، أ. {teacherInfo.name || 'محمد'}</h2>
+          <h2 className="text-xl font-black">أهلاً بك، أ. {teacherInfo?.name || 'محمد'}</h2>
           <div className="flex items-center gap-1.5 mt-2 opacity-80">
             <School className="w-3.5 h-3.5" />
-            <p className="text-[10px] font-black">{teacherInfo.school || 'اسم المدرسة'}</p>
+            <p className="text-[10px] font-black">{teacherInfo?.school || 'اسم المدرسة'}</p>
           </div>
           <p className="text-blue-100 text-[9px] mt-4 font-bold bg-white/10 w-fit px-3 py-1 rounded-full">{totalStudents} طالب مسجل حالياً</p>
         </div>
@@ -83,8 +88,19 @@ const Dashboard: React.FC<DashboardProps> = ({ students, teacherInfo, onSelectSt
           <div className="h-32 w-32 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={attendanceToday.present + attendanceToday.absent > 0 ? pieData : [{value: 1}]} cx="50%" cy="50%" innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value" stroke="none">
-                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={attendanceToday.present + attendanceToday.absent > 0 ? COLORS[index % COLORS.length] : '#f1f5f9'} />)}
+                <Pie 
+                  data={pieData} 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={35} 
+                  outerRadius={50} 
+                  paddingAngle={5} 
+                  dataKey="value" 
+                  stroke="none"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={hasAttendanceData ? COLORS[index % COLORS.length] : '#f1f5f9'} />
+                  ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
