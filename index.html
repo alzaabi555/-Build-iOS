@@ -20,38 +20,64 @@
       padding: 0; 
       user-select: none; 
       -webkit-tap-highlight-color: transparent; 
+      height: 100vh;
+      width: 100vw;
     }
     .safe-top { padding-top: var(--sat); }
     .safe-bottom { padding-bottom: var(--sab); }
-    html, body, #root { 
+    #root { 
       height: 100%; 
       width: 100%; 
-      overflow: hidden; 
-      position: fixed; 
-    }
-    #root { 
       overflow-y: auto; 
       -webkit-overflow-scrolling: touch; 
     }
+    /* شاشة تحميل بسيطة تظهر قبل تشغيل React */
+    #initial-loader {
+      position: fixed; inset: 0; background: #f2f2f7; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .loader-dot { width: 12px; height: 12px; background: #2563eb; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .dot1 { animation-delay: -0.32s; }
+    .dot2 { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
   </style>
   <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0",
-    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
-    "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
-    "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom": "https://esm.sh/react-dom@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+      "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
+      "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
+      "xlsx": "https://esm.sh/xlsx@0.18.5",
+      "react/": "https://esm.sh/react@18.2.0/",
+      "react-dom/": "https://esm.sh/react-dom@18.2.0/"
+    }
   }
-}
-</script>
+  </script>
+  <script>
+    // كاشف الأخطاء: إذا حدث خطأ قبل تحميل React سيظهر هنا
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      document.body.innerHTML = `<div style="padding: 20px; font-family: sans-serif; text-align: center; direction: ltr;">
+        <h2 style="color: red;">App Load Error</h2>
+        <p style="font-size: 12px; color: #666;">${msg}</p>
+        <button onclick="location.reload()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">Retry</button>
+      </div>`;
+      return false;
+    };
+  </script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
+  <div id="initial-loader">
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+      <div class="loader-dot dot1"></div>
+      <div class="loader-dot dot2"></div>
+      <div class="loader-dot"></div>
+    </div>
+    <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري تشغيل نظام مدرستي...</p>
+  </div>
   <div id="root"></div>
   <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
