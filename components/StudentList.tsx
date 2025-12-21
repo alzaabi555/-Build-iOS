@@ -4,19 +4,19 @@ import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserCircle, Camera, Layo
 
 interface StudentListProps {
   students: Student[];
+  classes: string[];
+  onAddClass: (name: string) => void;
   onUpdateStudent: (s: Student) => void;
   onViewReport: (s: Student) => void;
 }
 
-const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, onViewReport }) => {
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onUpdateStudent, onViewReport }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [showLogModal, setShowLogModal] = useState<{ student: Student; type: BehaviorType } | null>(null);
   const [logDesc, setLogDesc] = useState('');
   const [isAddingClass, setIsAddingClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
-
-  const allClasses = Array.from(new Set(students.flatMap(s => s.classes || []))).sort();
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -58,9 +58,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
 
   const handleCreateClass = () => {
     if (newClassName.trim()) {
-      // Classes are derived from students, so to "add" a class we'd need to assign it to someone
-      // or keep a separate list. For now, we'll just alert that classes are based on students.
-      alert('تمت إضافة اسم الفصل. سيظهر في القائمة بمجرد تعيينه لأي طالب.');
+      onAddClass(newClassName.trim());
       setIsAddingClass(false);
       setNewClassName('');
     }
@@ -78,14 +76,14 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
             <input 
               type="text" 
               placeholder="ابحث عن طالب..." 
-              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pr-9 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pr-9 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm text-sm font-bold"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <button 
             onClick={() => setIsAddingClass(true)}
-            className="p-2.5 bg-white border border-gray-200 rounded-xl text-blue-600 shadow-sm active:bg-gray-50"
+            className="p-2.5 bg-white border border-gray-200 rounded-xl text-blue-600 shadow-sm active:bg-gray-50 flex items-center gap-1"
           >
             <LayoutGrid className="w-5 h-5" />
           </button>
@@ -95,19 +93,22 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           <button 
             onClick={() => setSelectedClass('all')}
-            className={`px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${selectedClass === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
+            className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
           >
             الكل
           </button>
-          {allClasses.map(cls => (
+          {classes.map(cls => (
             <button 
               key={cls}
               onClick={() => setSelectedClass(cls)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${selectedClass === cls ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === cls ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
             >
               {cls}
             </button>
           ))}
+          {classes.length === 0 && (
+             <span className="text-[9px] text-gray-400 font-bold px-2 py-1">لا توجد فصول مضافة</span>
+          )}
         </div>
       </div>
 
@@ -116,7 +117,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
         {filteredStudents.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
             <UserCircle className="w-12 h-12 mx-auto opacity-20 mb-2" />
-            <p className="text-xs">لا توجد نتائج</p>
+            <p className="text-xs font-bold">لا توجد نتائج</p>
           </div>
         ) : (
           filteredStudents.map((student, idx) => (
@@ -138,7 +139,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
                   </label>
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 text-xs truncate">{student.name}</h4>
-                    <span className="text-[10px] text-gray-400 font-medium">الفصل: {student.classes?.join(' - ') || 'غير محدد'}</span>
+                    <span className="text-[10px] text-gray-400 font-bold">الفصل: {student.classes?.join(' - ') || 'غير محدد'}</span>
                   </div>
                 </div>
                 <button onClick={() => onViewReport(student)} className="p-2 bg-blue-50 text-blue-600 rounded-lg active:scale-90 transition-transform">
@@ -191,7 +192,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
         </div>
       )}
 
-      {/* Behavior Modal - Improved for Keyboard Visibility */}
+      {/* Behavior Modal */}
       {showLogModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center md:items-end" onClick={() => setShowLogModal(null)}>
           <div 
@@ -199,7 +200,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
             onClick={e => e.stopPropagation()}
             style={{ maxHeight: '85vh' }}
           >
-            {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-50 shrink-0">
               <div>
                 <h3 className="font-black text-gray-900 text-sm">تسجيل سلوك جديد</h3>
@@ -208,7 +208,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
               <button onClick={() => setShowLogModal(null)} className="p-2 bg-gray-100 rounded-full active:scale-90 transition-transform"><X className="w-4 h-4"/></button>
             </div>
 
-            {/* Modal Content - Scrollable area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                <div className="grid grid-cols-2 gap-2">
                 {['مشاركة فعالة', 'إنجاز الواجب', 'التزام الهدوء', 'مساعدة زميل', 'نظافة المكان', 'تحسن ملحوظ'].map(d => (
@@ -233,7 +232,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, onUpdateStudent, on
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="p-6 bg-white border-t border-gray-50 safe-bottom shrink-0">
                <button 
                 onClick={() => handleAddBehavior()} 

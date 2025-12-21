@@ -1,19 +1,17 @@
-
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
 import { Check, X, Clock, Calendar, Filter, Users, ClipboardCheck } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];
+  classes: string[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, setStudents }) => {
+const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
-
-  const allClasses = Array.from(new Set(students.flatMap(s => s.classes))).sort();
 
   const toggleAttendance = (studentId: string, status: AttendanceStatus) => {
     setStudents(prev => prev.map(s => {
@@ -32,7 +30,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, setStud
 
   const filteredStudents = classFilter === 'all' 
     ? students 
-    : students.filter(s => s.classes.includes(classFilter));
+    : students.filter(s => s.classes && s.classes.includes(classFilter));
 
   const attendanceStats = filteredStudents.reduce((acc, s) => {
     const status = getStatus(s);
@@ -74,7 +72,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, setStud
               className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none text-indigo-600 appearance-none min-w-[120px] text-center"
             >
               <option value="all">كل الفصول</option>
-              {allClasses.map(c => (
+              {classes.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -114,7 +112,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, setStud
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 truncate text-sm">{student.name}</h4>
                     <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
-                      {student.classes.join(' • ')}
+                      {student.classes?.join(' • ') || 'بدون فصل'}
                     </p>
                   </div>
                 </div>
