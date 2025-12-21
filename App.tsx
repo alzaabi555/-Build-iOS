@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Student } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -20,7 +20,9 @@ import {
   Download,
   GraduationCap,
   Phone,
-  User
+  User,
+  UploadCloud,
+  Database
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -47,6 +49,7 @@ const App: React.FC = () => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     localStorage.setItem('studentData', JSON.stringify(students));
@@ -77,6 +80,55 @@ const App: React.FC = () => {
     if (!classes.includes(className)) {
         setClasses(prev => [...prev, className].sort());
     }
+  };
+
+  // ميزة النسخة الاحتياطية (تصدير JSON)
+  const handleBackup = () => {
+    const data = {
+      students,
+      classes,
+      exportDate: new Date().toISOString(),
+      appName: "Madrasati System",
+      version: "1.2.0"
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `مدرستي_نسخة_احتياطية_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    alert('تم تصدير النسخة الاحتياطية بنجاح');
+  };
+
+  // ميزة استعادة البيانات (استيراد JSON)
+  const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (json.students && json.classes) {
+          if (confirm('هل أنت متأكد من استعادة هذه النسخة؟ سيتم استبدال كافة البيانات الحالية بالبيانات الموجودة في الملف.')) {
+            setStudents(json.students);
+            setClasses(json.classes);
+            alert('تمت استعادة البيانات بنجاح!');
+            setShowSettingsModal(false);
+          }
+        } else {
+          alert('هذا الملف غير صالح أو لا يحتوي على بيانات نظام مدرستي.');
+        }
+      } catch (err) {
+        alert('حدث خطأ أثناء قراءة ملف النسخة الاحتياطية.');
+      }
+    };
+    reader.readAsText(file);
+    // تفريغ المدخل للسماح باختيار نفس الملف مرة أخرى إذا لزم الأمر
+    if (event.target) event.target.value = '';
   };
 
   const renderContent = () => {
@@ -171,12 +223,44 @@ const App: React.FC = () => {
       {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
-          <div className="bg-white w-full max-w-[300px] rounded-[2rem] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-             <h3 className="text-base font-bold text-gray-900 mb-6">إدارة البيانات</h3>
-             <div className="space-y-3">
-               <button onClick={() => { /* Backup logic */ }} className="w-full flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-2xl font-bold text-xs"><Download className="w-5 h-5"/> نسخة احتياطية</button>
-               <button onClick={() => { if(confirm('هل أنت متأكد من مسح كافة البيانات؟ لا يمكن التراجع.')) { localStorage.clear(); location.reload(); } }} className="w-full flex items-center gap-3 p-4 bg-red-50 text-red-700 rounded-2xl font-bold text-xs"><Trash2 className="w-5 h-5"/> مسح كافة البيانات</button>
+          <div className="bg-white w-full max-w-[320px] rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+             <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Database className="w-7 h-7 text-gray-400" />
              </div>
+             <h3 className="text-base font-black text-gray-900 mb-6 text-center">إدارة بيانات النظام</h3>
+             
+             <div className="space-y-3">
+               <button 
+                onClick={handleBackup} 
+                className="w-full flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-xs active:scale-95 transition-all shadow-sm shadow-blue-100/50"
+               >
+                 <Download className="w-5 h-5"/> نسخة احتياطية (تصدير)
+               </button>
+
+               <button 
+                onClick={() => restoreInputRef.current?.click()} 
+                className="w-full flex items-center gap-3 p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-black text-xs active:scale-95 transition-all shadow-sm shadow-emerald-100/50"
+               >
+                 <UploadCloud className="w-5 h-5"/> استعادة البيانات (استيراد)
+               </button>
+               <input type="file" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+
+               <div className="pt-2">
+                 <button 
+                  onClick={() => { if(confirm('هل أنت متأكد من مسح كافة البيانات؟ سيتم حذف جميع الطلاب والسجلات نهائياً ولا يمكن التراجع.')) { localStorage.clear(); location.reload(); } }} 
+                  className="w-full flex items-center gap-3 p-4 bg-rose-50 text-rose-700 rounded-2xl font-black text-xs active:scale-95 transition-all"
+                 >
+                   <Trash2 className="w-5 h-5"/> مسح كافة البيانات
+                 </button>
+               </div>
+             </div>
+
+             <button 
+                onClick={() => setShowSettingsModal(false)}
+                className="w-full mt-6 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-[10px] active:scale-95 transition-all"
+             >
+                إغلاق الإعدادات
+             </button>
           </div>
         </div>
       )}
