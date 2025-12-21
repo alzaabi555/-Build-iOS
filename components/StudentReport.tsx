@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Student } from '../types';
-import { Printer, Award, AlertTriangle, Download, ClipboardList } from 'lucide-react';
+import { Printer, Award, AlertTriangle, Download, BarChart3, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface StudentReportProps {
@@ -20,147 +19,122 @@ const StudentReport: React.FC<StudentReportProps> = ({ student }) => {
   ];
 
   const handlePrint = () => {
-    window.print();
+    // Ensuring DOM is ready for print
+    window.requestAnimationFrame(() => {
+      window.print();
+    });
   };
 
   const handleExportCSV = () => {
-    const BOM = "\uFEFF";
-    let csvContent = BOM;
-    csvContent += "التقرير الشامل للطالب: " + student.name + "\n";
-    csvContent += "الصف: " + student.grade + ", الفصول: " + student.classes.join(' - ') + "\n\n";
+    try {
+      const BOM = "\uFEFF"; // Byte Order Mark for Excel Arabic support
+      let csvContent = BOM;
+      csvContent += `تقرير الطالب: ${student.name}\n`;
+      csvContent += `الصف: ${student.grade}\n`;
+      csvContent += `الفصول: ${student.classes?.join(' - ') || 'غير محدد'}\n\n`;
 
-    csvContent += "ملخص الحضور والغياب\n";
-    csvContent += "حاضر,غائب,متأخر\n";
-    csvContent += `${attendanceCount.present},${attendanceCount.absent},${attendanceCount.late}\n\n`;
+      csvContent += "ملخص الحضور والغياب\n";
+      csvContent += "حاضر,غائب,متأخر\n";
+      csvContent += `${attendanceCount.present},${attendanceCount.absent},${attendanceCount.late}\n\n`;
 
-    csvContent += "سجل السلوكيات\n";
-    csvContent += "التاريخ,النوع,الوصف\n";
-    student.behaviors.forEach(b => {
-      const date = new Date(b.date).toLocaleDateString('ar-EG');
-      const type = b.type === 'positive' ? 'إيجابي' : 'سلبي';
-      csvContent += `${date},${type},"${b.description.replace(/"/g, '""')}"\n`;
-    });
+      csvContent += "سجل السلوكيات\n";
+      csvContent += "التاريخ,النوع,الوصف\n";
+      student.behaviors.forEach(b => {
+        const date = new Date(b.date).toLocaleDateString('ar-EG');
+        const type = b.type === 'positive' ? 'إيجابي' : 'سلبي';
+        csvContent += `${date},${type},"${b.description.replace(/"/g, '""')}"\n`;
+      });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `تقرير_الطالب_${student.name}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportBehaviorLog = () => {
-    const BOM = "\uFEFF";
-    let csvContent = BOM + "التاريخ,النوع,الوصف\n";
-    
-    const sortedBehaviors = [...student.behaviors].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    sortedBehaviors.forEach(b => {
-      const date = new Date(b.date).toLocaleDateString('ar-EG');
-      const type = b.type === 'positive' ? 'إيجابي' : 'سلبي';
-      const escapedDesc = b.description.replace(/"/g, '""');
-      csvContent += `${date},${type},"${escapedDesc}"\n`;
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `سجل_سلوكيات_${student.name}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `تقرير_${student.name.replace(/\s+/g, '_')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export error:", e);
+      alert('حدث خطأ أثناء محاولة التصدير');
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Action Bar */}
-      <div className="flex flex-col gap-3 no-print">
-        <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">تقرير الأداء</h2>
-            <div className="flex gap-2">
-                <button 
-                    onClick={handleExportBehaviorLog}
-                    className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 transition-colors active:scale-95"
-                    title="تصدير سجل السلوكيات"
-                >
-                    <ClipboardList className="w-5 h-5" />
-                </button>
-                <button 
-                    onClick={handleExportCSV}
-                    className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 transition-colors active:scale-95"
-                    title="تصدير التقرير الشامل"
-                >
-                    <Download className="w-5 h-5" />
-                </button>
-                <button 
-                    onClick={handlePrint}
-                    className="p-2.5 bg-gray-900 text-white rounded-xl transition-colors active:scale-95"
-                    title="طباعة"
-                >
-                    <Printer className="w-5 h-5" />
-                </button>
-            </div>
-        </div>
-      </div>
-
-      {/* Report Header */}
-      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex items-center gap-4">
+    <div className="space-y-6 animate-in fade-in slide-in-from-left duration-500 pb-20">
+      {/* Header Info */}
+      <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 no-print"></div>
+        
         {student.avatar ? (
-          <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg shadow-blue-100 border-2 border-white shrink-0">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md border-2 border-white shrink-0 relative z-10">
             <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-blue-100 shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-2xl shadow-md shrink-0 relative z-10">
             {student.name.charAt(0)}
           </div>
         )}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-          <p className="text-gray-500 font-medium">الصف {student.grade}</p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {student.classes.map(c => (
-              <span key={c} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">
-                {c}
-              </span>
-            ))}
+        <div className="relative z-10 min-w-0">
+          <h1 className="text-lg font-black text-gray-900 truncate">{student.name}</h1>
+          <p className="text-gray-400 text-[10px] font-black mt-0.5">
+            {student.grade} • {student.classes?.join(' / ') || 'فصل غير محدد'}
+          </p>
+        </div>
+      </div>
+
+      {/* Action Bar - No Print */}
+      <div className="grid grid-cols-3 gap-3 no-print">
+          <button 
+              onClick={handleExportCSV}
+              className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-all text-blue-600"
+          >
+              <Download className="w-5 h-5 mb-2" />
+              <span className="text-[9px] font-black">تصدير CSV</span>
+          </button>
+          <button 
+              onClick={handlePrint}
+              className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-all text-gray-900"
+          >
+              <Printer className="w-5 h-5 mb-2" />
+              <span className="text-[9px] font-black">طباعة</span>
+          </button>
+          <div className="flex flex-col items-center justify-center p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100 text-white">
+              <Award className="w-5 h-5 mb-2" />
+              <span className="text-[9px] font-black">الرتبة: ممتاز</span>
           </div>
-        </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Stats Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white p-4 rounded-3xl border border-gray-100 text-center shadow-sm">
-          <p className="text-[10px] text-emerald-600 uppercase font-bold mb-1 tracking-wider">الحضور</p>
-          <p className="text-2xl font-bold text-emerald-700">{attendanceCount.present}</p>
+        <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100 text-center">
+          <p className="text-[8px] text-emerald-600 font-black mb-1">حضور</p>
+          <p className="text-xl font-black text-emerald-700">{attendanceCount.present}</p>
         </div>
-        <div className="bg-white p-4 rounded-3xl border border-gray-100 text-center shadow-sm">
-          <p className="text-[10px] text-red-600 uppercase font-bold mb-1 tracking-wider">الغياب</p>
-          <p className="text-2xl font-bold text-red-700">{attendanceCount.absent}</p>
+        <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100 text-center">
+          <p className="text-[8px] text-rose-600 font-black mb-1">غياب</p>
+          <p className="text-xl font-black text-rose-700">{attendanceCount.absent}</p>
         </div>
-        <div className="bg-white p-4 rounded-3xl border border-gray-100 text-center shadow-sm">
-          <p className="text-[10px] text-amber-600 uppercase font-bold mb-1 tracking-wider">التأخر</p>
-          <p className="text-2xl font-bold text-amber-700">{attendanceCount.late}</p>
+        <div className="bg-amber-50 p-4 rounded-3xl border border-amber-100 text-center">
+          <p className="text-[8px] text-amber-600 font-black mb-1">تأخر</p>
+          <p className="text-xl font-black text-amber-700">{attendanceCount.late}</p>
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
-        <h3 className="font-bold mb-6 text-gray-800">تحليل السلوك</h3>
-        <div className="h-56 w-full">
+      {/* Behavior Analysis Chart */}
+      <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100">
+        <h3 className="font-black mb-5 text-gray-800 text-[11px] flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-blue-500" />
+            تحليل السلوكيات
+        </h3>
+        <div className="h-44 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={behaviorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
+            <BarChart data={behaviorData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} />
+              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
               <Tooltip cursor={{ fill: '#f8fafc' }} />
-              <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={50}>
+              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={35}>
                 {behaviorData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
@@ -170,56 +144,47 @@ const StudentReport: React.FC<StudentReportProps> = ({ student }) => {
         </div>
       </div>
 
-      {/* Recent Behaviors List */}
+      {/* Behavior Timeline */}
       <div className="space-y-3">
-        <div className="flex justify-between items-center px-1">
-            <h3 className="font-bold text-gray-800">سجل الأحداث</h3>
-            <span className="text-xs text-gray-400 font-medium">الإجمالي: {student.behaviors.length}</span>
-        </div>
-        
+        <h3 className="font-black text-gray-800 text-[11px] px-1 uppercase tracking-widest">آخر التحديثات السلوكية</h3>
         {student.behaviors.length === 0 ? (
-          <div className="text-center py-10 bg-white rounded-[2rem] border-2 border-dashed border-gray-100">
-              <p className="text-gray-400 text-sm">لا توجد سجلات حالياً</p>
+          <div className="text-center py-12 bg-white rounded-[2rem] border-2 border-dashed border-gray-100">
+              <p className="text-gray-400 text-[10px] font-bold">لا توجد سجلات سلوكية مسجلة</p>
           </div>
         ) : (
           student.behaviors.map(b => (
-            <div key={b.id} className="bg-white p-4 rounded-3xl shadow-sm border border-gray-50 flex items-start gap-4 transition-transform active:scale-[0.98]">
-              <div className={`p-3 rounded-2xl ${b.type === 'positive' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                {b.type === 'positive' ? <Award className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+            <div key={b.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-start gap-3 active:scale-[0.98] transition-all">
+              <div className={`p-2 rounded-xl shrink-0 ${b.type === 'positive' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                {b.type === 'positive' ? <Award className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className={`text-xs font-bold ${b.type === 'positive' ? 'text-emerald-600' : 'text-red-600'}`}>
+              <div className="min-w-0 flex-1">
+                <div className="flex justify-between items-center mb-0.5">
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${b.type === 'positive' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {b.type === 'positive' ? 'إيجابي' : 'سلبي'}
                   </span>
-                  <span className="text-[10px] text-gray-400 font-medium">{new Date(b.date).toLocaleDateString('ar-EG')}</span>
+                  <span className="text-[8px] text-gray-400 font-medium">{new Date(b.date).toLocaleDateString('ar-EG')}</span>
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed font-medium">{b.description}</p>
+                <p className="text-xs text-gray-700 leading-relaxed font-bold">{b.description}</p>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Print-only Footer */}
-      <div className="hidden print:block mt-20 pt-10 border-t-2 border-gray-100">
-        <div className="flex justify-between text-gray-800">
+      {/* Print-Only Footer */}
+      <div className="hidden print:block mt-20 pt-10 border-t border-gray-200">
+        <div className="grid grid-cols-2 gap-20">
             <div className="text-center">
-                <p className="font-bold mb-16">توقيع المعلم</p>
-                <div className="w-40 h-px bg-gray-400 mx-auto"></div>
+                <div className="border-b border-gray-300 w-32 mx-auto mb-2"></div>
+                <p className="font-black text-xs">توقيع المعلم المربي</p>
             </div>
             <div className="text-center">
-                <p className="font-bold mb-16">توقيع ولي الأمر</p>
-                <div className="w-40 h-px bg-gray-400 mx-auto"></div>
-            </div>
-            <div className="text-center">
-                <p className="font-bold mb-16">إدارة المدرسة</p>
-                <div className="w-32 h-32 border-4 border-double border-gray-300 rounded-full mx-auto flex items-center justify-center text-gray-300 text-[10px] font-bold">الختم الرسمي</div>
+                <div className="border-b border-gray-300 w-32 mx-auto mb-2"></div>
+                <p className="font-black text-xs">توقيع ولي الأمر</p>
             </div>
         </div>
-        <div className="mt-12 text-center">
-            <p className="text-sm font-bold text-gray-900 mb-1">نظام مدرستي المتكامل</p>
-            <p className="text-[10px] text-gray-400">تاريخ الإصدار: {new Date().toLocaleDateString('ar-EG')}</p>
+        <div className="mt-16 text-center">
+            <p className="text-[9px] text-gray-400">صدر هذا التقرير آلياً من نظام مدرستي بتاريخ {new Date().toLocaleString('ar-EG')}</p>
         </div>
       </div>
     </div>
