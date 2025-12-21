@@ -35,6 +35,15 @@
     .dot1 { animation-delay: -0.32s; }
     .dot2 { animation-delay: -0.16s; }
     @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+    
+    /* كاشف الأخطاء الصغير أسفل الشاشة */
+    #error-console {
+      position: fixed; bottom: 20px; left: 20px; right: 20px;
+      background: rgba(255,255,255,0.9); padding: 10px; border-radius: 10px;
+      font-size: 10px; color: #ef4444; font-family: monospace;
+      z-index: 10001; border: 1px solid #ef4444; display: none;
+      max-height: 80px; overflow-y: auto; text-align: left; direction: ltr;
+    }
   </style>
 
   <!-- Polyfill لدعم الموديولات على كافة إصدارات آيفون -->
@@ -45,7 +54,7 @@
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0",
     "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
     "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
     "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
@@ -57,27 +66,21 @@
 </script>
 
   <script>
-    // مراقبة الأخطاء فور حدوثها
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      console.error("Critical Error:", msg, "at", url, ":", lineNo);
-      const errDisplay = document.getElementById('error-display');
-      if (errDisplay) {
-        errDisplay.style.display = 'flex';
-        errDisplay.innerHTML = `
-          <div style="background: white; padding: 25px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 85%;">
-            <p style="color: #ef4444; font-weight: 900; margin-bottom: 15px;">حدث خطأ تقني</p>
-            <p style="font-size: 10px; color: #666; margin-bottom: 20px;">${msg}</p>
-            <button onclick="location.reload()" style="background: #2563eb; color: white; padding: 10px 20px; border-radius: 12px; border: none; font-weight: bold;">تحديث الصفحة</button>
-          </div>
-        `;
+    // تسجيل الأخطاء فوراً في لوحة التحكم المرئية
+    function logErrorToScreen(msg) {
+      const console = document.getElementById('error-console');
+      if (console) {
+        console.style.display = 'block';
+        console.innerText += '\n> ' + msg;
       }
-      return false;
-    };
+    }
+    window.onerror = (msg) => logErrorToScreen(msg);
+    window.onunhandledrejection = (e) => logErrorToScreen(e.reason);
   </script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <div id="error-display" style="display: none; position: fixed; inset: 0; background: #f2f2f7; z-index: 10000; align-items: center; justify-content: center;"></div>
+  <div id="error-console">Log Console:</div>
 
   <div id="initial-loader">
     <div style="display: flex; gap: 8px; margin-bottom: 20px;">
@@ -86,14 +89,13 @@
       <div class="loader-dot"></div>
     </div>
     <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري تشغيل نظام مدرستي...</p>
-    <div id="debug-info" style="display: none; margin-top: 20px; text-align: center;">
-      <button onclick="location.reload()" style="font-size: 11px; color: #2563eb; font-weight: bold; text-decoration: underline;">إعادة تحميل النظام</button>
-    </div>
   </div>
 
   <div id="root"></div>
 
-  <script type="module" src="./index.tsx"></script>
+  <script type="module">
+    import './index.tsx';
+  </script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>

@@ -1,28 +1,35 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom/client';
 import App from './App';
 
 const container = document.getElementById('root');
 
 if (container) {
   try {
-    const root = createRoot(container);
+    const root = ReactDOM.createRoot(container);
     root.render(<App />);
     
-    // إخفاء شاشة التحميل بعد التأكد من أن React بدأ العمل
-    setTimeout(() => {
+    // إخفاء اللودر فور رندر المكونات
+    const hideLoader = () => {
       const loader = document.getElementById('initial-loader');
       if (loader) {
         loader.style.opacity = '0';
         setTimeout(() => loader.remove(), 500);
       }
-    }, 800);
-  } catch (error) {
-    console.error("Rendering error:", error);
-    // في حال حدوث خطأ أثناء الـ render، نظهر رسالة للمستخدم
-    const loader = document.getElementById('initial-loader');
-    if (loader) {
-      loader.innerHTML = `<p style="color: red; font-weight: bold; padding: 20px; text-align: center;">حدث خطأ أثناء تشغيل التطبيق. يرجى إعادة المحاولة.</p>`;
+    };
+
+    // ننتظر قليلاً لضمان استقرار الواجهة في المتصفح
+    if (document.readyState === 'complete') {
+      setTimeout(hideLoader, 600);
+    } else {
+      window.addEventListener('load', hideLoader);
+      // كضمان إضافي إذا لم يعمل مستمع الأحداث
+      setTimeout(hideLoader, 2000);
     }
+  } catch (err: any) {
+    console.error("Mounting error:", err);
+    
+    // Fix: Cast window to any to access the custom logErrorToScreen property and satisfy TypeScript
+    if ((window as any).logErrorToScreen) (window as any).logErrorToScreen("Mount: " + err.message);
   }
 }
