@@ -7,66 +7,56 @@
   
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="مدرستي">
   
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
   
   <style>
-    :root { 
-      --sat: env(safe-area-inset-top, 0px); 
-      --sab: env(safe-area-inset-bottom, 0px); 
-    }
+    :root { --sat: env(safe-area-inset-top, 0px); }
     body { 
       font-family: 'Tajawal', sans-serif; 
       background-color: #f2f2f7; 
       margin: 0; padding: 0; 
-      user-select: none; 
-      -webkit-tap-highlight-color: transparent; 
       height: 100vh; width: 100vw;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
     }
-    #root { height: 100%; width: 100%; overflow: hidden; }
-    
     #initial-loader {
       position: fixed; inset: 0; background: #f2f2f7; 
       display: flex; flex-direction: column; align-items: center; 
       justify-content: center; z-index: 9999;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.5s ease;
     }
-    .loader-dot { width: 12px; height: 12px; background: #2563eb; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
-    .dot1 { animation-delay: -0.32s; }
-    .dot2 { animation-delay: -0.16s; }
-    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+    .dots { display: flex; gap: 8px; margin-bottom: 20px; }
+    .dot { width: 12px; height: 12px; background: #2563eb; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { transform: scale(0.5); opacity: 0.5; } 50% { transform: scale(1); opacity: 1; } }
     
-    #debug-console {
-      position: fixed; top: calc(20px + var(--sat)); left: 20px; right: 20px;
-      background: #fff; border: 2px solid #ef4444; padding: 15px; border-radius: 16px;
-      font-size: 11px; color: #b91c1c; z-index: 10000; display: none;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      max-height: 200px; overflow: auto;
+    #emergency-btn {
+      margin-top: 30px; display: none;
+      background: white; color: #ef4444; border: 1px solid #fee2e2;
+      padding: 10px 20px; border-radius: 12px; font-size: 11px; font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
   </style>
 
   <script>
-    // تسجيل الأخطاء فوراً وعرضها على الشاشة للتشخيص
-    window.onerror = function(msg, url, line, col, error) {
-      var consoleDiv = document.getElementById('debug-console');
-      if (consoleDiv) {
-        consoleDiv.style.display = 'block';
-        consoleDiv.innerHTML += '<div style="margin-bottom:5px;"><b>خطأ نظام:</b> ' + msg + ' <br><small>السطر: ' + line + '</small></div>';
-      }
-      return false;
-    };
-
-    // إخفاء اللودر قسرياً بعد 4 ثوانٍ مهما حدث لضمان عدم تعليق المستخدم
+    // إظهار زر الطوارئ بعد 4 ثوانٍ من الانتظار
     setTimeout(function() {
-      var loader = document.getElementById('initial-loader');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(function() { if(loader.parentNode) loader.remove(); }, 500);
-      }
+      var btn = document.getElementById('emergency-btn');
+      if (btn) btn.style.display = 'block';
     }, 4000);
+
+    function forceStart() {
+      localStorage.clear();
+      location.reload();
+    }
+
+    window.onerror = function(m, u, l) {
+      console.error(m, u, l);
+      // إذا حدث خطأ، نخفي اللودر فوراً لنرى ما تحته
+      var loader = document.getElementById('initial-loader');
+      if (loader) loader.style.display = 'none';
+    };
   </script>
 
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
@@ -89,16 +79,14 @@
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <div id="debug-console"><b>تقرير الأخطاء (Debug):</b><br></div>
-
   <div id="initial-loader">
-    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
-      <div class="loader-dot dot1"></div>
-      <div class="loader-dot dot2"></div>
-      <div class="loader-dot"></div>
+    <div class="dots">
+      <div class="dot" style="animation-delay: 0s"></div>
+      <div class="dot" style="animation-delay: 0.2s"></div>
+      <div class="dot" style="animation-delay: 0.4s"></div>
     </div>
-    <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري تشغيل نظام مدرستي...</p>
-    <button onclick="location.reload()" style="margin-top: 20px; font-size: 10px; color: #2563eb; background: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; border: 1px solid #e2e8f0;">إعادة المحاولة</button>
+    <p style="font-weight: 900; color: #1e293b; font-size: 14px;">جاري تشغيل التطبيق...</p>
+    <button id="emergency-btn" onclick="forceStart()">إعادة ضبط المصنع (حل مشكلة التعليق)</button>
   </div>
 
   <div id="root"></div>
