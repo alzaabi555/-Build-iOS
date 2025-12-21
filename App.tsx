@@ -88,64 +88,81 @@ const App: React.FC = () => {
 
   if (!isSetupComplete) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white px-8" style={{direction: 'rtl'}}>
-        <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-blue-100">
-           <School className="text-white w-10 h-10" />
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white px-8 animate-in fade-in duration-700" style={{direction: 'rtl'}}>
+        <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl shadow-blue-200 ring-4 ring-blue-50">
+           <School className="text-white w-12 h-12" />
         </div>
-        <h1 className="text-2xl font-black text-gray-900 mb-2">نظام مدرستي</h1>
-        <p className="text-xs text-gray-400 font-bold mb-10 text-center">قم بإعداد بياناتك للبدء</p>
-        <div className="w-full max-w-sm space-y-4">
-          <input type="text" className="w-full bg-gray-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border border-transparent focus:border-blue-200 transition-all" placeholder="اسم المعلم" value={teacherInfo.name} onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})} />
-          <input type="text" className="w-full bg-gray-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border border-transparent focus:border-blue-200 transition-all" placeholder="اسم المدرسة" value={teacherInfo.school} onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})} />
-          <button onClick={() => setIsSetupComplete(true)} disabled={!teacherInfo.name || !teacherInfo.school} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 flex items-center justify-center gap-2">دخول <CheckCircle2 className="w-5 h-5" /></button>
+        <h1 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">نظام مدرستي</h1>
+        <p className="text-sm text-slate-400 font-bold mb-12 text-center">قم بإعداد هويتك التعليمية للبدء</p>
+        <div className="w-full max-w-sm space-y-5">
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-400 mr-2">الاسم الكريم</label>
+            <input type="text" className="w-full bg-slate-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border-2 border-transparent focus:border-blue-500/20 focus:bg-white transition-all text-slate-800 placeholder:text-slate-300" placeholder="أ. محمد أحمد" value={teacherInfo.name} onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-400 mr-2">اسم المدرسة</label>
+            <input type="text" className="w-full bg-slate-50 rounded-2xl py-4 px-5 text-sm font-bold outline-none border-2 border-transparent focus:border-blue-500/20 focus:bg-white transition-all text-slate-800 placeholder:text-slate-300" placeholder="مدرسة المستقبل الابتدائية" value={teacherInfo.school} onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})} />
+          </div>
+          <button onClick={() => setIsSetupComplete(true)} disabled={!teacherInfo.name || !teacherInfo.school} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 flex items-center justify-center gap-2 mt-4 shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all">بدء الاستخدام <CheckCircle2 className="w-5 h-5" /></button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f2f2f7]" style={{direction: 'rtl'}}>
-      <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 safe-top">
+    <div className="flex flex-col h-screen bg-[#f2f2f7]" style={{direction: 'rtl'}}>
+      {/* Header with Safe Area support */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-40 pt-[var(--sat)] transition-all">
         <div className="px-5 h-16 flex justify-between items-center">
           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-sm">م</div>
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-100">م</div>
               <div>
-                <h1 className="text-[11px] font-black text-gray-900 leading-tight truncate max-w-[120px]">{teacherInfo.school}</h1>
-                <p className="text-[9px] font-bold text-gray-400">أ. {teacherInfo.name}</p>
+                <h1 className="text-[13px] font-black text-slate-800 leading-tight truncate max-w-[150px]">{teacherInfo.school}</h1>
+                <p className="text-[10px] font-bold text-slate-400">أ. {teacherInfo.name}</p>
               </div>
           </div>
-          <button className="p-2 bg-gray-50 text-gray-400 rounded-xl"><Settings className="w-5 h-5" /></button>
+          <button className="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center active:bg-slate-100"><Settings className="w-5 h-5" /></button>
         </div>
       </header>
-      <main className="flex-1 px-4 py-4 pb-24 overflow-y-auto">
-        <div className="max-w-md mx-auto">
-          <Suspense fallback={<div className="text-center p-10 font-bold text-gray-400 text-xs">جاري التحميل...</div>}>
+
+      {/* Main Content */}
+      <main className="flex-1 px-4 py-4 overflow-y-auto pb-[calc(80px+var(--sab))]">
+        <div className="max-w-md mx-auto h-full">
+          <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
             {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
             {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
             {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
             {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
             {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
             {activeTab === 'report' && selectedStudentId && (
-              <div>
-                <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-1 text-blue-600 font-bold text-xs"><ChevronLeft className="w-4 h-4" /> العودة للطلاب</button>
+              <div className="animate-in slide-in-from-right duration-300">
+                <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-1.5 text-blue-600 font-bold text-xs bg-blue-50 w-fit px-3 py-1.5 rounded-full"><ChevronLeft className="w-4 h-4" /> العودة للقائمة</button>
                 <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
               </div>
             )}
           </Suspense>
         </div>
       </main>
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 safe-bottom z-50">
-        <div className="flex justify-around items-center py-3 max-w-md mx-auto">
+
+      {/* Bottom Navigation with Safe Area */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 pb-[var(--sab)] z-50">
+        <div className="flex justify-around items-center h-16 max-w-md mx-auto">
           {[
             { id: 'dashboard', icon: BarChart3, label: 'الرئيسية' },
-            { id: 'attendance', icon: CalendarCheck, label: 'الحضور' },
-            { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
+            { id: 'attendance', icon: CalendarCheck, label: 'التحضير' },
             { id: 'students', icon: Users, label: 'الطلاب' },
-            { id: 'import', icon: FileUp, label: 'استيراد' },
+            { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
+            { id: 'import', icon: FileUp, label: 'أدوات' },
           ].map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all ${activeTab === item.id ? 'text-blue-600' : 'text-gray-400'}`}>
-              <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'stroke-[2.5px]' : ''}`} />
-              <span className="text-[9px] font-black">{item.label}</span>
+            <button 
+              key={item.id} 
+              onClick={() => setActiveTab(item.id)} 
+              className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-300 ${activeTab === item.id ? 'text-blue-600' : 'text-gray-400 hover:text-gray-500'}`}
+            >
+              <div className={`p-1 rounded-xl transition-all ${activeTab === item.id ? 'bg-blue-50 transform -translate-y-1' : ''}`}>
+                 <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+              </div>
+              <span className={`text-[9px] font-black transition-opacity ${activeTab === item.id ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
             </button>
           ))}
         </div>
