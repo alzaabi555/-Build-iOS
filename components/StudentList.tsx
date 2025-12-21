@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserCircle, Camera, LayoutGrid, Plus } from 'lucide-react';
@@ -48,10 +49,13 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       points: showLogModal.type === 'positive' ? 1 : -1
     };
 
-    onUpdateStudent({
+    // إصلاح: التأكد من وجود مصفوفة behaviors قبل الإضافة
+    const updatedStudent = {
       ...showLogModal.student,
-      behaviors: [newBehavior, ...showLogModal.student.behaviors]
-    });
+      behaviors: [newBehavior, ...(showLogModal.student.behaviors || [])]
+    };
+
+    onUpdateStudent(updatedStudent);
     setShowLogModal(null);
     setLogDesc('');
   };
@@ -66,7 +70,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
   return (
     <div className="space-y-4">
-      {/* Search and Action Bar */}
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -81,38 +84,17 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button 
-            onClick={() => setIsAddingClass(true)}
-            className="p-2.5 bg-white border border-gray-200 rounded-xl text-blue-600 shadow-sm active:bg-gray-50 flex items-center gap-1"
-          >
-            <LayoutGrid className="w-5 h-5" />
-          </button>
+          <button onClick={() => setIsAddingClass(true)} className="p-2.5 bg-white border border-gray-200 rounded-xl text-blue-600 shadow-sm active:bg-gray-50"><LayoutGrid className="w-5 h-5" /></button>
         </div>
 
-        {/* Classes Filter Bar */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          <button 
-            onClick={() => setSelectedClass('all')}
-            className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
-          >
-            الكل
-          </button>
+          <button onClick={() => setSelectedClass('all')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100'}`}>الكل</button>
           {classes.map(cls => (
-            <button 
-              key={cls}
-              onClick={() => setSelectedClass(cls)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === cls ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-gray-400 border border-gray-100'}`}
-            >
-              {cls}
-            </button>
+            <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === cls ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100'}`}>{cls}</button>
           ))}
-          {classes.length === 0 && (
-             <span className="text-[9px] text-gray-400 font-bold px-2 py-1">لا توجد فصول مضافة</span>
-          )}
         </div>
       </div>
 
-      {/* Student Cards */}
       <div className="grid grid-cols-1 gap-3">
         {filteredStudents.length === 0 ? (
           <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
@@ -133,113 +115,50 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                         {student.name.charAt(0)}
                       </div>
                     )}
-                    <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-sm border border-gray-100">
-                      <Camera className="w-2.5 h-2.5 text-blue-600" />
-                    </div>
+                    <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-sm border border-gray-100"><Camera className="w-2.5 h-2.5 text-blue-600" /></div>
                   </label>
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 text-xs truncate">{student.name}</h4>
                     <span className="text-[10px] text-gray-400 font-bold">الفصل: {student.classes?.join(' - ') || 'غير محدد'}</span>
                   </div>
                 </div>
-                <button onClick={() => onViewReport(student)} className="p-2 bg-blue-50 text-blue-600 rounded-lg active:scale-90 transition-transform">
-                  <FileBarChart className="w-4 h-4" />
-                </button>
+                <button onClick={() => onViewReport(student)} className="p-2 bg-blue-50 text-blue-600 rounded-lg active:scale-90"><FileBarChart className="w-4 h-4" /></button>
               </div>
-
               <div className="flex gap-2">
-                <button 
-                  onClick={() => setShowLogModal({ student, type: 'positive' })}
-                  className="flex-1 flex items-center justify-center gap-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-lg text-[10px] font-black active:bg-emerald-100"
-                >
-                  <ThumbsUp className="w-3.5 h-3.5" /> إيجابي
-                </button>
-                <button 
-                  onClick={() => setShowLogModal({ student, type: 'negative' })}
-                  className="flex-1 flex items-center justify-center gap-1 bg-rose-50 text-rose-700 py-2.5 rounded-lg text-[10px] font-black active:bg-rose-100"
-                >
-                  <ThumbsDown className="w-3.5 h-3.5" /> سلبي
-                </button>
+                <button onClick={() => setShowLogModal({ student, type: 'positive' })} className="flex-1 flex items-center justify-center gap-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-lg text-[10px] font-black active:bg-emerald-100"><ThumbsUp className="w-3.5 h-3.5" /> إيجابي</button>
+                <button onClick={() => setShowLogModal({ student, type: 'negative' })} className="flex-1 flex items-center justify-center gap-1 bg-rose-50 text-rose-700 py-2.5 rounded-lg text-[10px] font-black active:bg-rose-100"><ThumbsDown className="w-3.5 h-3.5" /> سلبي</button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Add Class Modal */}
       {isAddingClass && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6" onClick={() => setIsAddingClass(false)}>
           <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-black text-gray-900 text-sm">إضافة فصل جديد</h3>
-              <button onClick={() => setIsAddingClass(false)} className="p-2 bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
-            </div>
-            <input 
-              type="text" 
-              placeholder="مثال: 1/أ، 5/ج..." 
-              className="w-full bg-gray-50 border-none rounded-xl py-4 px-4 text-sm font-bold focus:ring-2 focus:ring-blue-500/10 outline-none mb-6"
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              autoFocus
-            />
-            <button 
-              onClick={handleCreateClass}
-              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-100 active:scale-95 transition-all"
-            >
-              حفظ الفصل
-            </button>
+            <h3 className="font-black text-gray-900 text-sm mb-4 text-center">إضافة فصل جديد</h3>
+            <input type="text" placeholder="مثال: 1/أ" className="w-full bg-gray-50 border-none rounded-xl py-4 px-4 text-sm font-bold outline-none mb-6" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} autoFocus />
+            <button onClick={handleCreateClass} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95">حفظ</button>
           </div>
         </div>
       )}
 
-      {/* Behavior Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center md:items-end" onClick={() => setShowLogModal(null)}>
-          <div 
-            className="bg-white w-[94%] md:w-full max-w-md rounded-[2.5rem] md:rounded-t-[2.5rem] md:rounded-b-none shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative" 
-            onClick={e => e.stopPropagation()}
-            style={{ maxHeight: '85vh' }}
-          >
-            <div className="flex justify-between items-center p-6 border-b border-gray-50 shrink-0">
-              <div>
-                <h3 className="font-black text-gray-900 text-sm">تسجيل سلوك جديد</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">الطالب: {showLogModal.student.name}</p>
-              </div>
-              <button onClick={() => setShowLogModal(null)} className="p-2 bg-gray-100 rounded-full active:scale-90 transition-transform"><X className="w-4 h-4"/></button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center" onClick={() => setShowLogModal(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative" onClick={e => e.stopPropagation()} style={{ maxHeight: '80vh' }}>
+            <div className="flex justify-between items-center p-6 border-b shrink-0">
+              <div><h3 className="font-black text-gray-900 text-sm">تسجيل سلوك</h3><p className="text-[10px] text-gray-400">{showLogModal.student.name}</p></div>
+              <button onClick={() => setShowLogModal(null)} className="p-2 bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                <div className="grid grid-cols-2 gap-2">
-                {['مشاركة فعالة', 'إنجاز الواجب', 'التزام الهدوء', 'مساعدة زميل', 'نظافة المكان', 'تحسن ملحوظ'].map(d => (
-                  <button 
-                    key={d} 
-                    onClick={() => handleAddBehavior(d)} 
-                    className={`text-right p-3 rounded-xl text-[11px] font-black active:scale-95 transition-all border ${showLogModal.type === 'positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}
-                  >
-                    {d}
-                  </button>
+                {(showLogModal.type === 'positive' ? ['مشاركة فعالة', 'إنجاز الواجب', 'التزام الهدوء', 'مساعدة زميل'] : ['عدم إحضار الكتاب', 'إزعاج في الفصل', 'تأخر عن الحصة', 'عدم حل الواجب']).map(d => (
+                  <button key={d} onClick={() => handleAddBehavior(d)} className={`text-right p-3 rounded-xl text-[11px] font-black active:scale-95 transition-all border ${showLogModal.type === 'positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>{d}</button>
                 ))}
               </div>
-              
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 px-1 uppercase tracking-wider">وصف السلوك</label>
-                <textarea 
-                  className="w-full p-4 bg-gray-50 rounded-2xl h-24 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 border border-transparent focus:border-blue-100"
-                  placeholder="أضف تفاصيل إضافية هنا..."
-                  value={logDesc}
-                  onChange={(e) => setLogDesc(e.target.value)}
-                />
-              </div>
+              <textarea className="w-full p-4 bg-gray-50 rounded-2xl h-24 text-xs font-bold outline-none border border-transparent focus:border-blue-100" placeholder="وصف مخصص..." value={logDesc} onChange={(e) => setLogDesc(e.target.value)} />
             </div>
-
-            <div className="p-6 bg-white border-t border-gray-50 safe-bottom shrink-0">
-               <button 
-                onClick={() => handleAddBehavior()} 
-                className={`w-full py-4 rounded-2xl font-black text-sm text-white shadow-lg transition-all active:scale-95 ${showLogModal.type === 'positive' ? 'bg-emerald-600 shadow-emerald-100' : 'bg-rose-600 shadow-rose-100'}`}
-               >
-                 تأكيد التسجيل
-               </button>
-            </div>
+            <div className="p-6 shrink-0"><button onClick={() => handleAddBehavior()} className={`w-full py-4 rounded-2xl font-black text-sm text-white shadow-lg ${showLogModal.type === 'positive' ? 'bg-emerald-600' : 'bg-rose-600'}`}>تأكيد</button></div>
           </div>
         </div>
       )}
