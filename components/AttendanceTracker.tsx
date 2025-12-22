@@ -9,7 +9,8 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date string (YYYY-MM-DD) to ensure accurate day tracking regardless of timezone offset
+  const today = new Date().toLocaleDateString('en-CA'); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
 
