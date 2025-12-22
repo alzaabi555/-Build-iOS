@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Phone, Filter } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Phone, Filter, Edit } from 'lucide-react';
 
 interface StudentListProps {
   students: Student[];
@@ -15,11 +15,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [showLogModal, setShowLogModal] = useState<{ student: Student; type: BehaviorType } | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
   
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentClass, setNewStudentClass] = useState('');
-  const [newStudentPhone, setNewStudentPhone] = useState('');
+  // Create/Edit Modal State
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  
+  const [studentNameInput, setStudentNameInput] = useState('');
+  const [studentClassInput, setStudentClassInput] = useState('');
+  const [studentPhoneInput, setStudentPhoneInput] = useState('');
   const [logDesc, setLogDesc] = useState('');
 
   const filteredStudents = students.filter(s => {
@@ -28,13 +32,40 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     return matchesSearch && matchesClass;
   });
 
-  const handleCreateStudent = () => {
-    if (newStudentName.trim() && newStudentClass.trim()) {
-      onAddStudentManually(newStudentName.trim(), newStudentClass.trim(), newStudentPhone.trim());
-      setShowAddModal(false);
-      setNewStudentName('');
-      setNewStudentClass('');
-      setNewStudentPhone('');
+  const openCreateModal = () => {
+    setModalMode('create');
+    setStudentNameInput('');
+    setStudentClassInput('');
+    setStudentPhoneInput('');
+    setEditingStudentId(null);
+    setShowStudentModal(true);
+  };
+
+  const openEditModal = (student: Student) => {
+    setModalMode('edit');
+    setStudentNameInput(student.name);
+    setStudentClassInput(student.classes[0] || '');
+    setStudentPhoneInput(student.parentPhone || '');
+    setEditingStudentId(student.id);
+    setShowStudentModal(true);
+  };
+
+  const handleSaveStudent = () => {
+    if (studentNameInput.trim() && studentClassInput.trim()) {
+      if (modalMode === 'create') {
+        onAddStudentManually(studentNameInput.trim(), studentClassInput.trim(), studentPhoneInput.trim());
+      } else if (modalMode === 'edit' && editingStudentId) {
+        const studentToUpdate = students.find(s => s.id === editingStudentId);
+        if (studentToUpdate) {
+            onUpdateStudent({
+                ...studentToUpdate,
+                name: studentNameInput.trim(),
+                classes: [studentClassInput.trim()], // Update primary class
+                parentPhone: studentPhoneInput.trim()
+            });
+        }
+      }
+      setShowStudentModal(false);
     } else {
       alert('يرجى إكمال جميع البيانات الأساسية');
     }
@@ -79,7 +110,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             </div>
             <input type="text" placeholder="ابحث عن طالب..." className="w-full bg-white border border-gray-200 rounded-2xl py-3.5 pr-10 pl-4 focus:outline-none focus:border-blue-300 transition-all shadow-sm text-sm font-black text-gray-800" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <button onClick={() => setShowAddModal(true)} className="w-12 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center transition-all"><UserPlus className="w-5 h-5" /></button>
+          <button onClick={openCreateModal} className="w-12 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center transition-all"><UserPlus className="w-5 h-5" /></button>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -105,7 +136,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   </div>
                 </div>
               </div>
-              <button onClick={() => onViewReport(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><FileBarChart className="w-5 h-5" /></button>
+              <div className="flex gap-1">
+                  <button onClick={() => openEditModal(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors"><Edit className="w-5 h-5" /></button>
+                  <button onClick={() => onViewReport(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><FileBarChart className="w-5 h-5" /></button>
+              </div>
             </div>
             
             <div className="h-px bg-gray-50 w-full"></div>
@@ -123,30 +157,30 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         )}
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowAddModal(false)}>
+      {showStudentModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
           <div className="bg-white w-full max-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-             <h3 className="text-lg font-black text-center mb-8 text-gray-800">إضافة طالب جديد</h3>
+             <h3 className="text-lg font-black text-center mb-8 text-gray-800">{modalMode === 'create' ? 'إضافة طالب جديد' : 'تعديل بيانات الطالب'}</h3>
              <div className="space-y-5 mb-8">
                 <div className="space-y-1.5">
                    <label className="text-[10px] font-black text-gray-400 mr-2 uppercase">الاسم الكامل</label>
-                   <input type="text" placeholder="اكتب الاسم هنا" className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none transition-all" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} />
+                   <input type="text" placeholder="اكتب الاسم هنا" className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none transition-all" value={studentNameInput} onChange={e => setStudentNameInput(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                    <label className="text-[10px] font-black text-gray-400 mr-2 uppercase">الفصل الدراسي</label>
-                   <select className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none appearance-none transition-all" value={newStudentClass} onChange={e => setNewStudentClass(e.target.value)}>
+                   <select className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none appearance-none transition-all" value={studentClassInput} onChange={e => setStudentClassInput(e.target.value)}>
                       <option value="">اختر الفصل</option>
                       {classes.map(c => <option key={c} value={c}>{c}</option>)}
                    </select>
                 </div>
                 <div className="space-y-1.5">
                    <label className="text-[10px] font-black text-gray-400 mr-2 uppercase">رقم ولي الأمر (اختياري)</label>
-                   <input type="tel" placeholder="مثال: 96650..." className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none transition-all" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} />
+                   <input type="tel" placeholder="مثال: 96650..." className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-100 focus:bg-white rounded-2xl py-4 px-5 text-sm font-black outline-none transition-all" value={studentPhoneInput} onChange={e => setStudentPhoneInput(e.target.value)} />
                 </div>
              </div>
              <div className="flex gap-3">
-                <button onClick={() => setShowAddModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm hover:bg-gray-200 transition-colors">إلغاء</button>
-                <button onClick={handleCreateStudent} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 shadow-lg shadow-blue-200 transition-all">حفظ الطالب</button>
+                <button onClick={() => setShowStudentModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm hover:bg-gray-200 transition-colors">إلغاء</button>
+                <button onClick={handleSaveStudent} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-sm active:scale-95 shadow-lg shadow-blue-200 transition-all">حفظ البيانات</button>
              </div>
           </div>
         </div>

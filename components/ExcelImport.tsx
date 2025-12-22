@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Student } from '../types';
-import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, AlertCircle, LayoutGrid, Check, Info } from 'lucide-react';
+import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, Info, LayoutGrid, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ExcelImportProps {
@@ -52,13 +51,8 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
         .map((row, idx) => {
           const rowKeys = Object.keys(row);
           
-          // البحث عن مفتاح الاسم
           const nameKey = rowKeys.find(k => nameHeaders.includes(k.trim()));
-          
-          // البحث عن مفتاح الجوال
           const phoneKey = rowKeys.find(k => phoneHeaders.includes(k.trim()));
-          
-          // البحث عن مفتاح الصف
           const gradeKey = rowKeys.find(k => gradeHeaders.includes(k.trim()));
 
           const studentName = String(row[nameKey || ''] || row[rowKeys[0]] || '').trim();
@@ -72,7 +66,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
             attendance: [],
             behaviors: [],
             grades: [],
-            parentPhone: parentPhone // إضافة الرقم المستورد
+            parentPhone: parentPhone
           };
         })
         .filter(student => {
@@ -93,6 +87,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
     } catch (error) {
       console.error(error);
       setImportStatus('error');
+      alert('حدث خطأ أثناء قراءة الملف. تأكد من أن الملف سليم.');
     } finally {
       setIsImporting(false);
       if (e.target) e.target.value = '';
@@ -100,7 +95,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20">
       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-5">
         <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-gray-900 flex items-center gap-2">
@@ -132,7 +127,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
             </div>
         ) : (
             <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                {existingClasses.map(cls => (
+                {existingClasses.length > 0 ? existingClasses.map(cls => (
                     <button
                         key={cls}
                         onClick={() => setTargetClass(cls)}
@@ -141,7 +136,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                         {cls}
                         {targetClass === cls && <Check className="w-3 h-3" />}
                     </button>
-                ))}
+                )) : <p className="col-span-2 text-center text-[10px] text-gray-400 py-4">لا توجد فصول حالياً، قم بإنشاء فصل جديد.</p>}
             </div>
         )}
       </div>
@@ -157,7 +152,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
         <p className="text-[10px] text-gray-400 mb-6 px-4 relative z-10 font-bold">
             {(isCreatingNew ? newClassInput : targetClass) 
                 ? `سيتم استيراد الطلاب إلى فصل: ${isCreatingNew ? newClassInput : targetClass}`
-                : 'يجب اختيار الفصل أولاً لتفعيل الاستيراد'}
+                : 'يجب اختيار الفصل أولاً لتفعيل الزر'}
         </p>
         
         <label className={`w-full max-w-[200px] relative z-10 ${!(isCreatingNew ? newClassInput : targetClass) ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -192,7 +187,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                   <p>للحصول على أفضل النتائج، تأكد أن ملف الإكسل يحتوي على الأعمدة التالية:</p>
                   <ul className="list-disc list-inside mt-1">
                       <li>عمود لاسم الطالب (مثال: "الاسم")</li>
-                      <li>عمود لرقم الجوال (مثال: "جوال" أو "رقم ولي الأمر")</li>
+                      <li>عمود لرقم الجوال (مثال: "جوال")</li>
                   </ul>
               </div>
           </div>

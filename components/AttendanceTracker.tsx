@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle, Phone } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -30,8 +29,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       alert('رقم ولي الأمر غير متوفر لهذا الطالب');
       return;
     }
-    const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد سجل غياباً اليوم ${new Date(selectedDate).toLocaleDateString('ar-EG')}.`);
-    window.open(`https://wa.me/${student.parentPhone}?text=${msg}`, '_blank');
+    
+    // تنظيف رقم الهاتف (حذف المسافات والرموز)
+    const rawPhone = student.parentPhone.replace(/[^0-9+]/g, '');
+    const cleanPhone = rawPhone.startsWith('0') ? '966' + rawPhone.substring(1) : rawPhone;
+    
+    const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تغيب عن المدرسة اليوم ${new Date(selectedDate).toLocaleDateString('ar-EG')}.`);
+    
+    // إظهار خيارات (واتساب أو رسالة نصية)
+    if (confirm('اختر طريقة الإرسال:\nموافق = واتساب\nإلغاء = رسالة نصية (SMS)')) {
+         window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+    } else {
+         window.open(`sms:${rawPhone}?&body=${msg}`, '_blank');
+    }
   };
 
   const getStatus = (student: Student) => {
@@ -42,19 +52,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     ? students 
     : students.filter(s => s.classes && s.classes.includes(classFilter));
 
-  const attendanceStats = filteredStudents.reduce((acc, s) => {
-    const status = getStatus(s);
-    if (status === 'present') acc.p++;
-    else if (status === 'absent') acc.a++;
-    else if (status === 'late') acc.l++;
-    return acc;
-  }, { p: 0, a: 0, l: 0 });
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       <div className="grid grid-cols-1 gap-3">
         <div className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3"><Calendar className="text-blue-600 w-5 h-5" /><span className="font-black text-sm text-gray-700">تاريخ التحضير</span></div>
+            <div className="flex items-center gap-3"><Calendar className="text-blue-600 w-5 h-5" /><span className="font-black text-sm text-gray-700">تاريخ الحضور</span></div>
             <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-100 text-blue-600 outline-none" />
         </div>
         <div className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center justify-between">
@@ -81,7 +83,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                   </div>
                   
                   {status === 'absent' && student.parentPhone && (
-                    <button onClick={() => handleNotifyParent(student)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black active:scale-95 border border-emerald-100"><MessageCircle className="w-3.5 h-3.5" /> إبلاغ الغياب</button>
+                    <button onClick={() => handleNotifyParent(student)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black active:scale-95 border border-emerald-100"><MessageCircle className="w-3.5 h-3.5" /> إبلاغ</button>
                   )}
                 </div>
                 
