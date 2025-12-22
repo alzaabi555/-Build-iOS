@@ -5,9 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>نظام مدرستي</title>
   
+  <!-- إعدادات أيقونة التطبيق - تم إضافة v=2 لفرض التحديث -->
+  <link rel="icon" type="image/png" href="icon.png?v=2">
+  <link rel="apple-touch-icon" href="icon.png?v=2">
+  
+  <!-- إعدادات iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="مدرستي">
+  
+  <!-- إعدادات Android الأساسية للتثبيت -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f2f2f7">
+  <link rel="manifest" href="manifest.json">
   
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -53,8 +63,9 @@
     "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@18.2.0",
     "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
     "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "@capacitor/core": "https://esm.sh/@capacitor/core@6.2.0"
   }
 }
 </script>
@@ -68,11 +79,9 @@
 
   <div id="root"></div>
 
-  <!-- التصحيح الحاسم: استخدام ملف .js المترجم وليس .tsx -->
   <script type="module" src="./index.js"></script>
   
   <script>
-    // حماية إضافية لإخفاء اللودر في حالة حدوث خطأ غير متوقع
     setTimeout(function() {
       var loader = document.getElementById('initial-loader');
       if(loader) loader.style.display = 'none';
