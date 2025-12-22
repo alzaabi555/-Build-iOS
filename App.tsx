@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Student } from './types';
+import { Student, ScheduleDay } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -11,7 +11,6 @@ import {
   CalendarCheck, 
   BarChart3, 
   FileUp, 
-  Settings,
   ChevronLeft,
   GraduationCap,
   School,
@@ -39,6 +38,22 @@ const App: React.FC = () => {
     } catch { return []; }
   });
 
+  // Schedule State
+  const [schedule, setSchedule] = useState<ScheduleDay[]>(() => {
+    try {
+      const saved = localStorage.getItem('scheduleData');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    // Default Schedule Structure
+    return [
+      { dayName: 'الأحد', periods: Array(8).fill('') },
+      { dayName: 'الاثنين', periods: Array(8).fill('') },
+      { dayName: 'الثلاثاء', periods: Array(8).fill('') },
+      { dayName: 'الأربعاء', periods: Array(8).fill('') },
+      { dayName: 'الخميس', periods: Array(8).fill('') },
+    ];
+  });
+
   const [teacherInfo, setTeacherInfo] = useState(() => {
     try {
       return {
@@ -60,10 +75,11 @@ const App: React.FC = () => {
       localStorage.setItem('activeTab', activeTab);
       localStorage.setItem('teacherName', teacherInfo.name);
       localStorage.setItem('schoolName', teacherInfo.school);
+      localStorage.setItem('scheduleData', JSON.stringify(schedule));
     } catch (e) {
       console.warn("Storage restricted", e);
     }
-  }, [students, classes, activeTab, teacherInfo]);
+  }, [students, classes, activeTab, teacherInfo, schedule]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
@@ -121,7 +137,7 @@ const App: React.FC = () => {
                 <p className="text-[10px] font-bold text-slate-400">أ. {teacherInfo.name}</p>
               </div>
           </div>
-          <button className="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center active:bg-slate-100"><Settings className="w-5 h-5" /></button>
+          {/* تم إزالة زر الإعدادات لتجنب الأخطاء كما طلبت */}
         </div>
       </header>
 
@@ -129,7 +145,15 @@ const App: React.FC = () => {
       <main className="flex-1 px-4 py-4 overflow-y-auto pb-[calc(80px+var(--sab))]">
         <div className="max-w-md mx-auto h-full">
           <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
-            {activeTab === 'dashboard' && <Dashboard students={students} teacherInfo={teacherInfo} onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'dashboard' && (
+              <Dashboard 
+                students={students} 
+                teacherInfo={teacherInfo} 
+                schedule={schedule}
+                onUpdateSchedule={setSchedule}
+                onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
+              />
+            )}
             {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
             {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
             {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
@@ -149,7 +173,7 @@ const App: React.FC = () => {
         <div className="flex justify-around items-center h-16 max-w-md mx-auto">
           {[
             { id: 'dashboard', icon: BarChart3, label: 'الرئيسية' },
-            { id: 'attendance', icon: CalendarCheck, label: 'التحضير' },
+            { id: 'attendance', icon: CalendarCheck, label: 'الحضور' }, // تم تغيير الاسم
             { id: 'students', icon: Users, label: 'الطلاب' },
             { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
             { id: 'import', icon: FileUp, label: 'أدوات' },

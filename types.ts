@@ -7,7 +7,7 @@ export interface Student {
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
   grades: GradeRecord[];
-  parentPhone?: string; // حقل جديد لرقم ولي الأمر
+  parentPhone?: string;
   avatar?: string;
 }
 
@@ -35,6 +35,11 @@ export interface GradeRecord {
   score: number;
   maxScore: number;
   date: string;
+}
+
+export interface ScheduleDay {
+  dayName: string;
+  periods: string[]; // 8 periods
 }
 
 export interface AppState {
