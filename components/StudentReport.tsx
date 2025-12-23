@@ -24,14 +24,23 @@ const StudentReport: React.FC<StudentReportProps> = ({ student }) => {
   const sem1Stats = calcSemStats(sem1Grades);
   const sem2Stats = calcSemStats(sem2Grades);
 
-  // حساب المعدل النهائي
+  // حساب المعدل النهائي والمجموع الكلي
   let finalPercentage = 0;
+  let finalScore = 0;
+  let finalMax = 0;
+
   if (sem1Stats.max > 0 && sem2Stats.max > 0) {
       finalPercentage = Math.round((sem1Stats.percentage + sem2Stats.percentage) / 2);
+      finalScore = sem1Stats.score + sem2Stats.score;
+      finalMax = sem1Stats.max + sem2Stats.max;
   } else if (sem1Stats.max > 0) {
       finalPercentage = sem1Stats.percentage;
+      finalScore = sem1Stats.score;
+      finalMax = sem1Stats.max;
   } else if (sem2Stats.max > 0) {
       finalPercentage = sem2Stats.percentage;
+      finalScore = sem2Stats.score;
+      finalMax = sem2Stats.max;
   }
 
   return (
@@ -50,7 +59,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student }) => {
             <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl">
               <div>
                   <span className="text-[9px] font-bold text-gray-400 block mb-1">النتيجة النهائية</span>
-                  <span className="text-xl font-black text-gray-900">{finalPercentage}%</span>
+                  <div className="flex items-end gap-2">
+                     <span className="text-xl font-black text-gray-900">{finalPercentage}%</span>
+                     {finalMax > 0 && <span className="text-[10px] font-bold text-gray-400 mb-1">({finalScore}/{finalMax})</span>}
+                  </div>
               </div>
               <div>
                   <span className="text-[9px] font-bold text-gray-400 block mb-1">عدد السلوكيات</span>
