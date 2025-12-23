@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle, Phone } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];

@@ -14,11 +14,6 @@ const NoorPlatform: React.FC = () => {
     }
 
     // إعدادات المتصفح:
-    // location=yes: يظهر شريط العنوان في أندرويد (يحتوي على زر X للإغلاق)
-    // toolbar=yes: يظهر شريط الأدوات السفلي في iOS (يحتوي على زر Done)
-    // closebuttoncaption: نص زر الإغلاق في iOS
-    // hidenavigationbuttons=no: إظهار أزرار التنقل (أمام/خلف) في iOS
-    // presentationstyle=fullscreen: ملء الشاشة
     const options = 'location=yes,toolbar=yes,closebuttoncaption=إغلاق,hidenavigationbuttons=no,toolbarposition=bottom,presentationstyle=fullscreen,hardwareback=yes';
     const target = '_blank';
 
@@ -31,8 +26,9 @@ const NoorPlatform: React.FC = () => {
       
       {/* Decorative Header */}
       <div className="bg-gradient-to-b from-blue-50 to-white p-8 flex flex-col items-center justify-center text-center border-b border-gray-50">
-         <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center relative shadow-lg shadow-blue-100 mb-6 border border-blue-50">
-            <Globe className="w-10 h-10 text-blue-600" />
+         <div className="w-32 h-32 bg-white rounded-[2rem] flex items-center justify-center relative shadow-lg shadow-blue-100 mb-6 border border-blue-50 p-4">
+            <img src="noor_logo.png" className="w-full h-full object-contain" alt="شعار نور" onError={(e) => {e.currentTarget.style.display='none'; e.currentTarget.parentElement?.classList.add('hidden')}} />
+            <Globe className="w-10 h-10 text-blue-600 hidden" />
             <div className="absolute -bottom-2 -right-2 bg-emerald-500 p-2 rounded-xl border-4 border-white">
                 <Lock className="w-4 h-4 text-white" />
             </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Phone, Filter, Edit, FileSpreadsheet } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap } from 'lucide-react';
 
 interface StudentListProps {
   students: Student[];
@@ -31,6 +31,13 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     const matchesClass = selectedClass === 'all' || (s.classes && s.classes.includes(selectedClass));
     return matchesSearch && matchesClass;
   });
+
+  const getStudentGradeStats = (student: Student) => {
+      const grades = student.grades || [];
+      const earned = grades.reduce((a, b) => a + b.score, 0);
+      const total = grades.reduce((a, b) => a + b.maxScore, 0);
+      return { earned, total };
+  };
 
   const openCreateModal = () => {
     setModalMode('create');
@@ -131,33 +138,40 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {/* Grid Layout for Tablets/Landscape */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
-        {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => (
-          <div key={student.id} className="bg-white rounded-[1.75rem] p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${Math.min(idx * 0.05, 0.5)}s`}}>
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3.5">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-sm ${idx % 3 === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-br from-indigo-500 to-indigo-600' : 'bg-gradient-to-br from-violet-500 to-violet-600'}`}>{student.name.charAt(0)}</div>
-                <div className="min-w-0">
-                  <h4 className="font-black text-gray-900 text-sm truncate leading-tight mb-1">{student.name}</h4>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-gray-400 font-bold bg-gray-50 w-fit px-2 py-0.5 rounded-md">فصل: {student.classes?.join(' • ') || 'غير محدد'}</span>
-                    {student.parentPhone && <span className="text-[9px] text-blue-500 font-bold flex items-center gap-1"><Phone className="w-2.5 h-2.5" /> {student.parentPhone}</span>}
+        {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => {
+          const stats = getStudentGradeStats(student);
+          return (
+            <div key={student.id} className="bg-white rounded-[1.75rem] p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${Math.min(idx * 0.05, 0.5)}s`}}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-sm ${idx % 3 === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-br from-indigo-500 to-indigo-600' : 'bg-gradient-to-br from-violet-500 to-violet-600'}`}>{student.name.charAt(0)}</div>
+                  <div className="min-w-0">
+                    <h4 className="font-black text-gray-900 text-sm truncate leading-tight mb-1">{student.name}</h4>
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] text-gray-400 font-bold bg-gray-50 w-fit px-2 py-0.5 rounded-md">فصل: {student.classes?.join(' • ') || 'غير محدد'}</span>
+                      {stats.total > 0 && (
+                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 w-fit px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3" /> {stats.earned}/{stats.total}
+                          </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <div className="flex gap-1">
+                    <button onClick={() => openEditModal(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors"><Edit className="w-5 h-5" /></button>
+                    <button onClick={() => onViewReport(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><FileBarChart className="w-5 h-5" /></button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                  <button onClick={() => openEditModal(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors"><Edit className="w-5 h-5" /></button>
-                  <button onClick={() => onViewReport(student)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><FileBarChart className="w-5 h-5" /></button>
-              </div>
-            </div>
-            
-            <div className="h-px bg-gray-50 w-full"></div>
+              
+              <div className="h-px bg-gray-50 w-full"></div>
 
-            <div className="flex gap-3">
-              <button onClick={() => setShowLogModal({ student, type: 'positive' })} className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-3.5 rounded-2xl text-[11px] font-black active:scale-95 transition-all border border-emerald-100/50"><ThumbsUp className="w-4 h-4" /> سلوك إيجابي</button>
-              <button onClick={() => setShowLogModal({ student, type: 'negative' })} className="flex-1 flex items-center justify-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 py-3.5 rounded-2xl text-[11px] font-black active:scale-95 transition-all border border-rose-100/50"><ThumbsDown className="w-4 h-4" /> سلوك سلبي</button>
+              <div className="flex gap-3">
+                <button onClick={() => setShowLogModal({ student, type: 'positive' })} className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-3.5 rounded-2xl text-[11px] font-black active:scale-95 transition-all border border-emerald-100/50"><ThumbsUp className="w-4 h-4" /> سلوك إيجابي</button>
+                <button onClick={() => setShowLogModal({ student, type: 'negative' })} className="flex-1 flex items-center justify-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 py-3.5 rounded-2xl text-[11px] font-black active:scale-95 transition-all border border-rose-100/50"><ThumbsDown className="w-4 h-4" /> سلوك سلبي</button>
+              </div>
             </div>
-          </div>
-        )) : (
+          );
+        }) : (
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-300">
                 <Search className="w-12 h-12 mb-2 opacity-50" />
                 <p className="text-xs font-bold">لا يوجد طلاب مطابقين للبحث</p>

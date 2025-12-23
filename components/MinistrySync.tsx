@@ -2,20 +2,21 @@ import React from 'react';
 import { ExternalLink, Building2, Lock, ShieldCheck, ChevronRight, Smartphone } from 'lucide-react';
 
 const MinistrySync: React.FC = () => {
-  // رابط البوابة التعليمية للوزارة
-  const url = "https://mobile.moe.gov.om/";
+  // تحديث الرابط إلى صفحة تسجيل الدخول المباشرة للبوابة التعليمية (نظام الشهادات) لتجنب مشاكل التحميل والشاشة البيضاء
+  const url = "https://certificate.moe.gov.om/Portal/Services/UserLoginnew.aspx";
 
   const handleOpenPlatform = () => {
     // @ts-ignore
     const cordova = window.cordova;
 
     if (!cordova || !cordova.InAppBrowser) {
-        alert("يرجى فتح التطبيق من الهاتف (Android/iOS) ليعمل المتصفح الداخلي بشكل صحيح.");
+        // تفعيل الفتح في نافذة جديدة عند التجربة على المتصفح العادي
+        window.open(url, '_blank');
         return;
     }
 
-    // نفس الإعدادات الناجحة التي استخدمناها في منصة نور
-    const options = 'location=yes,toolbar=yes,closebuttoncaption=إغلاق,hidenavigationbuttons=no,toolbarposition=bottom,presentationstyle=fullscreen,hardwareback=yes';
+    // إعدادات المتصفح مع خيارات مسح الذاكرة المؤقتة (cache) لضمان عدم ظهور شاشة بيضاء بسبب ملفات قديمة
+    const options = 'location=yes,toolbar=yes,closebuttoncaption=إغلاق,hidenavigationbuttons=no,toolbarposition=bottom,presentationstyle=fullscreen,hardwareback=yes,clearcache=yes,clearsessioncache=yes';
     const target = '_blank';
 
     // فتح المتصفح
@@ -36,7 +37,7 @@ const MinistrySync: React.FC = () => {
          
          <h2 className="text-xl font-black text-gray-900 mb-2">البوابة التعليمية</h2>
          <p className="text-xs font-bold text-gray-400 max-w-[280px] leading-relaxed">
-            وزارة التربية والتعليم - سلطنة عمان
+            تسجيل الدخول - وزارة التربية والتعليم
          </p>
       </div>
 
@@ -47,9 +48,9 @@ const MinistrySync: React.FC = () => {
             <div className="flex gap-3 items-start">
                <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] font-bold text-amber-800 leading-relaxed text-right">
-                  سيتم فتح البوابة في نافذة مخصصة آمنة. 
+                  سيتم فتح صفحة تسجيل الدخول في نافذة آمنة. 
                   <br/>
-                  للعودة للتطبيق، استخدم زر <strong>"إغلاق"</strong> أو <strong>"X"</strong> الموجود في شريط الأدوات.
+                  للعودة للتطبيق، استخدم زر <strong>"إغلاق"</strong> أو <strong>"X"</strong>.
                </p>
             </div>
          </div>
@@ -62,8 +63,8 @@ const MinistrySync: React.FC = () => {
                 <ExternalLink className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 text-right pr-4">
-                <span className="block text-sm font-black">فتح البوابة التعليمية</span>
-                <span className="block text-[9px] font-bold text-emerald-200">mobile.moe.gov.om</span>
+                <span className="block text-sm font-black">الدخول للبوابة</span>
+                <span className="block text-[9px] font-bold text-emerald-200">certificate.moe.gov.om</span>
             </div>
             <ChevronRight className="w-5 h-5 text-emerald-200" />
          </button>
