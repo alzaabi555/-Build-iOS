@@ -141,7 +141,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => {
           const stats = getStudentGradeStats(student);
           return (
-            <div key={student.id} className="bg-white rounded-[1.75rem] p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${Math.min(idx * 0.05, 0.5)}s`}}>
+            <div key={student.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${Math.min(idx * 0.05, 0.5)}s`}}>
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3.5">
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-sm ${idx % 3 === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-br from-indigo-500 to-indigo-600' : 'bg-gradient-to-br from-violet-500 to-violet-600'}`}>{student.name.charAt(0)}</div>
@@ -185,7 +185,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {showStudentModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
              <h3 className="text-lg font-black text-center mb-8 text-gray-800">{modalMode === 'create' ? 'إضافة طالب جديد' : 'تعديل بيانات الطالب'}</h3>
              <div className="space-y-5 mb-8">
                 <div className="space-y-1.5">
@@ -214,7 +214,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {showLogModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-end justify-center sm:items-center p-0 sm:p-4 animate-in fade-in duration-200" onClick={() => setShowLogModal(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6 px-2">
               <h3 className="font-black text-sm text-gray-800">رصد سلوك: <span className="text-blue-600">{showLogModal.student.name}</span></h3>
               <button onClick={() => setShowLogModal(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"><X className="w-4 h-4 text-gray-500"/></button>
