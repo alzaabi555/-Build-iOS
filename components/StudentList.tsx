@@ -16,7 +16,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [selectedClass, setSelectedClass] = useState('all');
   const [showLogModal, setShowLogModal] = useState<{ student: Student; type: BehaviorType } | null>(null);
   
-  // Create/Edit Modal State
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
@@ -60,7 +59,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             onUpdateStudent({
                 ...studentToUpdate,
                 name: studentNameInput.trim(),
-                classes: [studentClassInput.trim()], // Update primary class
+                classes: [studentClassInput.trim()],
                 parentPhone: studentPhoneInput.trim()
             });
         }
@@ -102,7 +101,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7] pt-2 pb-2 z-10">
+      <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7] pt-2 pb-2 z-10 backdrop-blur-sm bg-opacity-90">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -122,9 +121,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 pb-20">
+      {/* Grid Layout for Tablets/Landscape */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
         {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => (
-          <div key={student.id} className="bg-white rounded-[1.75rem] p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${idx * 0.05}s`}}>
+          <div key={student.id} className="bg-white rounded-[1.75rem] p-4 shadow-sm border border-gray-100 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500" style={{animationDelay: `${Math.min(idx * 0.05, 0.5)}s`}}>
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3.5">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-sm ${idx % 3 === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-br from-indigo-500 to-indigo-600' : 'bg-gradient-to-br from-violet-500 to-violet-600'}`}>{student.name.charAt(0)}</div>
@@ -150,7 +150,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             </div>
           </div>
         )) : (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-300">
+            <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-300">
                 <Search className="w-12 h-12 mb-2 opacity-50" />
                 <p className="text-xs font-bold">لا يوجد طلاب مطابقين للبحث</p>
             </div>
@@ -159,7 +159,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {showStudentModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
-          <div className="bg-white w-full max-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
              <h3 className="text-lg font-black text-center mb-8 text-gray-800">{modalMode === 'create' ? 'إضافة طالب جديد' : 'تعديل بيانات الطالب'}</h3>
              <div className="space-y-5 mb-8">
                 <div className="space-y-1.5">

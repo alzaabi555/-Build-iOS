@@ -13,7 +13,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, schedule, onUpdateSchedule, onSelectStudent }) => {
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
-  const [activeDayIndex, setActiveDayIndex] = useState(0); // For editing view
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
   
   const totalStudents = students?.length || 0;
   const hour = new Date().getHours();
@@ -27,7 +27,6 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, sched
   const greeting = getGreetingData();
   const GreetingIcon = greeting.icon;
   
-  // Use local date string (YYYY-MM-DD) to ensure accurate statistics
   const today = new Date().toLocaleDateString('en-CA');
   
   const attendanceToday = students.reduce((acc, s) => {
@@ -56,7 +55,6 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, sched
       ]
     : [{ name: 'لا توجد بيانات', value: 1 }];
 
-  // Get current day name for schedule display
   const daysMap = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   const todayIndex = new Date().getDay();
   const todayName = daysMap[todayIndex];
@@ -87,81 +85,82 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, sched
         <Sparkles className="absolute -left-2 -bottom-2 w-20 h-20 opacity-10 rotate-12" />
       </div>
 
-      {/* Schedule Section */}
-      <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100 shadow-sm relative">
-        <div className="flex justify-between items-center mb-4">
-           <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-xs">
-             <Calendar className="w-4 h-4 text-blue-500" /> الجدول المدرسي
-           </h3>
-           <button onClick={() => setIsEditingSchedule(true)} className="text-[10px] bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-black flex items-center gap-1 active:scale-95 transition-transform">
-             <Edit2 className="w-3 h-3" /> تعديل
-           </button>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Schedule Section */}
+          <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100 shadow-sm relative lg:col-span-2">
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-xs">
+                 <Calendar className="w-4 h-4 text-blue-500" /> الجدول المدرسي
+               </h3>
+               <button onClick={() => setIsEditingSchedule(true)} className="text-[10px] bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-black flex items-center gap-1 active:scale-95 transition-transform">
+                 <Edit2 className="w-3 h-3" /> تعديل
+               </button>
+            </div>
 
-        {todaySchedule ? (
-           <div className="space-y-2">
-             <p className="text-[10px] font-bold text-gray-400 mb-2">جدول اليوم: {todayName}</p>
-             <div className="grid grid-cols-4 gap-2">
-                {todaySchedule.periods.slice(0, 8).map((p, idx) => (
-                   <div key={idx} className={`p-2 rounded-xl text-center border ${p ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-gray-50 border-transparent text-gray-300'}`}>
-                      <span className="block text-[8px] font-black opacity-50 mb-0.5">حـ{idx + 1}</span>
-                      {/* تكبير الخط هنا */}
-                      <span className="block text-xs font-black truncate leading-tight">{p || '-'}</span>
-                   </div>
-                ))}
-             </div>
-           </div>
-        ) : (
-          <div className="p-4 bg-gray-50 rounded-xl text-center">
-            <p className="text-[10px] font-bold text-gray-400">اليوم عطلة أو خارج أيام الجدول</p>
+            {todaySchedule ? (
+               <div className="space-y-2">
+                 <p className="text-[10px] font-bold text-gray-400 mb-2">جدول اليوم: {todayName}</p>
+                 <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                    {todaySchedule.periods.slice(0, 8).map((p, idx) => (
+                       <div key={idx} className={`p-2 rounded-xl text-center border ${p ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-gray-50 border-transparent text-gray-300'}`}>
+                          <span className="block text-[8px] font-black opacity-50 mb-0.5">حـ{idx + 1}</span>
+                          <span className="block text-xs font-black truncate leading-tight">{p || '-'}</span>
+                       </div>
+                    ))}
+                 </div>
+               </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-xl text-center">
+                <p className="text-[10px] font-bold text-gray-400">اليوم عطلة أو خارج أيام الجدول</p>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Attendance Chart */}
+          <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-xs"><Users className="w-4 h-4 text-blue-500" /> حضور اليوم</h3>
+              <span className="text-[9px] bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-black">{new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-32 w-32 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie 
+                      data={pieData} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={30} 
+                      outerRadius={45} 
+                      paddingAngle={5} 
+                      dataKey="value" 
+                      stroke="none"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={hasAttendanceData ? COLORS[index % COLORS.length] : '#f1f5f9'} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-50"><p className="text-[9px] text-emerald-600 font-black mb-0.5">حاضر</p><p className="text-lg font-black text-emerald-700">{attendanceToday.present}</p></div>
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-50"><p className="text-[9px] text-rose-600 font-black mb-0.5">غائب</p><p className="text-lg font-black text-rose-700">{attendanceToday.absent}</p></div>
+              </div>
+            </div>
+          </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0"><Award className="text-emerald-500 w-5 h-5" /></div>
-          <div><p className="text-gray-400 text-[9px] font-black">إيجابي</p><p className="text-base font-black text-gray-900">{behaviorStats.positive}</p></div>
+          <div><p className="text-gray-400 text-[9px] font-black">سلوك إيجابي</p><p className="text-base font-black text-gray-900">{behaviorStats.positive}</p></div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm">
           <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center shrink-0"><AlertCircle className="text-rose-500 w-5 h-5" /></div>
-          <div><p className="text-gray-400 text-[9px] font-black">تنبيهات</p><p className="text-base font-black text-gray-900">{behaviorStats.negative}</p></div>
-        </div>
-      </div>
-
-      {/* Attendance Chart */}
-      <div className="bg-white p-5 rounded-[1.75rem] border border-gray-100 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-xs"><Users className="w-4 h-4 text-blue-500" /> حضور اليوم</h3>
-          <span className="text-[9px] bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-black">{new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="h-32 w-32 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie 
-                  data={pieData} 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius={30} 
-                  outerRadius={45} 
-                  paddingAngle={5} 
-                  dataKey="value" 
-                  stroke="none"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={hasAttendanceData ? COLORS[index % COLORS.length] : '#f1f5f9'} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex-1 space-y-2">
-            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-50"><p className="text-[9px] text-emerald-600 font-black mb-0.5">حاضر</p><p className="text-lg font-black text-emerald-700">{attendanceToday.present}</p></div>
-            <div className="p-3 bg-rose-50 rounded-xl border border-rose-50"><p className="text-[9px] text-rose-600 font-black mb-0.5">غائب</p><p className="text-lg font-black text-rose-700">{attendanceToday.absent}</p></div>
-          </div>
+          <div><p className="text-gray-400 text-[9px] font-black">تنبيهات سلوكية</p><p className="text-base font-black text-gray-900">{behaviorStats.negative}</p></div>
         </div>
       </div>
 

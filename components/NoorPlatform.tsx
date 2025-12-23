@@ -1,12 +1,10 @@
 import React from 'react';
-import { ExternalLink, Globe, Lock, ShieldCheck, ChevronRight } from 'lucide-react';
+import { ExternalLink, Globe, Lock, ShieldCheck, ChevronRight, Smartphone } from 'lucide-react';
 
 const NoorPlatform: React.FC = () => {
   const url = "https://lms.moe.gov.om/student/users/login";
 
   const handleOpenPlatform = () => {
-    // استخدام window.cordova بشكل مباشر لتجنب مشاكل المكتبات الوسيطة (Wrappers)
-    // التي قد تسبب أخطاء مثل undefined subscribe
     // @ts-ignore
     const cordova = window.cordova;
 
@@ -15,45 +13,17 @@ const NoorPlatform: React.FC = () => {
         return;
     }
 
-    // إعدادات المتصفح بدقة
-    // location=no: إخفاء شريط العنوان
-    // toolbar=no: إخفاء شريط الأدوات
-    // presentationstyle=fullscreen: لضمان ملء الشاشة
-    const options = 'location=no,toolbar=no,zoom=no,hidden=no,presentationstyle=fullscreen,hardwareback=yes';
+    // إعدادات المتصفح:
+    // location=yes: يظهر شريط العنوان في أندرويد (يحتوي على زر X للإغلاق)
+    // toolbar=yes: يظهر شريط الأدوات السفلي في iOS (يحتوي على زر Done)
+    // closebuttoncaption: نص زر الإغلاق في iOS
+    // hidenavigationbuttons=no: إظهار أزرار التنقل (أمام/خلف) في iOS
+    // presentationstyle=fullscreen: ملء الشاشة
+    const options = 'location=yes,toolbar=yes,closebuttoncaption=إغلاق,hidenavigationbuttons=no,toolbarposition=bottom,presentationstyle=fullscreen,hardwareback=yes';
     const target = '_blank';
 
-    // إنشاء كائن المتصفح باستخدام الواجهة الأصلية
-    const browser = cordova.InAppBrowser.open(url, target, options);
-
-    if (!browser) return;
-
-    // كود الجافاسكريبت للزر العائم
-    const injectScriptCode = `
-        (function() {
-            if(document.getElementById('madrasati-back-btn')) return;
-            var btn = document.createElement('div');
-            btn.id = 'madrasati-back-btn';
-            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
-            btn.style.cssText = 'position:fixed;bottom:40px;left:25px;width:60px;height:60px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:999999;cursor:pointer;border:2px solid white;transition:transform 0.2s;';
-            btn.onclick = function() {
-                btn.style.transform = 'scale(0.8)';
-                setTimeout(function(){ window.location.href = 'https://close-madrasati-browser'; }, 100);
-            };
-            document.body.appendChild(btn);
-        })();
-    `;
-
-    // استخدام addEventListener بدلاً من subscribe لأننا نستخدم الكائن الأصلي
-    browser.addEventListener('loadstop', () => {
-        browser.executeScript({ code: injectScriptCode });
-        browser.insertCSS({ code: "body { padding-bottom: 80px !important; }" });
-    });
-
-    browser.addEventListener('loadstart', (event: any) => {
-        if (event.url && event.url.includes('close-madrasati-browser')) {
-            browser.close();
-        }
-    });
+    // فتح المتصفح باستخدام الواجهة الأصلية
+    cordova.InAppBrowser.open(url, target, options);
   };
 
   return (
@@ -70,7 +40,7 @@ const NoorPlatform: React.FC = () => {
          
          <h2 className="text-xl font-black text-gray-900 mb-2">منصة نور التعليمية</h2>
          <p className="text-xs font-bold text-gray-400 max-w-[280px] leading-relaxed">
-            النسخة المدمجة: تصفح المنصة دون أشرطة عناوين وبمظهر كامل الشاشة
+            الوصول المباشر للمنصة عبر المتصفح الآمن
          </p>
       </div>
 
@@ -78,10 +48,12 @@ const NoorPlatform: React.FC = () => {
       <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6">
          
          <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 w-full">
-            <div className="flex gap-3">
-               <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="flex gap-3 items-start">
+               <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] font-bold text-amber-800 leading-relaxed text-right">
-                  تم دمج المتصفح مع التطبيق. استخدم الزر العائم الأزرق (السهم) الذي سيظهر أسفل يسار الشاشة للعودة للتطبيق.
+                  سيتم فتح المنصة في نافذة مخصصة. 
+                  <br/>
+                  للعودة للتطبيق، استخدم زر <strong>"إغلاق"</strong> أو <strong>"X"</strong> الموجود في شريط الأدوات (أعلى أو أسفل الشاشة).
                </p>
             </div>
          </div>
@@ -95,7 +67,7 @@ const NoorPlatform: React.FC = () => {
             </div>
             <div className="flex-1 text-right pr-4">
                 <span className="block text-sm font-black">فتح موقع نور</span>
-                <span className="block text-[9px] font-bold text-blue-200">وضع ملء الشاشة (In-App)</span>
+                <span className="block text-[9px] font-bold text-blue-200">فتح في متصفح التطبيق</span>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-200" />
          </button>
@@ -104,7 +76,10 @@ const NoorPlatform: React.FC = () => {
       
       {/* Footer */}
       <div className="p-4 text-center">
-         <p className="text-[9px] font-bold text-gray-300">يتم تحميل الرابط: lms.moe.gov.om</p>
+         <p className="text-[9px] font-bold text-gray-300 flex items-center justify-center gap-1">
+            <Smartphone className="w-3 h-3" />
+            متوافق مع الوضع الأفقي والكمبيوتر اللوحي
+         </p>
       </div>
 
     </div>

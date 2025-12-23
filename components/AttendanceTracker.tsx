@@ -9,7 +9,6 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
-  // Use local date string (YYYY-MM-DD) to ensure accurate day tracking regardless of timezone offset
   const today = new Date().toLocaleDateString('en-CA'); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -31,13 +30,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       return;
     }
     
-    // تنظيف رقم الهاتف (حذف المسافات والرموز)
     const rawPhone = student.parentPhone.replace(/[^0-9+]/g, '');
     const cleanPhone = rawPhone.startsWith('0') ? '966' + rawPhone.substring(1) : rawPhone;
     
     const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تغيب عن المدرسة اليوم ${new Date(selectedDate).toLocaleDateString('ar-EG')}.`);
     
-    // إظهار خيارات (واتساب أو رسالة نصية)
     if (confirm('اختر طريقة الإرسال:\nموافق = واتساب\nإلغاء = رسالة نصية (SMS)')) {
          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
     } else {
@@ -55,7 +52,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-3"><Calendar className="text-blue-600 w-5 h-5" /><span className="font-black text-sm text-gray-700">تاريخ الحضور</span></div>
             <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-100 text-blue-600 outline-none" />
@@ -70,11 +67,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       </div>
 
       <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-100">
-        <div className="grid grid-cols-1 divide-y divide-gray-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse md:gap-px bg-gray-50">
           {filteredStudents.map((student, idx) => {
             const status = getStatus(student);
             return (
-              <div key={student.id} className="p-5 flex flex-col gap-4 hover:bg-gray-50/50 transition-colors">
+              <div key={student.id} className="p-5 flex flex-col gap-4 hover:bg-gray-50/50 transition-colors bg-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${status === 'present' ? 'bg-emerald-100 text-emerald-600' : status === 'absent' ? 'bg-rose-100 text-rose-600' : 'bg-gray-100 text-gray-400'}`}>{idx + 1}</div>
