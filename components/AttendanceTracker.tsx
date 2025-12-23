@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -13,11 +13,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
 
+  // Helper to display date as dd/mm/yyyy
+  const formatDateDisplay = (dateString: string) => {
+      const d = new Date(dateString);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+  };
+
   const toggleAttendance = (studentId: string, status: AttendanceStatus) => {
     setStudents(prev => prev.map(s => {
       if (s.id !== studentId) return s;
       const filtered = s.attendance.filter(a => a.date !== selectedDate);
-      // إذا تم ضغط نفس الحالة مرة أخرى، قم بإلغائها (حذف السجل) ليصبح "غير محدد"
       const currentStatus = s.attendance.find(a => a.date === selectedDate)?.status;
       if (currentStatus === status) {
           return { ...s, attendance: filtered };
@@ -37,8 +45,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     
     const rawPhone = student.parentPhone.replace(/[^0-9+]/g, '');
     const cleanPhone = rawPhone.startsWith('0') ? '966' + rawPhone.substring(1) : rawPhone;
-    
-    const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تغيب عن المدرسة اليوم ${new Date(selectedDate).toLocaleDateString('ar-EG')}.`);
+    const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تغيب عن المدرسة اليوم ${formatDateDisplay(selectedDate)}.`);
     
     if (confirm('اختر طريقة الإرسال:\nموافق = واتساب\nإلغاء = رسالة نصية (SMS)')) {
          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
@@ -58,10 +65,28 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   return (
     <div className="space-y-4 pb-24">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-2"><Calendar className="text-blue-600 w-4 h-4" /><span className="font-black text-xs text-gray-700">تاريخ الحضور</span></div>
-            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-gray-50 border-none rounded-xl px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-blue-100 text-blue-600 outline-none" />
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between relative">
+            <div className="flex items-center gap-2 pointer-events-none z-10">
+                <Calendar className="text-blue-600 w-4 h-4" />
+                <span className="font-black text-xs text-gray-700">تاريخ الحضور</span>
+            </div>
+            
+            {/* Custom styled date display trigger */}
+            <div className="relative">
+                <div className="flex items-center gap-1 bg-gray-50 px-3 py-1.5 rounded-xl border border-transparent focus-within:border-blue-200">
+                    <span className="text-xs font-black text-blue-600 dir-ltr">{formatDateDisplay(selectedDate)}</span>
+                    <ChevronDown className="w-3 h-3 text-blue-400" />
+                </div>
+                {/* Hidden date input covering the trigger area */}
+                <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e) => setSelectedDate(e.target.value)} 
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+            </div>
         </div>
+        
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2"><Filter className="text-indigo-600 w-4 h-4" /><span className="font-black text-xs text-gray-700">تصفية الفصل</span></div>
             <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-gray-50 border-none rounded-xl px-3 py-1.5 text-xs font-bold outline-none text-indigo-600 appearance-none min-w-[100px] text-center">
@@ -90,7 +115,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                   )}
                 </div>
                 
-                {/* iOS Style Segmented Control */}
                 <div className="bg-gray-100 p-1 rounded-xl flex gap-1 h-9">
                     <button 
                         onClick={() => toggleAttendance(student.id, 'present')} 

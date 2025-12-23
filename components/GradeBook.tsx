@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Student, GradeRecord } from '../types';
-import { Plus, Search, X, Trash2, Save, PieChart, FileSpreadsheet, Loader2, Info, Settings, Check, Calculator } from 'lucide-react';
+import { Plus, Search, X, Trash2, Save, PieChart, FileSpreadsheet, Loader2, Info, Settings, Check, Calculator, CalendarRange } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface GradeBookProps {
@@ -8,6 +8,8 @@ interface GradeBookProps {
   classes: string[];
   onUpdateStudent: (s: Student) => void;
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  currentSemester: '1' | '2';
+  onSemesterChange: (sem: '1' | '2') => void;
 }
 
 interface AssessmentTool {
@@ -16,7 +18,7 @@ interface AssessmentTool {
     maxScore: number;
 }
 
-const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStudent, setStudents }) => {
+const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStudent, setStudents, currentSemester, onSemesterChange }) => {
   const [selectedClass, setSelectedClass] = useState(classes[0] || 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddGrade, setShowAddGrade] = useState<{ student: Student; existingGrade?: GradeRecord } | null>(null);
@@ -98,7 +100,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     if (!toolName) return;
 
     if (confirm(`هل تريد تحديث الدرجة العظمى لجميع الطلاب في "${toolName}" لتصبح ${newMax}؟\nسيتم إعادة حساب النسبة المئوية تلقائياً.`)) {
-        // Deep update of students to ensure React detects the change and re-renders Total Score
+        // Deep update of students
         setStudents(prevStudents => {
             return prevStudents.map(student => {
                 const hasGrade = student.grades.some(g => g.category === toolName);
@@ -148,17 +150,23 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         category: categoryName,
         score: Number(score),
         maxScore: maxVal,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        semester: currentSemester
     };
     
-    const updatedGrades = [newGrade, ...(student.grades || [])];
+    // Remove existing grade for same category in same semester if exists
+    const filteredGrades = (student.grades || []).filter(
+        g => !(g.category === categoryName && (g.semester === currentSemester || (!g.semester && currentSemester === '1')))
+    );
+
+    const updatedGrades = [newGrade, ...filteredGrades];
     onUpdateStudent({ ...student, grades: updatedGrades });
 
     setShowAddGrade(null);
     setScore('');
   };
 
-  // --- دالة الاستيراد الجديدة ---
+  // --- دالة الاستيراد ---
   const handleBulkImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -172,7 +180,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
       if (!rawData || rawData.length === 0) throw new Error('الملف فارغ');
 
-      // 1. Find Header Row
       const nameKeywords = ['الاسم', 'اسم الطالب', 'Name', 'Student', 'Student Name', 'المتعلم'];
       let headerRowIndex = -1;
       let headers: string[] = [];
@@ -202,9 +209,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           gradeColIndices.push(idx);
       });
 
-      // 2. Pre-scan for Max Scores
       const colMaxValues: Record<number, number> = {};
-      
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i];
           if(!row) continue;
@@ -216,9 +221,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           });
       }
 
-      // 3. Process Data
       let updatedCount = 0;
-      let newToolsCount = 0;
       const updatedStudents = [...students];
       const currentTools = [...tools];
 
@@ -228,14 +231,12 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           if (existing) return existing.maxScore;
           
           const smartMax = Math.max(10, Math.ceil(observedMax));
-          
           const newTool = {
               id: Math.random().toString(36).substr(2, 9),
               name: cleanName,
               maxScore: smartMax
           };
           currentTools.push(newTool);
-          newToolsCount++;
           return smartMax;
       };
 
@@ -263,7 +264,8 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                               category: toolName,
                               score: numericScore,
                               maxScore: maxScore,
-                              date: new Date().toISOString()
+                              date: new Date().toISOString(),
+                              semester: currentSemester
                           };
 
                           const currentGrades = updatedStudents[studentIndex].grades || [];
@@ -282,7 +284,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       if (updatedCount > 0) {
           setStudents(updatedStudents);
           setTools(currentTools);
-          alert(`تم استيراد ${updatedCount} سجل.\nتم الكشف عن الدرجات العظمى تلقائياً بناءً على البيانات.`);
+          alert(`تم استيراد ${updatedCount} سجل للفصل الدراسي ${currentSemester === '1' ? 'الأول' : 'الثاني'}.`);
       } else {
           alert('لم يتم العثور على تطابق في الأسماء.');
       }
@@ -296,15 +298,24 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     }
   };
 
+  // Helper to filter grades by current semester
+  const getSemesterGrades = (student: Student) => {
+      return (student.grades || []).filter(g => {
+          if (!g.semester) return currentSemester === '1'; // Default to 1 if missing
+          return g.semester === currentSemester;
+      });
+  };
+
   const calculateTotal = (student: Student) => {
-    if (!student.grades || student.grades.length === 0) return 0;
-    const earned = student.grades.reduce((a, b) => a + b.score, 0);
-    const total = student.grades.reduce((a, b) => a + b.maxScore, 0);
+    const grades = getSemesterGrades(student);
+    if (grades.length === 0) return 0;
+    const earned = grades.reduce((a, b) => a + b.score, 0);
+    const total = grades.reduce((a, b) => a + b.maxScore, 0);
     return total > 0 ? Math.round((earned / total) * 100) : 0;
   };
 
   const getStudentStats = (student: Student) => {
-      const grades = student.grades || [];
+      const grades = getSemesterGrades(student);
       const earned = grades.reduce((a, b) => a + b.score, 0);
       const total = grades.reduce((a, b) => a + b.maxScore, 0);
       return { earned, total, count: grades.length };
@@ -314,6 +325,23 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     <div className="space-y-4 pb-20">
       {/* Header */}
       <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7] pt-2 pb-2 z-10">
+          
+          {/* Semester Toggle */}
+          <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex">
+             <button 
+                onClick={() => onSemesterChange('1')} 
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${currentSemester === '1' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+             >
+                الفصل الدراسي الأول
+             </button>
+             <button 
+                onClick={() => onSemesterChange('2')} 
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${currentSemester === '2' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+             >
+                الفصل الدراسي الثاني
+             </button>
+          </div>
+
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-3">
              <div className="flex items-center gap-2 flex-1">
                  <h2 className="text-xs font-black text-gray-900 whitespace-nowrap">سجل الدرجات</h2>
@@ -350,8 +378,8 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                     <button onClick={() => setShowImportInfo(false)}><X className="w-3 h-3 text-amber-600"/></button>
                   </div>
                   <ul className="list-disc list-inside text-[9px] text-amber-700 font-bold space-y-1">
-                      <li>يتم الكشف عن <strong>الدرجة العظمى</strong> تلقائياً من أعلى درجة في العمود.</li>
-                      <li>لتعديل الدرجة العظمى يدوياً بعد الاستيراد، استخدم زر <strong>الإعدادات <Settings className="w-3 h-3 inline"/></strong>.</li>
+                      <li>تأكد من اختيار <strong>الفصل الدراسي الصحيح</strong> قبل الاستيراد.</li>
+                      <li>يتم الكشف عن <strong>الدرجة العظمى</strong> تلقائياً.</li>
                   </ul>
               </div>
           )}
@@ -398,10 +426,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                       <button onClick={() => setShowToolsManager(false)} className="p-2 bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
                   </div>
                   
-                  <div className="bg-blue-50 p-3 rounded-xl mb-4 text-[9px] text-blue-700 font-bold shrink-0">
-                      تنبيه: تعديل "الدرجة العظمى" هنا سيقوم بتحديث جميع درجات الطلاب المرتبطة بهذه الأداة فوراً.
-                  </div>
-
                   <div className="overflow-y-auto space-y-3 pr-1 custom-scrollbar flex-1 mb-4">
                       {tools.length > 0 ? tools.map(tool => (
                           <div key={tool.id} className="flex items-center gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100">
@@ -426,7 +450,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                                     }
                                 }}
                                 className="p-2 text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
-                                title="حفظ التعديل"
                               >
                                 <Save className="w-3.5 h-3.5"/>
                               </button>
@@ -436,11 +459,10 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                   </div>
                   
                   <div className="pt-2 border-t border-gray-100 shrink-0 space-y-3">
-                      {/* Total Score Display */}
                       <div className="flex items-center justify-between bg-gray-900 text-white p-3 rounded-xl">
                           <div className="flex items-center gap-2">
                               <Calculator className="w-4 h-4 text-emerald-400" />
-                              <span className="text-[10px] font-bold">المجموع الكلي للدرجات العظمى:</span>
+                              <span className="text-[10px] font-bold">المجموع الكلي:</span>
                           </div>
                           <span className="text-sm font-black text-emerald-400">{toolsTotalMax}</span>
                       </div>
@@ -461,17 +483,25 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           </div>
       )}
 
-      {/* Add Grade Modal */}
+      {/* Add Grade Modal - Fixed Positioning */}
       {showAddGrade && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-end sm:items-center justify-center" onClick={() => setShowAddGrade(null)}>
-          <div className="bg-white w-full max-w-md h-[90vh] sm:h-auto rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-center justify-center p-4" onClick={() => setShowAddGrade(null)}>
+          <div className="bg-white w-full max-w-md h-auto max-h-[90vh] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
+             
+             {/* Modal Header */}
              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-black text-gray-900 text-sm">رصد درجة للطالب: <span className="text-blue-600">{showAddGrade.student.name}</span></h3>
-                <button onClick={() => setShowAddGrade(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-4 h-4"/></button>
+                <div>
+                    <h3 className="font-black text-gray-900 text-sm">رصد الدرجة</h3>
+                    <p className="text-[10px] font-bold text-blue-600 mt-0.5">{showAddGrade.student.name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg font-black">{currentSemester === '1' ? 'ف1' : 'ف2'}</span>
+                    <button onClick={() => setShowAddGrade(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-4 h-4"/></button>
+                </div>
              </div>
              
              {/* Assessment Tools Section */}
-             <div className="flex-1 overflow-y-auto mb-4">
+             <div className="flex-1 overflow-y-auto mb-4 custom-scrollbar min-h-[120px]">
                  <div className="grid grid-cols-2 gap-2">
                     {tools.map(tool => (
                         <div key={tool.id} onClick={() => handleToolSelection(tool)} className={`p-3 rounded-2xl border transition-all cursor-pointer relative group ${selectedToolId === tool.id ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200' : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200'}`}>
@@ -518,14 +548,14 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                   <div className="flex items-center gap-3">
                      <div className="bg-indigo-100 p-2 rounded-xl text-indigo-600"><PieChart className="w-5 h-5"/></div>
                      <div>
-                        <p className="text-[10px] text-indigo-800 font-bold">ملخص الطالب</p>
+                        <p className="text-[10px] text-indigo-800 font-bold">ملخص الفصل {currentSemester === '1' ? 'الأول' : 'الثاني'}</p>
                         <p className="text-xs font-black text-indigo-900">
                            {getStudentStats(showAddGrade.student).earned} / {getStudentStats(showAddGrade.student).total}
                         </p>
                      </div>
                   </div>
                   <div className="text-center">
-                     <p className="text-[9px] text-indigo-400 font-bold">المجموع</p>
+                     <p className="text-[9px] text-indigo-400 font-bold">النسبة</p>
                      <p className="text-lg font-black text-indigo-600">{calculateTotal(showAddGrade.student)}%</p>
                   </div>
              </div>

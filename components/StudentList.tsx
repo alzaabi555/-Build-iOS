@@ -108,7 +108,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7] pt-2 pb-2 z-10 backdrop-blur-sm bg-opacity-90">
         <div className="flex gap-2">
           <div className="relative flex-1">
