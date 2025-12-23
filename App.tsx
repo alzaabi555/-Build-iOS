@@ -39,7 +39,7 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
   const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-blue-600';
 
   return (
-    <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-full shadow-xl z-[200] flex items-center gap-2 animate-in slide-in-from-top-2 duration-300`}>
+    <div className={`fixed top-12 left-1/2 transform -translate-x-1/2 ${bg} text-white px-6 py-3 rounded-full shadow-xl z-[200] flex items-center gap-2 animate-in slide-in-from-top-2 duration-300`}>
       {type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <Info className="w-4 h-4" />}
       <span className="text-xs font-black">{message}</span>
     </div>
@@ -274,8 +274,8 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen bg-[#f2f2f7]" style={{direction: 'rtl'}}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Main Content: Adjusted paddingTop because header is removed */}
-      <main className="flex-1 px-4 py-4 overflow-y-auto pb-[calc(60px+var(--sab))] pt-[calc(10px+var(--sat))]">
+      {/* Main Content: INCREASED paddingTop significantly to push content down from notch */}
+      <main className="flex-1 px-4 overflow-y-auto pb-[calc(60px+var(--sab))] pt-[calc(3.5rem+var(--sat))]">
         <div className="max-w-7xl mx-auto h-full">
           <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
             {activeTab === 'dashboard' && (
