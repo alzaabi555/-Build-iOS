@@ -274,8 +274,8 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen bg-[#f2f2f7]" style={{direction: 'rtl'}}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Main Content: INCREASED paddingTop significantly to push content down from notch */}
-      <main className="flex-1 px-4 overflow-y-auto pb-[calc(60px+var(--sab))] pt-[calc(3.5rem+var(--sat))]">
+      {/* Main Content: INCREASED paddingTop significantly to push content down from notch - Changed from 3.5rem to 5rem for better Android support */}
+      <main className="flex-1 px-4 overflow-y-auto pb-[calc(60px+var(--sab))] pt-[calc(5rem+var(--sat))]">
         <div className="max-w-7xl mx-auto h-full">
           <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
             {activeTab === 'dashboard' && (
