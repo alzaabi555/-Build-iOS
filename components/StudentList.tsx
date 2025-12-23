@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Phone, Filter, Edit } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Phone, Filter, Edit, FileSpreadsheet } from 'lucide-react';
 
 interface StudentListProps {
   students: Student[];
@@ -9,9 +9,10 @@ interface StudentListProps {
   onAddStudentManually: (name: string, className: string, phone?: string) => void;
   onUpdateStudent: (s: Student) => void;
   onViewReport: (s: Student) => void;
+  onSwitchToImport: () => void;
 }
 
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onUpdateStudent, onViewReport }) => {
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onUpdateStudent, onViewReport, onSwitchToImport }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [showLogModal, setShowLogModal] = useState<{ student: Student; type: BehaviorType } | null>(null);
@@ -109,7 +110,14 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             </div>
             <input type="text" placeholder="ابحث عن طالب..." className="w-full bg-white border border-gray-200 rounded-2xl py-3.5 pr-10 pl-4 focus:outline-none focus:border-blue-300 transition-all shadow-sm text-sm font-black text-gray-800" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <button onClick={openCreateModal} className="w-12 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center transition-all"><UserPlus className="w-5 h-5" /></button>
+          {/* Import Button */}
+          <button onClick={onSwitchToImport} className="w-12 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-200 active:scale-95 flex items-center justify-center transition-all">
+             <FileSpreadsheet className="w-5 h-5" />
+          </button>
+          {/* Add Manual Button */}
+          <button onClick={openCreateModal} className="w-12 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center transition-all">
+             <UserPlus className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -153,6 +161,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-300">
                 <Search className="w-12 h-12 mb-2 opacity-50" />
                 <p className="text-xs font-bold">لا يوجد طلاب مطابقين للبحث</p>
+                <div className="mt-4 flex gap-3">
+                   <button onClick={onSwitchToImport} className="text-[10px] text-emerald-600 font-black bg-emerald-50 px-3 py-1.5 rounded-full flex items-center gap-1"><FileSpreadsheet className="w-3 h-3"/> استيراد ملف</button>
+                   <button onClick={openCreateModal} className="text-[10px] text-blue-600 font-black bg-blue-50 px-3 py-1.5 rounded-full flex items-center gap-1"><UserPlus className="w-3 h-3"/> إضافة يدوي</button>
+                </div>
             </div>
         )}
       </div>
