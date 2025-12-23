@@ -4,11 +4,12 @@
   "description": "نظام إدارة الطلاب - نسخة الأندرويد والآيفون",
   "main": "index.html",
   "scripts": {
-    "build": "npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:lucide-react --external:recharts --external:xlsx && cp index.html manifest.json www/",
+    "build": "npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:lucide-react --external:recharts --external:xlsx && cp index.html manifest.json icon.png noor_logo.png www/ 2>/dev/null || :",
     "prebuild": "mkdir -p www",
     "sync": "npx cap sync",
     "add-android": "npx cap add android",
-    "open-android": "npx cap open android"
+    "open-android": "npx cap open android",
+    "generate-icons": "npx capacitor-assets generate"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.0",
+    "@capacitor/assets": "^3.0.5",
     "esbuild": "^0.24.2"
   }
 }

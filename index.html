@@ -27,15 +27,20 @@
       --sat: env(safe-area-inset-top, 20px); 
       --sab: env(safe-area-inset-bottom, 20px); 
     }
+    html {
+      -webkit-text-size-adjust: 100%; /* منع تكبير النص في الايفون */
+      text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
     body { 
       font-family: 'Tajawal', sans-serif; 
       background-color: #f2f2f7; 
       margin: 0; padding: 0; 
       height: 100vh; width: 100vw;
       overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
       -webkit-user-select: none;
       user-select: none;
+      font-size: 14px; /* تثبيت حجم الخط الأساسي */
     }
     #initial-loader {
       position: fixed; inset: 0; background: #f2f2f7; 

@@ -260,7 +260,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white px-8 animate-in fade-in duration-700" style={{direction: 'rtl'}}>
         {/* استخدام أيقونة التطبيق بدلاً من الأيقونة العامة */}
-        <div className="mb-8 p-4 rounded-[2.5rem] shadow-xl shadow-blue-100 bg-white ring-4 ring-blue-50">
+        <div className="mb-8 p-4 rounded-3xl shadow-xl shadow-blue-100 bg-white ring-4 ring-blue-50">
            <img src="icon.png" className="w-24 h-24 object-contain" alt="شعار التطبيق" onError={(e) => { e.currentTarget.src = ''; e.currentTarget.className='hidden'; }} />
            <School className="text-blue-600 w-16 h-16 hidden first:block" /> 
         </div>
@@ -311,6 +311,7 @@ const App: React.FC = () => {
                 schedule={schedule}
                 onUpdateSchedule={setSchedule}
                 onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
+                onNavigate={(tab) => setActiveTab(tab)}
               />
             )}
             {activeTab === 'students' && (
@@ -372,13 +373,13 @@ const App: React.FC = () => {
       {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowSettingsModal(false)}>
-           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
               <div className="absolute top-0 right-0 p-6 z-10">
                  <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
               </div>
 
               <div className="flex flex-col items-center text-center mb-6 pt-2 shrink-0">
-                 <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center mb-3 shadow-xl shadow-blue-200">
+                 <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mb-3 shadow-xl shadow-blue-200">
                     <Info className="text-white w-8 h-8" />
                  </div>
                  <h2 className="text-lg font-black text-gray-800 mb-0.5">حول التطبيق</h2>
