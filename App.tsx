@@ -214,7 +214,17 @@ const App: React.FC = () => {
                 onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
               />
             )}
-            {activeTab === 'students' && <StudentList students={students} classes={classes} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} onAddStudentManually={handleAddStudentManually} onUpdateStudent={handleUpdateStudent} onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} />}
+            {activeTab === 'students' && (
+              <StudentList 
+                students={students} 
+                classes={classes} 
+                onAddClass={(c) => setClasses(prev => [...prev, c].sort())} 
+                onAddStudentManually={handleAddStudentManually} 
+                onUpdateStudent={handleUpdateStudent} 
+                onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }}
+                onSwitchToImport={() => setActiveTab('import')}
+              />
+            )}
             {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
             {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
             {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
