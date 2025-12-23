@@ -4,7 +4,7 @@
   "description": "تطبيق متكامل لإدارة حضور وغياب الطلاب، تسجيل السلوكيات، وإصدار التقارير.",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f2f2f7",
   "theme_color": "#f2f2f7",
   "scope": ".",

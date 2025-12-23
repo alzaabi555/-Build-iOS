@@ -7,6 +7,7 @@ import GradeBook from './components/GradeBook';
 import StudentReport from './components/StudentReport';
 import ExcelImport from './components/ExcelImport';
 import NoorPlatform from './components/NoorPlatform';
+import MinistrySync from './components/MinistrySync';
 import { 
   Users, 
   CalendarCheck, 
@@ -24,14 +25,14 @@ import {
   X,
   Download,
   Share,
-  Globe
+  Globe,
+  Building2
 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const saved = localStorage.getItem('activeTab');
-      // If the saved tab was 'ministry', revert to 'dashboard'
       return (saved === 'ministry' || !saved) ? 'dashboard' : saved;
     } catch { return 'dashboard'; }
   });
@@ -50,13 +51,11 @@ const App: React.FC = () => {
     } catch { return []; }
   });
 
-  // Schedule State
   const [schedule, setSchedule] = useState<ScheduleDay[]>(() => {
     try {
       const saved = localStorage.getItem('scheduleData');
       if (saved) return JSON.parse(saved);
     } catch {}
-    // Default Schedule Structure
     return [
       { dayName: 'الأحد', periods: Array(8).fill('') },
       { dayName: 'الاثنين', periods: Array(8).fill('') },
@@ -137,7 +136,6 @@ const App: React.FC = () => {
       const fileName = `madrasati_backup_${new Date().toISOString().split('T')[0]}.json`;
       const file = new File([JSON.stringify(dataToSave, null, 2)], fileName, { type: 'application/json' });
 
-      // Use Native Share API if available (Works great on iOS/Android)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -151,7 +149,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Fallback for desktop or browsers without file share support
       const url = URL.createObjectURL(file);
       const a = document.createElement('a');
       a.href = url;
@@ -190,13 +187,13 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[#f2f2f7]" style={{direction: 'rtl'}}>
-      {/* Header with Safe Area support */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-40 pt-[var(--sat)] transition-all">
-        <div className="px-5 h-16 flex justify-between items-center">
+        <div className="px-5 h-16 flex justify-between items-center max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-100">م</div>
               <div>
-                <h1 className="text-[13px] font-black text-slate-800 leading-tight truncate max-w-[150px]">{teacherInfo.school}</h1>
+                <h1 className="text-[13px] font-black text-slate-800 leading-tight truncate max-w-[250px]">{teacherInfo.school}</h1>
                 <p className="text-[10px] font-bold text-slate-400">أ. {teacherInfo.name}</p>
               </div>
           </div>
@@ -204,9 +201,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Expanded for Tablets */}
       <main className="flex-1 px-4 py-4 overflow-y-auto pb-[calc(80px+var(--sab))]">
-        <div className="max-w-md mx-auto h-full">
+        <div className="max-w-7xl mx-auto h-full">
           <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>}>
             {activeTab === 'dashboard' && (
               <Dashboard 
@@ -221,10 +218,10 @@ const App: React.FC = () => {
             {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
             {activeTab === 'grades' && <GradeBook students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />}
             {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
-            {/* هنا الصفحة الجديدة */}
             {activeTab === 'noor' && <NoorPlatform />}
+            {activeTab === 'ministry' && <MinistrySync />}
             {activeTab === 'report' && selectedStudentId && (
-              <div className="animate-in slide-in-from-right duration-300">
+              <div className="animate-in slide-in-from-right duration-300 max-w-3xl mx-auto">
                 <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-1.5 text-blue-600 font-bold text-xs bg-blue-50 w-fit px-3 py-1.5 rounded-full"><ChevronLeft className="w-4 h-4" /> العودة للقائمة</button>
                 <StudentReport student={students.find(s => s.id === selectedStudentId)!} />
               </div>
@@ -233,15 +230,15 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Centered for Tablets */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 pb-[var(--sab)] z-50">
-        <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+        <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
           {[
             { id: 'dashboard', icon: BarChart3, label: 'الرئيسية' },
             { id: 'attendance', icon: CalendarCheck, label: 'الحضور' }, 
             { id: 'students', icon: Users, label: 'الطلاب' },
             { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
-            // إضافة التبويب الجديد هنا
+            { id: 'ministry', icon: Building2, label: 'الوزارة' },
             { id: 'noor', icon: Globe, label: 'نور' },
           ].map(item => (
             <button 
@@ -258,7 +255,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* Settings & Info Modal */}
+      {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setShowSettingsModal(false)}>
            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -266,14 +263,13 @@ const App: React.FC = () => {
                  <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
               </div>
 
-              {/* About Section */}
               <div className="flex flex-col items-center text-center mb-8 pt-4">
                  <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center mb-4 shadow-xl shadow-blue-200">
                     <Info className="text-white w-10 h-10" />
                  </div>
                  <h2 className="text-lg font-black text-gray-800 mb-1">حول التطبيق</h2>
                  <div className="bg-blue-50 px-3 py-1 rounded-full mb-4">
-                   <p className="text-[10px] font-black text-blue-600">الإصدار 2.0</p>
+                   <p className="text-[10px] font-black text-blue-600">الإصدار 2.1 (نسخة التابلت)</p>
                  </div>
                  
                  <div className="space-y-1 mb-6">
@@ -292,7 +288,6 @@ const App: React.FC = () => {
                  </div>
               </div>
 
-              {/* Data Management Section */}
               <div className="border-t border-gray-100 pt-6 space-y-3">
                  <h3 className="text-xs font-black text-gray-400 mb-2 flex items-center gap-2"><Database className="w-3.5 h-3.5" /> إدارة البيانات</h3>
                  
