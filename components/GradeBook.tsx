@@ -152,7 +152,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       const workbook = XLSX.read(data);
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Use header:1 to get array of arrays, which is safer for varying column counts
+      // Use header:1 to get array of arrays
       const rawData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
 
       if (!rawData || rawData.length === 0) throw new Error('الملف فارغ');
@@ -161,7 +161,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       let headerRowIndex = -1;
       let headers: string[] = [];
 
-      // زيادة نطاق البحث عن صف العناوين للتأكد
+      // Find header row
       for (let i = 0; i < Math.min(rawData.length, 100); i++) {
           const row = rawData[i];
           if (!row) continue;
@@ -179,7 +179,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
       const nameColIndex = headers.findIndex(h => nameKeywords.some(kw => h.includes(kw)));
       
-      // قائمة استبعاد محدودة جداً لضمان قراءة جميع الأدوات (حتى الاختبار النهائي)
+      // قائمة استبعاد محدودة جداً
       const ignoreKeywords = ['النوع', 'gender', 'mobile', 'id', 'notes', 'رقم', 'ملاحظات', 'الجنس']; 
 
       const gradeColIndices: number[] = [];
@@ -187,15 +187,16 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           if (idx === nameColIndex) return;
           if (!h || h === '') return; // Skip empty headers
           
-          // Only ignore if explicitly in the ignore list
+          // Check ignore list
           if (ignoreKeywords.some(kw => h.toLowerCase() === kw || h.toLowerCase().includes(kw + ' '))) return;
           
-          // If we reach here, treat it as a potential grade column
+          // Found a potential tool column
           gradeColIndices.push(idx);
       });
 
       const colMaxValues: Record<number, number> = {};
-      // Determine max value for each column to auto-set max score
+      
+      // Determine max value from data rows
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i];
           if(!row) continue;
@@ -228,6 +229,14 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           return smartMax;
       };
 
+      // 1. Create ALL tools found in header first (even if empty)
+      gradeColIndices.forEach(colIdx => {
+          const toolName = headers[colIdx];
+          // Default to 10 if no data found, otherwise use max found
+          findOrCreateTool(toolName, colMaxValues[colIdx] || 10);
+      });
+
+      // 2. Import grades
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i];
           if (!row) continue;
@@ -244,7 +253,9 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                       const numericScore = parseFloat(String(cellValue));
                       if (!isNaN(numericScore)) {
                           const toolName = headers[colIdx];
-                          const maxScore = findOrCreateTool(toolName, colMaxValues[colIdx] || 10);
+                          // Tool is guaranteed to exist now
+                          const tool = currentTools.find(t => t.name.trim() === toolName.trim());
+                          const maxScore = tool ? tool.maxScore : 10;
 
                           const newGrade: GradeRecord = {
                               id: Math.random().toString(36).substr(2, 9),
@@ -274,12 +285,12 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           }
       }
 
-      if (updatedCount > 0) {
+      if (updatedCount > 0 || toolsAddedCount > 0) {
           setStudents(updatedStudents);
           setTools(currentTools);
-          alert(`تم استيراد ${updatedCount} طالب، واكتشاف ${gradeColIndices.length} أداة تقويم.`);
+          alert(`تم استيراد ${updatedCount} طالب، وإنشاء/تحديث ${toolsAddedCount} أداة تقويم.`);
       } else {
-          alert('لم يتم العثور على تطابق في الأسماء. يرجى التأكد من تطابق أسماء الطلاب مع القائمة المسجلة.');
+          alert('لم يتم العثور على تطابق في الأسماء.');
       }
 
     } catch (error) {
