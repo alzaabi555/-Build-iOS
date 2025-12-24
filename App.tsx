@@ -130,19 +130,30 @@ const App: React.FC = () => {
     return () => { if(backButtonListener) backButtonListener.remove(); };
   }, [showSettingsModal, activeTab]);
 
+  // Save data on change
   useEffect(() => {
-    try {
-      localStorage.setItem('studentData', JSON.stringify(students));
-      localStorage.setItem('classesData', JSON.stringify(classes));
-      localStorage.setItem('activeTab', activeTab);
-      localStorage.setItem('teacherName', teacherInfo.name);
-      localStorage.setItem('schoolName', teacherInfo.school);
-      localStorage.setItem('scheduleData', JSON.stringify(schedule));
-      localStorage.setItem('viewSheetUrl', viewSheetUrl);
-      localStorage.setItem('currentSemester', currentSemester);
-    } catch (e) {
-      console.warn("Storage restricted", e);
-    }
+    const saveData = () => {
+        try {
+            localStorage.setItem('studentData', JSON.stringify(students));
+            localStorage.setItem('classesData', JSON.stringify(classes));
+            localStorage.setItem('activeTab', activeTab);
+            localStorage.setItem('teacherName', teacherInfo.name);
+            localStorage.setItem('schoolName', teacherInfo.school);
+            localStorage.setItem('scheduleData', JSON.stringify(schedule));
+            localStorage.setItem('viewSheetUrl', viewSheetUrl);
+            localStorage.setItem('currentSemester', currentSemester);
+        } catch (e) {
+            console.warn("Storage restricted", e);
+        }
+    };
+
+    saveData();
+
+    // إضافة مستمع لحدث إغلاق الصفحة (مهم لنسخة الكمبيوتر)
+    window.addEventListener('beforeunload', saveData);
+    return () => {
+        window.removeEventListener('beforeunload', saveData);
+    };
   }, [students, classes, activeTab, teacherInfo, schedule, viewSheetUrl, currentSemester]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
