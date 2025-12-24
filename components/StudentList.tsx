@@ -23,9 +23,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [selectedPeriod, setSelectedPeriod] = useState<string>('1'); 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
-  // Notification Selection Modal
   const [showContactChoice, setShowContactChoice] = useState<{student: Student, message: string} | null>(null);
-  
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
@@ -43,8 +41,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
   const getStudentGradeStats = (student: Student) => {
       const grades = student.grades || [];
-      const earned = grades.reduce((a, b) => a + b.score, 0);
-      const total = grades.reduce((a, b) => a + b.maxScore, 0);
+      const earned = grades.reduce((a, b) => a + (Number(b.score) || 0), 0);
+      const total = grades.reduce((a, b) => a + (Number(b.maxScore) || 0), 0);
       return { earned, total };
   };
 
@@ -140,84 +138,51 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       setShowContactChoice(null);
   };
 
-  // --- دالة حفظ التقرير كـ PDF ---
-  const handleSaveClassReport = () => {
+  // --- دالة حفظ التقرير كـ PDF (الطريقة السحرية) ---
+  const handleSaveClassReport = async () => {
     if (filteredStudents.length === 0) {
         alert('لا يوجد طلاب لتوليد التقرير');
         return;
     }
     
     setIsGeneratingPdf(true);
-
-    // إنشاء عنصر HTML مؤقت يحتوي على البيانات
     const element = document.createElement('div');
     element.setAttribute('dir', 'rtl');
     element.style.fontFamily = 'Tajawal, sans-serif';
     element.style.padding = '20px';
+    element.style.color = '#000';
 
     const reportTitle = selectedClass === 'all' ? 'تقرير جميع الطلاب' : `تقرير الصف: ${selectedClass}`;
     const dateStr = new Date().toLocaleDateString('ar-EG');
 
     let htmlContent = `
-        <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
-          <h1 style="margin: 0; font-size: 24px; color: #000;">${reportTitle}</h1>
-          <p style="margin: 5px 0 0; font-size: 14px; color: #555;">تاريخ التقرير: ${dateStr}</p>
+        <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+          <h1 style="margin: 0; font-size: 24px;">${reportTitle}</h1>
+          <p style="margin: 5px 0 0; font-size: 14px; color: #555;">مدرسة: ${localStorage.getItem('schoolName') || ''}</p>
+          <p style="margin: 2px 0 0; font-size: 12px; color: #777;">التاريخ: ${dateStr}</p>
         </div>
     `;
 
     filteredStudents.forEach(student => {
         const stats = getStudentGradeStats(student);
         const behaviors = student.behaviors || [];
-        const attendance = student.attendance || [];
-        const absentCount = attendance.filter(a => a.status === 'absent').length;
-        const grades = student.grades || [];
-
+        const posPoints = behaviors.filter(b => b.type === 'positive').reduce((a, b) => a + b.points, 0);
+        const negPoints = behaviors.filter(b => b.type === 'negative').reduce((a, b) => a + Math.abs(b.points), 0);
+        
         htmlContent += `
-        <div style="border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 15px; page-break-inside: avoid; background: #fff;">
-           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 15px; page-break-inside: avoid; background: #fff;">
+           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f9f9f9; padding-bottom: 10px; margin-bottom: 10px;">
               <div>
-                  <div style="font-size: 18px; font-weight: bold; color: #000;">${student.name}</div>
-                  <div style="font-size: 12px; color: #666;">الفصل: ${student.classes.join(', ')}</div>
+                  <div style="font-size: 16px; font-weight: bold;">${student.name}</div>
+                  <div style="font-size: 11px; color: #666;">الفصل: ${student.classes.join(', ')}</div>
               </div>
               <div style="text-align: left;">
-                  <span style="display: inline-block; padding: 3px 8px; background: #f3f4f6; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px;">غياب: ${absentCount} يوم</span>
-                  <span style="display: inline-block; padding: 3px 8px; background: #ecfdf5; color: #047857; border-radius: 4px; font-size: 11px; font-weight: bold;">درجات: ${stats.earned}/${stats.total}</span>
+                  <span style="font-size: 13px; font-weight: 900; color: #2563eb;">المجموع: ${stats.earned} / ${stats.total}</span>
               </div>
            </div>
-
-           <div style="display: flex; gap: 15px;">
-              <div style="flex: 1;">
-                 <h4 style="margin: 5px 0; font-size: 12px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 2px;">ملخص الدرجات</h4>
-                 ${grades.length > 0 ? `
-                   <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                     <tbody>
-                       ${grades.map(g => `
-                         <tr style="border-bottom: 1px solid #f0f0f0;">
-                            <td style="padding: 4px; color: #333;">${g.category}</td>
-                            <td style="padding: 4px; font-weight: bold; text-align: center;">${g.score}/${g.maxScore}</td>
-                            <td style="padding: 4px; color: #666; text-align: center;">${g.semester === '1' ? 'ف1' : 'ف2'}</td>
-                         </tr>`).join('')}
-                     </tbody>
-                   </table>
-                 ` : '<p style="font-size:10px; color:#999; margin: 5px 0;">لا توجد درجات</p>'}
-              </div>
-
-              <div style="flex: 1;">
-                 <h4 style="margin: 5px 0; font-size: 12px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 2px;">السلوكيات</h4>
-                 ${behaviors.length > 0 ? `
-                   <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                     <tbody>
-                       ${behaviors.map(b => `
-                         <tr style="border-bottom: 1px solid #f0f0f0;">
-                           <td style="padding: 4px; color: #333;">${b.description}</td>
-                           <td style="padding: 4px; text-align: center; font-weight: bold; color: ${b.type === 'positive' ? '#059669' : '#dc2626'};">${b.type === 'positive' ? 'إيجابي' : 'سلبي'}</td>
-                           <td style="padding: 4px; color: #666; text-align: center;">${new Date(b.date).toLocaleDateString('ar-EG')}</td>
-                         </tr>
-                       `).join('')}
-                     </tbody>
-                   </table>
-                 ` : '<p style="font-size:10px; color:#999; margin: 5px 0;">سجل السلوك نظيف</p>'}
-              </div>
+           <div style="display: flex; gap: 20px; font-size: 10px; font-weight: bold;">
+              <span style="color: #059669;">نقاط إيجابية مجمعة: ${posPoints}</span>
+              <span style="color: #dc2626;">نقاط سلبية مجمعة: ${negPoints}</span>
            </div>
         </div>
         `;
@@ -225,46 +190,54 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
     element.innerHTML = htmlContent;
 
+    const filename = `تقرير_الفصل_${selectedClass}.pdf`;
     const opt = {
-        margin:       10,
-        filename:     `Report_${selectedClass}_${new Date().toISOString().split('T')[0]}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        margin: [10, 10, 10, 10],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     if (typeof html2pdf !== 'undefined') {
-        const worker = html2pdf().set(opt).from(element);
-        
-        // إصلاح نسخة الهاتف: فتح الملف في نافذة جديدة بدلاً من التنزيل
-        if (Capacitor.isNativePlatform()) {
-             worker.toPdf().get('pdf').then((pdf: any) => {
-                 const blob = pdf.output('bloburl');
-                 window.open(blob, '_blank');
-                 setIsGeneratingPdf(false);
-             }).catch((err: any) => {
-                 console.error(err);
-                 alert('حدث خطأ أثناء معاينة الملف');
-                 setIsGeneratingPdf(false);
-             });
-        } else {
-             worker.save().then(() => {
-                setIsGeneratingPdf(false);
-             }).catch((err: any) => {
-                console.error(err);
-                alert('حدث خطأ أثناء حفظ الملف');
-                setIsGeneratingPdf(false);
-             });
+        try {
+            const worker = html2pdf().set(opt).from(element).toPdf();
+            const pdfBlob = await worker.output('blob');
+            const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: filename,
+                    text: 'تقرير فصل من تطبيق راصد'
+                });
+            } else {
+                const url = URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(url), 60000);
+                }, 100);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء إنشاء ملف PDF');
+        } finally {
+            setIsGeneratingPdf(false);
         }
     } else {
-        alert('مكتبة PDF غير محملة. تأكد من الاتصال بالإنترنت.');
+        alert('مكتبة PDF غير متوفرة');
         setIsGeneratingPdf(false);
     }
   };
 
   return (
     <div className="space-y-4 overflow-x-hidden">
-      {/* Sticky Header with Blur for Mobile / Normal for Desktop */}
       <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7]/85 backdrop-blur-xl md:bg-transparent md:backdrop-blur-none pt-2 pb-2 z-10 transition-all">
         <div className="flex gap-2">
           <div className="relative flex-1 group">
@@ -279,12 +252,11 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          {/* Action Buttons */}
           <button 
             onClick={handleSaveClassReport} 
             disabled={isGeneratingPdf}
             className="w-10 h-10 bg-white text-gray-700 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200/50 hover:bg-gray-50 disabled:opacity-50" 
-            title={Capacitor.isNativePlatform() ? "معاينة تقرير الفصل (PDF)" : "حفظ تقرير الفصل (PDF)"}
+            title="مشاركة تقرير الفصل"
           >
              {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <Download className="w-5 h-5" />}
           </button>
@@ -305,18 +277,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </div>
       </div>
 
-      {/* Grid Layout: 1 col mobile, multi-col desktop */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pb-24 md:pb-8">
         {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => {
           const stats = getStudentGradeStats(student);
           return (
             <div key={student.id} className="bg-white rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col gap-4 active:scale-[0.99] transition-transform duration-200 relative overflow-hidden hover:shadow-md">
               <div className="flex justify-between items-start w-full relative">
-                {/* تم تعديل التنسيق هنا لحل مشكلة التداخل */}
                 <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-8">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0 ${idx % 3 === 0 ? 'bg-gradient-to-b from-blue-400 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-b from-indigo-400 to-indigo-600' : 'bg-gradient-to-b from-violet-400 to-violet-600'}`}>{student.name.charAt(0)}</div>
                   <div className="min-w-0 flex-1">
-                    {/* إصلاح حجم الخط في الكمبيوتر: md:text-xs */}
                     <h4 className="font-bold text-gray-900 text-[15px] md:text-xs truncate leading-tight mb-1 w-full">{student.name}</h4>
                     <div className="flex flex-wrap gap-1">
                       <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded text-center min-w-[30px]">{student.classes[0]}</span>
@@ -329,7 +298,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   </div>
                 </div>
                 
-                {/* زر التعديل بموضع ثابت لتجنب الاختفاء */}
                 <button onClick={() => openEditModal(student)} className="absolute top-0 left-0 w-8 h-8 flex items-center justify-center bg-gray-50 rounded-full text-gray-400 hover:bg-gray-100 active:bg-gray-200 z-10 shrink-0">
                     <Edit className="w-4 h-4" />
                 </button>
@@ -354,7 +322,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         )}
       </div>
 
-      {/* iOS Style Bottom Sheet (Mobile) / Centered Modal (Desktop) */}
       {showStudentModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
           <div className="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe" onClick={e => e.stopPropagation()}>
@@ -375,7 +342,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 </div>
                 <div className="space-y-1">
                    <label className="text-[11px] font-bold text-gray-500 mr-1">رقم ولي الأمر</label>
-                   <input type="tel" className="w-full bg-gray-50 rounded-xl py-3.5 px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-800 text-left dir-ltr" placeholder="9665..." value={studentPhoneInput} onChange={e => setStudentPhoneInput(e.target.value)} />
+                   <input type="tel" className="w-full bg-gray-50 rounded-xl py-3.5 px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-800 text-left dir-ltr" placeholder="968..." value={studentPhoneInput} onChange={e => setStudentPhoneInput(e.target.value)} />
                 </div>
              </div>
              
@@ -387,9 +354,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </div>
       )}
 
-      {/* Behavior Modal */}
       {showLogModal && (
-        // إصلاح Z-Index لنسخة الكمبيوتر للسماح بالكتابة
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-200" onClick={() => setShowLogModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 pb-safe" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 sm:hidden" />
@@ -410,7 +375,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
               ))}
             </div>
 
-            {/* خيار رقم الحصة عند اختيار التسرب */}
             {logDesc === 'التسرب من الحصص' && showLogModal.type === 'negative' && (
                 <div className="mb-4 bg-rose-50 p-3 rounded-xl border border-rose-100 animate-in fade-in slide-in-from-top-2">
                     <label className="text-[10px] font-black text-rose-800 mb-2 block flex items-center gap-1"><Clock className="w-3 h-3"/> اختر الحصة التي تسرب منها:</label>
@@ -437,7 +401,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </div>
       )}
 
-      {/* Notification Choice Modal */}
       {showContactChoice && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[220] flex items-center justify-center p-4" onClick={() => setShowContactChoice(null)}>
             <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
