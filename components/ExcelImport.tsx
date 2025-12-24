@@ -44,7 +44,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
 
       // مصفوفات الكلمات الدلالية للبحث عن الأعمدة
       const nameHeaders = ['الاسم', 'اسم الطالب', 'اسم', 'Name', 'Student Name', 'Full Name', 'المتعلم', 'اسم المتعلم', 'Student'];
-      const phoneHeaders = ['رقم ولي الأمر', 'جوال', 'الهاتف', 'هاتف', 'رقم الجوال', 'رقم الهاتف', 'Phone', 'Mobile', 'Parent Phone', 'Contact'];
+      const phoneHeaders = ['رقم ولي الأمر', 'جوال', 'الهاتف', 'هاتف', 'رقم الجوال', 'رقم الهاتف', 'Phone', 'Mobile', 'Parent Phone', 'Contact', 'رقم'];
       const gradeHeaders = ['الصف', 'صف', 'Grade', 'Level', 'المرحلة'];
 
       const mappedStudents: Student[] = jsonData
@@ -52,11 +52,18 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
           const rowKeys = Object.keys(row);
           
           const nameKey = rowKeys.find(k => nameHeaders.includes(k.trim()));
-          const phoneKey = rowKeys.find(k => phoneHeaders.includes(k.trim()));
+          const phoneKey = rowKeys.find(k => phoneHeaders.some(ph => k.trim().includes(ph))); // Improved matching
           const gradeKey = rowKeys.find(k => gradeHeaders.includes(k.trim()));
 
           const studentName = String(row[nameKey || ''] || row[rowKeys[0]] || '').trim();
-          const parentPhone = phoneKey ? String(row[phoneKey] || '').trim() : '';
+          
+          // تأكد من قراءة رقم الهاتف حتى لو كان رقماً في الإكسل
+          let parentPhone = '';
+          if (phoneKey && row[phoneKey] !== undefined) {
+             parentPhone = String(row[phoneKey]).trim();
+             // تنظيف الرقم من أي رموز غير رقمية إذا لزم الأمر، لكن الإبقاء على +
+             // parentPhone = parentPhone.replace(/[^0-9+]/g, '');
+          }
 
           return {
             id: Math.random().toString(36).substr(2, 9),
@@ -187,7 +194,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                   <p>للحصول على أفضل النتائج، تأكد أن ملف الإكسل يحتوي على الأعمدة التالية:</p>
                   <ul className="list-disc list-inside mt-1">
                       <li>عمود لاسم الطالب (مثال: "الاسم")</li>
-                      <li>عمود لرقم الجوال (مثال: "جوال")</li>
+                      <li>عمود لرقم الجوال (مثال: "رقم ولي الأمر" أو "جوال")</li>
                   </ul>
               </div>
           </div>
