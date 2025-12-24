@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Student } from '../types';
 import { Award, AlertCircle, MessageCircle, PhoneCall, GraduationCap, Trash2, Download, Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 // تعريف html2pdf لتجنب أخطاء TypeScript
 declare var html2pdf: any;
@@ -159,13 +160,28 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent 
     };
 
     if (typeof html2pdf !== 'undefined') {
-        html2pdf().set(opt).from(element).save().then(() => {
-            setIsGeneratingPdf(false);
-        }).catch((err: any) => {
-            console.error(err);
-            alert('حدث خطأ أثناء حفظ الملف');
-            setIsGeneratingPdf(false);
-        });
+        const worker = html2pdf().set(opt).from(element);
+        
+        // إصلاح نسخة الهاتف: فتح الملف في نافذة جديدة
+        if (Capacitor.isNativePlatform()) {
+             worker.toPdf().get('pdf').then((pdf: any) => {
+                 const blob = pdf.output('bloburl');
+                 window.open(blob, '_blank');
+                 setIsGeneratingPdf(false);
+             }).catch((err: any) => {
+                 console.error(err);
+                 alert('حدث خطأ أثناء معاينة الملف');
+                 setIsGeneratingPdf(false);
+             });
+        } else {
+             worker.save().then(() => {
+                setIsGeneratingPdf(false);
+             }).catch((err: any) => {
+                console.error(err);
+                alert('حدث خطأ أثناء حفظ الملف');
+                setIsGeneratingPdf(false);
+             });
+        }
     } else {
         alert('مكتبة PDF غير محملة. تأكد من الاتصال بالإنترنت.');
         setIsGeneratingPdf(false);
@@ -181,7 +197,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent 
                 onClick={handleSaveReport} 
                 disabled={isGeneratingPdf}
                 className="absolute top-6 left-6 p-3 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-600 transition-colors disabled:opacity-50" 
-                title="حفظ كـ PDF"
+                title={Capacitor.isNativePlatform() ? "معاينة التقرير (PDF)" : "حفظ التقرير (PDF)"}
             >
                 {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <Download className="w-5 h-5" />}
             </button>
@@ -194,21 +210,26 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent 
                 </div>
             </div>
 
-            {/* إحصائيات نهائية */}
+            {/* إحصائيات نهائية - تم تعديل مكان المستوى */}
             <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-2xl">
               <div>
                   <span className="text-[9px] font-bold text-gray-400 block mb-1">النتيجة النهائية</span>
-                  <div className="flex items-end gap-2">
-                     <span className="text-xl font-black text-gray-900">{finalPercentage}%</span>
+                  <div className="flex flex-col items-start gap-1">
+                     <span className="text-3xl font-black text-gray-900 leading-none">{finalPercentage}%</span>
+                     {finalMax > 0 && <span className="text-[10px] font-bold text-gray-400">({finalScore}/{finalMax})</span>}
+                     
+                     {/* نقل المستوى للأسفل */}
                      {finalSymbol && (
-                         <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${finalSymbol.color}`}>{finalSymbol.symbol}</span>
+                         <div className="flex items-center gap-2 mt-2 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm">
+                             <span className="text-[9px] font-bold text-gray-400">المستوى:</span>
+                             <span className={`text-xs font-black ${finalSymbol.color.replace('bg-', 'text-').split(' ')[0]}`}>{finalSymbol.symbol}</span>
+                         </div>
                      )}
-                     {finalMax > 0 && <span className="text-[10px] font-bold text-gray-400 mb-1">({finalScore}/{finalMax})</span>}
                   </div>
               </div>
               <div>
                   <span className="text-[9px] font-bold text-gray-400 block mb-1">عدد السلوكيات</span>
-                  <span className="text-xl font-black text-gray-900">{behaviors.length}</span>
+                  <span className="text-3xl font-black text-gray-900 leading-none">{behaviors.length}</span>
               </div>
             </div>
 

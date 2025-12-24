@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap, ChevronRight, Clock, Download, MessageCircle, Smartphone, Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 // تعريف html2pdf لتجنب أخطاء TypeScript
 declare var html2pdf: any;
@@ -125,9 +126,14 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       const rawPhone = student.parentPhone!.replace(/[^0-9+]/g, '');
       const cleanPhone = rawPhone.startsWith('0') ? '966' + rawPhone.substring(1) : rawPhone;
       const encodedMsg = encodeURIComponent(message);
+      const isDesktop = window.innerWidth > 768;
 
       if (method === 'whatsapp') {
-          window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+          if (isDesktop) {
+             window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`, '_blank');
+          } else {
+             window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+          }
       } else {
           window.open(`sms:${rawPhone}?&body=${encodedMsg}`, '_blank');
       }
@@ -227,15 +233,29 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // التحقق من وجود المكتبة
     if (typeof html2pdf !== 'undefined') {
-        html2pdf().set(opt).from(element).save().then(() => {
-            setIsGeneratingPdf(false);
-        }).catch((err: any) => {
-            console.error(err);
-            alert('حدث خطأ أثناء حفظ الملف');
-            setIsGeneratingPdf(false);
-        });
+        const worker = html2pdf().set(opt).from(element);
+        
+        // إصلاح نسخة الهاتف: فتح الملف في نافذة جديدة بدلاً من التنزيل
+        if (Capacitor.isNativePlatform()) {
+             worker.toPdf().get('pdf').then((pdf: any) => {
+                 const blob = pdf.output('bloburl');
+                 window.open(blob, '_blank');
+                 setIsGeneratingPdf(false);
+             }).catch((err: any) => {
+                 console.error(err);
+                 alert('حدث خطأ أثناء معاينة الملف');
+                 setIsGeneratingPdf(false);
+             });
+        } else {
+             worker.save().then(() => {
+                setIsGeneratingPdf(false);
+             }).catch((err: any) => {
+                console.error(err);
+                alert('حدث خطأ أثناء حفظ الملف');
+                setIsGeneratingPdf(false);
+             });
+        }
     } else {
         alert('مكتبة PDF غير محملة. تأكد من الاتصال بالإنترنت.');
         setIsGeneratingPdf(false);
@@ -264,7 +284,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             onClick={handleSaveClassReport} 
             disabled={isGeneratingPdf}
             className="w-10 h-10 bg-white text-gray-700 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200/50 hover:bg-gray-50 disabled:opacity-50" 
-            title="حفظ تقرير الفصل (PDF)"
+            title={Capacitor.isNativePlatform() ? "معاينة تقرير الفصل (PDF)" : "حفظ تقرير الفصل (PDF)"}
           >
              {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <Download className="w-5 h-5" />}
           </button>
@@ -296,7 +316,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-8">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0 ${idx % 3 === 0 ? 'bg-gradient-to-b from-blue-400 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-b from-indigo-400 to-indigo-600' : 'bg-gradient-to-b from-violet-400 to-violet-600'}`}>{student.name.charAt(0)}</div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-gray-900 text-[15px] truncate leading-tight mb-1 w-full">{student.name}</h4>
+                    {/* إصلاح حجم الخط في الكمبيوتر: md:text-xs */}
+                    <h4 className="font-bold text-gray-900 text-[15px] md:text-xs truncate leading-tight mb-1 w-full">{student.name}</h4>
                     <div className="flex flex-wrap gap-1">
                       <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded text-center min-w-[30px]">{student.classes[0]}</span>
                       {stats.total > 0 && (
@@ -335,7 +356,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {/* iOS Style Bottom Sheet (Mobile) / Centered Modal (Desktop) */}
       {showStudentModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-200" onClick={() => setShowStudentModal(false)}>
           <div className="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe" onClick={e => e.stopPropagation()}>
              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 sm:hidden" />
              <h3 className="text-xl font-black text-center mb-6 text-gray-900">{modalMode === 'create' ? 'إضافة طالب' : 'تعديل البيانات'}</h3>
@@ -368,7 +389,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {/* Behavior Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-200" onClick={() => setShowLogModal(null)}>
+        // إصلاح Z-Index لنسخة الكمبيوتر للسماح بالكتابة
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-200" onClick={() => setShowLogModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 pb-safe" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 sm:hidden" />
             
@@ -417,7 +439,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       {/* Notification Choice Modal */}
       {showContactChoice && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[160] flex items-center justify-center p-4" onClick={() => setShowContactChoice(null)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[220] flex items-center justify-center p-4" onClick={() => setShowContactChoice(null)}>
             <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                 <h3 className="text-center font-black text-lg mb-2 text-gray-800">إرسال التبليغ</h3>
                 <p className="text-center text-xs text-gray-500 font-bold mb-6">اختر طريقة إرسال الرسالة لولي الأمر</p>

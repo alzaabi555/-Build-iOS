@@ -54,9 +54,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       const rawPhone = notificationTarget.parentPhone.replace(/[^0-9+]/g, '');
       const cleanPhone = rawPhone.startsWith('0') ? '966' + rawPhone.substring(1) : rawPhone;
       const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${notificationTarget.name} قد تغيب عن المدرسة اليوم ${formatDateDisplay(selectedDate)}.`);
+      const isDesktop = window.innerWidth > 768;
 
       if (method === 'whatsapp') {
-          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+          if (isDesktop) {
+              window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`, '_blank');
+          } else {
+              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+          }
       } else {
           window.open(`sms:${rawPhone}?&body=${msg}`, '_blank');
       }
