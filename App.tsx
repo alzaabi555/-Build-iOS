@@ -8,6 +8,7 @@ import StudentReport from './components/StudentReport';
 import ExcelImport from './components/ExcelImport';
 import NoorPlatform from './components/NoorPlatform';
 import { App as CapApp } from '@capacitor/app';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { 
   Users, 
   CalendarCheck, 
@@ -131,7 +132,7 @@ const App: React.FC = () => {
     bellAudioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1085/1085-preview.mp3');
   }, []);
 
-  // Timer for Period Notifications
+  // Timer for In-App Period Notifications (Exact Time)
   useEffect(() => {
       const checkTime = () => {
           const now = new Date();
@@ -156,6 +157,80 @@ const App: React.FC = () => {
       return () => clearInterval(interval);
   }, [periodTimes]);
 
+  // Scheduler for Push Notifications (5 Minutes Before)
+  useEffect(() => {
+    const scheduleNotifications = async () => {
+        try {
+            // 1. Request Permission
+            const perm = await LocalNotifications.requestPermissions();
+            if (perm.display !== 'granted') return;
+
+            // 2. Clear old scheduled notifications
+            const pending = await LocalNotifications.getPending();
+            if (pending.notifications.length > 0) {
+                await LocalNotifications.cancel(pending);
+            }
+
+            const now = new Date();
+            const currentDay = now.getDay(); // 0 = Sunday
+            // Skip weekends for scheduling (Fri=5, Sat=6)
+            if (currentDay > 4) return;
+
+            const notifsToSchedule: any[] = [];
+            let idCounter = 1000;
+
+            const createDateFromTime = (timeStr: string, offsetMinutes: number) => {
+                if (!timeStr) return null;
+                const [h, m] = timeStr.split(':').map(Number);
+                const d = new Date();
+                d.setHours(h);
+                d.setMinutes(m + offsetMinutes);
+                d.setSeconds(0);
+                return d;
+            };
+
+            periodTimes.forEach(p => {
+                // Schedule before Start
+                if (p.startTime) {
+                    const notifyTime = createDateFromTime(p.startTime, -5); // 5 mins before
+                    if (notifyTime && notifyTime > now) {
+                        notifsToSchedule.push({
+                            id: idCounter++,
+                            title: 'تنبيه الحصص 🔔',
+                            body: `الحصة ${p.periodNumber} تبدأ بعد 5 دقائق`,
+                            schedule: { at: notifyTime },
+                            sound: 'beep.wav'
+                        });
+                    }
+                }
+
+                // Schedule before End
+                if (p.endTime) {
+                    const notifyTime = createDateFromTime(p.endTime, -5); // 5 mins before
+                    if (notifyTime && notifyTime > now) {
+                         notifsToSchedule.push({
+                            id: idCounter++,
+                            title: 'تنبيه الحصص 🔔',
+                            body: `الحصة ${p.periodNumber} تنتهي بعد 5 دقائق`,
+                            schedule: { at: notifyTime },
+                            sound: 'beep.wav'
+                        });
+                    }
+                }
+            });
+
+            if (notifsToSchedule.length > 0) {
+                await LocalNotifications.schedule({ notifications: notifsToSchedule });
+                console.log('Scheduled notifications:', notifsToSchedule.length);
+            }
+
+        } catch (e) {
+            console.error('Error scheduling notifications:', e);
+        }
+    };
+
+    scheduleNotifications();
+  }, [periodTimes]);
 
   useEffect(() => {
     let backButtonListener: any;
