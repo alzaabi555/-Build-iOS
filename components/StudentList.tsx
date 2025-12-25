@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap, ChevronRight, Clock, Download, MessageCircle, Smartphone, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 // تعريف html2pdf لتجنب أخطاء TypeScript
 declare var html2pdf: any;
@@ -229,21 +230,34 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     if (typeof html2pdf !== 'undefined') {
         try {
             const worker = html2pdf().set(opt).from(element).toPdf();
-            const pdfBlob = await worker.output('blob');
-
-            // الحل السحري للحفظ المباشر (Direct Download) بدلاً من المشاركة
-            const url = URL.createObjectURL(pdfBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename; // هذا يجبر المتصفح على التنزيل
-            document.body.appendChild(link);
-            link.click();
             
-            // تنظيف
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }, 2000);
+            if (Capacitor.isNativePlatform()) {
+                 // للأجهزة المحمولة: حفظ مباشر في مجلد المستندات
+                 const pdfBase64 = await worker.output('datauristring');
+                 const base64Data = pdfBase64.split(',')[1];
+                 
+                 await Filesystem.writeFile({
+                    path: filename,
+                    data: base64Data,
+                    directory: Directory.Documents,
+                 });
+                 
+                 alert(`تم حفظ التقرير بنجاح!\n\nيمكنك العثور عليه في تطبيق "الملفات" (Files) في مجلد المستندات.`);
+            } else {
+                 const pdfBlob = await worker.output('blob');
+                 const url = URL.createObjectURL(pdfBlob);
+                 const link = document.createElement('a');
+                 link.href = url;
+                 link.download = filename; 
+                 link.target = "_blank";
+                 document.body.appendChild(link);
+                 link.click();
+                 
+                 setTimeout(() => {
+                     document.body.removeChild(link);
+                     URL.revokeObjectURL(url);
+                 }, 2000);
+            }
 
         } catch (err) {
             console.error(err);
