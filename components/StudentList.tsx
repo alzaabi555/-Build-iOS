@@ -14,9 +14,11 @@ interface StudentListProps {
   onUpdateStudent: (s: Student) => void;
   onViewReport: (s: Student) => void;
   onSwitchToImport: () => void;
+  currentSemester: '1' | '2';
+  onSemesterChange: (sem: '1' | '2') => void;
 }
 
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onUpdateStudent, onViewReport, onSwitchToImport }) => {
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onUpdateStudent, onViewReport, onSwitchToImport, currentSemester, onSemesterChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [showLogModal, setShowLogModal] = useState<{ student: Student; type: BehaviorType } | null>(null);
@@ -40,7 +42,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   });
 
   const getStudentGradeStats = (student: Student) => {
-      const grades = student.grades || [];
+      // تصفية الدرجات حسب الفصل الدراسي الحالي للعرض في القائمة
+      const grades = (student.grades || []).filter(g => !g.semester || g.semester === currentSemester);
       const earned = grades.reduce((a, b) => a + (Number(b.score) || 0), 0);
       const total = grades.reduce((a, b) => a + (Number(b.maxScore) || 0), 0);
       return { earned, total };
@@ -100,7 +103,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       date: new Date().toISOString(),
       type: showLogModal.type,
       description: behaviorText,
-      points: showLogModal.type === 'positive' ? 1 : -1
+      points: showLogModal.type === 'positive' ? 1 : -1,
+      semester: currentSemester // إضافة الفصل الدراسي للسلوك
     };
 
     onUpdateStudent({
@@ -138,7 +142,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       setShowContactChoice(null);
   };
 
-  // --- دالة حفظ التقرير كـ PDF (الطريقة السحرية) ---
+  // --- تقرير الفصل التفصيلي ---
   const handleSaveClassReport = async () => {
     if (filteredStudents.length === 0) {
         alert('لا يوجد طلاب لتوليد التقرير');
@@ -152,37 +156,60 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     element.style.padding = '20px';
     element.style.color = '#000';
 
-    const reportTitle = selectedClass === 'all' ? 'تقرير جميع الطلاب' : `تقرير الصف: ${selectedClass}`;
+    const reportTitle = selectedClass === 'all' ? 'تقرير جميع الطلاب' : `تقرير الصف ${selectedClass}`;
     const dateStr = new Date().toLocaleDateString('ar-EG');
+    const semName = currentSemester === '1' ? 'الفصل الدراسي الأول' : 'الفصل الدراسي الثاني';
 
     let htmlContent = `
         <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
-          <h1 style="margin: 0; font-size: 24px;">${reportTitle}</h1>
-          <p style="margin: 5px 0 0; font-size: 14px; color: #555;">مدرسة: ${localStorage.getItem('schoolName') || ''}</p>
-          <p style="margin: 2px 0 0; font-size: 12px; color: #777;">التاريخ: ${dateStr}</p>
+          <h1 style="margin: 0; font-size: 24px;">${reportTitle} - ${semName}</h1>
+          <p style="margin: 5px 0 0; font-size: 14px; color: #555;">مدرسة  ${localStorage.getItem('schoolName') || ''}</p>
+          <p style="margin: 2px 0 0; font-size: 12px; color: #777;">التاريخ  <span dir="ltr">${dateStr}</span></p>
         </div>
     `;
 
     filteredStudents.forEach(student => {
-        const stats = getStudentGradeStats(student);
-        const behaviors = student.behaviors || [];
-        const posPoints = behaviors.filter(b => b.type === 'positive').reduce((a, b) => a + b.points, 0);
-        const negPoints = behaviors.filter(b => b.type === 'negative').reduce((a, b) => a + Math.abs(b.points), 0);
+        // تصفية البيانات حسب الفصل المختار للتقرير
+        const relevantGrades = (student.grades || []).filter(g => !g.semester || g.semester === currentSemester);
+        const relevantBehaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === currentSemester);
         
+        const earned = relevantGrades.reduce((a, b) => a + (Number(b.score) || 0), 0);
+        const total = relevantGrades.reduce((a, b) => a + (Number(b.maxScore) || 0), 0);
+        
+        const posPoints = relevantBehaviors.filter(b => b.type === 'positive').reduce((a, b) => a + b.points, 0);
+        const negPoints = relevantBehaviors.filter(b => b.type === 'negative').reduce((a, b) => a + Math.abs(b.points), 0);
+        
+        // بناء جدول الدرجات التفصيلي للطالب
+        const gradesRows = relevantGrades.map(g => `
+            <tr>
+                <td style="border:1px solid #ddd; padding:4px; font-size:10px;">${g.category}</td>
+                <td style="border:1px solid #ddd; padding:4px; font-size:10px; text-align:center;">${g.score} / ${g.maxScore}</td>
+            </tr>
+        `).join('');
+
+        // بناء قائمة السلوكيات
+        const behaviorItems = relevantBehaviors.map(b => `
+            <span style="display:inline-block; font-size:9px; padding:2px 5px; margin:2px; border-radius:4px; background:${b.type === 'positive' ? '#d1fae5' : '#fee2e2'}; color:${b.type === 'positive' ? '#065f46' : '#991b1b'};">
+                ${b.description}
+            </span>
+        `).join('');
+
         htmlContent += `
-        <div style="border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 15px; page-break-inside: avoid; background: #fff;">
-           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f9f9f9; padding-bottom: 10px; margin-bottom: 10px;">
-              <div>
-                  <div style="font-size: 16px; font-weight: bold;">${student.name}</div>
-                  <div style="font-size: 11px; color: #666;">الفصل: ${student.classes.join(', ')}</div>
-              </div>
-              <div style="text-align: left;">
-                  <span style="font-size: 13px; font-weight: 900; color: #2563eb;">المجموع: ${stats.earned} / ${stats.total}</span>
-              </div>
+        <div style="border: 1px solid #000; padding: 10px; border-radius: 8px; margin-bottom: 15px; page-break-inside: avoid; background: #fff;">
+           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
+              <h3 style="margin:0; font-size:14px;">${student.name}</h3>
+              <div style="font-size:12px; font-weight:bold;">المجموع  ${earned} من ${total} | سلوك  <span style="color:green">+${posPoints}</span> - <span style="color:red">-${negPoints}</span></div>
            </div>
-           <div style="display: flex; gap: 20px; font-size: 10px; font-weight: bold;">
-              <span style="color: #059669;">نقاط إيجابية مجمعة: ${posPoints}</span>
-              <span style="color: #dc2626;">نقاط سلبية مجمعة: ${negPoints}</span>
+           
+           <div style="display:flex; gap:10px;">
+               <div style="flex:1;">
+                   <h4 style="margin:0 0 5px 0; font-size:11px; text-decoration:underline;">الدرجات </h4>
+                   ${relevantGrades.length > 0 ? `<table style="width:100%; border-collapse:collapse;">${gradesRows}</table>` : '<p style="font-size:10px; color:#999;">لا توجد درجات</p>'}
+               </div>
+               <div style="flex:1;">
+                   <h4 style="margin:0 0 5px 0; font-size:11px; text-decoration:underline;">السلوكيات </h4>
+                   <div>${relevantBehaviors.length > 0 ? behaviorItems : '<p style="font-size:10px; color:#999;">سجل نظيف</p>'}</div>
+               </div>
            </div>
         </div>
         `;
@@ -190,7 +217,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
     element.innerHTML = htmlContent;
 
-    const filename = `تقرير_الفصل_${selectedClass}.pdf`;
+    const filename = `تقرير_شامل_${selectedClass}_${semName}.pdf`;
     const opt = {
         margin: [10, 10, 10, 10],
         filename: filename,
@@ -203,27 +230,21 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         try {
             const worker = html2pdf().set(opt).from(element).toPdf();
             const pdfBlob = await worker.output('blob');
-            const file = new File([pdfBlob], filename, { type: 'application/pdf' });
 
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: filename,
-                    text: 'تقرير فصل من تطبيق راصد'
-                });
-            } else {
-                const url = URL.createObjectURL(pdfBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                
-                setTimeout(() => {
-                    document.body.removeChild(link);
-                    setTimeout(() => URL.revokeObjectURL(url), 60000);
-                }, 100);
-            }
+            // الحل السحري للحفظ المباشر (Direct Download) بدلاً من المشاركة
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename; // هذا يجبر المتصفح على التنزيل
+            document.body.appendChild(link);
+            link.click();
+            
+            // تنظيف
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 2000);
+
         } catch (err) {
             console.error(err);
             alert('حدث خطأ أثناء إنشاء ملف PDF');
@@ -238,7 +259,26 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
   return (
     <div className="space-y-4 overflow-x-hidden">
-      <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7]/85 backdrop-blur-xl md:bg-transparent md:backdrop-blur-none pt-2 pb-2 z-10 transition-all">
+      
+      {/* Semester Toggle & Search Header */}
+      <div className="flex flex-col gap-3 sticky top-0 bg-[#f2f2f7]/95 backdrop-blur-xl md:bg-transparent md:backdrop-blur-none pt-2 pb-2 z-10 transition-all shadow-sm md:shadow-none px-1">
+        
+        {/* Semester Buttons */}
+        <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+             <button 
+                onClick={() => onSemesterChange('1')} 
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${currentSemester === '1' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+             >
+                الفصل الأول
+             </button>
+             <button 
+                onClick={() => onSemesterChange('2')} 
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${currentSemester === '2' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+             >
+                الفصل الثاني
+             </button>
+        </div>
+
         <div className="flex gap-2">
           <div className="relative flex-1 group">
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -247,7 +287,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             <input 
                 type="text" 
                 placeholder="ابحث عن طالب..." 
-                className="w-full bg-gray-200/60 focus:bg-white md:bg-white border-none rounded-xl py-2.5 pr-9 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-gray-800 placeholder:text-gray-500 shadow-sm md:shadow-none md:border md:border-gray-200" 
+                className="w-full bg-white border-none rounded-xl py-2.5 pr-9 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-bold text-gray-800 placeholder:text-gray-500 shadow-sm border border-gray-100" 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
             />
@@ -255,12 +295,12 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           <button 
             onClick={handleSaveClassReport} 
             disabled={isGeneratingPdf}
-            className="w-10 h-10 bg-white text-gray-700 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200/50 hover:bg-gray-50 disabled:opacity-50" 
-            title="مشاركة تقرير الفصل"
+            className="w-10 h-10 bg-white text-gray-700 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200 hover:bg-gray-50 disabled:opacity-50" 
+            title="تقرير الفصل الشامل"
           >
              {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <Download className="w-5 h-5" />}
           </button>
-          <button onClick={onSwitchToImport} className="w-10 h-10 bg-white text-emerald-600 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200/50 hover:bg-gray-50" title="استيراد إكسل">
+          <button onClick={onSwitchToImport} className="w-10 h-10 bg-white text-emerald-600 rounded-xl shadow-sm active:scale-95 flex items-center justify-center transition-all border border-gray-200 hover:bg-gray-50" title="استيراد إكسل">
              <FileSpreadsheet className="w-5 h-5" />
           </button>
           <button onClick={openCreateModal} className="w-10 h-10 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-200 active:scale-95 flex items-center justify-center transition-all hover:bg-blue-700">
@@ -269,7 +309,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 px-1">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200/50 text-gray-500 shrink-0"><Filter className="w-3.5 h-3.5" /></div>
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-500 shrink-0 border border-gray-300"><Filter className="w-3.5 h-3.5" /></div>
           <button onClick={() => setSelectedClass('all')} className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border ${selectedClass === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>الكل</button>
           {classes.map(cls => (
             <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border ${selectedClass === cls ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-600 border-gray-200'}`}>{cls}</button>
@@ -286,7 +326,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-8">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0 ${idx % 3 === 0 ? 'bg-gradient-to-b from-blue-400 to-blue-600' : idx % 3 === 1 ? 'bg-gradient-to-b from-indigo-400 to-indigo-600' : 'bg-gradient-to-b from-violet-400 to-violet-600'}`}>{student.name.charAt(0)}</div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-gray-900 text-[15px] md:text-xs truncate leading-tight mb-1 w-full">{student.name}</h4>
+                    <h4 className="font-bold text-gray-900 text-[15px] md:text-xs truncate leading-tight mb-1 w-full" title={student.name}>{student.name}</h4>
                     <div className="flex flex-wrap gap-1">
                       <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded text-center min-w-[30px]">{student.classes[0]}</span>
                       {stats.total > 0 && (
@@ -361,7 +401,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             
             <div className="flex justify-between items-center mb-6">
               <div>
-                  <h3 className="font-black text-lg text-gray-900">رصد سلوك</h3>
+                  <h3 className="font-black text-lg text-gray-900">رصد سلوك ({currentSemester === '1' ? 'فصل 1' : 'فصل 2'})</h3>
                   <p className="text-xs text-gray-400 font-bold">{showLogModal.student.name}</p>
               </div>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${showLogModal.type === 'positive' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
