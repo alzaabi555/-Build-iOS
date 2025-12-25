@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Student, GradeRecord } from '../types';
 import { Award, AlertCircle, MessageCircle, PhoneCall, Trash2, Download, Loader2, Mail, UserCheck, FileText } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
 // تعريف html2pdf لتجنب أخطاء TypeScript
@@ -82,19 +83,24 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             const worker = html2pdf().set(opt).from(element).toPdf();
             
             if (Capacitor.isNativePlatform()) {
-                 // للأجهزة المحمولة: حفظ مباشر في مجلد المستندات
                  const pdfBase64 = await worker.output('datauristring');
                  const base64Data = pdfBase64.split(',')[1];
                  
-                 await Filesystem.writeFile({
+                 // 1. الحفظ في الذاكرة المؤقتة (Cache)
+                 const result = await Filesystem.writeFile({
                     path: filename,
                     data: base64Data,
-                    directory: Directory.Documents,
+                    directory: Directory.Cache, 
                  });
                  
-                 alert(`تم حفظ التقرير بنجاح!\n\nيمكنك العثور عليه في تطبيق "الملفات" (Files) في مجلد المستندات.`);
+                 // 2. فتح نافذة المشاركة (Share Sheet)
+                 await Share.share({
+                    title: filename,
+                    url: result.uri,
+                    dialogTitle: 'مشاركة/حفظ التقرير'
+                 });
             } else {
-                 // للمتصفح العادي: تنزيل مباشر
+                 // للمتصفح العادي
                  const pdfBlob = await worker.output('blob');
                  const url = URL.createObjectURL(pdfBlob);
                  const link = document.createElement('a');
@@ -103,7 +109,6 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                  link.target = "_blank";
                  document.body.appendChild(link);
                  link.click();
-                 
                  setTimeout(() => {
                      document.body.removeChild(link);
                      URL.revokeObjectURL(url);
@@ -112,7 +117,6 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
         } catch (err) {
             console.error('PDF Error:', err);
-            alert('حدث خطأ أثناء حفظ التقرير.');
         } finally {
             setLoader(false);
         }
@@ -483,7 +487,12 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             {/* أزرار الاتصال */}
             {student.parentPhone && (
               <div className="flex gap-2 border-t border-gray-50 pt-4">
-                <a href={`https://wa.me/${student.parentPhone}`} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 rounded-2xl text-[10px] font-black active:scale-95 transition-all"><MessageCircle className="w-4 h-4"/> واتساب</a>
+                <button 
+                  onClick={() => window.open(`https://wa.me/${student.parentPhone}`, '_system')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 rounded-2xl text-[10px] font-black active:scale-95 transition-all"
+                >
+                    <MessageCircle className="w-4 h-4"/> واتساب
+                </button>
                 <a href={`tel:${student.parentPhone}`} className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-700 rounded-2xl text-[10px] font-black active:scale-95 transition-all"><PhoneCall className="w-4 h-4"/> اتصال</a>
               </div>
             )}

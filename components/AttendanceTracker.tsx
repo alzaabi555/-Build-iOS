@@ -60,10 +60,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           if (isDesktop) {
               window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`, '_blank');
           } else {
-              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+              // استخدام _system لفتح التطبيق الأصلي في الأندرويد وتجنب أخطاء WebView
+              window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_system');
           }
       } else {
-          window.open(`sms:${rawPhone}?&body=${msg}`, '_blank');
+          window.open(`sms:${rawPhone}?&body=${msg}`, '_system');
       }
       setNotificationTarget(null);
   };

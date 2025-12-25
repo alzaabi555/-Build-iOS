@@ -3,6 +3,7 @@ import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap, ChevronRight, Clock, Download, MessageCircle, Smartphone, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 // تعريف html2pdf لتجنب أخطاء TypeScript
 declare var html2pdf: any;
@@ -135,10 +136,11 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           if (isDesktop) {
              window.open(`https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`, '_blank');
           } else {
-             window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_blank');
+             // استخدام _system بدلاً من _blank لإجبار الأندرويد على فتح التطبيق الأصلي
+             window.open(`https://wa.me/${cleanPhone}?text=${encodedMsg}`, '_system');
           }
       } else {
-          window.open(`sms:${rawPhone}?&body=${encodedMsg}`, '_blank');
+          window.open(`sms:${rawPhone}?&body=${encodedMsg}`, '_system');
       }
       setShowContactChoice(null);
   };
@@ -232,17 +234,24 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             const worker = html2pdf().set(opt).from(element).toPdf();
             
             if (Capacitor.isNativePlatform()) {
-                 // للأجهزة المحمولة: حفظ مباشر في مجلد المستندات
                  const pdfBase64 = await worker.output('datauristring');
                  const base64Data = pdfBase64.split(',')[1];
                  
-                 await Filesystem.writeFile({
+                 // 1. الحفظ في الذاكرة المؤقتة (Cache) أولاً
+                 const result = await Filesystem.writeFile({
                     path: filename,
                     data: base64Data,
-                    directory: Directory.Documents,
+                    directory: Directory.Cache, // استخدام الكاش بدلاً من المستندات لتجنب الفوضى
                  });
                  
-                 alert(`تم حفظ التقرير بنجاح!\n\nيمكنك العثور عليه في تطبيق "الملفات" (Files) في مجلد المستندات.`);
+                 // 2. فتح نافذة المشاركة (Share Sheet)
+                 // سيظهر للمستخدم خيار "Save to Files" (حفظ في الملفات)
+                 await Share.share({
+                    title: 'مشاركة التقرير',
+                    text: `تقرير شامل للصف ${selectedClass}`,
+                    url: result.uri,
+                    dialogTitle: 'حفظ التقرير PDF'
+                 });
             } else {
                  const pdfBlob = await worker.output('blob');
                  const url = URL.createObjectURL(pdfBlob);
@@ -261,7 +270,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
         } catch (err) {
             console.error(err);
-            alert('حدث خطأ أثناء إنشاء ملف PDF');
+            // لا نظهر تنبيه خطأ في حال قام المستخدم بإلغاء المشاركة
         } finally {
             setIsGeneratingPdf(false);
         }
