@@ -99,10 +99,23 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد ${statusText} اليوم ${formatDateDisplay(selectedDate)}.`);
 
       if (method === 'whatsapp') {
-          // استخدام api.whatsapp.com و _system لضمان فتح التطبيق الأصلي في جميع البيئات
-          window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`, '_system');
+          // استخدام wa.me أكثر توافقاً مع جميع الأنظمة
+          const url = `https://wa.me/${cleanPhone}?text=${msg}`;
+          
+          if (Capacitor.isNativePlatform()) {
+             // للأندرويد و iOS
+             window.open(url, '_system');
+          } else {
+             // للويب والويندوز (Electron)
+             window.open(url, '_blank');
+          }
       } else {
-          window.open(`sms:${cleanPhone}?&body=${msg}`, '_system');
+          // للرسائل النصية
+          if (Capacitor.isNativePlatform()) {
+            window.open(`sms:${cleanPhone}?&body=${msg}`, '_system');
+          } else {
+            window.open(`sms:${cleanPhone}?&body=${msg}`, '_self');
+          }
       }
       setNotificationTarget(null);
   };

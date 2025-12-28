@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Student, GradeRecord } from '../types';
-import { Plus, Search, X, Trash2, Settings, Check, FileSpreadsheet, Loader2, Info, Edit2 } from 'lucide-react';
+import { Plus, Search, X, Trash2, Settings, Check, FileSpreadsheet, Loader2, Info, Edit2, Download, AlertTriangle, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface GradeBookProps {
@@ -23,6 +23,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddGrade, setShowAddGrade] = useState<{ student: Student } | null>(null);
   const [editingGrade, setEditingGrade] = useState<GradeRecord | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   
   // Bulk Import State
   const [isImporting, setIsImporting] = useState(false);
@@ -75,6 +76,31 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         const updatedStudent = { ...showAddGrade.student, grades: updatedGrades };
         onUpdateStudent(updatedStudent);
         setShowAddGrade({ student: updatedStudent }); // Update modal view
+    }
+  };
+
+  const handleDeleteAllGrades = () => {
+    const warningMsg = `تحذير هام:
+هل أنت متأكد من رغبتك في حذف سجل الدرجات بالكامل للفصل الدراسي ${currentSemester === '1' ? 'الأول' : 'الثاني'}؟
+
+- سيتم حذف جميع الدرجات المرصودة في هذا الفصل.
+- سيتم حذف جميع أدوات التقويم (الأعمدة).
+- لن يتم حذف بيانات الطلاب (الأسماء والأرقام).
+
+هذا الإجراء لا يمكن التراجع عنه.`;
+
+    if (confirm(warningMsg)) {
+        // حذف درجات الفصل الحالي فقط، والإبقاء على درجات الفصل الآخر
+        const updatedStudents = students.map(s => ({
+            ...s,
+            grades: s.grades.filter(g => g.semester !== currentSemester && (g.semester || currentSemester !== '1'))
+        }));
+        
+        setStudents(updatedStudents);
+        setTools([]); // تصفير الأدوات لبدء سجل جديد نظيف
+        setEditingGrade(null);
+        setShowAddGrade(null);
+        alert('تم حذف سجل الدرجات وأدوات التقويم بنجاح.');
     }
   };
 
@@ -174,6 +200,8 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       if (!rawData || rawData.length === 0) throw new Error('الملف فارغ');
 
       const nameKeywords = ['الاسم', 'اسم الطالب', 'Name', 'Student', 'Student Name', 'المتعلم'];
+      const phoneKeywords = ['هاتف', 'جوال', 'mobile', 'phone', 'contact', 'ولي', 'parent']; // كلمات مفتاحية للهاتف
+
       let headerRowIndex = -1;
       let headers: string[] = [];
 
@@ -193,13 +221,16 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       }
 
       const nameColIndex = headers.findIndex(h => nameKeywords.some(kw => h.includes(kw)));
-      const ignoreKeywords = ['النوع', 'gender', 'mobile', 'id', 'notes', 'رقم', 'ملاحظات', 'الجنس']; 
+      const phoneColIndex = headers.findIndex(h => phoneKeywords.some(kw => h.toLowerCase().includes(kw))); // تحديد عمود الهاتف
+
+      const ignoreKeywords = ['النوع', 'gender', 'id', 'notes', 'رقم', 'ملاحظات', 'الجنس']; 
 
       const gradeColIndices: number[] = [];
       headers.forEach((h, idx) => {
-          if (idx === nameColIndex) return;
+          if (idx === nameColIndex || idx === phoneColIndex) return; // تجاهل الاسم والهاتف عند البحث عن الدرجات
           if (!h || h === '') return;
           if (ignoreKeywords.some(kw => h.toLowerCase() === kw || h.toLowerCase().includes(kw + ' '))) return;
+          if (phoneKeywords.some(kw => h.toLowerCase().includes(kw))) return; // تأكيد عدم اعتبار الهاتف درجة
           gradeColIndices.push(idx);
       });
 
@@ -220,22 +251,20 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
       let updatedCount = 0;
       let toolsAddedCount = 0;
+      let phonesUpdatedCount = 0;
       const updatedStudents = [...students];
       const currentTools = [...tools];
 
       const findOrCreateTool = (toolName: string, colIdx: number): number => {
           const cleanName = toolName.trim();
           const existing = currentTools.find(t => t.name.trim() === cleanName);
-          
-          // استخدام أعلى درجة موجودة في العمود كدرجة عظمى، أو 0 إذا لم توجد بيانات
           const maxFound = columnMaxScores[colIdx] || 0;
-          
           if (existing) return existing.maxScore;
           
           const newTool = {
               id: Math.random().toString(36).substr(2, 9),
               name: cleanName,
-              maxScore: maxFound // لا نستخدم 10 افتراضياً، بل نستخدم ما وجدناه أو 0
+              maxScore: maxFound
           };
           currentTools.push(newTool);
           toolsAddedCount++;
@@ -248,7 +277,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           findOrCreateTool(toolName, colIdx);
       });
 
-      // Import grades
+      // Import grades and update student info
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i];
           if (!row) continue;
@@ -258,6 +287,22 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           const studentIndex = updatedStudents.findIndex(s => s.name.trim() === studentName);
 
           if (studentIndex > -1) {
+              // --- تحديث رقم ولي الأمر إذا وجد ---
+              if (phoneColIndex > -1) {
+                  const rawPhone = row[phoneColIndex];
+                  if (rawPhone) {
+                      const newPhone = String(rawPhone).replace(/[^0-9+]/g, ''); // تنظيف الرقم
+                      if (newPhone && updatedStudents[studentIndex].parentPhone !== newPhone) {
+                          updatedStudents[studentIndex] = {
+                              ...updatedStudents[studentIndex],
+                              parentPhone: newPhone
+                          };
+                          phonesUpdatedCount++;
+                      }
+                  }
+              }
+
+              // --- رصد الدرجات ---
               let gradesAdded = 0;
               gradeColIndices.forEach(colIdx => {
                   const cellValue = row[colIdx];
@@ -266,8 +311,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                       if (!isNaN(numericScore)) {
                           const toolName = headers[colIdx];
                           const tool = currentTools.find(t => t.name.trim() === toolName.trim());
-                          
-                          // استخدام الدرجة العظمى للأداة (المستنتجة) أو 0. لا نستخدم 10.
                           const maxScore = tool ? tool.maxScore : 0;
 
                           const newGrade: GradeRecord = {
@@ -297,10 +340,10 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
           }
       }
 
-      if (updatedCount > 0 || toolsAddedCount > 0) {
+      if (updatedCount > 0 || toolsAddedCount > 0 || phonesUpdatedCount > 0) {
           setStudents(updatedStudents);
           setTools(currentTools);
-          alert(`تم استيراد ${updatedCount} طالب.\nملاحظة: تم تحديد الدرجة العظمى بناءً على أعلى درجة في الملف. يرجى مراجعة "أدوات التقويم" لتعديل الدرجات العظمى إذا كانت (0) أو غير صحيحة.`);
+          alert(`تقرير الاستيراد:\n- تم تحديث درجات: ${updatedCount} طالب\n- تم تحديث أرقام هواتف: ${phonesUpdatedCount} طالب\n- تم إضافة ${toolsAddedCount} أدوات تقويم جديدة.`);
       } else {
           alert('لم يتم العثور على تطابق في الأسماء.');
       }
@@ -335,8 +378,69 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     const totalScore = sem1.score + sem2.score;
     const totalMax = sem1.max + sem2.max;
     const totalPercent = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+    
+    // إضافة حساب المعدل (مجموع الفصلين / 2)
+    const finalAverage = totalScore / 2;
 
-    return { sem1, sem2, totalScore, totalMax, totalPercent };
+    return { sem1, sem2, totalScore, totalMax, totalPercent, finalAverage };
+  };
+
+  const handleExportGradeBook = () => {
+    if (filteredStudents.length === 0) {
+        alert('لا يوجد طلاب لتصدير بياناتهم.');
+        return;
+    }
+
+    const semesterLabel = currentSemester === '1' ? 'الفصل_الأول' : 'الفصل_الثاني';
+
+    const data = filteredStudents.map(s => {
+        const stats = calculateFullStats(s);
+        // نأخذ إحصائيات الفصل الحالي فقط
+        const currentSemStats = currentSemester === '1' ? stats.sem1 : stats.sem2;
+        
+        // حساب رمز المستوى
+        const percentage = currentSemStats.max > 0 ? (currentSemStats.score / currentSemStats.max) * 100 : 0;
+        let gradeSymbol = '-';
+        if (currentSemStats.max > 0) {
+            if (percentage >= 90) gradeSymbol = 'أ';
+            else if (percentage >= 80) gradeSymbol = 'ب';
+            else if (percentage >= 65) gradeSymbol = 'ج';
+            else if (percentage >= 50) gradeSymbol = 'د';
+            else gradeSymbol = 'هـ';
+        }
+
+        const row: any = {
+            'اسم الطالب': s.name,
+            'الفصل': s.classes.join(', ')
+        };
+
+        // إضافة أعمدة الأدوات للفصل الحالي فقط
+        tools.forEach(t => {
+            const grade = s.grades.find(g => 
+                g.category === t.name && 
+                (g.semester === currentSemester || (!g.semester && currentSemester === '1'))
+            );
+            
+            row[t.name] = grade ? grade.score : '-';
+        });
+
+        // الإجمالي للفصل الحالي والمستوى
+        row['المجموع'] = currentSemStats.score;
+        row['المستوى'] = gradeSymbol;
+
+        return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    // ضبط اتجاه الورقة لليمين لليسار
+    if(!wb.Workbook) wb.Workbook = {};
+    if(!wb.Workbook.Views) wb.Workbook.Views = [];
+    if(!wb.Workbook.Views[0]) wb.Workbook.Views[0] = {};
+    wb.Workbook.Views[0].RTL = true;
+
+    XLSX.utils.book_append_sheet(wb, ws, `سجل_${semesterLabel}`);
+    XLSX.writeFile(wb, `سجل_الدرجات_${semesterLabel}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const handleAddTool = () => {
@@ -410,6 +514,18 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                     <Settings className="w-3.5 h-3.5" />
                     <span className="text-[9px] font-black">أدوات التقويم</span>
                  </button>
+                 <button onClick={() => setShowPreviewModal(true)} className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-1" title="معاينة التقرير">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-black">معاينة التقرير</span>
+                 </button>
+                 <button onClick={handleExportGradeBook} className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all flex items-center gap-1" title={`تحميل سجل ${currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'} (Excel)`}>
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-black">تحميل السجل ({currentSemester === '1' ? 'ف1' : 'ف2'})</span>
+                 </button>
+                 <button onClick={handleDeleteAllGrades} className="px-3 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 active:scale-95 transition-all flex items-center gap-1" title="حذف سجل الدرجات بالكامل">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-black">حذف السجل</span>
+                 </button>
                  <button onClick={() => setShowImportInfo(!showImportInfo)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100"><Info className="w-4 h-4" /></button>
                  <label className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-xl text-[10px] font-black cursor-pointer hover:bg-emerald-100 active:scale-95 transition-all">
                     {isImporting ? <Loader2 className="w-4 h-4 animate-spin"/> : <FileSpreadsheet className="w-4 h-4"/>}
@@ -428,6 +544,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                   <ul className="list-disc list-inside text-[9px] text-amber-700 font-bold space-y-1">
                       <li>تأكد من اختيار <strong>الفصل الدراسي الصحيح</strong> قبل الاستيراد.</li>
                       <li>يتم استيراد كافة الأعمدة الرقمية كأدوات تقويم.</li>
+                      <li>إذا قمت بإعادة رفع الملف، سيتم <strong>تحديث أرقام هواتف أولياء الأمور</strong> تلقائياً إذا وجدت.</li>
                   </ul>
               </div>
           )}
@@ -466,9 +583,13 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                       <span className="block text-[8px] text-gray-400 font-bold">فصل 2</span>
                       <span className="block text-[10px] font-black text-gray-700">{stats.sem2.score}</span>
                   </div>
-                  <div className="flex-1 text-center bg-blue-100/50 rounded-lg">
+                  <div className="flex-1 text-center border-l border-gray-200">
                       <span className="block text-[8px] text-blue-500 font-bold">المجموع</span>
                       <span className="block text-[10px] font-black text-blue-700">{stats.totalScore}/{stats.totalMax}</span>
+                  </div>
+                  <div className="flex-1 text-center bg-indigo-50 rounded-lg">
+                      <span className="block text-[8px] text-indigo-500 font-bold">المعدل</span>
+                      <span className="block text-[10px] font-black text-indigo-700">{stats.finalAverage}</span>
                   </div>
               </div>
             </div>
@@ -605,6 +726,93 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
           </div>
         </div>
+      )}
+
+      {/* Preview Report Modal */}
+      {showPreviewModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[140] flex items-center justify-center p-4" onClick={() => setShowPreviewModal(false)}>
+              <div className="bg-white w-full max-w-4xl h-[90vh] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-4 shrink-0">
+                      <h3 className="font-black text-gray-900 text-sm flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-emerald-600"/>
+                          معاينة تقرير الدرجات ({currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'})
+                      </h3>
+                      <button onClick={() => setShowPreviewModal(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-4 h-4"/></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-auto scrollbar-thin border border-gray-100 rounded-xl">
+                      <table className="w-full text-right border-collapse">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                              <tr>
+                                  <th className="p-3 text-[10px] font-black text-gray-500 border-b border-gray-200 whitespace-nowrap">اسم الطالب</th>
+                                  <th className="p-3 text-[10px] font-black text-gray-500 border-b border-gray-200 whitespace-nowrap">الفصل</th>
+                                  {tools.map(tool => (
+                                      <th key={tool.id} className="p-3 text-[10px] font-black text-gray-500 border-b border-gray-200 whitespace-nowrap text-center">
+                                          {tool.name} <span className="text-[8px] text-gray-400">({tool.maxScore})</span>
+                                      </th>
+                                  ))}
+                                  <th className="p-3 text-[10px] font-black text-blue-600 border-b border-gray-200 whitespace-nowrap text-center bg-blue-50/50">المجموع</th>
+                                  <th className="p-3 text-[10px] font-black text-gray-500 border-b border-gray-200 whitespace-nowrap text-center">المستوى</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                              {filteredStudents.length > 0 ? filteredStudents.map(student => {
+                                  const stats = calculateFullStats(student);
+                                  const currentSemStats = currentSemester === '1' ? stats.sem1 : stats.sem2;
+                                  
+                                  const percentage = currentSemStats.max > 0 ? (currentSemStats.score / currentSemStats.max) * 100 : 0;
+                                  let gradeSymbol = '-';
+                                  let symbolColor = 'text-gray-400';
+                                  
+                                  if (currentSemStats.max > 0) {
+                                      if (percentage >= 90) { gradeSymbol = 'أ'; symbolColor = 'text-emerald-600'; }
+                                      else if (percentage >= 80) { gradeSymbol = 'ب'; symbolColor = 'text-blue-600'; }
+                                      else if (percentage >= 65) { gradeSymbol = 'ج'; symbolColor = 'text-indigo-600'; }
+                                      else if (percentage >= 50) { gradeSymbol = 'د'; symbolColor = 'text-amber-600'; }
+                                      else { gradeSymbol = 'هـ'; symbolColor = 'text-rose-600'; }
+                                  }
+
+                                  return (
+                                      <tr key={student.id} className="hover:bg-gray-50/50">
+                                          <td className="p-3 text-[11px] font-bold text-gray-800">{student.name}</td>
+                                          <td className="p-3 text-[10px] text-gray-500">{student.classes[0]}</td>
+                                          {tools.map(tool => {
+                                              const grade = student.grades.find(g => 
+                                                  g.category === tool.name && 
+                                                  (g.semester === currentSemester || (!g.semester && currentSemester === '1'))
+                                              );
+                                              return (
+                                                  <td key={tool.id} className="p-3 text-[10px] font-bold text-center text-gray-600">
+                                                      {grade ? grade.score : '-'}
+                                                  </td>
+                                              );
+                                          })}
+                                          <td className="p-3 text-[10px] font-black text-blue-700 text-center bg-blue-50/30">
+                                              {currentSemStats.score}
+                                          </td>
+                                          <td className={`p-3 text-[10px] font-black text-center ${symbolColor}`}>
+                                              {gradeSymbol}
+                                          </td>
+                                      </tr>
+                                  );
+                              }) : (
+                                  <tr>
+                                      <td colSpan={tools.length + 4} className="p-8 text-center text-xs text-gray-400 font-bold">
+                                          لا يوجد طلاب للعرض
+                                      </td>
+                                  </tr>
+                              )}
+                          </tbody>
+                      </table>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                      <button onClick={() => setShowPreviewModal(false)} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-200">
+                          إغلاق المعاينة
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );
