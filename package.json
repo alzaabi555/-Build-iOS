@@ -1,6 +1,6 @@
 {
   "name": "student-manager-app",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "تطبيق راصد لإدارة حضور وغياب الطلاب وتسجيل السلوكيات",
   "author": {
     "name": "Mohammed Darwish Al-Zaabi",
@@ -26,7 +26,7 @@
     "@capacitor/share": "^6.0.0",
     "@capacitor/ios": "^6.2.0",
     "@capacitor/local-notifications": "^6.0.0",
-    "@google/genai": "^0.1.1",
+    "@google/genai": "latest",
     "cordova-plugin-inappbrowser": "^6.0.0",
     "html-docx-js-typescript": "^0.1.5",
     "lucide-react": "^0.454.0",

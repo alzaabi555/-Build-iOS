@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, useRef } from 'react';
+import React, { useState, useEffect, Suspense, useRef, Component } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -8,7 +8,6 @@ import StudentReport from './components/StudentReport';
 import ExcelImport from './components/ExcelImport';
 import NoorPlatform from './components/NoorPlatform';
 import GroupCompetition from './components/GroupCompetition';
-import MoalimAI from './components/MoalimAI';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo'; // Import the new Logo
 import { App as CapApp } from '@capacitor/app';
@@ -39,8 +38,64 @@ import {
   MapPin,
   Trophy,
   Brain,
-  HelpCircle
+  HelpCircle,
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
+
+// Lazy Load MoalimAI to prevent crash if dependencies fail
+const MoalimAI = React.lazy(() => import('./components/MoalimAI'));
+
+interface ErrorBoundaryProps {
+  children?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  errorMsg: string;
+}
+
+// --- Error Boundary Component ---
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false, errorMsg: '' };
+
+  // Note: Constructor removed to fix TS error "Property 'props' does not exist on type 'ErrorBoundary'".
+  // React.Component handles props initialization automatically.
+
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
+    return { hasError: true, errorMsg: error.toString() };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("App Error Boundary Caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-slate-50 p-6 text-center" dir="rtl">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-xl max-w-sm border border-rose-100">
+             <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-10 h-10 text-rose-500" />
+             </div>
+             <h2 className="text-xl font-black text-slate-800 mb-2">عذراً، حدث خطأ غير متوقع</h2>
+             <p className="text-sm text-slate-500 font-bold mb-6 leading-relaxed">
+               لا تقلق، بياناتك محفوظة. حدثت مشكلة تقنية بسيطة في عرض الواجهة.
+             </p>
+             <button 
+                onClick={() => window.location.reload()} 
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+             >
+                <RotateCcw className="w-4 h-4" /> إعادة تشغيل التطبيق
+             </button>
+             <p className="mt-4 text-[10px] text-gray-400 font-mono dir-ltr">{this.state.errorMsg.substring(0, 100)}</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Modern Toast Notification
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info' | 'bell', onClose: () => void }) => {
@@ -85,15 +140,11 @@ const OMAN_GOVERNORATES = [
 ];
 
 // --- Security & Obfuscation Layer ---
-// Base64 Encoded Strings to hide developer info from plain text search
-// Name: "محمد درويش الزعابي"
 const _SIG_N = "2YXYrdmF2K8g2K/YsdmI2YrYtCDYp9mE2LLYuNin2KjZig==";
-// Phone: "98344555"
 const _SIG_P = "OTgzNDQ1NTU=";
 
 const getCredits = () => {
     try {
-        // Decode logic
         const n = decodeURIComponent(escape(window.atob(_SIG_N)));
         const p = window.atob(_SIG_P);
         return { name: n, phone: p };
@@ -104,18 +155,15 @@ const getCredits = () => {
 
 const verifyIntegrity = () => {
     const c = getCredits();
-    // Re-encode and compare to ensure no one tampered with the decoding logic
     const check = window.btoa(unescape(encodeURIComponent(c.name)));
     return check === _SIG_N;
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // --- Security Check on Mount ---
   useEffect(() => {
       if (!verifyIntegrity()) {
-          // Kill Switch: If tampering detected, wipe the UI
           document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#000;color:red;font-weight:bold;text-align:center;">Security Violation: Unauthorized Modification Detected.<br/>تم اكتشاف تعديل غير مصرح به في ملفات التطبيق.</div>';
           throw new Error("Security Violation");
       }
@@ -682,7 +730,12 @@ const App: React.FC = () => {
           style={{ overscrollBehaviorY: 'none' }}
         >
           <div className="max-w-full md:max-w-7xl mx-auto h-full pt-2 md:pt-4">
-            <Suspense fallback={<div className="flex items-center justify-center h-96"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <Suspense fallback={
+                <div className="flex flex-col items-center justify-center h-96 gap-4">
+                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-bold text-gray-400">جاري التحميل...</p>
+                </div>
+            }>
               {activeTab === 'dashboard' && (
                 <Dashboard 
                   students={students} 
@@ -734,7 +787,18 @@ const App: React.FC = () => {
                   setStudents={setStudents}
                 />
               )}
-              {activeTab === 'moalim-ai' && <MoalimAI />}
+              
+              {activeTab === 'moalim-ai' && (
+                  <Suspense fallback={
+                      <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
+                          <Loader2 className="w-12 h-12 mb-4 animate-spin text-indigo-500" />
+                          <p className="text-sm font-bold">جاري تحميل المعلم الذكي...</p>
+                      </div>
+                  }>
+                      <MoalimAI />
+                  </Suspense>
+              )}
+
               {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
               {activeTab === 'noor' && <NoorPlatform />}
               {activeTab === 'guide' && <UserGuide />}
@@ -754,7 +818,6 @@ const App: React.FC = () => {
         </main>
 
         {/* Mobile Bottom Navigation (Glassmorphism) */}
-        {/* تم رفع الشريط السفلي قليلاً (bottom-6) لتجنب التداخل مع خط السحب في الآيفون */}
         <nav 
           className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 backdrop-blur-2xl border border-white/20 z-50 shadow-2xl shadow-indigo-900/10 rounded-[2rem] h-16 flex items-center justify-around px-2"
         >
@@ -841,6 +904,14 @@ const App: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 };
 
