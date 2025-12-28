@@ -1,0 +1,52 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rased_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4338ca" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <linearGradient id="gold_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#fbbf24" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  
+  <!-- Background Squircle -->
+  <rect x="20" y="20" width="472" height="472" rx="140" fill="url(#rased_grad)" filter="url(#shadow)" />
+  
+  <!-- Decorative Ring (Orbit) -->
+  <path d="M400 150 A 180 180 0 0 1 150 400" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="40" stroke-linecap="round" />
+  
+  <!-- The Symbol Group -->
+  <g transform="translate(106, 106) scale(0.6)">
+      <!-- The Iris/Lens Shape -->
+      <path 
+          d="M250 50 C 140 50, 50 150, 50 250 C 50 350, 140 450, 250 450 C 360 450, 450 350, 450 250" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="45" 
+          stroke-linecap="round"
+      />
+      
+      <!-- The "R" / Checkmark / Pupil -->
+      <path 
+          d="M170 240 L 230 300 L 350 160" 
+          fill="none" 
+          stroke="url(#gold_grad)" 
+          stroke-width="50" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+          filter="url(#glow)"
+      />
+      
+      <!-- Data Dot -->
+      <circle cx="350" cy="350" r="30" fill="white" opacity="0.9" />
+  </g>
+</svg>
