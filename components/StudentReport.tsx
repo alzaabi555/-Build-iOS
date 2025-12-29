@@ -41,16 +41,15 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   const finalScore = sem1Stats.score + sem2Stats.score;
   const finalMax = sem1Stats.max + sem2Stats.max;
   
-  const finalAverage = finalScore / 2; // لم يعد يستخدم للعرض الأساسي، سنستخدم النتيجة النهائية
   const finalPercentage = finalMax > 0 ? Math.round((finalScore / finalMax) * 100) : 0;
 
   const getGradeSymbol = (percentage: number) => {
     if (finalMax === 0 && percentage === 0) return null;
-    if (percentage >= 90) return { symbol: 'أ', desc: 'ممتاز', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
-    if (percentage >= 80) return { symbol: 'ب', desc: 'جيد جداً', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
-    if (percentage >= 65) return { symbol: 'ج', desc: 'جيد', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' };
-    if (percentage >= 50) return { symbol: 'د', desc: 'مقبول', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
-    return { symbol: 'هـ', desc: 'يحتاج مساعدة', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' };
+    if (percentage >= 90) return { symbol: 'أ', desc: 'ممتاز', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' };
+    if (percentage >= 80) return { symbol: 'ب', desc: 'جيد جداً', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' };
+    if (percentage >= 65) return { symbol: 'ج', desc: 'جيد', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30' };
+    if (percentage >= 50) return { symbol: 'د', desc: 'مقبول', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' };
+    return { symbol: 'هـ', desc: 'يحتاج مساعدة', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' };
   };
 
   const finalSymbol = getGradeSymbol(finalPercentage);
@@ -72,24 +71,13 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
   const handleWhatsAppClick = async () => {
     if (!student.parentPhone) return;
-    
     let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-    
-    if (!cleanPhone || cleanPhone.length < 5) {
-        alert('رقم الهاتف غير صحيح');
-        return;
-    }
-
+    if (!cleanPhone || cleanPhone.length < 5) { alert('رقم الهاتف غير صحيح'); return; }
     if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
     if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
     else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
-
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}`;
-    try {
-        await Browser.open({ url: url });
-    } catch (e) {
-        window.open(url, '_blank');
-    }
+    try { await Browser.open({ url: url }); } catch (e) { window.open(url, '_blank'); }
   };
 
   const getBase64Image = async (url: string): Promise<string> => {
@@ -140,6 +128,9 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
     } else { alert('مكتبة PDF غير جاهزة'); setLoader(false); }
   };
 
+  // ----------------------------------------------------------------------
+  // PDF GENERATION LOGIC (Must keep white background for printing)
+  // ----------------------------------------------------------------------
   const handleGenerateCertificate = async () => {
       setIsGeneratingPdf(true);
       const schoolName = teacherInfo?.school || '...................';
@@ -161,7 +152,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
       element.style.position = 'relative';
       element.style.overflow = 'hidden';
 
-      // تصميم الشهادة
+      // تصميم الشهادة (HTML String for PDF Generator)
       element.innerHTML = `
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap');
@@ -196,7 +187,6 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             .highlight-name { color: #0e7490; font-weight: bold; font-size: 38px; padding: 0 10px; display: inline-block; }
             .highlight-data { color: #b45309; font-weight: bold; padding: 0 5px; }
             
-            /* Signatures: Teacher Right, Principal Left */
             .signatures-row { 
                 width: 100%; display: flex; justify-content: space-between; align-items: flex-end;
                 padding: 0 40px 20px 40px; margin-top: 20px;
@@ -239,6 +229,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   };
 
   const handleSaveReport = () => {
+    // Generate Report HTML string (Black on White for PDF)
     const element = document.createElement('div');
     element.setAttribute('dir', 'rtl');
     element.style.fontFamily = 'Tajawal, sans-serif';
@@ -253,7 +244,6 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
         </tr>
     `).join('');
 
-    // حساب الرموز (أ، ب، ج..) لكل فصل
     const getSymbolStr = (score: number, max: number) => {
         if (!max) return '-';
         const p = (score / max) * 100;
@@ -272,33 +262,24 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
         ${teacherInfo?.subject ? `<p style="margin: 5px 0 0; font-size: 14px; color: #555;">المادة: ${teacherInfo.subject}</p>` : ''}
         <p style="margin: 5px 0 0; font-size: 14px; color: #555;">تاريخ التقرير  <span dir="ltr">${new Date().toLocaleDateString('ar-EG')}</span></p>
       </div>
-      
       <div style="background: #f9fafb; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
          <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding:6px; font-weight:bold;">اسم الطالب:</td><td style="padding:6px;">${student.name}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">الصف:</td><td style="padding:6px;">${student.classes[0] || '-'}</td></tr>
          </table>
       </div>
-
       <div style="margin-bottom: 20px;">
          <h3 style="border-bottom: 1px solid #333; padding-bottom: 5px;">ملخص النتائج</h3>
          <table style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #ccc; margin-top: 10px;">
             <tr style="background: #f0f0f0;"><th>الفصل 1</th><th>الفصل 2</th><th>المجموع</th><th>النتيجة النهائية</th></tr>
             <tr>
-                <td style="padding:10px; border:1px solid #ccc;">
-                    ${sem1Stats.score} <span style="font-size:10px; color:#666">(${s1Sym})</span>
-                </td>
-                <td style="padding:10px; border:1px solid #ccc;">
-                     ${sem2Stats.score} <span style="font-size:10px; color:#666">(${s2Sym})</span>
-                </td>
+                <td style="padding:10px; border:1px solid #ccc;">${sem1Stats.score} <span style="font-size:10px; color:#666">(${s1Sym})</span></td>
+                <td style="padding:10px; border:1px solid #ccc;">${sem2Stats.score} <span style="font-size:10px; color:#666">(${s2Sym})</span></td>
                 <td style="padding:10px; border:1px solid #ccc;">${finalScore}</td>
-                <td style="padding:10px; border:1px solid #ccc; background:#f0f9ff; font-weight:bold;">
-                    ${finalPercentage}% <span style="color:#000">(${finalSym})</span>
-                </td>
+                <td style="padding:10px; border:1px solid #ccc; background:#f0f9ff; font-weight:bold;">${finalPercentage}% <span style="color:#000">(${finalSym})</span></td>
             </tr>
          </table>
       </div>
-      
       <div style="margin-bottom: 20px;">
          <h3 style="border-bottom: 1px solid #333; padding-bottom: 5px;">السلوكيات</h3>
          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -306,18 +287,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             <tbody>${behaviorRows || '<tr><td colspan="3" style="text-align:center; padding:10px;">لا توجد بيانات</td></tr>'}</tbody>
          </table>
       </div>
-
       <table style="width: 100%; margin-top: 60px;">
          <tr>
-             <!-- في HTML RTL، العمود الأول يظهر على اليمين -->
-             <td style="text-align: center; width: 50%; vertical-align: top;">
-                 <p style="font-weight: bold; margin-bottom: 40px;">المعلم(ة)</p>
-                 <p style="font-weight: bold;">${teacherInfo?.name || '.........................'}</p>
-             </td>
-             <td style="text-align: center; width: 50%; vertical-align: top;">
-                 <p style="font-weight: bold; margin-bottom: 40px;">مدير(ة) المدرسة</p>
-                 <p>.........................</p>
-             </td>
+             <td style="text-align: center; width: 50%; vertical-align: top;"><p style="font-weight: bold; margin-bottom: 40px;">المعلم(ة)</p><p style="font-weight: bold;">${teacherInfo?.name || '.........................'}</p></td>
+             <td style="text-align: center; width: 50%; vertical-align: top;"><p style="font-weight: bold; margin-bottom: 40px;">مدير(ة) المدرسة</p><p>.........................</p></td>
          </tr>
       </table>
     `;
@@ -325,6 +298,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   };
 
   const handleGenerateSummons = async (grade: GradeRecord) => {
+    // Generate Summons HTML (Black on White for PDF)
     setGeneratingSummonsId(grade.id);
     let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
     const todayDate = new Date();
@@ -338,82 +312,30 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
     element.style.width = '100%';
     element.style.backgroundColor = 'white';
     
-    // تصميم مطابق للصورة المرفقة للاستدعاء
     element.innerHTML = `
         <div style="border: 3px solid #000; padding: 25px; margin: 10px; height: 95%; position: relative;">
-            
-            <!-- Header -->
             <div style="border-bottom: 3px solid #000; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start;">
-                 <div style="text-align: left; font-size: 14px; font-weight: bold; line-height: 1.6;">
-                    : اليوم ${new Date().toLocaleDateString('ar-EG', {weekday: 'long'})}<br/>
-                    : التاريخ ${todayDate.toLocaleDateString('ar-EG')}
-                 </div>
-                 
-                 <div style="text-align: center; font-size: 14px; font-weight: bold; line-height: 1.5;">
-                    سلطنة عمان<br/>
-                    وزارة التربية والتعليم<br/>
-                    المديرية العامة للتربية والتعليم لمحافظة ${teacherInfo?.governorate}<br/>
-                    مدرسة ${teacherInfo?.school}
-                 </div>
+                 <div style="text-align: left; font-size: 14px; font-weight: bold; line-height: 1.6;">: اليوم ${new Date().toLocaleDateString('ar-EG', {weekday: 'long'})}<br/>: التاريخ ${todayDate.toLocaleDateString('ar-EG')}</div>
+                 <div style="text-align: center; font-size: 14px; font-weight: bold; line-height: 1.5;">سلطنة عمان<br/>وزارة التربية والتعليم<br/>المديرية العامة للتربية والتعليم لمحافظة ${teacherInfo?.governorate}<br/>مدرسة ${teacherInfo?.school}</div>
             </div>
-
-            <div style="text-align: center; margin-top: 25px;">
-                <h2 style="text-decoration: underline; font-size: 26px; font-weight: bold; margin-bottom: 30px;">دعوة ولي الأمر لشأن يتعلق بالطالب</h2>
-            </div>
-
+            <div style="text-align: center; margin-top: 25px;"><h2 style="text-decoration: underline; font-size: 26px; font-weight: bold; margin-bottom: 30px;">دعوة ولي الأمر لشأن يتعلق بالطالب</h2></div>
             <div style="font-size: 18px; line-height: 1.8; padding: 0 10px; font-weight: 500;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div><strong>الفاضل ولي أمر الطالب / ${student.name}</strong></div>
-                    <div style="font-weight: bold;">المحترم</div>
-                </div>
-
-                <div style="margin-bottom: 30px;">
-                    <strong>المقيد بالصف / ${student.classes[0]}</strong>
-                </div>
-
-                <div style="text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 20px;">
-                    السلام عليكم ورحمة الله وبركاته
-                </div>
-
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><div><strong>الفاضل ولي أمر الطالب / ${student.name}</strong></div><div style="font-weight: bold;">المحترم</div></div>
+                <div style="margin-bottom: 30px;"><strong>المقيد بالصف / ${student.classes[0]}</strong></div>
+                <div style="text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 20px;">السلام عليكم ورحمة الله وبركاته</div>
                 <p style="margin-bottom: 15px;">نظرا لأهمية التعاون بين المدرسة وولي الأمر فيما يخدم مصلحة الطالب ويحقق له النجاح</p>
-
-                <p style="margin-bottom: 20px;">نأمل حضوركم لبحث بعض الأمور المتعلقة بابنكم ولنا في حضوركم أمل بهدف تعاون البيت والمدرسة لتحقيق الرسالة التربوية الهادفة التي نسعى إليها وتأمل المدرسة حضوركم</p>
-
-                <div style="margin: 30px 0; display: flex; gap: 10px;">
-                    <strong>وذلك في يوم ................................ الموافق ................................</strong>
-                </div>
-
-                <div style="margin-bottom: 20px;">
-                    <strong>ومراجعة الأستاذ / ${teacherInfo?.name}</strong>
-                </div>
+                <p style="margin-bottom: 20px;">نأمل حضوركم لبحث بعض الأمور المتعلقة بابنكم...</p>
+                <div style="margin: 30px 0; display: flex; gap: 10px;"><strong>وذلك في يوم ................................ الموافق ................................</strong></div>
+                <div style="margin-bottom: 20px;"><strong>ومراجعة الأستاذ / ${teacherInfo?.name}</strong></div>
             </div>
-
-            <!-- Reason Box -->
             <div style="border: 2px solid #000; border-radius: 15px; padding: 20px; margin: 30px 0; position: relative;">
-                <div style="position: absolute; top: -15px; right: 20px; background: white; padding: 0 10px; font-weight: bold; font-size: 18px; text-decoration: underline;">
-                    سبب الاستدعاء
-                </div>
-                <div style="padding-top: 10px; font-size: 18px;">
-                    <p style="margin-bottom: 10px;">تدني المستوى التحصيلي في مادة ${grade.category}</p>
-                    <p>الدرجة الحالية ${grade.score} من ${grade.maxScore}</p>
-                </div>
+                <div style="position: absolute; top: -15px; right: 20px; background: white; padding: 0 10px; font-weight: bold; font-size: 18px; text-decoration: underline;">سبب الاستدعاء</div>
+                <div style="padding-top: 10px; font-size: 18px;"><p style="margin-bottom: 10px;">تدني المستوى التحصيلي في مادة ${grade.category}</p><p>الدرجة الحالية ${grade.score} من ${grade.maxScore}</p></div>
             </div>
-
-            <div style="text-align: center; font-weight: bold; font-size: 20px; margin: 40px 0;">
-                شاكرين حسن تعاونكم معنا
-            </div>
-
-            <!-- Signatures: Teacher Right, Principal Left (Flex Row RTL) -->
+            <div style="text-align: center; font-weight: bold; font-size: 20px; margin: 40px 0;">شاكرين حسن تعاونكم معنا</div>
             <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 20px;">
-                <div style="text-align: center; width: 200px;">
-                    <p style="font-weight: bold; margin-bottom: 60px;">المعلم / ة</p>
-                    <p>${teacherInfo?.name}</p>
-                </div>
-                
-                <div style="text-align: center; width: 200px;">
-                    <p style="font-weight: bold; margin-bottom: 60px;">مدير / ة المدرسة</p>
-                    <p>.........................</p>
-                </div>
+                <div style="text-align: center; width: 200px;"><p style="font-weight: bold; margin-bottom: 60px;">المعلم / ة</p><p>${teacherInfo?.name}</p></div>
+                <div style="text-align: center; width: 200px;"><p style="font-weight: bold; margin-bottom: 60px;">مدير / ة المدرسة</p><p>.........................</p></div>
             </div>
         </div>
     `;
@@ -421,54 +343,55 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 text-white">
       <div className="space-y-6">
-          <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col gap-6 relative">
+          {/* Main Student Card (VisionOS Glass) */}
+          <div className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 shadow-lg flex flex-col gap-6 relative backdrop-blur-2xl">
             <div className="absolute top-6 left-6 flex gap-2">
-                <button onClick={handleSaveReport} disabled={isGeneratingPdf} className="p-3 bg-gray-50 rounded-full hover:bg-gray-100 text-gray-600 transition-colors shadow-sm border border-gray-100">
-                    {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <FileText className="w-5 h-5" />}
+                <button onClick={handleSaveReport} disabled={isGeneratingPdf} className="p-3 bg-white/10 rounded-full hover:bg-white/20 text-white transition-colors shadow-sm border border-white/10">
+                    {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin text-blue-300" /> : <FileText className="w-5 h-5" />}
                 </button>
             </div>
             <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-[1.5rem] bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-100 overflow-hidden relative">
+                <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-indigo-500/30 overflow-hidden relative">
                     {student.avatar ? (
                         <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
                     ) : (
                         student.name.charAt(0)
                     )}
                 </div>
-                <div><h1 className="text-sm font-black text-gray-900 mb-1">{student.name}</h1><span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">الصف: {student.classes[0] || 'غير محدد'}</span></div>
+                <div><h1 className="text-sm font-black text-white mb-1">{student.name}</h1><span className="text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-black border border-white/10">الصف: {student.classes[0] || 'غير محدد'}</span></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-3xl flex flex-col items-center justify-center h-32">
-                    <span className="text-[9px] font-black text-slate-400 mb-1">النتيجة النهائية</span>
-                    <div className="flex items-baseline gap-1 mt-2" dir="ltr"><span className="text-4xl font-black text-slate-800 tracking-tighter">{finalPercentage}</span><span className="text-xs font-bold text-slate-400">%</span></div>
+                <div className="bg-black/20 border border-white/5 p-4 rounded-3xl flex flex-col items-center justify-center h-32">
+                    <span className="text-[9px] font-black text-white/40 mb-1">النتيجة النهائية</span>
+                    <div className="flex items-baseline gap-1 mt-2" dir="ltr"><span className="text-4xl font-black text-white tracking-tighter">{finalPercentage}</span><span className="text-xs font-bold text-white/40">%</span></div>
                 </div>
-                <div className={`${finalSymbol ? finalSymbol.bg : 'bg-gray-50'} border p-4 rounded-3xl flex flex-col items-center justify-center h-32`}>
-                    <span className="text-[9px] font-black opacity-50 mb-1">المستوى</span>
-                    {finalSymbol ? <><span className={`text-4xl font-black ${finalSymbol.color} mt-2`}>{finalSymbol.symbol}</span><span className={`text-[10px] font-bold ${finalSymbol.color} opacity-80 mt-1`}>{finalSymbol.desc}</span></> : <span className="text-2xl font-black text-gray-300">-</span>}
+                <div className={`${finalSymbol ? finalSymbol.bg : 'bg-black/20'} ${finalSymbol ? finalSymbol.border : 'border-white/5'} border p-4 rounded-3xl flex flex-col items-center justify-center h-32`}>
+                    <span className="text-[9px] font-black text-white/40 mb-1">المستوى</span>
+                    {finalSymbol ? <><span className={`text-4xl font-black ${finalSymbol.color} mt-2`}>{finalSymbol.symbol}</span><span className={`text-[10px] font-bold ${finalSymbol.color} opacity-80 mt-1`}>{finalSymbol.desc}</span></> : <span className="text-2xl font-black text-white/20">-</span>}
                 </div>
             </div>
             
             {finalPercentage >= 90 && (
-                <button onClick={handleGenerateCertificate} disabled={isGeneratingPdf} className="w-full bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-100 active:scale-95 transition-all">
+                <button onClick={handleGenerateCertificate} disabled={isGeneratingPdf} className="w-full bg-gradient-to-r from-amber-300 to-yellow-500 text-black py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(251,191,36,0.4)] active:scale-95 transition-all">
                     {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin"/> : <Medal className="w-5 h-5" />} إصدار شهادة تفوق
                 </button>
             )}
 
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center min-h-[80px]"><div className="flex items-center gap-1 mb-1"><Award className="w-3.5 h-3.5 text-emerald-600" /><span className="text-[9px] font-black text-emerald-800">نقاط إيجابية</span></div><span className="text-2xl font-black text-emerald-600">+{totalPositivePoints}</span></div>
-                <div className="bg-rose-50 p-3 rounded-2xl border border-rose-100 flex flex-col items-center justify-center min-h-[80px]"><div className="flex items-center gap-1 mb-1"><AlertCircle className="w-3.5 h-3.5 text-rose-600" /><span className="text-[9px] font-black text-rose-800">نقاط سلبية</span></div><span className="text-2xl font-black text-rose-600">-{totalNegativePoints}</span></div>
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 flex flex-col items-center justify-center min-h-[80px]"><div className="flex items-center gap-1 mb-1"><Award className="w-3.5 h-3.5 text-emerald-400" /><span className="text-[9px] font-black text-emerald-200">نقاط إيجابية</span></div><span className="text-2xl font-black text-emerald-400">+{totalPositivePoints}</span></div>
+                <div className="bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20 flex flex-col items-center justify-center min-h-[80px]"><div className="flex items-center gap-1 mb-1"><AlertCircle className="w-3.5 h-3.5 text-rose-400" /><span className="text-[9px] font-black text-rose-200">نقاط سلبية</span></div><span className="text-2xl font-black text-rose-400">-{totalNegativePoints}</span></div>
             </div>
 
             {lowGradesForSummons.length > 0 && (
-                <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-[2rem] animate-in slide-in-from-bottom duration-500">
-                    <div className="flex items-center gap-2 mb-3"><div className="p-1.5 bg-amber-200 rounded-lg"><Mail className="w-3.5 h-3.5 text-amber-900" /></div><div><h3 className="text-xs font-black text-amber-900">إجراء إداري مطلوب</h3><p className="text-[9px] font-bold text-amber-700">درجة متدنية</p></div></div>
+                <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-[2rem] animate-in slide-in-from-bottom duration-500">
+                    <div className="flex items-center gap-2 mb-3"><div className="p-1.5 bg-amber-500/20 rounded-lg"><Mail className="w-3.5 h-3.5 text-amber-300" /></div><div><h3 className="text-xs font-black text-amber-200">إجراء إداري مطلوب</h3><p className="text-[9px] font-bold text-amber-400/70">درجة متدنية</p></div></div>
                     <div className="space-y-2">
                         {lowGradesForSummons.map(grade => (
-                            <div key={grade.id} className="w-full bg-white p-3 rounded-xl border border-amber-100 flex items-center justify-between shadow-sm">
-                                <div className="text-right"><span className="block text-[10px] font-black text-gray-800">{grade.category}</span><span className="text-[9px] font-bold text-rose-500">الدرجة: {grade.score}</span></div>
-                                <button onClick={() => handleGenerateSummons(grade)} disabled={generatingSummonsId !== null} className="px-3 py-1.5 rounded-lg flex gap-1 items-center bg-amber-100 text-amber-700 hover:bg-amber-200"><span className="text-[9px] font-black">استدعاء</span><UserCheck className="w-3 h-3" /></button>
+                            <div key={grade.id} className="w-full bg-white/5 p-3 rounded-xl border border-white/10 flex items-center justify-between shadow-sm">
+                                <div className="text-right"><span className="block text-[10px] font-black text-white">{grade.category}</span><span className="text-[9px] font-bold text-rose-400">الدرجة: {grade.score}</span></div>
+                                <button onClick={() => handleGenerateSummons(grade)} disabled={generatingSummonsId !== null} className="px-3 py-1.5 rounded-lg flex gap-1 items-center bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/20"><span className="text-[9px] font-black">استدعاء</span><UserCheck className="w-3 h-3" /></button>
                             </div>
                         ))}
                     </div>
@@ -476,25 +399,25 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             )}
 
             {student.parentPhone && (
-              <div className="flex gap-2 border-t border-gray-50 pt-4">
-                <button onClick={handleWhatsAppClick} className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-700 rounded-2xl text-[10px] font-black active:scale-95 transition-all"><MessageCircle className="w-4 h-4"/> واتساب</button>
-                <a href={`tel:${student.parentPhone}`} className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-700 rounded-2xl text-[10px] font-black active:scale-95 transition-all"><PhoneCall className="w-4 h-4"/> اتصال</a>
+              <div className="flex gap-2 border-t border-white/10 pt-4">
+                <button onClick={handleWhatsAppClick} className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-500/20 text-emerald-200 border border-emerald-500/20 rounded-2xl text-[10px] font-black active:scale-95 transition-all hover:bg-emerald-500/30"><MessageCircle className="w-4 h-4"/> واتساب</button>
+                <a href={`tel:${student.parentPhone}`} className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-500/20 text-blue-200 border border-blue-500/20 rounded-2xl text-[10px] font-black active:scale-95 transition-all hover:bg-blue-500/30"><PhoneCall className="w-4 h-4"/> اتصال</a>
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
-            <div className="bg-gray-50/50 p-4 border-b border-gray-100 flex items-center gap-2"><Award className="w-4 h-4 text-blue-600" /><h3 className="font-black text-gray-800 text-[11px]">كشف السلوكيات ({currentSemester === '2' ? 'فصل 2' : 'فصل 1'})</h3></div>
-            <div className="divide-y divide-gray-50">
+          <div className="bg-white/5 rounded-[2rem] border border-white/10 overflow-hidden shadow-lg backdrop-blur-xl">
+            <div className="bg-white/5 p-4 border-b border-white/10 flex items-center gap-2"><Award className="w-4 h-4 text-blue-400" /><h3 className="font-black text-white text-[11px]">كشف السلوكيات ({currentSemester === '2' ? 'فصل 2' : 'فصل 1'})</h3></div>
+            <div className="divide-y divide-white/5">
               {behaviors.length > 0 ? behaviors.map(b => (
-                <div key={b.id} className="p-4 flex items-center justify-between group hover:bg-gray-50 transition-colors">
+                <div key={b.id} className="p-4 flex items-center justify-between group hover:bg-white/5 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl ${b.type === 'positive' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{b.type === 'positive' ? <Award className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}</div>
-                    <div><span className="block text-[10px] font-black text-gray-800">{b.description}</span><div className="flex gap-2 mt-1"><span className="text-[9px] text-gray-400 font-bold">{new Date(b.date).toLocaleDateString('ar-EG')}</span><span className={`text-[9px] font-black ${b.type === 'positive' ? 'text-emerald-600' : 'text-rose-600'}`}>({b.points > 0 ? `+${b.points}` : b.points})</span></div></div>
+                    <div className={`p-2 rounded-xl ${b.type === 'positive' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{b.type === 'positive' ? <Award className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}</div>
+                    <div><span className="block text-[10px] font-black text-white">{b.description}</span><div className="flex gap-2 mt-1"><span className="text-[9px] text-white/40 font-bold">{new Date(b.date).toLocaleDateString('ar-EG')}</span><span className={`text-[9px] font-black ${b.type === 'positive' ? 'text-emerald-400' : 'text-rose-400'}`}>({b.points > 0 ? `+${b.points}` : b.points})</span></div></div>
                   </div>
-                  {onUpdateStudent && <button onClick={() => handleDeleteBehavior(b.id)} className="p-2 text-gray-200 hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>}
+                  {onUpdateStudent && <button onClick={() => handleDeleteBehavior(b.id)} className="p-2 text-white/20 hover:text-rose-400 transition-colors"><Trash2 className="w-4 h-4" /></button>}
                 </div>
-              )) : <p className="p-8 text-center text-[10px] text-gray-400 font-bold">سجل السلوك نظيف</p>}
+              )) : <p className="p-8 text-center text-[10px] text-white/30 font-bold">سجل السلوك نظيف</p>}
             </div>
           </div>
       </div>
