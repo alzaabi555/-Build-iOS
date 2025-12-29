@@ -28,6 +28,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [showAddSheet, setShowAddSheet] = useState(false); // iOS Action Sheet style
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [showClassManager, setShowClassManager] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   // Random Picker State
   const [isRandomPicking, setIsRandomPicking] = useState(false);
@@ -112,8 +113,89 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   };
 
   const generateClassReport = async () => {
-      // Logic for generating simple PDF list
-      alert('سيتم إضافة ميزة تقرير الفصل قريباً');
+      if (filteredStudents.length === 0) {
+          alert('لا يوجد طلاب في القائمة الحالية لطباعتها.');
+          return;
+      }
+      setIsGeneratingPdf(true);
+
+      const classNameTitle = selectedClass === 'all' ? 'جميع الفصول' : selectedClass;
+      const element = document.createElement('div');
+      element.setAttribute('dir', 'rtl');
+      element.style.fontFamily = 'Tajawal, sans-serif';
+      element.style.padding = '20px';
+      
+      const rows = filteredStudents.map((s, i) => {
+          const positive = (s.behaviors || []).filter(b => b.type === 'positive').length;
+          const negative = (s.behaviors || []).filter(b => b.type === 'negative').length;
+          return `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px; text-align: center;">${i + 1}</td>
+                <td style="padding: 10px; font-weight: bold;">${s.name}</td>
+                <td style="padding: 10px; text-align: center;">${s.classes[0]}</td>
+                <td style="padding: 10px; text-align: center; color: green;">${positive}</td>
+                <td style="padding: 10px; text-align: center; color: red;">${negative}</td>
+            </tr>
+          `;
+      }).join('');
+
+      element.innerHTML = `
+        <h1 style="text-align: center; margin-bottom: 20px;">قائمة طلاب فصل: ${classNameTitle}</h1>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <thead>
+                <tr style="background-color: #f3f4f6; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 10px;">#</th>
+                    <th style="padding: 10px; text-align: right;">الاسم</th>
+                    <th style="padding: 10px;">الصف</th>
+                    <th style="padding: 10px;">سلوك إيجابي</th>
+                    <th style="padding: 10px;">سلوك سلبي</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+            تم التوليد بواسطة تطبيق راصد - ${new Date().toLocaleDateString('ar-EG')}
+        </div>
+      `;
+
+      const opt = {
+        margin: 10,
+        filename: `قائمة_${classNameTitle}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      try {
+        if (typeof html2pdf !== 'undefined') {
+            const worker = html2pdf().set(opt).from(element).toPdf();
+            if (Capacitor.isNativePlatform()) {
+                 const pdfBase64 = await worker.output('datauristring');
+                 const base64Data = pdfBase64.split(',')[1];
+                 const result = await Filesystem.writeFile({
+                    path: opt.filename,
+                    data: base64Data,
+                    directory: Directory.Cache
+                 });
+                 await Share.share({
+                    title: 'قائمة الفصل',
+                    url: result.uri,
+                    dialogTitle: 'مشاركة القائمة'
+                 });
+            } else {
+                 worker.save();
+            }
+        } else {
+            alert('مكتبة الطباعة غير جاهزة');
+        }
+      } catch (err) {
+          console.error(err);
+          alert('حدث خطأ أثناء إنشاء التقرير');
+      } finally {
+          setIsGeneratingPdf(false);
+      }
   };
 
   // --- iOS Style Components ---
@@ -142,6 +224,9 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   <div className="flex gap-3">
                       <button onClick={pickRandomStudent} className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-indigo-600 active:bg-gray-300 transition-colors">
                           <Sparkles className="w-5 h-5" strokeWidth={2.5} />
+                      </button>
+                      <button onClick={generateClassReport} className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-emerald-600 active:bg-gray-300 transition-colors">
+                          {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin"/> : <Download className="w-5 h-5" strokeWidth={2.5} />}
                       </button>
                       <button onClick={() => setShowClassManager(true)} className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-blue-600 active:bg-gray-300 transition-colors">
                           <SlidersHorizontal className="w-5 h-5" strokeWidth={2.5} />

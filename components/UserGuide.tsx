@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { 
   BookOpen, Download, Globe, BarChart3, CalendarCheck, Users, 
-  GraduationCap, Trophy, Brain, FileSpreadsheet, Settings, 
+  GraduationCap, Trophy, FileSpreadsheet, Settings, 
   Search, Filter, Plus, Edit, Trash2, Share, CheckCircle2, 
   AlertTriangle, MessageCircle, Smartphone, Clock, LayoutGrid, 
   MoreHorizontal, RefreshCw, Star, Shield, Zap, ChevronLeft
@@ -207,37 +207,6 @@ const UserGuide: React.FC = () => {
                 </li>
                 <li>يتم تسجيل هذه النقاط في سجل سلوك كل طالب فردياً أيضاً.</li>
             </ul>
-        </div>
-      `
-    },
-    {
-      id: 'moalim-ai',
-      title: 'المعلم الذكي AI',
-      icon: Brain,
-      color: 'rose',
-      content: `
-        <div class="guide-intro">
-            <p>مساعد شخصي يعتمد على الذكاء الاصطناعي لتوفير ساعات من العمل.</p>
-        </div>
-
-        <div class="feature-block">
-            <h3>1. إنشاء اختبار (Exam)</h3>
-            <p>الصق نص الدرس أو ارفع ملف PDF، وسيقوم الذكاء الاصطناعي بتوليد أسئلة اختيار من متعدد مع الإجابات. يمكنك تحويلها لمسابقة تفاعلية مباشرة.</p>
-        </div>
-
-        <div class="feature-block">
-            <h3>2. تحضير الدروس (Plan)</h3>
-            <p>يطلب منك النظام موضوع الدرس وعدد الحصص. سيقوم بكتابة خطة درس كاملة متوافقة مع معايير "منصة نور" (الأهداف، الاستراتيجيات، التمهيد، الغلق) مقسمة على عدد الحصص.</p>
-        </div>
-
-        <div class="feature-block">
-            <h3>3. أتمتة الويب (Automation)</h3>
-            <p>ميزة متقدمة! اطلب منه مثلاً "كود لفتح موقع نور وإدخال الدرجات". سيقوم بتوليد كود برمجي (Script) بلغة Python يمكنك تشغيله على حاسوبك لأتمتة المهام المملة.</p>
-        </div>
-
-        <div class="feature-block">
-            <h3>4. الأرشيف والتصدير</h3>
-            <p>جميع محادثاتك محفوظة في "الأرشيف". يمكنك تصدير أي نتيجة (تحضير أو اختبار) كملف <strong>Word</strong> قابل للتعديل أو <strong>PDF</strong>.</p>
         </div>
       `
     }

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Student, GradeRecord } from '../types';
 import { Plus, Search, X, Trash2, Settings, Check, FileSpreadsheet, Loader2, Info, Edit2, Download, AlertTriangle, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 interface GradeBookProps {
   students: Student[];
@@ -10,6 +13,7 @@ interface GradeBookProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   currentSemester: '1' | '2';
   onSemesterChange: (sem: '1' | '2') => void;
+  teacherInfo?: { name: string; school: string; subject: string; governorate: string };
 }
 
 interface AssessmentTool {
@@ -18,7 +22,7 @@ interface AssessmentTool {
     maxScore: number;
 }
 
-const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStudent, setStudents, currentSemester, onSemesterChange }) => {
+const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStudent, setStudents, currentSemester, onSemesterChange, teacherInfo }) => {
   const [selectedClass, setSelectedClass] = useState(classes[0] || 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddGrade, setShowAddGrade] = useState<{ student: Student } | null>(null);
@@ -385,13 +389,23 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     return { sem1, sem2, totalScore, totalMax, totalPercent, finalAverage };
   };
 
-  const handleExportGradeBook = () => {
+  const handleExportGradeBook = async () => {
     if (filteredStudents.length === 0) {
         alert('لا يوجد طلاب لتصدير بياناتهم.');
         return;
     }
 
     const semesterLabel = currentSemester === '1' ? 'الفصل_الأول' : 'الفصل_الثاني';
+    const semesterText = currentSemester === '1' ? 'الأول' : 'الثاني';
+    const subjectText = teacherInfo?.subject || '...............';
+    const classText = selectedClass === 'all' ? 'جميع الفصول' : selectedClass;
+
+    // العنوان المخصص حسب الطلب
+    const headerTitle = `استمارة رصد الدرجات للصفوف (${classText}) مادة ${subjectText} / الصف ${classText} الشعبة ${classText} الفصل الدراسي ${semesterText} - للعام الدراسي 2025 / 2026 م`;
+
+    // إعداد عدادات الرموز
+    const symbolCounts = { 'أ': 0, 'ب': 0, 'ج': 0, 'د': 0, 'هـ': 0, '-': 0 };
+    const totalStudents = filteredStudents.length;
 
     const data = filteredStudents.map(s => {
         const stats = calculateFullStats(s);
@@ -402,11 +416,13 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         const percentage = currentSemStats.max > 0 ? (currentSemStats.score / currentSemStats.max) * 100 : 0;
         let gradeSymbol = '-';
         if (currentSemStats.max > 0) {
-            if (percentage >= 90) gradeSymbol = 'أ';
-            else if (percentage >= 80) gradeSymbol = 'ب';
-            else if (percentage >= 65) gradeSymbol = 'ج';
-            else if (percentage >= 50) gradeSymbol = 'د';
-            else gradeSymbol = 'هـ';
+            if (percentage >= 90) { gradeSymbol = 'أ'; symbolCounts['أ']++; }
+            else if (percentage >= 80) { gradeSymbol = 'ب'; symbolCounts['ب']++; }
+            else if (percentage >= 65) { gradeSymbol = 'ج'; symbolCounts['ج']++; }
+            else if (percentage >= 50) { gradeSymbol = 'د'; symbolCounts['د']++; }
+            else { gradeSymbol = 'هـ'; symbolCounts['هـ']++; }
+        } else {
+             symbolCounts['-']++;
         }
 
         const row: any = {
@@ -431,7 +447,29 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         return row;
     });
 
-    const ws = XLSX.utils.json_to_sheet(data);
+    // بدء البيانات من السطر الثالث لترك مجال للعنوان
+    const ws = XLSX.utils.json_to_sheet(data, { origin: "A3" });
+
+    // إضافة العنوان في الخلية الأولى
+    XLSX.utils.sheet_add_aoa(ws, [[headerTitle]], { origin: "A1" });
+
+    // إضافة جدول الملخص أسفل البيانات
+    const summaryRows = [
+        [""], // سطر فارغ
+        ["ملخص التحصيل العام للطلاب"],
+        ["الرمز", "التقدير", "عدد الطلاب", "النسبة المئوية"],
+        ["أ", "ممتاز (90-100)", symbolCounts['أ'], `${totalStudents > 0 ? ((symbolCounts['أ']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["ب", "جيد جداً (80-89)", symbolCounts['ب'], `${totalStudents > 0 ? ((symbolCounts['ب']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["ج", "جيد (65-79)", symbolCounts['ج'], `${totalStudents > 0 ? ((symbolCounts['ج']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["د", "مقبول (50-64)", symbolCounts['د'], `${totalStudents > 0 ? ((symbolCounts['د']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["هـ", "يحتاج مساعدة (<50)", symbolCounts['هـ'], `${totalStudents > 0 ? ((symbolCounts['هـ']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["-", "غير مكتمل", symbolCounts['-'], `${totalStudents > 0 ? ((symbolCounts['-']/totalStudents)*100).toFixed(1) : 0}%`],
+        ["الإجمالي", "", totalStudents, "100%"]
+    ];
+
+    // إضافة البيانات الإضافية للورقة
+    XLSX.utils.sheet_add_aoa(ws, summaryRows, { origin: -1 });
+
     const wb = XLSX.utils.book_new();
     // ضبط اتجاه الورقة لليمين لليسار
     if(!wb.Workbook) wb.Workbook = {};
@@ -440,7 +478,35 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     wb.Workbook.Views[0].RTL = true;
 
     XLSX.utils.book_append_sheet(wb, ws, `سجل_${semesterLabel}`);
-    XLSX.writeFile(wb, `سجل_الدرجات_${semesterLabel}_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    const fileName = `سجل_الدرجات_${semesterLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    // --- معالجة الحفظ حسب المنصة ---
+    if (Capacitor.isNativePlatform()) {
+        try {
+            // للهواتف: تحويل لـ Base64 وحفظ في الملفات ثم مشاركة
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+            
+            const result = await Filesystem.writeFile({
+                path: fileName,
+                data: wbout,
+                directory: Directory.Cache
+            });
+
+            await Share.share({
+                title: 'تصدير سجل الدرجات',
+                text: 'تم تصدير سجل الدرجات من تطبيق راصد',
+                url: result.uri,
+                dialogTitle: 'مشاركة الملف'
+            });
+        } catch (e) {
+            console.error('Export Error', e);
+            alert('حدث خطأ أثناء حفظ الملف على الهاتف');
+        }
+    } else {
+        // للويب والويندوز: التنزيل المباشر
+        XLSX.writeFile(wb, fileName);
+    }
   };
 
   const handleAddTool = () => {
@@ -490,44 +556,44 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
                 onClick={() => onSemesterChange('1')} 
                 className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${currentSemester === '1' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
              >
-                الفصل الدراسي الأول
+                فصل 1
              </button>
              <button 
                 onClick={() => onSemesterChange('2')} 
                 className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${currentSemester === '2' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
              >
-                الفصل الدراسي الثاني
+                فصل 2
              </button>
           </div>
 
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap items-center justify-between gap-3">
              <div className="flex items-center gap-2 flex-1 min-w-[150px]">
-                 <h2 className="text-xs font-black text-gray-900 whitespace-nowrap">سجل الدرجات</h2>
+                 <h2 className="text-xs font-black text-gray-900 whitespace-nowrap">السجل</h2>
                  <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-gray-50 rounded-lg px-2 py-1 text-[10px] font-black outline-none border-none">
                     <option value="all">كل الفصول</option>
                     {classes.map(c => <option key={c} value={c}>{c}</option>)}
                  </select>
              </div>
              
-             <div className="flex items-center gap-2">
-                 <button onClick={() => setShowToolsManager(true)} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1" title="إدارة أدوات التقويم">
+             {/* Toolbar Buttons - Horizontal Scroll Fix */}
+             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1">
+                 <button onClick={() => setShowToolsManager(true)} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1 shrink-0" title="إدارة أدوات التقويم">
                     <Settings className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black">أدوات التقويم</span>
+                    <span className="text-[9px] font-black hidden sm:inline">أدوات</span>
                  </button>
-                 <button onClick={() => setShowPreviewModal(true)} className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-1" title="معاينة التقرير">
+                 <button onClick={() => setShowPreviewModal(true)} className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-1 shrink-0" title="معاينة التقرير">
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black">معاينة التقرير</span>
+                    <span className="text-[9px] font-black hidden sm:inline">معاينة</span>
                  </button>
-                 <button onClick={handleExportGradeBook} className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all flex items-center gap-1" title={`تحميل سجل ${currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'} (Excel)`}>
+                 <button onClick={handleExportGradeBook} className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all flex items-center gap-1 shrink-0" title={`تحميل سجل ${currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'} (Excel)`}>
                     <Download className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black">تحميل السجل ({currentSemester === '1' ? 'ف1' : 'ف2'})</span>
+                    <span className="text-[9px] font-black hidden sm:inline">تحميل</span>
                  </button>
-                 <button onClick={handleDeleteAllGrades} className="px-3 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 active:scale-95 transition-all flex items-center gap-1" title="حذف سجل الدرجات بالكامل">
+                 <button onClick={handleDeleteAllGrades} className="px-3 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 active:scale-95 transition-all flex items-center gap-1 shrink-0" title="حذف سجل الدرجات بالكامل">
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black">حذف السجل</span>
                  </button>
-                 <button onClick={() => setShowImportInfo(!showImportInfo)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100"><Info className="w-4 h-4" /></button>
-                 <label className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-xl text-[10px] font-black cursor-pointer hover:bg-emerald-100 active:scale-95 transition-all">
+                 <button onClick={() => setShowImportInfo(!showImportInfo)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 shrink-0"><Info className="w-4 h-4" /></button>
+                 <label className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-xl text-[10px] font-black cursor-pointer hover:bg-emerald-100 active:scale-95 transition-all shrink-0">
                     {isImporting ? <Loader2 className="w-4 h-4 animate-spin"/> : <FileSpreadsheet className="w-4 h-4"/>}
                     <span className="hidden sm:inline">استيراد</span>
                     <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleBulkImport} disabled={isImporting} />
