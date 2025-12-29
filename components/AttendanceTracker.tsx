@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
 import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search } from 'lucide-react';
@@ -242,12 +243,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           )}
       </div>
 
-      {/* Notification Modal (iOS Action Sheet Style) */}
+      {/* Notification Modal - CENTERED */}
       {notificationTarget && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity" onClick={() => setNotificationTarget(null)}></div>
-            <div className="bg-[#f2f2f7] rounded-t-[20px] p-4 w-full max-w-md mx-auto z-10 animate-in slide-in-from-bottom duration-300 pb-safe">
-                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setNotificationTarget(null)}>
+            <div className="bg-[#f2f2f7] w-full max-w-sm rounded-[20px] p-6 shadow-2xl animate-in zoom-in-95 duration-200 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                 <h3 className="text-center font-bold text-gray-900 text-sm mb-1">
                     إبلاغ ولي الأمر
                 </h3>

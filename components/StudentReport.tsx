@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Student, GradeRecord } from '../types';
 import { Award, AlertCircle, MessageCircle, PhoneCall, Trash2, Loader2, Mail, UserCheck, FileText, Medal } from 'lucide-react';
@@ -418,7 +419,13 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                 </button>
             </div>
             <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-[1.5rem] bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-100">{student.name.charAt(0)}</div>
+                <div className="w-16 h-16 rounded-[1.5rem] bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-100 overflow-hidden relative">
+                    {student.avatar ? (
+                        <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                        student.name.charAt(0)
+                    )}
+                </div>
                 <div><h1 className="text-sm font-black text-gray-900 mb-1">{student.name}</h1><span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">الصف: {student.classes[0] || 'غير محدد'}</span></div>
             </div>
             <div className="grid grid-cols-2 gap-3">

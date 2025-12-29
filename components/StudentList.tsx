@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap, ChevronLeft, Clock, Download, MessageCircle, Smartphone, Loader2, Sparkles, Shuffle, Settings, Trash2, Check, PenSquare, ChevronDown, UserX, MoveRight, LogOut, SlidersHorizontal, MoreHorizontal, Plus } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, FileBarChart, X, UserPlus, Filter, Edit, FileSpreadsheet, GraduationCap, ChevronLeft, Clock, Download, MessageCircle, Smartphone, Loader2, Sparkles, Shuffle, Settings, Trash2, Check, PenSquare, ChevronDown, UserX, MoveRight, LogOut, SlidersHorizontal, MoreHorizontal, Plus, Camera, Image as ImageIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -11,7 +12,7 @@ interface StudentListProps {
   students: Student[];
   classes: string[];
   onAddClass: (name: string) => void;
-  onAddStudentManually: (name: string, className: string, phone?: string) => void;
+  onAddStudentManually: (name: string, className: string, phone?: string, avatar?: string) => void;
   onUpdateStudent: (s: Student) => void;
   onDeleteStudent: (id: string) => void;
   onViewReport: (s: Student) => void;
@@ -39,18 +40,26 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editClass, setEditClass] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
 
   // Class Management State
   const [newClassName, setNewClassName] = useState('');
   const [editingClassOldName, setEditingClassOldName] = useState<string | null>(null);
   const [editingClassNewName, setEditingClassNewName] = useState('');
 
-  // Negative Behavior Reason
+  // Behavior Reasons States
   const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
+  const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
+  const [customReason, setCustomReason] = useState('');
 
   const NEGATIVE_REASONS = [
-      "إزعاج في الحصة", "عدم حل الواجب", "نشيان الكتب/الأدوات", "التأخر عن الحصة", 
+      "إزعاج في الحصة", "عدم حل الواجب", "نسيان الكتب/الأدوات", "التأخر عن الحصة", 
       "النوم في الحصة", "مشاجرة مع زميل", "استخدام الهاتف", "أكل/شرب في الحصة"
+  ];
+
+  const POSITIVE_REASONS = [
+      "مشاركة فعالة", "إجابة صحيحة", "نظافة وترتيب", "تطوع ومساعدة",
+      "إنجاز الواجب", "احترام الزملاء", "هدوء وانضباط", "تميز دراسي"
   ];
 
   const filteredStudents = students.filter(s => {
@@ -59,7 +68,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     return matchesSearch && matchesClass;
   });
 
-  const handleAddBehavior = (student: Student, type: BehaviorType, description: string = 'سلوك عام', points: number = 1) => {
+  const handleAddBehavior = (student: Student, type: BehaviorType, description: string, points: number) => {
     const newBehavior = {
       id: Math.random().toString(36).substr(2, 9),
       date: new Date().toISOString(),
@@ -69,7 +78,11 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       semester: currentSemester
     };
     onUpdateStudent({ ...student, behaviors: [newBehavior, ...(student.behaviors || [])] });
+    
+    // Close modals and reset custom input
     if(showNegativeReasons) setShowNegativeReasons(null);
+    if(showPositiveReasons) setShowPositiveReasons(null);
+    setCustomReason('');
   };
 
   const pickRandomStudent = () => {
@@ -92,7 +105,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
               ...editingStudent,
               name: editName,
               parentPhone: editPhone,
-              classes: [editClass]
+              classes: [editClass],
+              avatar: editAvatar
           });
           setEditingStudent(null);
       }
@@ -110,6 +124,17 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           setShowManualAddModal(false);
           setShowAddSheet(false);
       }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const generateClassReport = async () => {
@@ -213,8 +238,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   return (
     <div className="min-h-full bg-[#f2f2f7] pb-24 md:pb-8">
       
-      {/* iOS Navigation Bar */}
-      <div className="sticky top-0 z-30 bg-[#f2f2f7]/90 backdrop-blur-xl border-b border-gray-300/50 pt-safe-top transition-all">
+      {/* iOS Navigation Bar - No longer sticky */}
+      <div className="bg-[#f2f2f7] border-b border-gray-300/50 pt-safe-top transition-all">
           <div className="px-4 pb-2">
               <div className="flex justify-between items-end mb-3 pt-2">
                   <div>
@@ -276,8 +301,12 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
               <div key={student.id} className="bg-white p-3.5 rounded-2xl flex items-center justify-between shadow-sm border border-gray-100/50 active:scale-[0.99] transition-transform duration-100">
                   <div className="flex items-center gap-3.5 flex-1 min-w-0" onClick={() => onViewReport(student)}>
                       {/* Avatar */}
-                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-black text-lg shrink-0 border border-gray-200">
-                          {student.name.charAt(0)}
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-black text-lg shrink-0 border border-gray-200 overflow-hidden relative">
+                          {student.avatar ? (
+                              <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
+                          ) : (
+                              student.name.charAt(0)
+                          )}
                       </div>
                       
                       {/* Info */}
@@ -290,7 +319,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   {/* Quick Actions */}
                   <div className="flex items-center gap-1.5 border-r border-gray-100 pr-1.5">
                       <button 
-                        onClick={() => handleAddBehavior(student, 'positive', 'سلوك إيجابي', 1)}
+                        onClick={() => setShowPositiveReasons({student})}
                         className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center active:bg-emerald-600 active:text-white transition-colors"
                       >
                           <ThumbsUp className="w-4 h-4" />
@@ -309,6 +338,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                             setEditName(student.name);
                             setEditPhone(student.parentPhone || '');
                             setEditClass(student.classes[0] || '');
+                            setEditAvatar(student.avatar || '');
                         }}
                         className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-100"
                       >
@@ -360,20 +390,41 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
       )}
 
-      {/* 2. Negative Reason Sheet */}
+      {/* 2. Negative Reason Sheet - CENTERED */}
       {showNegativeReasons && (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowNegativeReasons(null)}></div>
-              <div className="bg-[#f2f2f7] rounded-t-[24px] p-4 w-full max-w-md mx-auto z-10 animate-in slide-in-from-bottom duration-300 pb-safe max-h-[80vh] overflow-y-auto">
-                  <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4"></div>
-                  <h3 className="text-center font-bold text-gray-900 mb-4">اختر سبب المخالفة</h3>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setShowNegativeReasons(null); setCustomReason(''); }}>
+              <div className="bg-[#f2f2f7] w-full max-w-sm rounded-[2rem] p-6 shadow-xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-center font-black text-lg text-gray-900 mb-4 flex items-center justify-center gap-2">
+                      <ThumbsDown className="w-6 h-6 text-rose-500" />
+                      اختر سبب المخالفة
+                  </h3>
+
+                  <div className="flex gap-2 mb-4">
+                      <input 
+                          type="text" 
+                          value={customReason} 
+                          onChange={(e) => setCustomReason(e.target.value)} 
+                          placeholder="سبب آخر..." 
+                          className="flex-1 bg-white p-3 rounded-xl text-xs font-bold border border-gray-200 outline-none focus:border-rose-400"
+                      />
+                      <button 
+                          onClick={() => {
+                              if(customReason.trim()){
+                                  handleAddBehavior(showNegativeReasons.student, 'negative', customReason.trim(), -1);
+                              }
+                          }}
+                          className="bg-rose-500 text-white p-3 rounded-xl font-black shadow-lg shadow-rose-200 active:scale-95"
+                      >
+                          <Plus className="w-4 h-4" />
+                      </button>
+                  </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
                       {NEGATIVE_REASONS.map((reason) => (
                           <button 
                             key={reason}
                             onClick={() => handleAddBehavior(showNegativeReasons.student, 'negative', reason, -1)}
-                            className="w-full bg-white p-3.5 rounded-xl text-right font-bold text-sm text-gray-800 active:bg-gray-50 flex justify-between items-center"
+                            className="w-full bg-white p-3.5 rounded-xl text-right font-bold text-sm text-gray-800 active:bg-rose-50 border border-gray-100 flex justify-between items-center transition-colors"
                           >
                               {reason}
                               <ChevronLeft className="w-4 h-4 text-gray-300" />
@@ -381,7 +432,56 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                       ))}
                   </div>
                   
-                  <button onClick={() => setShowNegativeReasons(null)} className="w-full mt-4 bg-white py-3.5 rounded-xl text-red-500 font-bold text-sm shadow-sm">
+                  <button onClick={() => { setShowNegativeReasons(null); setCustomReason(''); }} className="w-full mt-4 bg-white py-3.5 rounded-xl text-red-500 font-bold text-sm shadow-sm">
+                      إلغاء
+                  </button>
+              </div>
+          </div>
+      )}
+
+      {/* 2.5 Positive Reason Sheet - CENTERED (Added) */}
+      {showPositiveReasons && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setShowPositiveReasons(null); setCustomReason(''); }}>
+              <div className="bg-[#f2f2f7] w-full max-w-sm rounded-[2rem] p-6 shadow-xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-center font-black text-lg text-gray-900 mb-4 flex items-center justify-center gap-2">
+                      <ThumbsUp className="w-6 h-6 text-emerald-500" />
+                      اختر السلوك الإيجابي
+                  </h3>
+
+                  <div className="flex gap-2 mb-4">
+                      <input 
+                          type="text" 
+                          value={customReason} 
+                          onChange={(e) => setCustomReason(e.target.value)} 
+                          placeholder="سبب آخر..." 
+                          className="flex-1 bg-white p-3 rounded-xl text-xs font-bold border border-gray-200 outline-none focus:border-emerald-400"
+                      />
+                      <button 
+                          onClick={() => {
+                              if(customReason.trim()){
+                                  handleAddBehavior(showPositiveReasons.student, 'positive', customReason.trim(), 1);
+                              }
+                          }}
+                          className="bg-emerald-500 text-white p-3 rounded-xl font-black shadow-lg shadow-emerald-200 active:scale-95"
+                      >
+                          <Plus className="w-4 h-4" />
+                      </button>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+                      {POSITIVE_REASONS.map((reason) => (
+                          <button 
+                            key={reason}
+                            onClick={() => handleAddBehavior(showPositiveReasons.student, 'positive', reason, 1)}
+                            className="w-full bg-white p-3.5 rounded-xl text-right font-bold text-sm text-gray-800 active:bg-emerald-50 border border-gray-100 flex justify-between items-center transition-colors"
+                          >
+                              {reason}
+                              <ChevronLeft className="w-4 h-4 text-gray-300" />
+                          </button>
+                      ))}
+                  </div>
+                  
+                  <button onClick={() => { setShowPositiveReasons(null); setCustomReason(''); }} className="w-full mt-4 bg-white py-3.5 rounded-xl text-gray-500 font-bold text-sm shadow-sm">
                       إلغاء
                   </button>
               </div>
@@ -392,8 +492,12 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       {isRandomPicking && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
               <div className="text-center animate-in zoom-in duration-300">
-                  <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-500/50">
-                      <span className="text-4xl font-black text-indigo-600">{randomStudent?.name.charAt(0)}</span>
+                  <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-500/50 overflow-hidden relative">
+                      {randomStudent?.avatar ? (
+                          <img src={randomStudent.avatar} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                          <span className="text-4xl font-black text-indigo-600">{randomStudent?.name.charAt(0)}</span>
+                      )}
                   </div>
                   <h2 className="text-3xl font-black text-white mb-2">{randomStudent?.name}</h2>
                   <p className="text-indigo-300 font-bold">جاري الاختيار...</p>
@@ -404,8 +508,12 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md" onClick={() => setRandomStudent(null)}>
               <div className="bg-white w-[90%] max-w-sm p-8 rounded-[2.5rem] text-center shadow-2xl animate-in zoom-in duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                   <Sparkles className="absolute top-0 right-0 w-40 h-40 text-yellow-400 opacity-20 -translate-y-1/2 translate-x-1/2" />
-                  <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg text-white text-3xl font-black">
-                      {randomStudent.name.charAt(0)}
+                  <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg text-white text-3xl font-black overflow-hidden relative border-4 border-white">
+                      {randomStudent.avatar ? (
+                          <img src={randomStudent.avatar} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                          randomStudent.name.charAt(0)
+                      )}
                   </div>
                   <h2 className="text-2xl font-black text-gray-900 mb-2">{randomStudent.name}</h2>
                   <p className="text-gray-500 font-bold mb-8">تم الاختيار عشوائياً للمشاركة</p>
@@ -416,10 +524,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
       )}
 
-      {/* 4. Add Student Modal */}
+      {/* 4. Add Student Modal - CENTERED */}
       {showManualAddModal && (
-          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowManualAddModal(false)}>
-              <div className="bg-white w-full sm:max-w-md rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setShowManualAddModal(false)}>
+              <div className="bg-white w-full md:w-auto md:min-w-[400px] sm:max-w-md rounded-[2rem] p-6 shadow-xl animate-in zoom-in-95 duration-200 md:max-h-[600px] overflow-y-auto" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-6">
                       <h3 className="font-black text-lg text-gray-900">طالب جديد</h3>
                       <button onClick={() => setShowManualAddModal(false)} className="p-2 bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-500"/></button>
@@ -446,10 +554,25 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       {/* 5. Edit Student Modal */}
       {editingStudent && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditingStudent(null)}>
-              <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+              <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 duration-200 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                   <div className="text-center mb-6">
-                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-black text-gray-400">
-                          {editingStudent.name.charAt(0)}
+                      <div className="relative w-24 h-24 mx-auto mb-3">
+                          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-3xl font-black text-gray-400 overflow-hidden border-4 border-white shadow-md">
+                              {editAvatar ? (
+                                <img src={editAvatar} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                editingStudent.name.charAt(0)
+                              )}
+                          </div>
+                          <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer shadow-lg active:scale-90 transition-transform">
+                              <Camera className="w-4 h-4" />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                          </label>
+                          {editAvatar && (
+                              <button onClick={() => setEditAvatar('')} className="absolute top-0 right-0 p-1.5 bg-red-500 text-white rounded-full shadow-md active:scale-90 transition-transform">
+                                  <X className="w-3 h-3" />
+                              </button>
+                          )}
                       </div>
                       <h3 className="font-black text-lg text-gray-900">تعديل البيانات</h3>
                   </div>
@@ -473,7 +596,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       {/* 6. Class Manager Modal */}
       {showClassManager && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowClassManager(false)}>
-              <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+              <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative flex flex-col max-h-[80vh] md:max-h-[500px]" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="font-black text-lg text-gray-900">إدارة الفصول</h3>
                       <button onClick={() => setShowClassManager(false)} className="p-2 bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-500"/></button>

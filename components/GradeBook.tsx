@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Student, GradeRecord } from '../types';
 import { Plus, Search, X, Trash2, Settings, Check, FileSpreadsheet, Loader2, Info, Edit2, Download, AlertTriangle, Eye } from 'lucide-react';
@@ -665,7 +666,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
       {showToolsManager && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[130] flex items-center justify-center p-6" onClick={() => setShowToolsManager(false)}>
-              <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+              <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative flex flex-col max-h-[85vh] md:max-h-[600px]" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-6 shrink-0">
                       <h3 className="font-black text-gray-900 text-sm flex items-center gap-2"><Settings className="w-4 h-4 text-blue-600"/> إدارة أدوات التقويم</h3>
                       <button onClick={() => setShowToolsManager(false)} className="p-2 bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
@@ -708,7 +709,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
 
       {showAddGrade && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-center justify-center p-4" onClick={() => setShowAddGrade(null)}>
-          <div className="bg-white w-full max-w-md h-[90vh] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md h-[90vh] md:h-auto md:max-h-[650px] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
              
              <div className="flex justify-between items-center mb-4 shrink-0">
                 <div>
@@ -797,7 +798,7 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       {/* Preview Report Modal */}
       {showPreviewModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[140] flex items-center justify-center p-4" onClick={() => setShowPreviewModal(false)}>
-              <div className="bg-white w-full max-w-4xl h-[90vh] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
+              <div className="bg-white w-full max-w-4xl h-[90vh] md:max-h-[80vh] rounded-[2rem] p-6 shadow-2xl flex flex-col relative" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-between items-center mb-4 shrink-0">
                       <h3 className="font-black text-gray-900 text-sm flex items-center gap-2">
                           <Eye className="w-4 h-4 text-emerald-600"/>
