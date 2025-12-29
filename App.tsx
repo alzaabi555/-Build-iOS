@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, useRef, Component } from 'react';
+import React, { Component, useState, useEffect, Suspense, useRef } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -37,14 +37,9 @@ import {
   RefreshCcw,
   MapPin,
   Trophy,
-  Brain,
   HelpCircle,
-  Loader2,
   RotateCcw
 } from 'lucide-react';
-
-// Lazy Load MoalimAI to prevent crash if dependencies fail
-const MoalimAI = React.lazy(() => import('./components/MoalimAI'));
 
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
@@ -57,7 +52,7 @@ interface ErrorBoundaryState {
 
 // --- Error Boundary Component ---
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = { hasError: false, errorMsg: '' };
+  state: ErrorBoundaryState = { hasError: false, errorMsg: '' };
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, errorMsg: error.toString() };
@@ -157,7 +152,8 @@ const verifyIntegrity = () => {
 };
 
 const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Initialize activeTab from localStorage to persist state across restarts
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeTab') || 'dashboard');
   
   useEffect(() => {
       if (!verifyIntegrity()) {
@@ -269,7 +265,8 @@ const AppContent: React.FC = () => {
   });
 
   const [isSetupComplete, setIsSetupComplete] = useState(!!teacherInfo.name && !!teacherInfo.school);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  // Initialize selectedStudentId from storage to persist across restarts
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(() => localStorage.getItem('selectedStudentId') || null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'bell'} | null>(null);
 
@@ -286,9 +283,10 @@ const AppContent: React.FC = () => {
       try {
         await CapApp.removeAllListeners(); 
         await CapApp.addListener('appStateChange', ({ isActive }) => {
+          // REMOVED: setActiveTab('dashboard') to prevent resetting view on app resume
+          // We only close modal if user left app, or maybe keep it. Let's keep state as is.
           if (isActive) {
-            setActiveTab('dashboard');
-            setShowSettingsModal(false);
+             // Optional: Refresh data or check time
           }
         });
       } catch (e) {
@@ -423,6 +421,13 @@ const AppContent: React.FC = () => {
             localStorage.setItem('periodTimes', JSON.stringify(periodTimes));
             localStorage.setItem('viewSheetUrl', viewSheetUrl);
             localStorage.setItem('currentSemester', currentSemester);
+            // Save Navigation State
+            localStorage.setItem('activeTab', activeTab);
+            if (selectedStudentId) {
+                localStorage.setItem('selectedStudentId', selectedStudentId);
+            } else {
+                localStorage.removeItem('selectedStudentId');
+            }
         } catch (e) {
             console.warn("Storage restricted", e);
         }
@@ -434,7 +439,7 @@ const AppContent: React.FC = () => {
     return () => {
         window.removeEventListener('beforeunload', saveData);
     };
-  }, [students, classes, activeTab, teacherInfo, schedule, viewSheetUrl, currentSemester, periodTimes, groups]);
+  }, [students, classes, activeTab, teacherInfo, schedule, viewSheetUrl, currentSemester, periodTimes, groups, selectedStudentId]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
@@ -587,7 +592,6 @@ const AppContent: React.FC = () => {
     { id: 'students', icon: Users, label: 'الطلاب' },
     { id: 'grades', icon: GraduationCap, label: 'الدرجات' },
     { id: 'group-competition', icon: Trophy, label: 'الدوري' }, 
-    { id: 'moalim-ai', icon: Brain, label: 'المعلم الذكي' },
     { id: 'noor', icon: Globe, label: 'نور' },
     { id: 'guide', icon: HelpCircle, label: 'الدليل' },
   ];
@@ -738,83 +742,76 @@ const AppContent: React.FC = () => {
                     <p className="text-sm font-bold text-gray-400">جاري التحميل...</p>
                 </div>
             }>
-              {activeTab === 'dashboard' && (
-                <Dashboard 
-                  students={students} 
-                  teacherInfo={teacherInfo}
-                  onUpdateTeacherInfo={setTeacherInfo} 
-                  schedule={schedule}
-                  onUpdateSchedule={setSchedule}
-                  onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
-                  onNavigate={(tab) => setActiveTab(tab)}
-                  onOpenSettings={() => setShowSettingsModal(true)}
-                  periodTimes={periodTimes}
-                  setPeriodTimes={setPeriodTimes}
-                />
-              )}
-              {activeTab === 'students' && (
-                <StudentList 
-                  students={students} 
-                  classes={classes} 
-                  onAddClass={(c) => setClasses(prev => [...prev, c].sort())} 
-                  onAddStudentManually={handleAddStudentManually} 
-                  onUpdateStudent={handleUpdateStudent} 
-                  onDeleteStudent={handleDeleteStudent}
-                  onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }}
-                  onSwitchToImport={() => setActiveTab('import')}
-                  currentSemester={currentSemester}
-                  onSemesterChange={setCurrentSemester}
-                  onEditClass={handleEditClass}
-                  onDeleteClass={handleDeleteClass}
-                />
-              )}
-              {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
-              {activeTab === 'grades' && (
-                <GradeBook 
-                  students={students} 
-                  classes={classes} 
-                  onUpdateStudent={handleUpdateStudent}
-                  setStudents={setStudents}
-                  currentSemester={currentSemester}
-                  onSemesterChange={setCurrentSemester}
-                />
-              )}
-               {activeTab === 'group-competition' && (
-                <GroupCompetition 
-                  students={students}
-                  classes={classes}
-                  onUpdateStudent={handleUpdateStudent}
-                  groups={groups}
-                  onUpdateGroups={setGroups}
-                  setStudents={setStudents}
-                />
-              )}
-              
-              {activeTab === 'moalim-ai' && (
-                  <Suspense fallback={
-                      <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
-                          <Loader2 className="w-12 h-12 mb-4 animate-spin text-indigo-500" />
-                          <p className="text-sm font-bold">جاري تحميل المعلم الذكي...</p>
-                      </div>
-                  }>
-                      <MoalimAI />
-                  </Suspense>
-              )}
+              {/* Apply page transition class wrapper */}
+              <div key={activeTab} className="page-enter-active">
+                  {activeTab === 'dashboard' && (
+                    <Dashboard 
+                      students={students} 
+                      teacherInfo={teacherInfo}
+                      onUpdateTeacherInfo={setTeacherInfo} 
+                      schedule={schedule}
+                      onUpdateSchedule={setSchedule}
+                      onSelectStudent={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }} 
+                      onNavigate={(tab) => setActiveTab(tab)}
+                      onOpenSettings={() => setShowSettingsModal(true)}
+                      periodTimes={periodTimes}
+                      setPeriodTimes={setPeriodTimes}
+                    />
+                  )}
+                  {activeTab === 'students' && (
+                    <StudentList 
+                      students={students} 
+                      classes={classes} 
+                      onAddClass={(c) => setClasses(prev => [...prev, c].sort())} 
+                      onAddStudentManually={handleAddStudentManually} 
+                      onUpdateStudent={handleUpdateStudent} 
+                      onDeleteStudent={handleDeleteStudent}
+                      onViewReport={(s) => { setSelectedStudentId(s.id); setActiveTab('report'); }}
+                      onSwitchToImport={() => setActiveTab('import')}
+                      currentSemester={currentSemester}
+                      onSemesterChange={setCurrentSemester}
+                      onEditClass={handleEditClass}
+                      onDeleteClass={handleDeleteClass}
+                    />
+                  )}
+                  {activeTab === 'attendance' && <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />}
+                  {activeTab === 'grades' && (
+                    <GradeBook 
+                      students={students} 
+                      classes={classes} 
+                      onUpdateStudent={handleUpdateStudent}
+                      setStudents={setStudents}
+                      currentSemester={currentSemester}
+                      onSemesterChange={setCurrentSemester}
+                      teacherInfo={teacherInfo}
+                    />
+                  )}
+                   {activeTab === 'group-competition' && (
+                    <GroupCompetition 
+                      students={students}
+                      classes={classes}
+                      onUpdateStudent={handleUpdateStudent}
+                      groups={groups}
+                      onUpdateGroups={setGroups}
+                      setStudents={setStudents}
+                    />
+                  )}
 
-              {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
-              {activeTab === 'noor' && <NoorPlatform />}
-              {activeTab === 'guide' && <UserGuide />}
-              {activeTab === 'report' && selectedStudentId && (
-                <div className="animate-in slide-in-from-right duration-300 max-w-4xl mx-auto">
-                  <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-2 text-indigo-600 font-bold text-xs bg-white/80 backdrop-blur px-4 py-2 rounded-full hover:bg-white transition-all shadow-sm"><ChevronLeft className="w-4 h-4" /> العودة للقائمة</button>
-                  <StudentReport 
-                    student={students.find(s => s.id === selectedStudentId)!} 
-                    onUpdateStudent={handleUpdateStudent} 
-                    currentSemester={currentSemester}
-                    teacherInfo={teacherInfo}
-                  />
-                </div>
-              )}
+                  {activeTab === 'import' && <ExcelImport existingClasses={classes} onImport={(ns) => { setStudents(prev => [...prev, ...ns]); setActiveTab('students'); }} onAddClass={(c) => setClasses(prev => [...prev, c].sort())} />}
+                  {activeTab === 'noor' && <NoorPlatform />}
+                  {activeTab === 'guide' && <UserGuide />}
+                  {activeTab === 'report' && selectedStudentId && (
+                    <div className="max-w-4xl mx-auto">
+                      <button onClick={() => setActiveTab('students')} className="mb-4 flex items-center gap-2 text-indigo-600 font-bold text-xs bg-white/80 backdrop-blur px-4 py-2 rounded-full hover:bg-white transition-all shadow-sm"><ChevronLeft className="w-4 h-4" /> العودة للقائمة</button>
+                      <StudentReport 
+                        student={students.find(s => s.id === selectedStudentId)!} 
+                        onUpdateStudent={handleUpdateStudent} 
+                        currentSemester={currentSemester}
+                        teacherInfo={teacherInfo}
+                      />
+                    </div>
+                  )}
+              </div>
             </Suspense>
           </div>
         </main>
@@ -839,7 +836,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-300" onClick={() => setShowSettingsModal(false)}>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-300" onClick={() => setShowSettingsModal(false)}>
            <div className="bg-white/95 backdrop-blur-xl w-full sm:max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 border border-white/50" onClick={e => e.stopPropagation()}>
               <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8 sm:hidden" />
               
