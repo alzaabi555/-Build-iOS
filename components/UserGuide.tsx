@@ -244,6 +244,7 @@ const UserGuide: React.FC = () => {
   ];
 
   const exportAsHTML = async () => {
+      // ... same export logic ...
       const htmlContent = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
@@ -263,52 +264,17 @@ const UserGuide: React.FC = () => {
                     line-height: 1.8;
                 }
                 .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1); overflow: hidden; }
-                
-                .header { 
-                    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
-                    color: white; 
-                    padding: 60px 40px; 
-                    text-align: center; 
-                    position: relative;
-                }
+                .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 60px 40px; text-align: center; }
                 .header h1 { margin: 0; font-size: 3rem; font-weight: 900; letter-spacing: -1px; }
-                .header p { margin-top: 10px; font-size: 1.2rem; opacity: 0.8; font-weight: bold; }
-                .version-tag { display: inline-block; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; margin-top: 20px; }
-
                 .content { padding: 40px; }
-                
                 .section { margin-bottom: 50px; border-bottom: 2px dashed #e2e8f0; padding-bottom: 40px; }
-                .section:last-child { border-bottom: none; }
-                
-                .section-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
-                .icon-box { 
-                    width: 50px; height: 50px; 
-                    background: #eff6ff; color: #2563eb; 
-                    border-radius: 12px; 
-                    display: flex; align-items: center; justify-content: center;
-                    font-size: 24px; font-weight: bold;
-                }
-                .section-title { font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 0; }
-                
-                .feature-block { 
-                    background: #f8fafc; 
-                    border: 1px solid #e2e8f0; 
-                    border-radius: 16px; 
-                    padding: 25px; 
-                    margin-bottom: 20px; 
-                }
+                .section-title { font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 0 0 20px 0; }
+                .feature-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px; margin-bottom: 20px; }
                 .feature-block h3 { color: #334155; margin-top: 0; font-size: 1.2rem; border-right: 4px solid #3b82f6; padding-right: 12px; }
-                
                 ul { padding-right: 20px; color: #475569; }
                 li { margin-bottom: 10px; }
                 strong { color: #0f172a; }
-                
-                .guide-intro { font-size: 1.1rem; color: #64748b; margin-bottom: 20px; font-weight: bold; }
-
                 .footer { text-align: center; padding: 30px; background: #f1f5f9; color: #94a3b8; font-size: 0.9rem; font-weight: bold; }
-                
-                /* SVG styling specifically for the HTML export */
-                svg { width: 20px; height: 20px; vertical-align: middle; display: inline-block; margin: 0 5px; }
             </style>
         </head>
         <body>
@@ -316,24 +282,16 @@ const UserGuide: React.FC = () => {
                 <div class="header">
                     <h1>دليل استخدام تطبيق راصد</h1>
                     <p>المرجع الشامل للمعلم المحترف</p>
-                    <div class="version-tag">الإصدار 3.3</div>
                 </div>
-                
                 <div class="content">
                     ${sections.map(section => `
                         <div class="section">
-                            <div class="section-header">
-                                <div class="icon-box" style="background-color: var(--bg-${section.color}); color: var(--text-${section.color})">#</div>
-                                <h2 class="section-title">${section.title}</h2>
-                            </div>
+                            <h2 class="section-title">${section.title}</h2>
                             ${section.content}
                         </div>
                     `).join('')}
                 </div>
-
-                <div class="footer">
-                    تم إنشاء هذا الدليل بواسطة تطبيق راصد - جميع الحقوق محفوظة
-                </div>
+                <div class="footer">تم إنشاء هذا الدليل بواسطة تطبيق راصد</div>
             </div>
         </body>
         </html>
@@ -392,63 +350,61 @@ const UserGuide: React.FC = () => {
   };
 
   return (
-    <div className="bg-white min-h-full rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[calc(100vh-140px)] md:h-full relative animate-in fade-in duration-300">
+    <div className="bg-white min-h-full rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[calc(100dvh-130px)] md:h-full relative animate-in fade-in duration-300">
       
       {/* Luxurious Header */}
-      <div className="bg-slate-900 text-white p-6 md:p-8 flex justify-between items-start shrink-0 relative overflow-hidden">
-         <div className="relative z-10">
+      <div className="bg-slate-900 text-white p-5 md:p-8 flex flex-col md:flex-row justify-between items-start shrink-0 relative overflow-hidden gap-4">
+         <div className="relative z-10 w-full md:w-auto">
              <div className="flex items-center gap-3 mb-2">
                  <div className="p-2 bg-blue-500/20 rounded-xl backdrop-blur-sm border border-blue-500/30">
                     <BookOpen className="w-6 h-6 text-blue-300" />
                  </div>
-                 <h1 className="text-2xl font-black tracking-tight">دليل المعلم</h1>
+                 <h1 className="text-lg md:text-2xl font-black tracking-tight">دليل المعلم</h1>
              </div>
-             <p className="text-slate-400 text-xs font-bold max-w-md leading-relaxed">
+             <p className="text-slate-400 text-[10px] md:text-xs font-bold max-w-md leading-relaxed">
                  استكشف كافة مميزات تطبيق راصد. تم إعداد هذا الدليل ليشرح كل أداة وخاصية بدقة، لضمان تجربتك الأمثل.
              </p>
          </div>
          
-         <div className="flex gap-2 relative z-10">
-             <button onClick={exportAsHTML} className="group flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all backdrop-blur-md border border-white/10 active:scale-95">
+         <div className="flex gap-2 relative z-10 w-full md:w-auto">
+             <button onClick={exportAsHTML} className="flex-1 md:flex-none group flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-all backdrop-blur-md border border-white/10 active:scale-95">
                  <Globe className="w-4 h-4 text-blue-300 group-hover:text-blue-200" />
-                 <span className="text-[10px] font-black hidden md:block">حفظ كصفحة ويب</span>
+                 <span className="text-[10px] font-black">حفظ كويب</span>
              </button>
-             <button onClick={exportAsPDF} className="group flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-900/50 active:scale-95">
+             <button onClick={exportAsPDF} className="flex-1 md:flex-none group flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-900/50 active:scale-95">
                  {isExporting ? <span className="animate-spin text-white">⌛</span> : <Download className="w-4 h-4 text-white" />}
-                 <span className="text-[10px] font-black text-white hidden md:block">تحميل PDF</span>
+                 <span className="text-[10px] font-black text-white">تحميل PDF</span>
              </button>
          </div>
 
-         {/* Decorative Background Elements */}
          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
       </div>
 
-      {/* Main Content Layout */}
-      <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
+      {/* Main Content Layout - ALWAYS ROW, Sidebar is vertical column */}
+      <div className="flex-1 overflow-hidden flex flex-row bg-slate-50">
           
-          {/* Sidebar Navigation */}
-          <div className="w-full md:w-72 bg-white border-b md:border-b-0 md:border-l border-gray-200 flex md:flex-col overflow-x-auto md:overflow-y-auto custom-scrollbar p-3 gap-2 shrink-0 z-10 shadow-sm">
+          {/* Vertical Sidebar Navigation */}
+          <div className="w-[85px] md:w-72 bg-white border-l border-gray-200 flex flex-col p-2 gap-2 shrink-0 z-10 shadow-sm overflow-y-auto">
               {sections.map(section => (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex items-center gap-3 px-4 py-4 rounded-2xl transition-all min-w-[200px] md:min-w-0 text-right border ${activeSection === section.id ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-[1.02]' : 'bg-white text-gray-500 border-transparent hover:bg-gray-50'}`}
+                    className={`flex flex-col md:flex-row items-center md:gap-3 px-1 md:px-4 py-3 rounded-2xl transition-all w-full text-center md:text-right border ${activeSection === section.id ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-[1.02]' : 'bg-white text-gray-500 border-transparent hover:bg-gray-50'}`}
                   >
-                      <div className={`p-2 rounded-xl ${activeSection === section.id ? 'bg-white/20' : 'bg-gray-100'}`}>
-                          <section.icon className={`w-5 h-5 ${activeSection === section.id ? 'text-white' : 'text-gray-400'}`} />
+                      <div className={`p-2 rounded-xl mb-1 md:mb-0 ${activeSection === section.id ? 'bg-white/20' : 'bg-gray-100'}`}>
+                          <section.icon className={`w-5 h-5 md:w-5 md:h-5 ${activeSection === section.id ? 'text-white' : 'text-gray-400'}`} />
                       </div>
-                      <div className="flex-1">
-                          <span className="block text-xs font-black">{section.title}</span>
+                      <div className="flex-1 w-full overflow-hidden">
+                          <span className="block text-[9px] md:text-xs font-black truncate leading-tight md:leading-normal">{section.title}</span>
                       </div>
-                      {activeSection === section.id && <ChevronLeft className="w-4 h-4 opacity-50" />}
+                      {activeSection === section.id && <ChevronLeft className="hidden md:block w-4 h-4 opacity-50" />}
                   </button>
               ))}
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 relative scroll-smooth" id="guide-content-for-pdf">
-              {/* PDF Only Header */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-10 relative scroll-smooth" id="guide-content-for-pdf">
               <div className="hidden print-visible text-center mb-10 pb-6 border-b-2 border-slate-100">
                   <h1 className="text-4xl font-black text-slate-800 mb-2">دليل استخدام راصد</h1>
                   <p className="text-gray-500 font-bold">الدليل الشامل لكافة الخصائص</p>
@@ -457,32 +413,31 @@ const UserGuide: React.FC = () => {
               {sections.map(section => (
                   <div key={section.id} className={`${activeSection === section.id || isExporting ? 'block' : 'hidden'} animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto`}>
                       
-                      <div className="flex items-center gap-4 mb-8">
-                          <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg bg-gradient-to-br from-white to-gray-50 border border-gray-100`}>
-                              <section.icon className={`w-8 h-8 text-${section.color}-600`} />
+                      <div className="flex items-center gap-4 mb-6 md:mb-8">
+                          <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-lg bg-gradient-to-br from-white to-gray-50 border border-gray-100`}>
+                              <section.icon className={`w-6 h-6 md:w-8 md:h-8 text-${section.color}-600`} />
                           </div>
                           <div>
-                              <h2 className="text-3xl font-black text-slate-800 mb-1">{section.title}</h2>
-                              <div className={`h-1.5 w-20 rounded-full bg-${section.color}-500`}></div>
+                              <h2 className="text-xl md:text-3xl font-black text-slate-800 mb-1">{section.title}</h2>
+                              <div className={`h-1.5 w-16 md:w-20 rounded-full bg-${section.color}-500`}></div>
                           </div>
                       </div>
                       
                       <div 
-                        className="prose prose-lg max-w-none text-slate-600 font-medium leading-loose guide-content"
+                        className="prose prose-sm md:prose-lg max-w-none text-slate-600 font-medium leading-loose guide-content"
                         dangerouslySetInnerHTML={{ __html: section.content }} 
                       />
 
-                      {/* Visual Separator for PDF Flow */}
                       <div className="hidden print-visible my-12 border-b border-gray-200"></div>
                   </div>
               ))}
 
-              <div className="mt-16 p-8 bg-white rounded-3xl text-center border border-gray-100 shadow-sm max-w-2xl mx-auto">
-                  <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Settings className="w-8 h-8 text-blue-500 animate-spin-slow" />
+              <div className="mt-8 md:mt-16 p-6 md:p-8 bg-white rounded-[2rem] md:rounded-3xl text-center border border-gray-100 shadow-sm max-w-2xl mx-auto">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Settings className="w-6 h-6 md:w-8 md:h-8 text-blue-500 animate-spin-slow" />
                   </div>
-                  <h3 className="text-lg font-black text-slate-800 mb-2">الدعم الفني والتحديثات</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">
+                  <h3 className="text-base md:text-lg font-black text-slate-800 mb-2">الدعم الفني والتحديثات</h3>
+                  <p className="text-xs md:text-sm text-gray-500 leading-relaxed">
                       نحن ملتزمون بتطوير التطبيق باستمرار. إذا واجهت أي مشكلة أو كان لديك اقتراح، لا تتردد في التواصل معنا عبر صفحة "حول التطبيق".
                   </p>
               </div>
@@ -493,21 +448,34 @@ const UserGuide: React.FC = () => {
         .guide-content h3 {
             color: #1e293b;
             font-weight: 900;
-            font-size: 1.25rem;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .guide-content h3 {
+                font-size: 1.25rem;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+            }
         }
         .guide-content .feature-block {
             background: white;
             border: 1px solid #f1f5f9;
             border-radius: 1.5rem;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
             transition: transform 0.2s;
+        }
+        @media (min-width: 768px) {
+            .guide-content .feature-block {
+                padding: 2rem;
+                margin-bottom: 1.5rem;
+            }
         }
         .guide-content .feature-block:hover {
             transform: translateY(-2px);
@@ -521,25 +489,37 @@ const UserGuide: React.FC = () => {
         }
         .guide-content li {
             position: relative;
-            padding-right: 1.5rem;
-            margin-bottom: 0.75rem;
-            font-size: 0.95rem;
+            padding-right: 1.25rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        @media (min-width: 768px) {
+            .guide-content li {
+                padding-right: 1.5rem;
+                margin-bottom: 0.75rem;
+                font-size: 0.95rem;
+            }
         }
         .guide-content li::before {
             content: "•";
             color: #3b82f6;
             font-weight: bold;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             position: absolute;
             right: 0;
-            top: -0.25rem;
+            top: -0.15rem;
+        }
+        @media (min-width: 768px) {
+            .guide-content li::before {
+                font-size: 1.5rem;
+                top: -0.25rem;
+            }
         }
         .guide-content strong {
             color: #0f172a;
             font-weight: 800;
         }
-        /* Custom scrollbar for better look */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
