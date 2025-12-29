@@ -5,6 +5,7 @@ import { Award, AlertCircle, MessageCircle, PhoneCall, Trash2, Loader2, Mail, Us
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 declare var html2pdf: any;
 
@@ -69,16 +70,26 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
       }
   };
 
-  const handleWhatsAppClick = () => {
+  const handleWhatsAppClick = async () => {
     if (!student.parentPhone) return;
+    
     let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+    
+    if (!cleanPhone || cleanPhone.length < 5) {
+        alert('رقم الهاتف غير صحيح');
+        return;
+    }
+
     if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
     if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
-    else if (cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+    else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
 
-    const url = `https://wa.me/${cleanPhone}`;
-    if (Capacitor.isNativePlatform()) window.open(url, '_system');
-    else window.open(url, '_blank');
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}`;
+    try {
+        await Browser.open({ url: url });
+    } catch (e) {
+        window.open(url, '_blank');
+    }
   };
 
   const getBase64Image = async (url: string): Promise<string> => {
