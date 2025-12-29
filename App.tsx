@@ -9,7 +9,7 @@ import ExcelImport from './components/ExcelImport';
 import NoorPlatform from './components/NoorPlatform';
 import GroupCompetition from './components/GroupCompetition';
 import UserGuide from './components/UserGuide';
-import BrandLogo from './components/BrandLogo'; // Import the new Logo
+import BrandLogo from './components/BrandLogo';
 import { App as CapApp } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -58,9 +58,6 @@ interface ErrorBoundaryState {
 // --- Error Boundary Component ---
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false, errorMsg: '' };
-
-  // Note: Constructor removed to fix TS error "Property 'props' does not exist on type 'ErrorBoundary'".
-  // React.Component handles props initialization automatically.
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, errorMsg: error.toString() };
@@ -161,7 +158,7 @@ const verifyIntegrity = () => {
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-
+  
   useEffect(() => {
       if (!verifyIntegrity()) {
           document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#000;color:red;font-weight:bold;text-align:center;">Security Violation: Unauthorized Modification Detected.<br/>تم اكتشاف تعديل غير مصرح به في ملفات التطبيق.</div>';
@@ -176,6 +173,7 @@ const AppContent: React.FC = () => {
      } catch { return '1'; }
   });
 
+  // ... (Rest of state initialization remains same)
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const saved = localStorage.getItem('studentData');
@@ -278,6 +276,7 @@ const AppContent: React.FC = () => {
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
   const credits = getCredits();
 
+  // ... (useEffect hooks remain the same)
   useEffect(() => {
     bellAudioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1085/1085-preview.mp3');
   }, []);
@@ -593,7 +592,9 @@ const AppContent: React.FC = () => {
     { id: 'guide', icon: HelpCircle, label: 'الدليل' },
   ];
 
-  // setup screen
+  // --- RENDER LOGIC ---
+
+  // 1. Show Setup Screen if app is launched but no data
   if (!isSetupComplete) {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50 px-8 animate-in fade-in duration-700 overflow-auto" style={{direction: 'rtl'}}>
@@ -681,6 +682,7 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // 2. Main App UI
   return (
     <div className="fixed inset-0 flex bg-transparent overflow-hidden select-none" style={{direction: 'rtl'}}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
