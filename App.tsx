@@ -52,7 +52,10 @@ interface ErrorBoundaryState {
 
 // --- Error Boundary Component ---
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false, errorMsg: '' };
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, errorMsg: error.toString() };
@@ -169,7 +172,6 @@ const AppContent: React.FC = () => {
      } catch { return '1'; }
   });
 
-  // ... (Rest of state initialization remains same)
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const saved = localStorage.getItem('studentData');
@@ -265,7 +267,6 @@ const AppContent: React.FC = () => {
   });
 
   const [isSetupComplete, setIsSetupComplete] = useState(!!teacherInfo.name && !!teacherInfo.school);
-  // Initialize selectedStudentId from storage to persist across restarts
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(() => localStorage.getItem('selectedStudentId') || null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'bell'} | null>(null);
@@ -273,7 +274,6 @@ const AppContent: React.FC = () => {
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
   const credits = getCredits();
 
-  // ... (useEffect hooks remain the same)
   useEffect(() => {
     bellAudioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1085/1085-preview.mp3');
   }, []);
@@ -283,8 +283,6 @@ const AppContent: React.FC = () => {
       try {
         await CapApp.removeAllListeners(); 
         await CapApp.addListener('appStateChange', ({ isActive }) => {
-          // REMOVED: setActiveTab('dashboard') to prevent resetting view on app resume
-          // We only close modal if user left app, or maybe keep it. Let's keep state as is.
           if (isActive) {
              // Optional: Refresh data or check time
           }
@@ -421,7 +419,6 @@ const AppContent: React.FC = () => {
             localStorage.setItem('periodTimes', JSON.stringify(periodTimes));
             localStorage.setItem('viewSheetUrl', viewSheetUrl);
             localStorage.setItem('currentSemester', currentSemester);
-            // Save Navigation State
             localStorage.setItem('activeTab', activeTab);
             if (selectedStudentId) {
                 localStorage.setItem('selectedStudentId', selectedStudentId);
@@ -450,7 +447,7 @@ const AppContent: React.FC = () => {
       setToast({ message: 'تم حذف الطالب بنجاح', type: 'success' });
   };
 
-  const handleAddStudentManually = (name: string, className: string, phone?: string) => {
+  const handleAddStudentManually = (name: string, className: string, phone?: string, avatar?: string) => {
     const newStudent: Student = {
       id: Math.random().toString(36).substr(2, 9),
       name,
@@ -459,7 +456,8 @@ const AppContent: React.FC = () => {
       attendance: [],
       behaviors: [],
       grades: [],
-      parentPhone: phone
+      parentPhone: phone,
+      avatar: avatar
     };
     setStudents(prev => [newStudent, ...prev]);
     if (!classes.includes(className)) {
@@ -596,9 +594,6 @@ const AppContent: React.FC = () => {
     { id: 'guide', icon: HelpCircle, label: 'الدليل' },
   ];
 
-  // --- RENDER LOGIC ---
-
-  // 1. Show Setup Screen if app is launched but no data
   if (!isSetupComplete) {
     return (
       <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50 px-8 animate-in fade-in duration-700 overflow-auto" style={{direction: 'rtl'}}>
@@ -686,7 +681,6 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // 2. Main App UI
   return (
     <div className="fixed inset-0 flex bg-transparent overflow-hidden select-none" style={{direction: 'rtl'}}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -829,77 +823,71 @@ const AppContent: React.FC = () => {
                 <div className={`p-1.5 rounded-xl transition-all ${activeTab === item.id ? 'bg-indigo-50 translate-y-[-2px]' : ''}`}>
                     <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'fill-indigo-600/20 stroke-[2.5px]' : 'stroke-2'}`} />
                 </div>
-                {activeTab === item.id && <span className="text-[9px] font-black tracking-tight animate-in fade-in zoom-in">{item.label}</span>}
               </button>
             ))}
         </nav>
       </div>
 
+      {/* Settings Modal - CENTERED */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center sm:p-6 animate-in fade-in duration-300" onClick={() => setShowSettingsModal(false)}>
-           <div className="bg-white/95 backdrop-blur-xl w-full sm:max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 border border-white/50" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8 sm:hidden" />
-              
-              <div className="absolute top-0 right-0 p-6 z-10 hidden sm:block">
-                 <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-4 h-4 text-gray-500" /></button>
-              </div>
-
-              <div className="flex flex-col items-center text-center mb-8 pt-2 shrink-0">
-                 <div className="w-24 h-24 mb-4 filter drop-shadow-xl">
-                    <BrandLogo className="w-full h-full" showText={false} />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowSettingsModal(false)}>
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+             {/* Modal Header */}
+             <div className="p-6 pb-2">
+                 <div className="flex justify-between items-start mb-4">
+                     <div>
+                         <h2 className="text-xl font-black text-gray-900">الإعدادات</h2>
+                         <p className="text-xs text-gray-500 font-bold">تخصيص التطبيق والبيانات</p>
+                     </div>
+                     <button onClick={() => setShowSettingsModal(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-5 h-5 text-gray-500"/></button>
                  </div>
-                 <h2 className="text-2xl font-black text-slate-800 mb-1">حول التطبيق</h2>
-                 <p className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full mb-4">الإصدار 3.3 (Pro Design)</p>
+             </div>
+
+             {/* Modal Body */}
+             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 space-y-4">
                  
-                 <div className="space-y-1 mb-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">تصميم وتطوير</p>
-                    <h3 className="text-base font-black text-slate-900">{credits.name}</h3>
-                    <div className="flex items-center justify-center gap-1 text-xs font-bold text-slate-500">
-                      <Phone className="w-3.5 h-3.5" /> <span>{credits.phone}</span>
-                    </div>
+                 <div className="bg-indigo-50 p-4 rounded-2xl flex items-center gap-4">
+                     <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                         <BrandLogo className="w-8 h-8" showText={false} />
+                     </div>
+                     <div>
+                         <h3 className="font-black text-indigo-900 text-sm">راصد التعليمي</h3>
+                         <p className="text-[10px] font-bold text-indigo-600">الإصدار 3.3</p>
+                     </div>
                  </div>
 
-                 <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl w-full relative overflow-hidden">
-                    <Heart className="w-16 h-16 text-amber-500/10 absolute -left-4 -bottom-4 rotate-12" />
-                    <p className="text-[11px] font-bold text-amber-800 leading-relaxed relative z-10 text-center">
-                    "هذا التطبيق عمل خيري وصدقة عن روح والدتي ؛ فأرجو الدعاء لها بالرحمة والمغفرة"
-                    </p>
+                 <div className="space-y-2">
+                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">النسخ الاحتياطي</h4>
+                     <button onClick={() => handleBackupData('download')} className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                         <Download className="w-5 h-5 text-gray-600" />
+                         <span className="text-xs font-bold text-gray-700">تحميل نسخة احتياطية</span>
+                     </button>
+                     <button onClick={() => handleBackupData('share')} className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                         <Share className="w-5 h-5 text-gray-600" />
+                         <span className="text-xs font-bold text-gray-700">مشاركة نسخة احتياطية</span>
+                     </button>
+                     <label className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors cursor-pointer relative">
+                         <Upload className="w-5 h-5 text-gray-600" />
+                         <span className="text-xs font-bold text-gray-700">استعادة نسخة احتياطية</span>
+                         <input type="file" accept=".json" onChange={handleRestoreData} className="absolute inset-0 opacity-0 cursor-pointer" />
+                     </label>
                  </div>
-              </div>
 
-              <div className="overflow-y-auto pr-1 space-y-4 custom-scrollbar flex-1 pb-safe">
-                 <div className="border-t border-gray-100 pt-6 space-y-3">
-                    <h3 className="text-xs font-black text-slate-400 mb-2 flex items-center gap-2 uppercase tracking-wider"><Database className="w-3.5 h-3.5" /> إدارة البيانات</h3>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => handleBackupData('share')} className="flex flex-col items-center justify-center gap-2 p-4 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-all">
-                            <Share className="w-6 h-6"/>
-                            <span className="text-[10px] font-bold">مشاركة النسخة</span>
-                        </button>
-
-                        <button onClick={() => handleBackupData('download')} className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 text-gray-700 rounded-2xl border border-gray-100 hover:bg-gray-100 active:scale-95 transition-all">
-                            <Download className="w-6 h-6"/>
-                            <span className="text-[10px] font-bold">حفظ النسخة</span>
-                        </button>
-                    </div>
-
-                    <label className="w-full flex items-center justify-between p-4 bg-emerald-50 text-emerald-700 rounded-2xl text-[12px] font-bold hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer border border-emerald-100">
-                        <div className="flex items-center gap-3">
-                           <div className="bg-emerald-200 p-2 rounded-xl"><Upload className="w-4 h-4 text-emerald-800"/></div>
-                           <span>استيراد ملف البيانات</span>
-                        </div>
-                        <input type="file" accept=".json" className="hidden" onChange={handleRestoreData} />
-                    </label>
-
-                    <div className="border-t border-gray-100 my-4"></div>
-
-                    <button onClick={handleClearAllData} className="w-full flex items-center justify-between p-4 bg-rose-50 text-rose-600 rounded-2xl text-[12px] font-bold hover:bg-rose-100 active:scale-95 transition-all border border-rose-100">
-                        <span>حذف جميع البيانات (تصفير)</span>
-                        <Trash2 className="w-4 h-4" />
-                    </button>
+                 <div className="space-y-2">
+                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">منطقة الخطر</h4>
+                     <button onClick={handleClearAllData} className="w-full flex items-center gap-3 p-4 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors">
+                         <Trash2 className="w-5 h-5 text-rose-500" />
+                         <span className="text-xs font-bold text-rose-600">حذف جميع البيانات</span>
+                     </button>
                  </div>
-              </div>
-           </div>
+                 
+                 <div className="pt-4 border-t border-gray-100 text-center">
+                    <p className="text-[10px] text-gray-400 font-bold mb-1">تم التطوير بواسطة</p>
+                    <p className="text-xs font-black text-gray-600">{credits.name}</p>
+                    {credits.phone && <p className="text-[10px] font-mono text-gray-400 mt-1" dir="ltr">{credits.phone}</p>}
+                 </div>
+             </div>
+          </div>
         </div>
       )}
     </div>
@@ -907,11 +895,11 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  return (
-    <ErrorBoundary>
-      <AppContent />
-    </ErrorBoundary>
-  );
+    return (
+        <ErrorBoundary>
+            <AppContent />
+        </ErrorBoundary>
+    );
 };
 
 export default App;
