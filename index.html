@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="dark">
+<html lang="ar" dir="rtl" data-theme="vision" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -29,7 +29,10 @@
       theme: {
         extend: {
           colors: {
-            // Add custom colors here if needed
+            surface: {
+               DEFAULT: '#fdfcf4', 
+               variant: '#f0f4f8',
+            }
           }
         }
       }
@@ -62,8 +65,8 @@
       transition: background-color 0.5s ease, color 0.5s ease;
     }
 
-    /* DARK MODE (VisionOS) */
-    html.dark body {
+    /* THEME: VISION (Dark Mode) */
+    html[data-theme='vision'] body {
       background-color: #000000;
       background-image: 
         radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
@@ -72,14 +75,10 @@
       color: #ffffff;
     }
 
-    /* LIGHT MODE (Frosted Glass / Snow) */
-    html.light body {
-      background-color: #f8fafc;
-      background-image: 
-        radial-gradient(at 0% 0%, hsla(210, 100%, 96%, 1) 0, transparent 50%), 
-        radial-gradient(at 50% 100%, hsla(220, 100%, 94%, 1) 0, transparent 50%), 
-        radial-gradient(at 100% 0%, hsla(200, 100%, 95%, 1) 0, transparent 50%);
-      color: #0f172a;
+    /* THEME: CERAMIC (Light iOS Mode) */
+    html[data-theme='ceramic'] body {
+      background-color: #f2f2f7; /* iOS System Gray 6 */
+      color: #000000;
     }
 
     #root {
@@ -117,7 +116,7 @@
         cursor: pointer;
     }
 
-    /* VisionOS Scrollbar */
+    /* VisionOS/iOS Scrollbar */
     @media (pointer: coarse) {
         .custom-scrollbar::-webkit-scrollbar, .scrollbar-thin::-webkit-scrollbar, ::-webkit-scrollbar {
             width: 0px; height: 0px; background: transparent;
