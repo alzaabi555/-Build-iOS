@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
     LayoutDashboard, Users, CalendarCheck, GraduationCap, 
@@ -335,7 +336,7 @@ const UserGuide: React.FC = () => {
                                     onClick={() => setActiveTab(tab)}
                                     className={`px-3 py-1 rounded-lg text-xs font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/10 text-slate-600 dark:text-slate-300'}`}
                                 >
-                                    {tab === 'intro' ? 'الرئيسية' : tab}
+                                    {tab === 'intro' ? 'الرئيسية' : tab === 'students' ? 'الطلاب' : tab === 'attendance' ? 'الحضور' : tab === 'grades' ? 'الدرجات' : tab === 'gamification' ? 'المنافسة' : 'التقارير'}
                                 </button>
                             ))}
                         </div>

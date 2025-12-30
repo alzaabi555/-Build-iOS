@@ -76,7 +76,7 @@ const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles
     );
 }, (prev, next) => prev.student === next.student && prev.theme === next.theme);
 
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, onSwitchToImport, currentSemester, onSemesterChange }) => {
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, onSwitchToImport, currentSemester, onSemesterChange, onEditClass, onDeleteClass }) => {
   const { theme, isLowPower } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -84,6 +84,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   // Modals States
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [classToEdit, setClassToEdit] = useState<string | null>(null);
+  const [newClassName, setNewClassName] = useState('');
   
   // Editing & Behavior States
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -98,6 +100,25 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'truancy'} | null>(null);
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
+
+  // Behavior Lists
+  const positiveBehaviors = [
+      { name: 'مشاركة فعالة', points: 1 },
+      { name: 'التزام بالهدوء', points: 1 },
+      { name: 'حل الواجب', points: 2 },
+      { name: 'مبادرة', points: 3 },
+      { name: 'مساعدة المعلم', points: 2 },
+      { name: 'نظافة', points: 1 }
+  ];
+
+  const negativeBehaviors = [
+      { name: 'إزعاج', points: -1 },
+      { name: 'عدم إحضار أدوات', points: -1 },
+      { name: 'عدم حل الواجب', points: -2 },
+      { name: 'تأخر', points: -1 },
+      { name: 'نوم', points: -2 },
+      { name: 'سلوك غير لائق', points: -5 }
+  ];
 
   // File Upload Reference
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +215,29 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           };
           reader.readAsDataURL(file);
       }
+  };
+
+  // Class Management Handlers
+  const confirmDeleteClass = () => {
+      if (selectedClass === 'all') return;
+      if (confirm(`هل أنت متأكد من حذف الفصل "${selectedClass}"؟`)) {
+          onDeleteClass(selectedClass);
+          setSelectedClass('all');
+      }
+  };
+
+  const startEditClass = () => {
+      if (selectedClass === 'all') return;
+      setClassToEdit(selectedClass);
+      setNewClassName(selectedClass);
+  };
+
+  const saveEditClass = () => {
+      if (classToEdit && newClassName.trim() && newClassName !== classToEdit) {
+          onEditClass(classToEdit, newClassName.trim());
+          setSelectedClass(newClassName.trim());
+      }
+      setClassToEdit(null);
   };
 
   // --- RE-IMPLEMENTED EXCEL IMPORT LOGIC ---
@@ -341,9 +385,21 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full py-2 pr-9 pl-4 text-sm font-medium outline-none placeholder:text-slate-400 dark:placeholder:text-white/20 transition-all ${styles.search}`} />
               </div>
 
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center">
                   <button onClick={() => setSelectedClass('all')} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === 'all' ? styles.chipActive : styles.chip}`}>الكل</button>
                   {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === c ? styles.chipActive : styles.chip}`}>{c}</button>))}
+                  
+                  {/* Edit/Delete Class Controls - Only show if specific class selected */}
+                  {selectedClass !== 'all' && (
+                      <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-white/10 mr-2">
+                          <button onClick={startEditClass} className="p-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 active:scale-95 transition-all">
+                              <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={confirmDeleteClass} className="p-1.5 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/30 active:scale-95 transition-all">
+                              <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                      </div>
+                  )}
               </div>
           </div>
       </div>
@@ -364,7 +420,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           ) : (
               <div className="flex flex-col items-center justify-center py-20 opacity-40">
                   <UserX className="w-16 h-16 text-slate-300 dark:text-white mb-4" />
-                  <p className="text-sm font-bold text-slate-400 dark:text-white">لا توجد نتائج</p>
+                  <p className="text-sm font-bold text-slate-400 dark:text-white">لا يوجد طلاب</p>
               </div>
           )}
       </div>
@@ -454,17 +510,92 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
       </Modal>
 
-      {/* Behavior Modals */}
-      <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)}>
-          <div className="text-center mb-4"><h3 className="font-black text-lg text-emerald-600">تعزيز إيجابي</h3><p className="text-xs text-gray-500">{showPositiveReasons?.student.name}</p></div>
-          <div className="grid grid-cols-2 gap-3 mb-4">{['1', '2', '3', '5'].map(pt => (<button key={pt} className="py-2 bg-slate-50 dark:bg-white/5 rounded-xl font-black hover:bg-emerald-500 hover:text-white" onClick={() => handleAddBehavior(showPositiveReasons!.student, 'positive', 'سلوك إيجابي', Number(pt))}>+{pt}</button>))}</div>
-          <input type="text" placeholder="سبب آخر..." value={customReason} onChange={e => setCustomReason(e.target.value)} className="w-full p-3 bg-slate-50 dark:bg-white/5 rounded-xl text-sm font-bold mb-2" />
-          <button onClick={() => handleAddBehavior(showPositiveReasons!.student, 'positive', customReason || 'تميز', 1)} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">تسجيل</button>
+      {/* Edit Class Modal */}
+      <Modal isOpen={!!classToEdit} onClose={() => setClassToEdit(null)} className="max-w-xs rounded-[2rem]">
+          <h3 className="font-black text-lg mb-4 text-slate-900 dark:text-white text-center">تعديل اسم الفصل</h3>
+          <input 
+              type="text" 
+              value={newClassName} 
+              onChange={(e) => setNewClassName(e.target.value)}
+              className="w-full p-4 bg-slate-50 dark:bg-white/5 rounded-2xl font-black text-lg mb-4 outline-none border border-transparent focus:border-blue-500 text-center text-slate-900 dark:text-white"
+              autoFocus
+          />
+          <button onClick={saveEditClass} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-blue-500/30">حفظ التغييرات</button>
       </Modal>
 
-      <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)}>
-          <div className="text-center mb-4"><h3 className="font-black text-lg text-rose-600">مخالفة</h3><p className="text-xs text-gray-500">{showNegativeReasons?.student.name}</p></div>
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">{['إزعاج', 'عدم حل الواجب', 'مشاجرة', 'تأخر', 'هاتف', 'نوم', 'تسرب'].map(reason => (<button key={reason} onClick={() => handleAddBehavior(showNegativeReasons!.student, 'negative', reason, -1)} className="w-full p-3 bg-slate-50 dark:bg-white/5 rounded-xl font-bold text-xs text-right hover:bg-rose-500 hover:text-white">{reason}</button>))}</div>
+      {/* Behavior Modals - RESTORED with Named Actions */}
+      <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-sm rounded-[2rem]">
+          <div className="text-center mb-4">
+              <h3 className="font-black text-lg text-emerald-600 dark:text-emerald-400">تعزيز إيجابي</h3>
+              <p className="text-xs text-gray-500 dark:text-white/50">{showPositiveReasons?.student.name}</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2 mb-4 max-h-[40vh] overflow-y-auto custom-scrollbar">
+              {positiveBehaviors.map((b, idx) => (
+                  <button 
+                    key={idx} 
+                    className="py-3 px-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl font-bold text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all border border-emerald-100 dark:border-emerald-500/20 flex flex-col items-center justify-center gap-1" 
+                    onClick={() => handleAddBehavior(showPositiveReasons!.student, 'positive', b.name, b.points)}
+                  >
+                      <span>{b.name}</span>
+                      <span className="text-[10px] opacity-70">+{b.points}</span>
+                  </button>
+              ))}
+          </div>
+          
+          <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="سبب آخر..." 
+                value={customReason} 
+                onChange={e => setCustomReason(e.target.value)} 
+                className="flex-1 p-3 bg-slate-50 dark:bg-white/5 rounded-xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-emerald-500/50" 
+              />
+              <button 
+                onClick={() => handleAddBehavior(showPositiveReasons!.student, 'positive', customReason || 'تميز', 1)} 
+                className="bg-emerald-600 text-white p-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:shadow-none"
+                disabled={!customReason}
+              >
+                  <Plus className="w-5 h-5" />
+              </button>
+          </div>
+      </Modal>
+
+      <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)} className="max-w-sm rounded-[2rem]">
+          <div className="text-center mb-4">
+              <h3 className="font-black text-lg text-rose-600 dark:text-rose-400">تسجيل مخالفة</h3>
+              <p className="text-xs text-gray-500 dark:text-white/50">{showNegativeReasons?.student.name}</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2 mb-4 max-h-[40vh] overflow-y-auto custom-scrollbar">
+              {negativeBehaviors.map((b, idx) => (
+                  <button 
+                    key={idx} 
+                    className="py-3 px-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl font-bold text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 active:scale-95 transition-all border border-rose-100 dark:border-rose-500/20 flex flex-col items-center justify-center gap-1" 
+                    onClick={() => handleAddBehavior(showNegativeReasons!.student, 'negative', b.name, b.points)}
+                  >
+                      <span>{b.name}</span>
+                      <span className="text-[10px] opacity-70">{b.points}</span>
+                  </button>
+              ))}
+          </div>
+
+          <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="مخالفة أخرى..." 
+                value={customReason} 
+                onChange={e => setCustomReason(e.target.value)} 
+                className="flex-1 p-3 bg-slate-50 dark:bg-white/5 rounded-xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-rose-500/50" 
+              />
+              <button 
+                onClick={() => handleAddBehavior(showNegativeReasons!.student, 'negative', customReason || 'سلوك سلبي', -1)} 
+                className="bg-rose-600 text-white p-3 rounded-xl font-bold shadow-lg shadow-rose-500/30 disabled:opacity-50 disabled:shadow-none"
+                disabled={!customReason}
+              >
+                  <Plus className="w-5 h-5" />
+              </button>
+          </div>
       </Modal>
 
       {/* Random Picker & Notifications Modals Omitted for brevity but logic is same */}
