@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, X, UserPlus, Edit2, FileSpreadsheet, Sparkles, Shuffle, Trash2, CheckCircle2, MessageCircle, Plus, UploadCloud, UserX, Image as ImageIcon, PhoneOff, AlertCircle, FileUp, User, Camera } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, X, UserPlus, Edit2, FileSpreadsheet, Sparkles, Shuffle, Trash2, CheckCircle2, MessageCircle, Plus, UploadCloud, UserX, Image as ImageIcon, PhoneOff, AlertCircle, FileUp, User, Camera, Printer, Loader2 } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import { useTheme } from '../context/ThemeContext';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 declare var html2pdf: any;
 
@@ -26,9 +29,6 @@ interface StudentListProps {
   onDeleteClass: (className: string) => void;
 }
 
-// --------------------------------------------------------------------------------
-// Optimized Student Item Component (Memoized)
-// --------------------------------------------------------------------------------
 const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles }: { 
     student: Student, 
     theme: string, 
@@ -47,11 +47,13 @@ const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles
                     )}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center flex-1">
-                    <div className="flex items-center gap-2 mb-1 w-full">
-                        <h3 className="text-sm font-black text-slate-900 dark:text-white truncate flex-1 min-w-0">{student.name}</h3>
-                        {/* MISSING DATA ALERT: Visual Indicator for missing phone number */}
+                    <div className="flex items-start gap-2 mb-1 w-full">
+                        {/* Fix: Allow text wrap instead of truncate */}
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white flex-1 min-w-0 whitespace-normal leading-tight break-words">
+                            {student.name}
+                        </h3>
                         {!student.parentPhone && (
-                            <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0" title="بيانات ناقصة: لا يوجد رقم ولي أمر">
+                            <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5" title="بيانات ناقصة: لا يوجد رقم ولي أمر">
                                 <PhoneOff className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                             </div>
                         )}
@@ -64,11 +66,11 @@ const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles
                 </div>
             </div>
 
-            <div className="flex items-center gap-2 z-10 shrink-0 ml-4">
-                <button onClick={() => onAction(student, 'positive')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+            <div className="flex items-center gap-2 z-10 shrink-0 ml-4 self-center">
+                <button onClick={() => onAction(student, 'positive')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20">
                     <ThumbsUp className="w-5 h-5" strokeWidth={2.5} />
                 </button>
-                <button onClick={() => onAction(student, 'negative')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                <button onClick={() => onAction(student, 'negative')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20">
                     <ThumbsDown className="w-5 h-5" strokeWidth={2.5} />
                 </button>
             </div>
@@ -100,8 +102,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'truancy'} | null>(null);
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  // Behavior Lists
   const positiveBehaviors = [
       { name: 'مشاركة فعالة', points: 1 },
       { name: 'التزام بالهدوء', points: 1 },
@@ -117,25 +119,21 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       { name: 'عدم حل الواجب', points: -2 },
       { name: 'تأخر', points: -1 },
       { name: 'نوم', points: -2 },
+      { name: 'تسرب', points: -5 }, // Added back
       { name: 'سلوك غير لائق', points: -5 }
   ];
 
-  // File Upload Reference
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Memoized Styles - Aware of Low Power Mode
   const styles = useMemo(() => {
-      // Base styles depending on mode
       let cardStyle = '';
       let headerStyle = '';
 
       if (isLowPower) {
-          // Solid Backgrounds
           cardStyle = 'bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-[1.2rem] mb-2 shadow-sm';
           headerStyle = 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30';
       } else {
-          // Glass Backgrounds
           cardStyle = 'bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-[1.2rem] mb-2 shadow-sm backdrop-blur-sm';
           headerStyle = 'bg-white/80 dark:bg-black/40 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-30';
       }
@@ -151,7 +149,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       };
   }, [theme, isLowPower]);
 
-  // Optimized Filtering
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -160,7 +157,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
     });
   }, [students, searchTerm, selectedClass]);
 
-  // Handlers
   const handleAction = useCallback((student: Student, type: 'positive' | 'negative' | 'edit' | 'delete') => {
       if (type === 'positive') setShowPositiveReasons({student});
       else if (type === 'negative') setShowNegativeReasons({student});
@@ -217,7 +213,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       }
   };
 
-  // Class Management Handlers
   const confirmDeleteClass = () => {
       if (selectedClass === 'all') return;
       if (confirm(`هل أنت متأكد من حذف الفصل "${selectedClass}"؟`)) {
@@ -240,7 +235,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       setClassToEdit(null);
   };
 
-  // --- RE-IMPLEMENTED EXCEL IMPORT LOGIC ---
+  // --- CRASH FIX: Robust Excel Import Logic ---
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -248,14 +243,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       try {
           const data = await file.arrayBuffer();
           const workbook = XLSX.read(data, { type: 'array' });
+          if (!workbook.SheetNames.length) throw new Error("Excel file is empty");
+          
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false }) as any[];
 
-          if (jsonData.length === 0) throw new Error('الملف فارغ');
+          if (!Array.isArray(jsonData) || jsonData.length === 0) throw new Error('الملف فارغ أو التنسيق غير مدعوم');
 
           const headers = Object.keys(jsonData[0]);
           
-          // Helper to clean headers
           const cleanHeader = (header: string) => String(header).trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
           
           const nameKeywords = ['الاسم', 'اسم الطالب', 'name', 'student'];
@@ -266,24 +262,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           let phoneKey = headers.find(h => phoneKeywords.some(kw => cleanHeader(h).includes(kw)));
           let gradeKey = headers.find(h => gradeKeywords.some(kw => cleanHeader(h).includes(kw)));
 
-          if (!nameKey) nameKey = headers[0]; // Fallback to first column
-
-          // Smart Phone Number Detection if column not found
-          if (!phoneKey) {
-              const looksLikeAPhoneNumber = (val: string) => /^\+?\d{7,15}$/.test(String(val).replace(/[^0-9+]/g, ''));
-              for (const header of headers) {
-                  if (header === nameKey) continue;
-                  let matchCount = 0;
-                  let checkLimit = Math.min(jsonData.length, 10);
-                  for (let i = 0; i < checkLimit; i++) {
-                      if (looksLikeAPhoneNumber(jsonData[i][header])) matchCount++;
-                  }
-                  if (matchCount >= checkLimit * 0.3) {
-                      phoneKey = header;
-                      break;
-                  }
-              }
-          }
+          // CRITICAL FIX: If no name column found, use the first column blindly
+          if (!nameKey) nameKey = headers[0]; 
 
           const cleanPhoneNumber = (raw: any): string => {
               if (!raw) return '';
@@ -292,10 +272,11 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
           const mappedStudents: Student[] = jsonData
             .map((row): Student | null => {
+              if (!row || typeof row !== 'object') return null;
+              
               const studentName = String(row[nameKey!] || '').trim();
-              if (!studentName) return null;
+              if (!studentName || studentName.length < 2) return null;
 
-              // Determine Class: If column exists use it, otherwise use currently selected filter or default
               let className = gradeKey ? String(row[gradeKey]).trim() : '';
               if (!className) className = selectedClass !== 'all' ? selectedClass : 'عام';
 
@@ -313,15 +294,16 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             .filter((s): s is Student => s !== null);
 
           if (mappedStudents.length > 0) {
-              onBatchAddStudents(mappedStudents); // Bulk Add
-              setShowSelectionModal(false); // Close modal
+              onBatchAddStudents(mappedStudents); 
+              setShowSelectionModal(false); 
+              alert(`تم استيراد ${mappedStudents.length} طالب بنجاح`);
           } else {
-              alert('لم يتم العثور على بيانات صالحة');
+              alert('لم يتم العثور على بيانات صالحة في الملف');
           }
 
       } catch (error) {
           console.error("Excel Import Error:", error);
-          alert('حدث خطأ أثناء قراءة الملف. تأكد من الصيغة.');
+          alert('حدث خطأ أثناء قراءة الملف. تأكد من أن الملف سليم وغير تالف.');
       } finally {
           if (e.target) e.target.value = '';
       }
@@ -330,6 +312,9 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const pickRandomStudent = () => {
     if (filteredStudents.length === 0) return;
     setIsRandomPicking(true);
+    // Initialize random student to start the modal immediately
+    setRandomStudent(filteredStudents[Math.floor(Math.random() * filteredStudents.length)]);
+    
     let counter = 0;
     const interval = setInterval(() => {
       setRandomStudent(filteredStudents[Math.floor(Math.random() * filteredStudents.length)]);
@@ -343,7 +328,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       let phone = notificationTarget.student.parentPhone.replace(/[^0-9]/g, '');
       if (phone.length === 8) phone = '968' + phone;
       const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${notificationTarget.student.name} قد تسرب من الحصة.`);
-      if (method === 'whatsapp') Browser.open({ url: `https://api.whatsapp.com/send?phone=${phone}&text=${msg}` });
+      
+      if (method === 'whatsapp') {
+          const url = `whatsapp://send?phone=${phone}&text=${msg}`;
+          try {
+              await Browser.open({ url });
+          } catch {
+              window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, '_blank');
+          }
+      }
       else window.location.href = `sms:${phone}?body=${msg}`;
       setNotificationTarget(null);
   };
@@ -361,6 +354,182 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       XLSX.writeFile(wb, `Students_Export.xlsx`);
   };
 
+  // --- PDF Generation for General Class Report ---
+  const getBase64Image = async (url: string): Promise<string> => {
+      try {
+          const response = await fetch(url);
+          if (!response.ok) return "";
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                  const result = reader.result as string;
+                  if (result && result.startsWith('data:')) resolve(result);
+                  else resolve("");
+              };
+              reader.onerror = () => resolve("");
+              reader.readAsDataURL(blob);
+          });
+      } catch (error) { return ""; }
+  };
+
+  const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void) => {
+    setLoader(true);
+    const opt = {
+        margin: 5,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    if (typeof html2pdf !== 'undefined') {
+        try {
+            const worker = html2pdf().set(opt).from(element).toPdf();
+            if (Capacitor.isNativePlatform()) {
+                 const pdfBase64 = await worker.output('datauristring');
+                 const base64Data = pdfBase64.split(',')[1];
+                 const result = await Filesystem.writeFile({ path: filename, data: base64Data, directory: Directory.Cache });
+                 await Share.share({ title: filename, url: result.uri, dialogTitle: 'مشاركة/حفظ' });
+            } else {
+                 const pdfBlob = await worker.output('blob');
+                 const url = URL.createObjectURL(pdfBlob);
+                 const link = document.createElement('a');
+                 link.href = url; link.download = filename; link.target = "_blank";
+                 document.body.appendChild(link); link.click();
+                 setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 2000);
+            }
+        } catch (err) { console.error('PDF Error:', err); } finally { setLoader(false); }
+    } else { alert('مكتبة PDF غير جاهزة'); setLoader(false); }
+  };
+
+  const handlePrintGeneralReport = async () => {
+      if (filteredStudents.length === 0) {
+          alert('لا يوجد طلاب لطباعة التقرير');
+          return;
+      }
+      
+      setIsGeneratingPdf(true);
+      
+      const teacherName = localStorage.getItem('teacherName') || '................';
+      const schoolName = localStorage.getItem('schoolName') || '................';
+      const subjectName = localStorage.getItem('subjectName') || '................';
+      
+      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
+
+      const rows = filteredStudents.map((s, i) => {
+          // Calculate Stats
+          const absentCount = (s.attendance || []).filter(a => a.status === 'absent').length;
+          
+          const posBehaviors = (s.behaviors || []).filter(b => b.type === 'positive');
+          const negBehaviors = (s.behaviors || []).filter(b => b.type === 'negative');
+
+          const positivePoints = posBehaviors.reduce((sum, b) => sum + b.points, 0);
+          const negativePoints = negBehaviors.reduce((sum, b) => sum + Math.abs(b.points), 0);
+          
+          // Generate Summary Strings
+          const getBehaviorSummary = (behaviors: typeof posBehaviors) => {
+              if (behaviors.length === 0) return '';
+              const counts: Record<string, number> = {};
+              behaviors.forEach(b => {
+                  const desc = b.description.split('(')[0].trim(); // Remove group names if any
+                  counts[desc] = (counts[desc] || 0) + 1;
+              });
+              return Object.entries(counts)
+                  .map(([name, count]) => `${name}: ${count}`)
+                  .join('، ');
+          };
+
+          const posDetails = getBehaviorSummary(posBehaviors);
+          const negDetails = getBehaviorSummary(negBehaviors);
+
+          const totalGrade = (s.grades || []).reduce((sum, g) => sum + (Number(g.score) || 0), 0);
+          
+          let level = 'متوسط';
+          if (totalGrade >= 90) level = 'متاز';
+          else if (totalGrade >= 80) level = 'جيد جداً';
+          else if (totalGrade >= 65) level = 'جيد';
+          else if (totalGrade < 50) level = 'ضعيف';
+
+          // Force Styles for PDF visibility
+          const cellStyle = "border: 1px solid #000000 !important; padding: 8px; text-align: center; color: #000000 !important;";
+          const nameCellStyle = "border: 1px solid #000000 !important; padding: 8px; text-align: right; width: 20%; color: #000000 !important;";
+
+          return `
+            <tr>
+                <td style="${cellStyle}">${i + 1}</td>
+                <td style="${nameCellStyle}">${s.name}</td>
+                <td style="${cellStyle}; font-weight: bold; color: ${absentCount > 3 ? '#ef4444' : '#000000'} !important;">${absentCount} أيام</td>
+                
+                <td style="${cellStyle}; vertical-align: top;">
+                    <div style="font-weight: bold; font-size: 14px; color: #16a34a !important; margin-bottom: 4px;">${positivePoints}</div>
+                    <div style="font-size: 9px; color: #555555 !important; line-height: 1.2;">${posDetails}</div>
+                </td>
+                
+                <td style="${cellStyle}; vertical-align: top;">
+                    <div style="font-weight: bold; font-size: 14px; color: #dc2626 !important; margin-bottom: 4px;">${negativePoints}</div>
+                    <div style="font-size: 9px; color: #555555 !important; line-height: 1.2;">${negDetails}</div>
+                </td>
+
+                <td style="${cellStyle}; font-weight: bold;">${totalGrade}</td>
+                <td style="${cellStyle}">${level}</td>
+            </tr>
+          `;
+      }).join('');
+
+      const element = document.createElement('div');
+      element.setAttribute('dir', 'rtl');
+      element.style.fontFamily = 'Tajawal, sans-serif';
+      element.style.padding = '20px';
+      element.style.backgroundColor = '#ffffff'; // Force white background
+      element.style.color = '#000000'; // Force black text
+
+      const headerStyle = "border: 1px solid #000000 !important; padding: 10px; color: #000000 !important; font-weight: bold;";
+
+      element.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px; color: #000000 !important;">
+            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 60px; margin-bottom: 10px;" />` : ''}
+            <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: #000000 !important;">تقرير الأداء الشامل للصف (تفصيلي)</h2>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; border-bottom: 2px solid #000000; padding-bottom: 10px; color: #000000 !important;">
+                <span>المدرسة: ${schoolName}</span>
+                <span>المعلم: ${teacherName}</span>
+                <span>المادة: ${subjectName}</span>
+                <span>الصف: ${selectedClass === 'all' ? 'جميع الفصول' : selectedClass}</span>
+            </div>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; border: 1px solid #000000 !important;">
+            <thead>
+                <tr style="background-color: #f3f4f6 !important; color: #000000 !important;">
+                    <th style="${headerStyle}; width: 30px;">#</th>
+                    <th style="${headerStyle}; text-align: right; width: 15%;">اسم الطالب</th>
+                    <th style="${headerStyle}; width: 8%;">الغياب</th>
+                    <th style="${headerStyle}; width: 25%;">سلوك إيجابي</th>
+                    <th style="${headerStyle}; width: 25%;">سلوك سلبي</th>
+                    <th style="${headerStyle}; width: 8%;">المجموع</th>
+                    <th style="${headerStyle}; width: 8%;">التقدير</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 50px; color: #000000 !important;">
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 40px;">توقيع المعلم</p>
+                <p>......................</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 40px;">مدير المدرسة</p>
+                <p>......................</p>
+            </div>
+        </div>
+      `;
+
+      exportPDF(element, `تقرير_شامل_تفصيلي_${selectedClass}.pdf`, setIsGeneratingPdf);
+  };
+
   return (
     <div className="min-h-full pb-32 text-slate-900 dark:text-white">
       <div className={`pt-safe-top transition-all ${styles.header}`}>
@@ -372,10 +541,15 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   </div>
                   <div className="flex gap-2">
                       <button onClick={pickRandomStudent} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-50 dark:bg-white/10 rounded-full text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-white/5`}><Sparkles className="w-4 h-4" /></button>
+                      
+                      {/* General Report Button */}
+                      <button onClick={handlePrintGeneralReport} disabled={isGeneratingPdf} className={`w-9 h-9 flex items-center justify-center transition-all bg-amber-50 dark:bg-white/10 rounded-full text-amber-600 dark:text-amber-300 border border-amber-100 dark:border-white/5`} title="طباعة تقرير شامل للصف">
+                          {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-4 h-4" />}
+                      </button>
+
                       <button onClick={handleExportExcel} className={`w-9 h-9 flex items-center justify-center transition-all bg-blue-50 dark:bg-white/10 rounded-full text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-white/5`}><FileSpreadsheet className="w-4 h-4" /></button>
                       <button onClick={onSwitchToImport} className={`w-9 h-9 flex items-center justify-center transition-all bg-emerald-50 dark:bg-white/10 rounded-full text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-white/5`}><UploadCloud className="w-4 h-4" /></button>
                       
-                      {/* MODIFIED: This button now opens the Selection Modal */}
                       <button onClick={() => setShowSelectionModal(true)} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-600 text-white rounded-full active:scale-95 hover:bg-indigo-500 border border-indigo-500 shadow-sm`}><UserPlus className="w-4 h-4" /></button>
                   </div>
               </div>
@@ -389,7 +563,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   <button onClick={() => setSelectedClass('all')} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === 'all' ? styles.chipActive : styles.chip}`}>الكل</button>
                   {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === c ? styles.chipActive : styles.chip}`}>{c}</button>))}
                   
-                  {/* Edit/Delete Class Controls - Only show if specific class selected */}
                   {selectedClass !== 'all' && (
                       <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-white/10 mr-2">
                           <button onClick={startEditClass} className="p-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 active:scale-95 transition-all">
@@ -425,7 +598,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           )}
       </div>
 
-      {/* SELECTION MODAL: Choose between Manual or Excel */}
       <Modal isOpen={showSelectionModal} onClose={() => setShowSelectionModal(false)} className="rounded-[2rem] max-w-sm">
           <div className="flex justify-between items-center mb-6">
               <h3 className="font-black text-lg text-slate-900 dark:text-white">إضافة طلاب</h3>
@@ -433,7 +605,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-              {/* Option 1: Manual Entry */}
               <button 
                 onClick={() => { setShowSelectionModal(false); setEditingStudent(null); setEditName(''); setEditPhone(''); setEditClass(''); setEditAvatar(''); setShowManualAddModal(true); }}
                 className="flex flex-col items-center justify-center p-6 bg-indigo-50 dark:bg-indigo-500/10 border-2 border-indigo-100 dark:border-indigo-500/20 rounded-3xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all active:scale-95 group"
@@ -444,7 +615,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   <span className="font-black text-slate-800 dark:text-white text-sm">تسجيل فردي</span>
               </button>
 
-              {/* Option 2: Excel Import (With File Input Logic Restored) */}
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="flex flex-col items-center justify-center p-6 bg-emerald-50 dark:bg-emerald-500/10 border-2 border-emerald-100 dark:border-emerald-500/20 rounded-3xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-95 group"
@@ -453,8 +623,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                       <FileUp className="w-7 h-7" />
                   </div>
                   <span className="font-black text-slate-800 dark:text-white text-sm">استيراد Excel</span>
-                  
-                  {/* Hidden File Input */}
                   <input 
                       type="file" 
                       accept=".xlsx, .csv, .xls" 
@@ -464,17 +632,13 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                   />
               </button>
           </div>
-          
           <p className="text-center text-[10px] text-gray-400 mt-4 font-bold">
               يدعم ملفات Excel التي تحتوي على أعمدة (الاسم، الهاتف، الفصل)
           </p>
       </Modal>
 
-      {/* Manual Entry Modal - With Avatar Upload */}
       <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)}>
           <h3 className="font-black text-lg mb-4 text-slate-900 dark:text-white">{editingStudent ? 'تعديل بيانات الطالب' : 'تسجيل طالب جديد'}</h3>
-          
-          {/* Avatar Upload */}
           <div className="flex justify-center mb-6">
               <div 
                 className="w-24 h-24 rounded-full bg-slate-100 dark:bg-white/10 border-2 border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center cursor-pointer relative overflow-hidden group"
@@ -510,7 +674,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
       </Modal>
 
-      {/* Edit Class Modal */}
       <Modal isOpen={!!classToEdit} onClose={() => setClassToEdit(null)} className="max-w-xs rounded-[2rem]">
           <h3 className="font-black text-lg mb-4 text-slate-900 dark:text-white text-center">تعديل اسم الفصل</h3>
           <input 
@@ -523,7 +686,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           <button onClick={saveEditClass} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-blue-500/30">حفظ التغييرات</button>
       </Modal>
 
-      {/* Behavior Modals - RESTORED with Named Actions */}
       <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-sm rounded-[2rem]">
           <div className="text-center mb-4">
               <h3 className="font-black text-lg text-emerald-600 dark:text-emerald-400">تعزيز إيجابي</h3>
@@ -598,18 +760,34 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           </div>
       </Modal>
 
-      {/* Random Picker & Notifications Modals Omitted for brevity but logic is same */}
-      {/* Just keeping layout structure valid */}
-      <Modal isOpen={!!isRandomPicking || !!randomStudent} onClose={() => { setRandomStudent(null); setIsRandomPicking(false); }} className="text-center">
-          <div className="py-8 flex flex-col items-center">
-              {isRandomPicking ? <Shuffle className="w-12 h-12 text-indigo-500 animate-spin" /> : randomStudent && (
-                  <>
-                    <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-black mb-4 overflow-hidden border-4 border-indigo-500">
-                        {randomStudent.avatar ? <img src={randomStudent.avatar} alt={randomStudent.name} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-indigo-500 flex items-center justify-center">{randomStudent.name.charAt(0)}</div>}
-                    </div>
-                    <h2 className="text-xl font-black dark:text-white">{randomStudent.name}</h2>
-                    <div className="flex gap-2 mt-6 w-full"><button onClick={() => { setShowPositiveReasons({student: randomStudent}); setRandomStudent(null); }} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold">مكافأة</button><button onClick={pickRandomStudent} className="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-bold">آخر</button></div>
-                  </>
+      {/* Random Student Modal */}
+      <Modal isOpen={!!randomStudent || isRandomPicking} onClose={() => { setRandomStudent(null); setIsRandomPicking(false); }} className="max-w-sm rounded-[2.5rem]">
+          <div className="flex flex-col items-center justify-center p-6 text-center">
+              <div className={`w-20 h-20 mb-4 rounded-full flex items-center justify-center text-3xl font-black shadow-xl transition-all duration-100 ${isRandomPicking ? 'scale-110 bg-indigo-100 text-indigo-600' : 'bg-emerald-500 text-white scale-100'}`}>
+                  {randomStudent?.avatar ? (
+                      <img src={randomStudent.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                      randomStudent?.name.charAt(0) || '?'
+                  )}
+              </div>
+              
+              <h2 className={`text-2xl font-black mb-2 transition-colors ${isRandomPicking ? 'text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                  {randomStudent?.name || 'جارِ الاختيار...'}
+              </h2>
+              
+              <p className={`text-sm font-bold mb-6 ${isRandomPicking ? 'text-indigo-300' : 'text-emerald-500'}`}>
+                  {isRandomPicking ? 'جاري السحب...' : '✨ تم الاختيار!'}
+              </p>
+
+              {!isRandomPicking && (
+                  <div className="flex gap-2 w-full">
+                      <button onClick={() => { setRandomStudent(null); pickRandomStudent(); }} className="flex-1 py-3 bg-gray-100 dark:bg-white/10 rounded-xl font-bold text-xs text-slate-600 dark:text-white hover:bg-gray-200">
+                          اختيار آخر <Shuffle className="w-3 h-3 inline mr-1"/>
+                      </button>
+                      <button onClick={() => handleAction(randomStudent!, 'positive')} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/30">
+                          تعزيز <ThumbsUp className="w-3 h-3 inline mr-1"/>
+                      </button>
+                  </div>
               )}
           </div>
       </Modal>

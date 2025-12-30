@@ -1,11 +1,16 @@
 
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2 } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import { motion } from 'framer-motion';
 import Modal from './Modal';
 import { useTheme } from '../context/ThemeContext';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
+
+declare var html2pdf: any;
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -19,6 +24,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late'} | null>(null);
 
@@ -123,6 +129,161 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       return matchClass && matchSearch;
   });
 
+  // --- PDF Printing Logic ---
+  const getBase64Image = async (url: string): Promise<string> => {
+      try {
+          const response = await fetch(url);
+          if (!response.ok) return "";
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                  const result = reader.result as string;
+                  if (result && result.startsWith('data:')) resolve(result);
+                  else resolve("");
+              };
+              reader.onerror = () => resolve("");
+              reader.readAsDataURL(blob);
+          });
+      } catch (error) { return ""; }
+  };
+
+  const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void) => {
+    setLoader(true);
+    const opt = {
+        margin: 5,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    if (typeof html2pdf !== 'undefined') {
+        try {
+            const worker = html2pdf().set(opt).from(element).toPdf();
+            if (Capacitor.isNativePlatform()) {
+                 const pdfBase64 = await worker.output('datauristring');
+                 const base64Data = pdfBase64.split(',')[1];
+                 const result = await Filesystem.writeFile({ path: filename, data: base64Data, directory: Directory.Cache });
+                 await Share.share({ title: filename, url: result.uri, dialogTitle: 'مشاركة/حفظ' });
+            } else {
+                 const pdfBlob = await worker.output('blob');
+                 const url = URL.createObjectURL(pdfBlob);
+                 const link = document.createElement('a');
+                 link.href = url; link.download = filename; link.target = "_blank";
+                 document.body.appendChild(link); link.click();
+                 setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 2000);
+            }
+        } catch (err) { console.error('PDF Error:', err); } finally { setLoader(false); }
+    } else { alert('مكتبة PDF غير جاهزة'); setLoader(false); }
+  };
+
+  const handlePrintDailyReport = async () => {
+      if (filteredStudents.length === 0) {
+          alert('لا يوجد طلاب في القائمة المختارة');
+          return;
+      }
+
+      setIsGeneratingPdf(true);
+
+      const teacherName = localStorage.getItem('teacherName') || '................';
+      const schoolName = localStorage.getItem('schoolName') || '................';
+      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
+
+      const dateStr = new Date(selectedDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      // Sort students: absent/late first, then alphabetical
+      const sortedStudents = [...filteredStudents].sort((a, b) => {
+          const statusA = getStatus(a) || '';
+          const statusB = getStatus(b) || '';
+          if (statusA === statusB) return a.name.localeCompare(b.name);
+          if (statusA === 'absent') return -1;
+          if (statusB === 'absent') return 1;
+          if (statusA === 'late') return -1;
+          if (statusB === 'late') return 1;
+          return 0;
+      });
+
+      const rows = sortedStudents.map((s, i) => {
+          const status = getStatus(s);
+          let statusText = 'حاضر';
+          let statusColor = '#000';
+          let bgColor = '#fff';
+
+          if (status === 'absent') { statusText = 'غائب'; statusColor = '#dc2626'; bgColor = '#fef2f2'; }
+          else if (status === 'late') { statusText = 'متأخر'; statusColor = '#d97706'; bgColor = '#fffbeb'; }
+          else if (!status) { statusText = 'غير مرصود'; statusColor = '#9ca3af'; }
+
+          // Cumulative stats
+          const totalAbsent = s.attendance.filter(a => a.status === 'absent').length;
+          const totalLate = s.attendance.filter(a => a.status === 'late').length;
+
+          const cellStyle = "border: 1px solid #000 !important; padding: 8px; text-align: center; color: #000 !important;";
+          
+          return `
+            <tr style="background-color: ${bgColor};">
+                <td style="${cellStyle}">${i + 1}</td>
+                <td style="${cellStyle}; text-align: right;">${s.name}</td>
+                <td style="${cellStyle}; font-weight: bold; color: ${statusColor} !important;">${statusText}</td>
+                <td style="${cellStyle}">${totalAbsent}</td>
+                <td style="${cellStyle}">${totalLate}</td>
+                <td style="${cellStyle}"></td>
+            </tr>
+          `;
+      }).join('');
+
+      const element = document.createElement('div');
+      element.setAttribute('dir', 'rtl');
+      element.style.fontFamily = 'Tajawal, sans-serif';
+      element.style.padding = '20px';
+      element.style.backgroundColor = '#ffffff';
+      element.style.color = '#000000';
+
+      const headerStyle = "border: 1px solid #000 !important; padding: 10px; color: #000 !important; font-weight: bold; background-color: #f3f4f6;";
+
+      element.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px; color: #000 !important;">
+            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 60px; margin-bottom: 10px;" />` : ''}
+            <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: #000 !important;">تقرير متابعة الحضور والغياب اليومي</h2>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 10px; color: #000 !important; font-size: 14px;">
+                <span>المدرسة: ${schoolName}</span>
+                <span>المعلم: ${teacherName}</span>
+                <span>التاريخ: ${dateStr}</span>
+                <span>الفصل: ${classFilter === 'all' ? 'جميع الفصول' : classFilter}</span>
+            </div>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; border: 1px solid #000 !important;">
+            <thead>
+                <tr>
+                    <th style="${headerStyle}; width: 40px;">#</th>
+                    <th style="${headerStyle}; text-align: right;">اسم الطالب</th>
+                    <th style="${headerStyle}; width: 15%;">الحالة اليوم</th>
+                    <th style="${headerStyle}; width: 10%;">مجموع الغياب</th>
+                    <th style="${headerStyle}; width: 10%;">مجموع التأخر</th>
+                    <th style="${headerStyle}; width: 20%;">ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 50px; color: #000 !important;">
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 40px;">توقيع المعلم</p>
+                <p>......................</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 40px;">مدير المدرسة</p>
+                <p>......................</p>
+            </div>
+        </div>
+      `;
+
+      exportPDF(element, `تقرير_غياب_${selectedDate}.pdf`, setIsGeneratingPdf);
+  };
+
   return (
     <div className="space-y-0 pb-32 md:pb-8 min-h-full">
       
@@ -134,6 +295,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                  <p className="text-xs text-slate-500 dark:text-white/50 font-bold mt-1">{formatDateDisplay(selectedDate)}</p>
              </div>
              <div className="flex gap-2">
+                 {/* Print Button */}
+                 <button 
+                    onClick={handlePrintDailyReport}
+                    disabled={isGeneratingPdf}
+                    className="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-500/30 active:scale-95 transition-all"
+                    title="طباعة تقرير الحضور"
+                 >
+                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                 </button>
+
                  {/* Class Filter Button */}
                  <div className="relative">
                     <select 

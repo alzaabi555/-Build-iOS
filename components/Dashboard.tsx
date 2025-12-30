@@ -1,8 +1,7 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, ScheduleDay, PeriodTime } from '../types';
 import { PieChart, Pie, Cell } from 'recharts';
-import { Award, AlertCircle, Sun, Moon, Coffee, Calendar, Edit2, X, Clock, ArrowRight, FileSpreadsheet, Loader2, Settings, ChevronLeft, CalendarCheck } from 'lucide-react';
+import { Award, AlertCircle, Sun, Moon, Coffee, Calendar, Edit2, X, Clock, ArrowRight, FileSpreadsheet, Loader2, Settings, ChevronLeft, CalendarCheck, Timer, BellRing, Bell, BellOff } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion } from 'framer-motion';
 import Modal from './Modal';
@@ -19,22 +18,44 @@ interface DashboardProps {
   onOpenSettings: () => void;
   periodTimes: PeriodTime[];
   setPeriodTimes: React.Dispatch<React.SetStateAction<PeriodTime[]>>;
+  notificationsEnabled: boolean;
+  onToggleNotifications: () => void;
 }
 
 const OMAN_GOVERNORATES = ["مسقط", "ظفار", "مسندم", "البريمي", "الداخلية", "شمال الباطنة", "جنوب الباطنة", "جنوب الشرقية", "شمال الشرقية", "الظاهرة", "الوسطى"];
 
-const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onUpdateTeacherInfo, schedule, onUpdateSchedule, onSelectStudent, onNavigate, onOpenSettings, periodTimes, setPeriodTimes }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+    students = [], 
+    teacherInfo, 
+    onUpdateTeacherInfo, 
+    schedule, 
+    onUpdateSchedule, 
+    onSelectStudent, 
+    onNavigate, 
+    onOpenSettings, 
+    periodTimes, 
+    setPeriodTimes,
+    notificationsEnabled,
+    onToggleNotifications
+}) => {
   const { theme, isLowPower } = useTheme();
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [showTimeSettings, setShowTimeSettings] = useState(false);
   const [isImportingSchedule, setIsImportingSchedule] = useState(false);
-  
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const [editName, setEditName] = useState(teacherInfo.name);
   const [editSchool, setEditSchool] = useState(teacherInfo.school);
   const [editSubject, setEditSubject] = useState(teacherInfo.subject);
   const [editGovernorate, setEditGovernorate] = useState(teacherInfo.governorate);
+
+  // Update clock every minute
+  useEffect(() => {
+      const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+      return () => clearInterval(timer);
+  }, []);
 
   const getCardStyle = () => {
       // Solid if Low Power
@@ -86,6 +107,31 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onUpd
   const daysMap = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   const todayName = daysMap[new Date().getDay()];
   const todaySchedule = schedule.find(s => s.dayName === todayName);
+
+  // --- Helper to compare times ---
+  const parseTime = (timeStr: string) => {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(':').map(Number);
+      const date = new Date();
+      date.setHours(h, m, 0, 0);
+      return date;
+  };
+
+  const getPeriodStatus = (startTime: string, endTime: string) => {
+      const start = parseTime(startTime);
+      const end = parseTime(endTime);
+      const now = new Date(); // Use actual now, not state, for better precision in render
+
+      if (!start || !end) return 'unknown';
+      if (now > end) return 'past';
+      if (now >= start && now <= end) return 'active';
+      return 'future';
+  };
+
+  // Find active period index
+  const activePeriodIndex = useMemo(() => {
+      return periodTimes.findIndex(pt => getPeriodStatus(pt.startTime, pt.endTime) === 'active');
+  }, [periodTimes, currentTime]);
 
   const handlePeriodChange = (dayIdx: number, periodIdx: number, val: string) => {
     const updatedSchedule = [...schedule];
@@ -173,24 +219,62 @@ const Dashboard: React.FC<DashboardProps> = ({ students = [], teacherInfo, onUpd
             </div>
       </button>
 
-      {/* Schedule */}
-      <div className={`${getCardStyle()} p-4 relative`}>
-         <div className="flex justify-between items-center mb-3">
-           <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2 text-sm"><Calendar className="w-4 h-4 text-indigo-500" /> جدول {todayName}</h3>
+      {/* Schedule - Live Timeline Upgrade */}
+      <div className={`${getCardStyle()} p-4 relative overflow-hidden`}>
+         {/* Live Indicator Background */}
+         {activePeriodIndex !== -1 && (
+             <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse opacity-50"></div>
+         )}
+
+         <div className="flex justify-between items-center mb-4">
+           <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2 text-sm">
+               <Calendar className={`w-4 h-4 ${activePeriodIndex !== -1 ? 'text-emerald-500 animate-pulse' : 'text-indigo-500'}`} /> 
+               {activePeriodIndex !== -1 ? <span className="text-emerald-600 dark:text-emerald-400">الحصة {activePeriodIndex + 1} جارية الآن</span> : `جدول ${todayName}`}
+           </h3>
            <div className="flex gap-2">
-               <button onClick={() => setShowTimeSettings(true)} className="p-2 bg-amber-50 dark:bg-white/10 text-amber-600 dark:text-amber-200 rounded-xl"><Clock className="w-3.5 h-3.5"/></button>
-               <button onClick={() => setIsEditingSchedule(true)} className="p-2 bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-indigo-200 rounded-xl"><Edit2 className="w-3.5 h-3.5"/></button>
+               <button onClick={onToggleNotifications} className={`p-2 rounded-xl transition-colors ${notificationsEnabled ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300' : 'bg-gray-100 dark:bg-white/10 text-gray-400'}`}>
+                   {notificationsEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+               </button>
+               <button onClick={() => setShowTimeSettings(true)} className="p-2 bg-amber-50 dark:bg-white/10 text-amber-600 dark:text-amber-200 rounded-xl hover:bg-amber-100 transition-colors"><Clock className="w-3.5 h-3.5"/></button>
+               <button onClick={() => setIsEditingSchedule(true)} className="p-2 bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
            </div>
          </div>
+         
          {todaySchedule ? (
            <div className="grid grid-cols-4 gap-2">
-                {todaySchedule.periods.slice(0, 8).map((p, idx) => (
-                   <div key={idx} className={`flex flex-col items-center justify-between p-2 rounded-xl border h-[70px] ${p ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/30' : 'bg-slate-50 dark:bg-white/5 border-transparent'}`}>
-                      <span className="text-[8px] font-black opacity-50 w-full text-right">#{idx + 1}</span>
-                      <span className={`text-[10px] font-black text-center truncate w-full ${p ? 'text-indigo-700 dark:text-indigo-100' : 'opacity-30'}`}>{p || '-'}</span>
-                      <span className="text-[8px] font-bold opacity-50 w-full text-left">{periodTimes[idx]?.startTime || ''}</span>
-                   </div>
-                ))}
+                {todaySchedule.periods.slice(0, 8).map((p, idx) => {
+                   const status = getPeriodStatus(periodTimes[idx]?.startTime, periodTimes[idx]?.endTime);
+                   const isPast = status === 'past';
+                   const isActive = status === 'active';
+                   
+                   return (
+                       <div key={idx} className={`relative flex flex-col items-center justify-between p-2 rounded-xl border h-[75px] transition-all duration-300
+                           ${isActive 
+                               ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500 dark:border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-105 z-10' 
+                               : isPast 
+                                   ? 'bg-slate-50/50 dark:bg-white/5 border-transparent opacity-60 grayscale' 
+                                   : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/10'
+                           }
+                           ${!p ? 'opacity-40' : ''}
+                       `}>
+                          
+                          {isActive && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 animate-bounce shadow-sm z-20"></div>
+                          )}
+
+                          <span className={`text-[8px] font-black w-full text-right ${isActive ? 'text-emerald-700 dark:text-emerald-300' : 'opacity-50'}`}>#{idx + 1}</span>
+                          
+                          <span className={`text-[10px] font-black text-center truncate w-full ${isActive ? 'text-emerald-900 dark:text-white text-xs' : p ? 'text-indigo-700 dark:text-indigo-100' : 'opacity-30'}`}>
+                              {p || '-'}
+                          </span>
+                          
+                          <div className={`w-full text-left flex items-center justify-end gap-1 ${isActive ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-white/30'}`}>
+                              {isActive && <Timer className="w-3 h-3 animate-pulse" />}
+                              <span className="text-[8px] font-bold">{periodTimes[idx]?.startTime || ''}</span>
+                          </div>
+                       </div>
+                   );
+                })}
            </div>
          ) : <p className="text-center text-xs opacity-50 py-4">لا يوجد جدول</p>}
       </div>
