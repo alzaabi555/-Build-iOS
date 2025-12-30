@@ -5,6 +5,7 @@ import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCir
 import { Browser } from '@capacitor/browser';
 import { motion } from 'framer-motion';
 import Modal from './Modal';
+import { useTheme } from '../context/ThemeContext';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -13,12 +14,22 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
+  const { theme } = useTheme();
   const today = new Date().toLocaleDateString('en-CA'); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late'} | null>(null);
+
+  const styles = {
+      header: 'bg-white/80 dark:bg-white/5 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 shadow-sm dark:shadow-lg',
+      card: 'bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-md dark:hover:bg-white/10',
+      search: 'bg-white dark:bg-black/20 rounded-xl border border-gray-300 dark:border-white/10',
+      select: 'bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/30 rounded-full',
+      btnGroup: 'bg-slate-50 dark:bg-black/10 rounded-xl border border-gray-100 dark:border-white/5 p-2',
+      statusBtn: 'rounded-xl',
+  };
 
   const formatDateDisplay = (dateString: string) => {
       const d = new Date(dateString);
@@ -116,7 +127,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     <div className="space-y-0 pb-32 md:pb-8 min-h-full">
       
       {/* Dynamic Header */}
-      <div className="bg-white/80 dark:bg-white/5 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 px-4 pt-2 pb-4 rounded-b-[2rem] sticky top-0 z-20 shadow-sm dark:shadow-lg transition-colors duration-300">
+      <div className={`${styles.header} px-4 pt-2 pb-4 rounded-b-[2rem] sticky top-0 z-20 transition-colors duration-300`}>
           <div className="flex items-end justify-between mb-4">
              <div>
                  <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">الحضور</h1>
@@ -128,7 +139,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     <select 
                         value={classFilter} 
                         onChange={(e) => setClassFilter(e.target.value)} 
-                        className="appearance-none bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 font-bold text-xs py-2 pl-3 pr-8 rounded-full border border-indigo-100 dark:border-indigo-500/30 shadow-sm focus:ring-0 cursor-pointer outline-none transition-colors"
+                        className={`appearance-none text-indigo-700 dark:text-indigo-200 font-bold text-xs py-2 pl-3 pr-8 shadow-sm focus:ring-0 cursor-pointer outline-none transition-colors ${styles.select}`}
                     >
                         <option value="all" className="text-black">كل الفصول</option>
                         {classes.map(c => <option key={c} value={c} className="text-black">{c}</option>)}
@@ -143,7 +154,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                         onChange={(e) => setSelectedDate(e.target.value)} 
                         className="absolute inset-0 opacity-0 z-10 w-full cursor-pointer"
                     />
-                    <button className="bg-white dark:bg-white/10 text-slate-700 dark:text-white/80 font-bold text-xs py-2 px-3 rounded-full shadow-sm flex items-center gap-1 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/20 transition-all">
+                    <button className="text-slate-700 dark:text-white/80 font-bold text-xs py-2 px-3 shadow-sm flex items-center gap-1 hover:bg-gray-50 dark:hover:bg-white/20 transition-all bg-white dark:bg-white/10 rounded-full border border-gray-200 dark:border-white/10">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>التاريخ</span>
                     </button>
@@ -151,14 +162,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
              </div>
           </div>
 
-          {/* Search Bar - High Contrast for Light Mode */}
+          {/* Search Bar */}
           <div className="relative mb-3">
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400 dark:text-white/40" />
               </div>
               <input
                   type="text"
-                  className="w-full bg-white dark:bg-black/20 text-slate-900 dark:text-white text-sm rounded-xl py-2.5 pr-9 pl-4 outline-none placeholder:text-slate-400 dark:placeholder:text-white/30 border border-gray-300 dark:border-white/10 focus:border-indigo-500 dark:focus:bg-black/30 transition-all text-right shadow-sm dark:shadow-none"
+                  className={`w-full text-slate-900 dark:text-white text-sm py-2.5 pr-9 pl-4 outline-none placeholder:text-slate-400 dark:placeholder:text-white/30 transition-all text-right shadow-sm ${styles.search}`}
                   placeholder="بحث عن طالب..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -169,13 +180,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
               <button 
                   onClick={() => handleMarkAll('present')}
-                  className="flex-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 py-2.5 rounded-xl text-[11px] font-bold shadow-sm active:scale-95 transition-all border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-200 dark:hover:bg-emerald-500/30"
+                  className="flex-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 py-2.5 text-[11px] font-bold shadow-sm active:scale-95 transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-xl border border-emerald-200 dark:border-emerald-500/20"
               >
                   تحديد الكل "حاضر"
               </button>
               <button 
                   onClick={() => handleMarkAll('reset')}
-                  className="px-4 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 py-2.5 rounded-xl shadow-sm active:scale-95 transition-all border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white"
+                  className="px-4 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 py-2.5 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white rounded-xl border border-gray-200 dark:border-white/10"
               >
                   <RotateCcw className="w-4 h-4" />
               </button>
@@ -194,7 +205,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
                             key={student.id} 
-                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-md dark:hover:bg-white/10 transition-all"
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 transition-all ${styles.card}`}
                         >
                             
                             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -208,29 +219,29 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h4 className="text-sm font-black text-slate-900 dark:text-white truncate text-right">{student.name}</h4>
-                                    <p className="text-[10px] text-slate-500 dark:text-white/40 truncate text-right font-bold bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md inline-block mt-1">{student.classes[0]}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-white/40 truncate text-right font-bold px-2 py-0.5 inline-block mt-1 bg-slate-100 dark:bg-white/5 rounded-md">{student.classes[0]}</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-3 w-full sm:w-auto bg-slate-50 dark:bg-black/10 p-2 rounded-xl border border-gray-100 dark:border-white/5">
+                            <div className={`flex items-center justify-end gap-3 w-full sm:w-auto ${styles.btnGroup}`}>
                                 <div className="flex gap-2">
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'present')} 
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-emerald-400/50 border border-gray-200 dark:border-transparent hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
+                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-emerald-400/50 border border-gray-200 dark:border-transparent hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
                                         title="حاضر"
                                     >
                                         <Check className="w-5 h-5" strokeWidth={3} />
                                     </button>
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'absent')} 
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-rose-400/50 border border-gray-200 dark:border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 dark:hover:text-rose-400'}`}
+                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-rose-400/50 border border-gray-200 dark:border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 dark:hover:text-rose-400'}`}
                                         title="غائب"
                                     >
                                         <X className="w-5 h-5" strokeWidth={3} />
                                     </button>
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'late')} 
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-amber-400/50 border border-gray-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400'}`}
+                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-amber-400/50 border border-gray-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400'}`}
                                         title="تأخير"
                                     >
                                         <Clock className="w-5 h-5" strokeWidth={3} />
@@ -240,7 +251,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                 {(status === 'absent' || status === 'late') && (
                                     <button 
                                         onClick={() => handleNotifyParent(student, status)} 
-                                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-500 text-white active:scale-90 transition-transform shadow-lg shadow-blue-500/30 ml-1"
+                                        className={`w-10 h-10 flex items-center justify-center bg-blue-500 text-white active:scale-90 transition-transform shadow-lg shadow-blue-500/30 ml-1 ${styles.statusBtn}`}
                                     >
                                         <MessageCircle className="w-5 h-5" />
                                     </button>
@@ -260,7 +271,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       </div>
 
       {/* Notification Modal */}
-      <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)}>
+      <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="rounded-[28px]">
           <h3 className="text-center font-black text-slate-900 dark:text-white text-lg mb-1 shrink-0">
               إبلاغ ولي الأمر
           </h3>

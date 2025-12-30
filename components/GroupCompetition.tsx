@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Student, Group } from '../types';
 import { Users, Trophy, Zap, Plus, Minus, Lock, Unlock, RefreshCw, Crown, Settings, Edit2, Check, X, Search, Palette } from 'lucide-react';
 import Modal from './Modal';
+import { useTheme } from '../context/ThemeContext';
 
 interface GroupCompetitionProps {
   students: Student[];
@@ -23,6 +24,7 @@ const COLORS = [
 ];
 
 const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, onUpdateStudent, groups, onUpdateGroups, setStudents }) => {
+  const { theme } = useTheme();
   const [selectedClass, setSelectedClass] = useState(classes[0] || 'all');
   const [isSetupMode, setIsSetupMode] = useState(false);
   
@@ -31,6 +33,12 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
   const [groupNameInput, setGroupNameInput] = useState('');
   const [groupColorInput, setGroupColorInput] = useState('emerald');
   const [studentSearch, setStudentSearch] = useState('');
+
+  const styles = {
+      card: 'bg-white dark:bg-white/5 shadow-sm border border-gray-100 dark:border-white/5 backdrop-blur-md rounded-[1.5rem] md:rounded-[2.5rem]',
+      header: 'bg-white/80 dark:bg-white/5 shadow-sm border border-gray-200 dark:border-white/10 backdrop-blur-xl',
+      pill: 'rounded-xl border border-gray-200 dark:border-white/10',
+  };
 
   const filteredStudents = students.filter(s => selectedClass === 'all' || s.classes?.includes(selectedClass));
 
@@ -105,7 +113,7 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
     <div className="space-y-6 pb-24 md:pb-8 text-slate-900 dark:text-white">
         
         {/* Header Area */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 dark:bg-white/5 p-4 rounded-[2rem] shadow-sm border border-gray-200 dark:border-white/10 backdrop-blur-xl">
+        <div className={`flex flex-col md:flex-row justify-between items-center gap-4 p-4 rounded-[2rem] ${styles.header}`}>
              <div className="flex items-center gap-3 w-full md:w-auto">
                  <div className="w-12 h-12 bg-amber-100 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                      <Trophy className="w-6 h-6" />
@@ -117,12 +125,12 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
              </div>
 
              <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 custom-scrollbar">
-                 <button onClick={() => setIsSetupMode(!isSetupMode)} className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all ${isSetupMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/20'}`}>
+                 <button onClick={() => setIsSetupMode(!isSetupMode)} className={`px-4 py-2 text-xs font-black flex items-center gap-2 transition-all ${isSetupMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 rounded-xl' : `bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/20 ${styles.pill}`}`}>
                      {isSetupMode ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                      {isSetupMode ? 'إنهاء الإدارة' : 'إدارة الفرق'}
                  </button>
                  <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-1"></div>
-                 {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-3 py-2 rounded-xl text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === c ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md' : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10'}`}>{c}</button>))}
+                 {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-3 py-2 text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === c ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md rounded-xl' : `bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 hover:bg-gray-50 dark:hover:bg-white/10 ${styles.pill}`}`}>{c}</button>))}
              </div>
         </div>
 
@@ -136,7 +144,7 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
                     const membersCount = getTeamStudents(group.id).length;
 
                     return (
-                        <div key={group.id} className={`relative bg-white dark:bg-white/5 rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 shadow-sm border-2 transition-all duration-300 backdrop-blur-md ${isLeader ? 'border-amber-400 scale-[1.02] shadow-[0_0_30px_rgba(251,191,36,0.3)]' : 'border-gray-100 dark:border-white/5'}`}>
+                        <div key={group.id} className={`relative p-3 md:p-5 transition-all duration-300 ${styles.card} ${isLeader ? 'border-amber-400 scale-[1.02] shadow-[0_0_30px_rgba(251,191,36,0.3)]' : ''}`}>
                             {isLeader && (<div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-400 text-black px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 shadow-sm z-10 whitespace-nowrap"><Crown className="w-2.5 h-2.5 fill-black" /> المتصدر</div>)}
                             <div className={`h-16 md:h-24 rounded-2xl md:rounded-[2rem] ${style.light} flex items-center justify-between px-3 md:px-6 mb-3 relative overflow-hidden border ${style.border}`}>
                                 <div className="z-10"><h3 className={`font-black text-sm md:text-lg ${style.text}`}>{group.name}</h3></div>
@@ -148,7 +156,7 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
                                 <button onClick={() => awardTeam(group.id, 10, 'إجابة جماعية')} className="py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-blue-500/20 rounded-lg text-[9px] font-black transition-colors active:scale-95 flex flex-col items-center gap-0.5"><Zap className="w-3 h-3 md:w-4 md:h-4" /><span>تفاعل</span></button>
                                 <button onClick={() => awardTeam(group.id, -5, 'إزعاج جماعي')} className="py-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-500/20 rounded-lg text-[9px] font-black transition-colors active:scale-95 flex flex-col items-center gap-0.5 col-span-2"><Minus className="w-3 h-3 md:w-4 md:h-4" /><span>مخالفة</span></button>
                             </div>
-                            <div className="bg-gray-50 dark:bg-black/20 rounded-xl p-2 md:p-3 min-h-[60px] md:min-h-[80px] border border-gray-100 dark:border-white/5"><div className="flex justify-between items-center mb-1 md:mb-2"><span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-white/40">الأعضاء ({membersCount})</span><Users className="w-3 h-3 text-slate-400 dark:text-white/30" /></div><div className="flex flex-wrap gap-1">{getTeamStudents(group.id).map(s => (<span key={s.id} className="text-[8px] md:text-[9px] bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded text-slate-600 dark:text-white/70 truncate max-w-[50px] md:max-w-[60px]">{s.name.split(' ')[0]}</span>))}{membersCount === 0 && <span className="text-[8px] text-slate-300 dark:text-white/20 mx-auto mt-1">لا يوجد أعضاء</span>}</div></div>
+                            <div className="bg-gray-50 dark:bg-black/20 border-gray-100 dark:border-white/5 rounded-xl p-2 md:p-3 min-h-[60px] md:min-h-[80px] border"><div className="flex justify-between items-center mb-1 md:mb-2"><span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-white/40">الأعضاء ({membersCount})</span><Users className="w-3 h-3 text-slate-400 dark:text-white/30" /></div><div className="flex flex-wrap gap-1">{getTeamStudents(group.id).map(s => (<span key={s.id} className="text-[8px] md:text-[9px] bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded text-slate-600 dark:text-white/70 truncate max-w-[50px] md:max-w-[60px]">{s.name.split(' ')[0]}</span>))}{membersCount === 0 && <span className="text-[8px] text-slate-300 dark:text-white/20 mx-auto mt-1">لا يوجد أعضاء</span>}</div></div>
                         </div>
                     );
                 })}
@@ -157,7 +165,7 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
 
         {/* --- SETUP VIEW --- */}
         {isSetupMode && (
-            <div className="bg-white/80 dark:bg-white/5 rounded-[2.5rem] p-6 shadow-sm border border-gray-200 dark:border-white/10 backdrop-blur-xl">
+            <div className={`p-6 ${styles.header} rounded-[2.5rem]`}>
                 <div className="flex items-center gap-2 mb-6"><div className="bg-indigo-50 dark:bg-indigo-500/20 p-2 rounded-xl text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20"><RefreshCw className="w-5 h-5"/></div><div><h3 className="font-black text-slate-900 dark:text-white">إدارة الفرق</h3><p className="text-xs text-slate-500 dark:text-white/50 font-bold">اضغط على الفريق لتعديل الاسم وإضافة الطلاب</p></div></div>
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {groups.map(group => {
@@ -176,7 +184,7 @@ const GroupCompetition: React.FC<GroupCompetitionProps> = ({ students, classes, 
         )}
 
         {/* Manage Group Modal */}
-        <Modal isOpen={!!editingGroup} onClose={() => setEditingGroup(null)}>
+        <Modal isOpen={!!editingGroup} onClose={() => setEditingGroup(null)} className="rounded-[28px]">
             <div className="flex justify-between items-center mb-4 shrink-0">
                 <h3 className="font-black text-slate-900 dark:text-white text-lg">تعديل الفريق</h3>
                 <button onClick={() => setEditingGroup(null)} className="p-2 bg-slate-100 dark:bg-white/10 rounded-full hover:bg-slate-200 dark:hover:bg-white/20"><X className="w-5 h-5 text-slate-500 dark:text-white/70"/></button>
