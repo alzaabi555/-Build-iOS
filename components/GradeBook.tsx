@@ -135,6 +135,26 @@ const GradeBook: React.FC<GradeBookProps> = ({
       return 'هـ';
   };
 
+  // --- Dynamic Column Discovery ---
+  // This ensures that even if a tool is deleted or not in the list, 
+  // any existing grade on any student will still show up in exports.
+  const getActiveColumns = () => {
+      const categorySet = new Set<string>();
+      
+      // 1. Add all defined tools first
+      tools.forEach(t => categorySet.add(t.name));
+
+      // 2. Scan all students for any other categories used in this semester
+      filteredStudents.forEach(s => {
+          const sGrades = getSemesterGrades(s, currentSemester);
+          sGrades.forEach(g => {
+              if (g.category) categorySet.add(g.category);
+          });
+      });
+
+      return Array.from(categorySet);
+  };
+
   const handleAddTool = () => {
       if (newToolName.trim()) {
           const newTool: AssessmentTool = {
@@ -266,21 +286,24 @@ const GradeBook: React.FC<GradeBookProps> = ({
     setEditingGrade(null);
   };
 
-  // --- REVISED: iOS Compatible Excel Export ---
+  // --- REVISED: iOS Compatible Excel Export (Dynamic Columns) ---
   const handleExportExcel = async () => {
       if (filteredStudents.length === 0) return alert('لا يوجد طلاب لتصديرهم');
       setIsExporting(true);
 
       try {
+          const activeColumns = getActiveColumns(); // Get all actual columns from data
+
           const data = filteredStudents.map((s, i) => {
               const semGrades = getSemesterGrades(s, currentSemester);
               const stats = calculateStudentSemesterStats(s, currentSemester);
               
               const row: any = { 'م': i + 1, 'الاسم': s.name };
 
-              tools.forEach(tool => {
-                  const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(tool.name));
-                  row[tool.name] = grade ? grade.score : '';
+              // Map dynamic columns
+              activeColumns.forEach(colName => {
+                  const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(colName));
+                  row[colName] = grade ? grade.score : '';
               });
 
               row['المجموع'] = stats.totalScore;
@@ -289,7 +312,10 @@ const GradeBook: React.FC<GradeBookProps> = ({
               return row;
           });
 
-          const ws = XLSX.utils.json_to_sheet(data);
+          // Explicitly define headers to ensure they appear even if first row is empty
+          const headers = ['م', 'الاسم', ...activeColumns, 'المجموع', 'التقدير'];
+
+          const ws = XLSX.utils.json_to_sheet(data, { header: headers });
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, `درجات_${currentSemester}`);
           
@@ -467,13 +493,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
       const subjectName = localStorage.getItem('subjectName') || '................';
       let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
 
+      const activeColumns = getActiveColumns(); // Use Dynamic Columns
+
       const rows = filteredStudents.map((s, i) => {
           const semGrades = getSemesterGrades(s, currentSemester);
           const stats = calculateStudentSemesterStats(s, currentSemester);
           const sName = s.name || '';
           
-          const toolCells = tools.map(tool => {
-              const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(tool.name));
+          const toolCells = activeColumns.map(colName => {
+              const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(colName));
               return `<td style="border:1px solid #000; padding:5px; text-align:center;">${grade ? grade.score : '-'}</td>`;
           }).join('');
 
@@ -488,7 +516,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
           `;
       }).join('');
 
-      const toolHeaders = tools.map(t => `<th style="border:1px solid #000; padding:5px; background:#f3f4f6;">${t.name}</th>`).join('');
+      const toolHeaders = activeColumns.map(name => `<th style="border:1px solid #000; padding:5px; background:#f3f4f6;">${name}</th>`).join('');
 
       const element = document.createElement('div');
       element.setAttribute('dir', 'rtl');

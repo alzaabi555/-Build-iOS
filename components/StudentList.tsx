@@ -406,12 +406,17 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تسرب من الحصة.`);
       
       if (method === 'whatsapp') {
-          // Use https link which works better universally with Browser plugin
-          const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
-          try {
-              await Browser.open({ url: url });
-          } catch (e) {
-              window.open(url, '_blank');
+          const appUrl = `whatsapp://send?phone=${cleanPhone}&text=${msg}`;
+          const webUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
+          
+          if (Capacitor.isNativePlatform()) {
+              try {
+                  await Browser.open({ url: appUrl });
+              } catch (e) {
+                  await Browser.open({ url: webUrl });
+              }
+          } else {
+              window.open(webUrl, '_blank');
           }
       } else {
           window.location.href = `sms:${cleanPhone}?body=${msg}`;
