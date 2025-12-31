@@ -6,7 +6,8 @@ import {
     Lightbulb, AlertCircle, CheckCircle2, Settings,
     Smartphone, Globe, Share2, Info, Phone, HelpCircle,
     Edit2, Trash2, Plus, Search, Filter, Save, UploadCloud,
-    ThumbsUp, ThumbsDown, Eye, X, FileSpreadsheet, MessageCircle
+    ThumbsUp, ThumbsDown, Eye, X, FileSpreadsheet, MessageCircle,
+    CalendarRange, Sparkles, ShoppingBag, LayoutGrid
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import BrandLogo from './BrandLogo';
@@ -84,15 +85,14 @@ const UserGuide: React.FC = () => {
                         
                         <div>
                             <h3 className="text-lg font-black text-indigo-600 dark:text-indigo-400 mb-4 flex items-center gap-2">
-                                <Users className="w-5 h-5" /> إدارة الطلاب
+                                <Users className="w-5 h-5" /> إدارة الفصل والطلاب
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <IconDefinition icon={Plus} label="إضافة" desc="تسجيل طالب جديد أو عنصر جديد يدوياً." color="text-indigo-500" />
                                 <IconDefinition icon={UploadCloud} label="استيراد" desc="رفع ملف Excel لإضافة مجموعة طلاب دفعة واحدة." color="text-emerald-500" />
-                                <IconDefinition icon={Edit2} label="تعديل" desc="تغيير بيانات الطالب (الاسم، الفصل، الهاتف)." color="text-blue-500" />
-                                <IconDefinition icon={Trash2} label="حذف" desc="إزالة الطالب أو السجل نهائياً." color="text-rose-500" />
-                                <IconDefinition icon={Search} label="بحث" desc="البحث عن طالب بالاسم." color="text-slate-500" />
-                                <IconDefinition icon={Filter} label="تصفية" desc="عرض طلاب فصل معين فقط." color="text-amber-500" />
+                                <IconDefinition icon={Sparkles} label="اختيار عشوائي" desc="اختيار طالب عشوائياً للمشاركة مع مؤثرات بصرية." color="text-amber-500" />
+                                <IconDefinition icon={Edit2} label="تعديل" desc="تغيير بيانات الطالب أو الفصل أو الدرجة." color="text-blue-500" />
+                                <IconDefinition icon={LayoutGrid} label="إدارة الحصص" desc="تعديل جدول الحصص وتوقيت الجرس المدرسي." color="text-purple-500" />
                             </div>
                         </div>
 
@@ -104,18 +104,30 @@ const UserGuide: React.FC = () => {
                                 <IconDefinition icon={ThumbsUp} label="تعزيز" desc="إضافة نقطة إيجابية للسلوك الجيد." color="text-emerald-600" />
                                 <IconDefinition icon={ThumbsDown} label="مخالفة" desc="تسجيل سلوك سلبي وخصم نقاط." color="text-rose-600" />
                                 <IconDefinition icon={Trophy} label="المنافسة" desc="الدخول لصفحة دوري المجموعات." color="text-amber-500" />
+                                <IconDefinition icon={ShoppingBag} label="المتجر" desc="استبدال نقاط الطالب بمكافآت (في دوري المجموعات)." color="text-indigo-500" />
                             </div>
                         </div>
 
                         <div>
                             <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
-                                <FileText className="w-5 h-5" /> التقارير والملفات
+                                <FileText className="w-5 h-5" /> التقارير والسجلات
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <IconDefinition icon={FileText} label="تقرير PDF" desc="تصدير تقرير الطالب بصيغة PDF." color="text-red-500" />
+                                <IconDefinition icon={CalendarRange} label="السجل الشامل" desc="طباعة كشف حضور وغياب كامل للفصل (تفريغ)." color="text-amber-600" />
+                                <IconDefinition icon={Printer} label="تقرير يومي" desc="طباعة تقرير الحضور لليوم الحالي فقط." color="text-slate-600" />
+                                <IconDefinition icon={FileText} label="تقرير طالب" desc="تقرير PDF تفصيلي (درجات + سلوك) لطالب محدد." color="text-red-500" />
                                 <IconDefinition icon={FileSpreadsheet} label="Excel" desc="تصدير السجلات كملف إكسل." color="text-emerald-600" />
-                                <IconDefinition icon={MessageCircle} label="واتساب" desc="إرسال تقرير أو تنبيه لولي الأمر عبر واتساب." color="text-green-500" />
-                                <IconDefinition icon={Printer} label="طباعة" desc="طباعة التقرير مباشرة." color="text-slate-600" />
+                                <IconDefinition icon={Settings} label="أدوات التقويم" desc="إضافة وتعديل أدوات التقويم (اختبار، واجب) في سجل الدرجات." color="text-gray-500" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-black text-teal-600 dark:text-teal-400 mb-4 flex items-center gap-2">
+                                <Globe className="w-5 h-5" /> روابط وتواصل
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <IconDefinition icon={MessageCircle} label="واتساب" desc="إرسال تنبيه (غياب/تسرب) أو تقرير لولي الأمر." color="text-green-500" />
+                                <IconDefinition icon={Globe} label="منصة نور" desc="فتح منصة نور التعليمية داخل التطبيق." color="text-blue-500" />
                             </div>
                         </div>
                     </div>
@@ -155,6 +167,7 @@ const UserGuide: React.FC = () => {
                             </h3>
                             <FaqItem question="هل يحتاج التطبيق إلى إنترنت؟" answer="لا، التطبيق يعمل بشكل كامل بدون إنترنت. يتم حفظ جميع البيانات على جهازك." />
                             <FaqItem question="كيف أحفظ بياناتي من الضياع؟" answer="اذهب للإعدادات > حفظ نسخة احتياطية. سيتم تحميل ملف .json احتفظ به في مكان آمن." />
+                            <FaqItem question="كيف أطبع سجل الغياب الشهري؟" answer="اذهب لصفحة الحضور، واختر 'طباعة السجل الشامل' (أيقونة التقويم) للحصول على كشف كامل." />
                             <FaqItem question="كيف أضيف درجات الفصل الثاني؟" answer="من صفحة 'الدرجات'، اضغط على زر التبديل بين الفصل الأول والثاني في الأعلى." />
                         </div>
                     </div>
@@ -167,7 +180,7 @@ const UserGuide: React.FC = () => {
                             <BrandLogo className="w-full h-full" showText={false} />
                         </div>
                         <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2">تطبيق راصد</h1>
-                        <p className="text-slate-500 dark:text-white/60 font-bold mb-8 bg-slate-100 dark:bg-white/10 px-4 py-1 rounded-full text-xs">الإصدار 3.3.0</p>
+                        <p className="text-slate-500 dark:text-white/60 font-bold mb-8 bg-slate-100 dark:bg-white/10 px-4 py-1 rounded-full text-xs">الإصدار 3.4.0</p>
                         
                         <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-3xl p-8 max-w-md w-full text-center shadow-lg">
                             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">فريق العمل</h2>

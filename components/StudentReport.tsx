@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Student, GradeRecord } from '../types';
-import { Award, AlertCircle, MessageCircle, PhoneCall, Trash2, Loader2, Mail, UserCheck, FileText, Medal, Calculator, FileWarning } from 'lucide-react';
+import { Award, AlertCircle, MessageCircle, PhoneCall, Trash2, Loader2, Mail, UserCheck, FileText, Medal, Calculator, FileWarning, GraduationCap, LayoutList } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -29,6 +29,9 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
   const sem1Grades = allGrades.filter(g => !g.semester || g.semester === '1');
   const sem2Grades = allGrades.filter(g => g.semester === '2');
+
+  // Grades for CURRENT selected semester (for display list)
+  const currentSemesterGrades = currentSemester === '2' ? sem2Grades : sem1Grades;
 
   const calcStats = (grades: GradeRecord[]) => {
       let score = 0;
@@ -291,11 +294,21 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
     const cellStyle = "border:1px solid #000000 !important; padding:6px; font-size:12px; color: #000000 !important;";
 
+    // Behavior Rows
     const behaviorRows = behaviors.map(b => `
         <tr>
             <td style="${cellStyle}">${b.description}</td>
             <td style="${cellStyle}; text-align:center;">${new Date(b.date).toLocaleDateString('ar-EG')}</td>
             <td style="${cellStyle}; text-align:center; color:${b.type === 'positive' ? 'green' : 'red'} !important; font-weight:bold;">${b.type === 'positive' ? 'إيجابي' : 'سلبي'}</td>
+        </tr>
+    `).join('');
+
+    // Grades Rows (Current Semester)
+    const gradesRows = currentSemesterGrades.map(g => `
+        <tr>
+            <td style="${cellStyle}">${g.category}</td>
+            <td style="${cellStyle}; text-align:center; font-weight:bold;">${g.score}</td>
+            <td style="${cellStyle}; text-align:center;">${new Date(g.date).toLocaleDateString('ar-EG')}</td>
         </tr>
     `).join('');
 
@@ -316,8 +329,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             <tr><td style="padding:6px; font-weight:bold;">الصف:</td><td style="padding:6px;">${student.classes[0] || '-'}</td></tr>
          </table>
       </div>
+      
+      <!-- Academic Summary -->
       <div style="margin-bottom: 20px; color: #000000 !important;">
-         <h3 style="border-bottom: 1px solid #000000; padding-bottom: 5px; font-weight: bold;">ملخص النتائج</h3>
+         <h3 style="border-bottom: 1px solid #000000; padding-bottom: 5px; font-weight: bold;">الملخص الدراسي</h3>
          <table style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #000000 !important; margin-top: 10px; color: #000000 !important;">
             <tr style="background: #f0f0f0;">
                 <th style="${cellStyle}">الفصل 1</th>
@@ -333,8 +348,25 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             </tr>
          </table>
       </div>
+
+      <!-- Detailed Grades Section (New) -->
       <div style="margin-bottom: 20px; color: #000000 !important;">
-         <h3 style="border-bottom: 1px solid #000000; padding-bottom: 5px; font-weight: bold;">السلوكيات</h3>
+         <h3 style="border-bottom: 1px solid #000000; padding-bottom: 5px; font-weight: bold;">تفاصيل الدرجات (فصل ${currentSemester || '1'})</h3>
+         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; color: #000000 !important;">
+            <thead>
+                <tr style="background:#e5e7eb;">
+                    <th style="${cellStyle}">أداة التقويم</th>
+                    <th style="${cellStyle}; width: 80px;">الدرجة</th>
+                    <th style="${cellStyle}; width: 100px;">التاريخ</th>
+                </tr>
+            </thead>
+            <tbody>${gradesRows || `<tr><td colspan="3" style="${cellStyle}; text-align:center; padding:10px;">لا توجد درجات مرصودة لهذا الفصل</td></tr>`}</tbody>
+         </table>
+      </div>
+
+      <!-- Behavior Section -->
+      <div style="margin-bottom: 20px; color: #000000 !important;">
+         <h3 style="border-bottom: 1px solid #000000; padding-bottom: 5px; font-weight: bold;">سجل السلوك</h3>
          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; color: #000000 !important;">
             <thead>
                 <tr style="background:#e5e7eb;">
@@ -343,9 +375,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                     <th style="${cellStyle}">النوع</th>
                 </tr>
             </thead>
-            <tbody>${behaviorRows || `<tr><td colspan="3" style="${cellStyle}; text-align:center; padding:10px;">لا توجد بيانات</td></tr>`}</tbody>
+            <tbody>${behaviorRows || `<tr><td colspan="3" style="${cellStyle}; text-align:center; padding:10px;">سجل السلوك نظيف</td></tr>`}</tbody>
          </table>
       </div>
+
       <table style="width: 100%; margin-top: 60px; color: #000000 !important;">
          <tr>
              <td style="text-align: center; width: 50%; vertical-align: top;"><p style="font-weight: bold; margin-bottom: 40px;">المعلم(ة)</p><p style="font-weight: bold;">${teacherInfo?.name || '.........................'}</p></td>
@@ -504,10 +537,36 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
             )}
           </div>
 
+          {/* Academic Record List (NEW SECTION) */}
+          <div className={`${cardStyle} overflow-hidden`}>
+            <div className="bg-gray-50 dark:bg-white/5 p-4 border-b border-gray-100 dark:border-white/10 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-indigo-500" />
+                <h3 className="font-black text-slate-800 dark:text-white text-[11px]">السجل الأكاديمي ({currentSemester === '2' ? 'فصل 2' : 'فصل 1'})</h3>
+            </div>
+            <div className="p-3">
+                <div className="grid grid-cols-2 gap-2">
+                    {currentSemesterGrades.length > 0 ? currentSemesterGrades.map(g => (
+                        <div key={g.id} className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-white/60 mb-1">{g.category}</span>
+                            <div className="flex items-end justify-between">
+                                <span className={`text-lg font-black ${getSymbolColor(g.score)} bg-transparent p-0`}>{g.score}</span>
+                                <span className="text-[8px] text-slate-300 dark:text-white/20">{new Date(g.date).toLocaleDateString('en-GB', {day:'numeric', month:'numeric'})}</span>
+                            </div>
+                            <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${getSymbolColor(g.score).split(' ')[2]}`}></div>
+                        </div>
+                    )) : (
+                        <div className="col-span-2 text-center py-6 text-[10px] text-slate-400 dark:text-white/30 font-bold border-2 border-dashed border-gray-100 dark:border-white/5 rounded-xl">
+                            لا توجد درجات مرصودة لهذا الفصل
+                        </div>
+                    )}
+                </div>
+            </div>
+          </div>
+
           {/* Behavior List - Standard Card */}
           <div className={`${cardStyle} overflow-hidden`}>
             <div className="bg-gray-50 dark:bg-white/5 p-4 border-b border-gray-100 dark:border-white/10 flex items-center gap-2">
-                <Award className="w-4 h-4 text-blue-500" />
+                <LayoutList className="w-4 h-4 text-blue-500" />
                 <h3 className="font-black text-slate-800 dark:text-white text-[11px]">كشف السلوكيات ({currentSemester === '2' ? 'فصل 2' : 'فصل 1'})</h3>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-white/5">

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2 } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2, CalendarRange } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import { motion } from 'framer-motion';
 import Modal from './Modal';
@@ -19,7 +19,7 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
-  const { theme } = useTheme();
+  const { theme, isLowPower } = useTheme();
   const today = new Date().toLocaleDateString('en-CA'); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -29,12 +29,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late'} | null>(null);
 
   const styles = {
-      header: 'bg-white/80 dark:bg-white/5 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 shadow-sm dark:shadow-lg',
-      card: 'bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-md dark:hover:bg-white/10',
-      search: 'bg-white dark:bg-black/20 rounded-xl border border-gray-300 dark:border-white/10',
+      header: isLowPower 
+        ? 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800'
+        : 'bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 shadow-sm',
+      card: isLowPower
+        ? 'bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-xl mb-2'
+        : 'bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-md dark:hover:bg-white/10',
+      search: 'bg-white dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/10',
       select: 'bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/30 rounded-full',
-      btnGroup: 'bg-slate-50 dark:bg-black/10 rounded-xl border border-gray-100 dark:border-white/5 p-2',
-      statusBtn: 'rounded-xl',
+      btnGroup: 'bg-slate-50 dark:bg-black/10 rounded-xl border border-gray-100 dark:border-white/5 p-1.5',
+      statusBtn: 'rounded-lg',
   };
 
   const formatDateDisplay = (dateString: string) => {
@@ -148,14 +152,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       } catch (error) { return ""; }
   };
 
-  const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void) => {
+  const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void, orientation: 'portrait' | 'landscape' = 'portrait') => {
     setLoader(true);
     const opt = {
         margin: 5,
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: orientation }
     };
 
     if (typeof html2pdf !== 'undefined') {
@@ -281,28 +285,168 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         </div>
       `;
 
-      exportPDF(element, `تقرير_غياب_${selectedDate}.pdf`, setIsGeneratingPdf);
+      exportPDF(element, `تقرير_غياب_${selectedDate}.pdf`, setIsGeneratingPdf, 'portrait');
+  };
+
+  const handlePrintFullReport = async () => {
+      if (filteredStudents.length === 0) {
+          alert('لا يوجد طلاب في القائمة المختارة');
+          return;
+      }
+
+      setIsGeneratingPdf(true);
+
+      const teacherName = localStorage.getItem('teacherName') || '................';
+      const schoolName = localStorage.getItem('schoolName') || '................';
+      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
+
+      // 1. Collect all unique dates recorded for the filtered students
+      const allDates = new Set<string>();
+      filteredStudents.forEach(s => {
+          s.attendance.forEach(a => allDates.add(a.date));
+      });
+      const sortedDates = Array.from(allDates).sort();
+
+      if (sortedDates.length === 0) {
+          alert('لا توجد سجلات حضور مسجلة حتى الآن');
+          setIsGeneratingPdf(false);
+          return;
+      }
+
+      // 2. Build Date Headers HTML (Smart Vertical Stacking)
+      const dateHeaders = sortedDates.map(date => {
+          const d = new Date(date);
+          const day = d.getDate();
+          const month = d.getMonth() + 1;
+          
+          return `<th style="border: 1px solid #000; padding: 2px; width: 28px; background-color: #f3f4f6; vertical-align: middle;">
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;">
+                  <span style="font-size: 11px; font-weight: 900; color: #000;">${day}</span>
+                  <span style="font-size: 8px; color: #666; font-weight: bold;">${month}</span>
+              </div>
+          </th>`;
+      }).join('');
+
+      // 3. Build Student Rows
+      const rows = filteredStudents.map((s, i) => {
+          const totalAbsent = s.attendance.filter(a => a.status === 'absent').length;
+          const totalLate = s.attendance.filter(a => a.status === 'late').length;
+
+          const dateCells = sortedDates.map(date => {
+              const record = s.attendance.find(a => a.date === date);
+              let symbol = '';
+              let color = 'transparent';
+              
+              if (record?.status === 'present') { symbol = '✔'; color = '#dcfce7'; } // green-100
+              else if (record?.status === 'absent') { symbol = '✖'; color = '#fee2e2'; } // red-100
+              else if (record?.status === 'late') { symbol = 'ت'; color = '#fef3c7'; } // amber-100
+              
+              return `<td style="border: 1px solid #000; padding: 2px; text-align: center; background-color: ${color}; font-size: 10px;">${symbol}</td>`;
+          }).join('');
+
+          return `
+            <tr>
+                <td style="border: 1px solid #000; padding: 4px; text-align: center;">${i + 1}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${s.name}</td>
+                ${dateCells}
+                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold;">${totalAbsent}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold;">${totalLate}</td>
+            </tr>
+          `;
+      }).join('');
+
+      const element = document.createElement('div');
+      
+      // Strict RTL enforcement
+      element.setAttribute('dir', 'rtl');
+      element.style.direction = 'rtl';
+      element.style.fontFamily = 'Tajawal, sans-serif';
+      element.style.padding = '10px';
+      element.style.backgroundColor = '#ffffff';
+      element.style.color = '#000000';
+
+      const headerStyle = "border: 1px solid #000 !important; padding: 5px; color: #000 !important; font-weight: bold; background-color: #f3f4f6;";
+
+      element.innerHTML = `
+        <style>
+            table { direction: rtl; border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #000; }
+        </style>
+        <div style="text-align: center; margin-bottom: 20px; color: #000 !important;">
+            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 50px; margin-bottom: 10px;" />` : ''}
+            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #000 !important;">سجل الحضور والغياب الشامل (التفريغ)</h2>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; color: #000 !important; font-size: 12px;">
+                <span>المدرسة: ${schoolName}</span>
+                <span>المعلم: ${teacherName}</span>
+                <span>الفصل: ${classFilter === 'all' ? 'جميع الفصول' : classFilter}</span>
+                <span>عدد الأيام: ${sortedDates.length}</span>
+            </div>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #000 !important; direction: rtl;">
+            <thead>
+                <tr>
+                    <th style="${headerStyle}; width: 30px;">#</th>
+                    <th style="${headerStyle}; text-align: right; min-width: 120px;">اسم الطالب</th>
+                    ${dateHeaders}
+                    <th style="${headerStyle}; width: 30px;">غ</th>
+                    <th style="${headerStyle}; width: 30px;">ت</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; font-size: 10px;">
+            <p><strong>المفتاح:</strong> (✔) حاضر ، (✖) غائب ، (ت) متأخر</p>
+        </div>
+
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 50px; color: #000 !important;">
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 30px;">توقيع المعلم</p>
+                <p>......................</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-weight: bold; margin-bottom: 30px;">مدير المدرسة</p>
+                <p>......................</p>
+            </div>
+        </div>
+      `;
+
+      // Use Landscape for the full record
+      exportPDF(element, `سجل_حضور_شامل_${classFilter}.pdf`, setIsGeneratingPdf, 'landscape');
   };
 
   return (
-    <div className="space-y-0 pb-32 md:pb-8 min-h-full">
+    <div className="flex flex-col h-[calc(100vh-60px)] -mt-4 -mx-4 text-slate-900 dark:text-white">
       
-      {/* Dynamic Header */}
-      <div className={`${styles.header} px-4 pt-2 pb-4 rounded-b-[2rem] sticky top-0 z-20 transition-colors duration-300`}>
-          <div className="flex items-end justify-between mb-4">
+      {/* Sticky Full Width Header */}
+      <div className={`${styles.header} px-4 pt-4 pb-2 sticky top-0 z-30 shrink-0`}>
+          <div className="flex items-end justify-between mb-3">
              <div>
-                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none">الحضور</h1>
+                 <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">الحضور</h1>
                  <p className="text-xs text-slate-500 dark:text-white/50 font-bold mt-1">{formatDateDisplay(selectedDate)}</p>
              </div>
              <div className="flex gap-2">
-                 {/* Print Button */}
+                 {/* Print Daily Button */}
                  <button 
                     onClick={handlePrintDailyReport}
                     disabled={isGeneratingPdf}
                     className="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-500/30 active:scale-95 transition-all"
-                    title="طباعة تقرير الحضور"
+                    title="طباعة تقرير الحضور (يومي)"
                  >
                     {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                 </button>
+
+                 {/* Print Full Record Button (NEW) */}
+                 <button 
+                    onClick={handlePrintFullReport}
+                    disabled={isGeneratingPdf}
+                    className="w-9 h-9 flex items-center justify-center bg-amber-500 text-white rounded-full shadow-lg shadow-amber-500/30 active:scale-95 transition-all"
+                    title="طباعة السجل الكامل (تفريغ)"
+                 >
+                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarRange className="w-4 h-4" />}
                  </button>
 
                  {/* Class Filter Button */}
@@ -334,13 +478,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           </div>
 
           {/* Search Bar */}
-          <div className="relative mb-3">
+          <div className="relative mb-2">
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400 dark:text-white/40" />
               </div>
               <input
                   type="text"
-                  className={`w-full text-slate-900 dark:text-white text-sm py-2.5 pr-9 pl-4 outline-none placeholder:text-slate-400 dark:placeholder:text-white/30 transition-all text-right shadow-sm ${styles.search}`}
+                  className={`w-full text-slate-900 dark:text-white text-sm py-2 pr-9 pl-4 outline-none placeholder:text-slate-400 dark:placeholder:text-white/30 transition-all text-right shadow-sm ${styles.search}`}
                   placeholder="بحث عن طالب..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -348,39 +492,36 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           </div>
 
           {/* Batch Actions */}
-          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
               <button 
                   onClick={() => handleMarkAll('present')}
-                  className="flex-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 py-2.5 text-[11px] font-bold shadow-sm active:scale-95 transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-xl border border-emerald-200 dark:border-emerald-500/20"
+                  className="flex-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 py-1.5 text-[10px] font-bold shadow-sm active:scale-95 transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-xl border border-emerald-200 dark:border-emerald-500/20"
               >
                   تحديد الكل "حاضر"
               </button>
               <button 
                   onClick={() => handleMarkAll('reset')}
-                  className="px-4 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 py-2.5 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white rounded-xl border border-gray-200 dark:border-white/10"
+                  className="px-4 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 py-1.5 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white rounded-xl border border-gray-200 dark:border-white/10"
               >
                   <RotateCcw className="w-4 h-4" />
               </button>
           </div>
       </div>
 
-      {/* Student List - Dynamic Cards */}
-      <div className="px-4 mt-4 space-y-3">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-32 custom-scrollbar">
           {filteredStudents.length > 0 ? (
-              <>
+              <div className="space-y-2">
                   {filteredStudents.map((student, index) => {
                     const status = getStatus(student);
                     return (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
+                        <div 
                             key={student.id} 
-                            className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 transition-all ${styles.card}`}
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-3 transition-all ${styles.card}`}
                         >
                             
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0 shadow-md ${
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm ${
                                     status === 'present' ? 'bg-emerald-500 border border-emerald-400' : 
                                     status === 'absent' ? 'bg-rose-500 border border-rose-400' : 
                                     status === 'late' ? 'bg-amber-500 border border-amber-400' : 
@@ -389,50 +530,50 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                     {student.name.charAt(0)}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h4 className="text-sm font-black text-slate-900 dark:text-white truncate text-right">{student.name}</h4>
-                                    <p className="text-[10px] text-slate-500 dark:text-white/40 truncate text-right font-bold px-2 py-0.5 inline-block mt-1 bg-slate-100 dark:bg-white/5 rounded-md">{student.classes[0]}</p>
+                                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate text-right">{student.name}</h4>
+                                    <p className="text-[9px] text-slate-500 dark:text-white/40 truncate text-right font-bold px-1.5 py-0.5 inline-block mt-0.5 bg-slate-100 dark:bg-white/5 rounded-md">{student.classes[0]}</p>
                                 </div>
                             </div>
 
-                            <div className={`flex items-center justify-end gap-3 w-full sm:w-auto ${styles.btnGroup}`}>
-                                <div className="flex gap-2">
+                            <div className={`flex items-center justify-end gap-2 w-full sm:w-auto ${styles.btnGroup}`}>
+                                <div className="flex gap-1">
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'present')} 
-                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-emerald-400/50 border border-gray-200 dark:border-transparent hover:bg-emerald-50 dark:hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
+                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'present' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-emerald-400/50 border border-gray-100 dark:border-transparent hover:bg-emerald-50 dark:hover:bg-emerald-500/20'}`}
                                         title="حاضر"
                                     >
-                                        <Check className="w-5 h-5" strokeWidth={3} />
+                                        <Check className="w-4 h-4" strokeWidth={3} />
                                     </button>
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'absent')} 
-                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-rose-400/50 border border-gray-200 dark:border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 dark:hover:text-rose-400'}`}
+                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'absent' ? 'bg-rose-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-rose-400/50 border border-gray-100 dark:border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/20'}`}
                                         title="غائب"
                                     >
-                                        <X className="w-5 h-5" strokeWidth={3} />
+                                        <X className="w-4 h-4" strokeWidth={3} />
                                     </button>
                                     <button 
                                         onClick={() => toggleAttendance(student.id, 'late')} 
-                                        className={`w-10 h-10 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-amber-400/50 border border-gray-200 dark:border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400'}`}
+                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'late' ? 'bg-amber-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-amber-400/50 border border-gray-100 dark:border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/20'}`}
                                         title="تأخير"
                                     >
-                                        <Clock className="w-5 h-5" strokeWidth={3} />
+                                        <Clock className="w-4 h-4" strokeWidth={3} />
                                     </button>
                                 </div>
                                 
                                 {(status === 'absent' || status === 'late') && (
                                     <button 
                                         onClick={() => handleNotifyParent(student, status)} 
-                                        className={`w-10 h-10 flex items-center justify-center bg-blue-500 text-white active:scale-90 transition-transform shadow-lg shadow-blue-500/30 ml-1 ${styles.statusBtn}`}
+                                        className={`w-9 h-9 flex items-center justify-center bg-blue-500 text-white active:scale-90 transition-transform shadow-sm ml-1 ${styles.statusBtn}`}
                                     >
-                                        <MessageCircle className="w-5 h-5" />
+                                        <MessageCircle className="w-4 h-4" />
                                     </button>
                                 )}
                             </div>
 
-                        </motion.div>
+                        </div>
                     );
                   })}
-              </>
+              </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 opacity-30">
                 <Filter className="w-12 h-12 text-slate-400 dark:text-white mb-2" />

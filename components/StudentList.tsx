@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, X, UserPlus, Edit2, FileSpreadsheet, Sparkles, Shuffle, Trash2, CheckCircle2, MessageCircle, Plus, UploadCloud, UserX, Image as ImageIcon, PhoneOff, AlertCircle, FileUp, User, Camera, Printer, Loader2 } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, X, UserPlus, Edit2, FileSpreadsheet, Sparkles, Shuffle, Trash2, CheckCircle2, MessageCircle, Plus, UploadCloud, UserX, Image as ImageIcon, PhoneOff, AlertCircle, FileUp, User, Camera, Printer, Loader2, Star } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,54 +29,100 @@ interface StudentListProps {
   onDeleteClass: (className: string) => void;
 }
 
-const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles }: { 
+const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles, currentSemester }: { 
     student: Student, 
     theme: string, 
     onViewReport: (s: Student) => void,
     onAction: (s: Student, type: 'positive' | 'negative' | 'edit' | 'delete') => void,
-    styles: any
+    styles: any,
+    currentSemester: '1' | '2'
 }) => {
+    // Calculate Grade Stats on the fly
+    const totalScore = useMemo(() => {
+        return (student.grades || [])
+            .filter(g => !g.semester || g.semester === currentSemester)
+            .reduce((sum, g) => sum + (Number(g.score) || 0), 0);
+    }, [student.grades, currentSemester]);
+
+    const gradeSymbol = useMemo(() => {
+        if (totalScore >= 90) return 'أ';
+        if (totalScore >= 80) return 'ب';
+        if (totalScore >= 65) return 'ج';
+        if (totalScore >= 50) return 'د';
+        return 'هـ';
+    }, [totalScore]);
+
+    const gradeColor = useMemo(() => {
+        if (totalScore >= 90) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300';
+        if (totalScore >= 80) return 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300';
+        if (totalScore >= 65) return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300';
+        if (totalScore >= 50) return 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300';
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300';
+    }, [totalScore]);
+
     return (
         <div className={`group flex items-center justify-between p-3 transition-all duration-200 relative overflow-hidden ${styles.card} hover:bg-white/90 dark:hover:bg-white/10`}>
-            <div className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer z-10" onClick={() => onViewReport(student)}>
-                <div className={`w-12 h-12 flex items-center justify-center text-slate-700 dark:text-white/80 font-black text-xl shrink-0 overflow-hidden relative ${styles.avatar} bg-slate-100 dark:bg-white/5 shadow-inner`}>
+            <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer z-10" onClick={() => onViewReport(student)}>
+                <div className={`w-12 h-12 flex items-center justify-center text-slate-700 dark:text-white/80 font-black text-lg shrink-0 overflow-hidden relative ${styles.avatar} bg-slate-100 dark:bg-white/5 shadow-sm border border-gray-100 dark:border-white/5`}>
                     {student.avatar ? (
                         <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                         student.name.charAt(0)
                     )}
                 </div>
-                <div className="min-w-0 flex flex-col justify-center flex-1">
-                    <div className="flex items-start gap-2 mb-1 w-full">
-                        {/* Fix: Allow text wrap instead of truncate */}
-                        <h3 className="text-sm font-black text-slate-900 dark:text-white flex-1 min-w-0 whitespace-normal leading-tight break-words">
+                
+                <div className="min-w-0 flex flex-col justify-center flex-1 gap-1.5">
+                    {/* Top Row: Name */}
+                    <div className="flex items-center gap-2 w-full">
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white truncate leading-none">
                             {student.name}
                         </h3>
                         {!student.parentPhone && (
-                            <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5" title="بيانات ناقصة: لا يوجد رقم ولي أمر">
-                                <PhoneOff className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                            </div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="لا يوجد رقم ولي أمر" />
                         )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <p className={`text-[10px] text-slate-500 dark:text-white/40 font-bold truncate px-2 py-0.5 inline-block bg-slate-50 dark:bg-white/5 rounded-md`}>{student.classes[0]}</p>
-                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/20 text-slate-400 hover:text-blue-600"><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600"><Trash2 className="w-3 h-3" /></button>
+
+                    {/* Bottom Row: Stats & Actions (Horizontal Layout) */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[9px] font-bold text-slate-500 dark:text-white/50 bg-slate-50 dark:bg-white/5 px-2 py-0.5 rounded-md border border-gray-100 dark:border-white/5`}>
+                            {student.classes[0]}
+                        </span>
+                        
+                        {/* Score Badge */}
+                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/5 px-2 py-0.5 rounded-md border border-gray-100 dark:border-white/5">
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-white/40">المجموع:</span>
+                            <span className="text-[10px] font-black text-slate-700 dark:text-white">{totalScore}</span>
+                        </div>
+
+                        {/* Grade Symbol Badge */}
+                        <div className={`px-2 py-0.5 rounded-md text-[10px] font-black ${gradeColor}`}>
+                            {gradeSymbol}
+                        </div>
+
+                        <div className="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
+
+                        {/* Quick Actions */}
+                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                            <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+                            <Trash2 className="w-3 h-3" />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-2 z-10 shrink-0 ml-4 self-center">
-                <button onClick={() => onAction(student, 'positive')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20">
-                    <ThumbsUp className="w-5 h-5" strokeWidth={2.5} />
+            <div className="flex items-center gap-2 z-10 shrink-0 ml-2 self-center border-r border-gray-100 dark:border-white/5 pr-3 mr-1">
+                <button onClick={() => onAction(student, 'positive')} className="w-9 h-9 flex items-center justify-center transition-all active:scale-90 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:shadow-sm">
+                    <ThumbsUp className="w-4 h-4" strokeWidth={2.5} />
                 </button>
-                <button onClick={() => onAction(student, 'negative')} className="w-10 h-10 flex items-center justify-center transition-colors active:scale-90 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20">
-                    <ThumbsDown className="w-5 h-5" strokeWidth={2.5} />
+                <button onClick={() => onAction(student, 'negative')} className="w-9 h-9 flex items-center justify-center transition-all active:scale-90 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:shadow-sm">
+                    <ThumbsDown className="w-4 h-4" strokeWidth={2.5} />
                 </button>
             </div>
         </div>
     );
-}, (prev, next) => prev.student === next.student && prev.theme === next.theme);
+}, (prev, next) => prev.student === next.student && prev.theme === next.theme && prev.currentSemester === next.currentSemester);
 
 const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, onSwitchToImport, currentSemester, onSemesterChange, onEditClass, onDeleteClass }) => {
   const { theme, isLowPower } = useTheme();
@@ -119,7 +165,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       { name: 'عدم حل الواجب', points: -2 },
       { name: 'تأخر', points: -1 },
       { name: 'نوم', points: -2 },
-      { name: 'تسرب', points: -5 }, // Added back
+      { name: 'تسرب', points: -5 },
       { name: 'سلوك غير لائق', points: -5 }
   ];
 
@@ -132,20 +178,20 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
       if (isLowPower) {
           cardStyle = 'bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-[1.2rem] mb-2 shadow-sm';
-          headerStyle = 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30';
+          headerStyle = 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800';
       } else {
           cardStyle = 'bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-[1.2rem] mb-2 shadow-sm backdrop-blur-sm';
-          headerStyle = 'bg-white/80 dark:bg-black/40 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-30';
+          headerStyle = 'bg-slate-50/95 dark:bg-[#0f172a]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/5 shadow-sm';
       }
 
       return {
           card: cardStyle,
           header: headerStyle,
-          search: 'bg-slate-100 dark:bg-white/5 rounded-xl border-none',
+          search: 'bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10',
           actionBtn: 'rounded-full',
           avatar: 'rounded-2xl',
           chipActive: 'bg-indigo-600 text-white shadow-md rounded-full',
-          chip: 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 rounded-full',
+          chip: 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 rounded-full border border-gray-200 dark:border-white/10',
       };
   }, [theme, isLowPower]);
 
@@ -324,20 +370,42 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   };
 
   const performNotification = async (method: 'whatsapp' | 'sms') => {
-      if(!notificationTarget?.student.parentPhone) return;
-      let phone = notificationTarget.student.parentPhone.replace(/[^0-9]/g, '');
-      if (phone.length === 8) phone = '968' + phone;
-      const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${notificationTarget.student.name} قد تسرب من الحصة.`);
+      if(!notificationTarget || !notificationTarget.student.parentPhone) {
+          alert('لا يوجد رقم هاتف مسجل');
+          return;
+      }
+      
+      const { student } = notificationTarget;
+      
+      // Clean phone number (Identical logic to AttendanceTracker for consistency)
+      let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+      
+      if (!cleanPhone || cleanPhone.length < 5) {
+          alert('رقم الهاتف غير صحيح أو قصير جداً');
+          return;
+      }
+      
+      if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+      
+      if (cleanPhone.length === 8) {
+          cleanPhone = '968' + cleanPhone;
+      } else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) {
+          cleanPhone = '968' + cleanPhone.substring(1);
+      }
+
+      const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد تسرب من الحصة.`);
       
       if (method === 'whatsapp') {
-          const url = `whatsapp://send?phone=${phone}&text=${msg}`;
+          // Use https link which works better universally with Browser plugin
+          const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
           try {
-              await Browser.open({ url });
-          } catch {
-              window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, '_blank');
+              await Browser.open({ url: url });
+          } catch (e) {
+              window.open(url, '_blank');
           }
+      } else {
+          window.location.href = `sms:${cleanPhone}?body=${msg}`;
       }
-      else window.location.href = `sms:${phone}?body=${msg}`;
       setNotificationTarget(null);
   };
 
@@ -531,53 +599,59 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   };
 
   return (
-    <div className="min-h-full pb-32 text-slate-900 dark:text-white">
-      <div className={`pt-safe-top transition-all ${styles.header}`}>
-          <div className="px-4 pb-3">
-              <div className="flex justify-between items-end mb-3 pt-4">
-                  <div>
-                      <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">الطلاب</h1>
-                      <p className="text-xs text-slate-500 dark:text-white/50 font-bold mt-0.5">{filteredStudents.length} طالب</p>
-                  </div>
-                  <div className="flex gap-2">
-                      <button onClick={pickRandomStudent} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-50 dark:bg-white/10 rounded-full text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-white/5`}><Sparkles className="w-4 h-4" /></button>
-                      
-                      {/* General Report Button */}
-                      <button onClick={handlePrintGeneralReport} disabled={isGeneratingPdf} className={`w-9 h-9 flex items-center justify-center transition-all bg-amber-50 dark:bg-white/10 rounded-full text-amber-600 dark:text-amber-300 border border-amber-100 dark:border-white/5`} title="طباعة تقرير شامل للصف">
-                          {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-4 h-4" />}
-                      </button>
-
-                      <button onClick={handleExportExcel} className={`w-9 h-9 flex items-center justify-center transition-all bg-blue-50 dark:bg-white/10 rounded-full text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-white/5`}><FileSpreadsheet className="w-4 h-4" /></button>
-                      <button onClick={onSwitchToImport} className={`w-9 h-9 flex items-center justify-center transition-all bg-emerald-50 dark:bg-white/10 rounded-full text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-white/5`}><UploadCloud className="w-4 h-4" /></button>
-                      
-                      <button onClick={() => setShowSelectionModal(true)} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-600 text-white rounded-full active:scale-95 hover:bg-indigo-500 border border-indigo-500 shadow-sm`}><UserPlus className="w-4 h-4" /></button>
-                  </div>
+    <div className="min-h-full text-slate-900 dark:text-white -mt-4 -mx-4 flex flex-col h-[calc(100vh-60px)]">
+      {/* 
+          === STICKY FULL WIDTH HEADER === 
+          Attached to top, no gap, with blur effect
+      */}
+      <div className={`sticky top-0 z-40 px-4 pt-1 pb-2 transition-all shrink-0 ${styles.header}`}>
+          <div className="flex justify-between items-end mb-2 pt-1">
+              <div>
+                  <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">الطلاب</h1>
+                  <p className="text-xs text-slate-500 dark:text-white/50 font-bold mt-0.5">{filteredStudents.length} طالب</p>
               </div>
-
-              <div className="relative mb-3">
-                  <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 dark:text-white/40" />
-                  <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full py-2 pr-9 pl-4 text-sm font-medium outline-none placeholder:text-slate-400 dark:placeholder:text-white/20 transition-all ${styles.search}`} />
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center">
-                  <button onClick={() => setSelectedClass('all')} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === 'all' ? styles.chipActive : styles.chip}`}>الكل</button>
-                  {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === c ? styles.chipActive : styles.chip}`}>{c}</button>))}
+              <div className="flex gap-2">
+                  <button onClick={pickRandomStudent} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-50 dark:bg-white/10 rounded-full text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-white/5`}><Sparkles className="w-4 h-4" /></button>
                   
-                  {selectedClass !== 'all' && (
-                      <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-white/10 mr-2">
-                          <button onClick={startEditClass} className="p-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 active:scale-95 transition-all">
-                              <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={confirmDeleteClass} className="p-1.5 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/30 active:scale-95 transition-all">
-                              <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                      </div>
-                  )}
+                  {/* General Report Button */}
+                  <button onClick={handlePrintGeneralReport} disabled={isGeneratingPdf} className={`w-9 h-9 flex items-center justify-center transition-all bg-amber-50 dark:bg-white/10 rounded-full text-amber-600 dark:text-amber-300 border border-amber-100 dark:border-white/5`} title="طباعة تقرير شامل للصف">
+                      {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-4 h-4" />}
+                  </button>
+
+                  <button onClick={handleExportExcel} className={`w-9 h-9 flex items-center justify-center transition-all bg-blue-50 dark:bg-white/10 rounded-full text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-white/5`}><FileSpreadsheet className="w-4 h-4" /></button>
+                  <button onClick={onSwitchToImport} className={`w-9 h-9 flex items-center justify-center transition-all bg-emerald-50 dark:bg-white/10 rounded-full text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-white/5`}><UploadCloud className="w-4 h-4" /></button>
+                  
+                  <button onClick={() => setShowSelectionModal(true)} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-600 text-white rounded-full active:scale-95 hover:bg-indigo-500 border border-indigo-500 shadow-sm`}><UserPlus className="w-4 h-4" /></button>
               </div>
+          </div>
+
+          <div className="relative mb-3">
+              <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 dark:text-white/40" />
+              <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`w-full py-2 pr-9 pl-4 text-sm font-medium outline-none placeholder:text-slate-400 dark:placeholder:text-white/20 transition-all ${styles.search}`} />
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 items-center">
+              <button onClick={() => setSelectedClass('all')} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === 'all' ? styles.chipActive : styles.chip}`}>الكل</button>
+              {classes.map(c => (<button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border border-transparent ${selectedClass === c ? styles.chipActive : styles.chip}`}>{c}</button>))}
+              
+              {selectedClass !== 'all' && (
+                  <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-white/10 mr-2">
+                      <button onClick={startEditClass} className="p-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 active:scale-95 transition-all">
+                          <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={confirmDeleteClass} className="p-1.5 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/30 active:scale-95 transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                  </div>
+              )}
           </div>
       </div>
 
-      <div className="px-4 mt-3">
+      {/* 
+          === SCROLLABLE LIST AREA === 
+          Scrolls underneath the sticky header
+      */}
+      <div className="px-4 pb-32 pt-2 overflow-y-auto flex-1 custom-scrollbar">
           {filteredStudents.length > 0 ? (
               filteredStudents.map((student, index) => (
                   <div key={student.id} className={!isLowPower && index < 10 ? "animate-in fade-in slide-in-from-bottom-2 duration-300" : ""}>
@@ -587,6 +661,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                         onViewReport={onViewReport} 
                         onAction={handleAction}
                         styles={styles}
+                        currentSemester={currentSemester}
                       />
                   </div>
               ))
