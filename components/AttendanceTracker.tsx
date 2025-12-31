@@ -1,12 +1,12 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2, CalendarRange } from 'lucide-react';
+import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2, CalendarRange, UserCircle2, Share2, Download, FileSpreadsheet } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
-import { motion } from 'framer-motion';
+import * as XLSX from 'xlsx';
+import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import { useTheme } from '../context/ThemeContext';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
@@ -25,25 +25,26 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [classFilter, setClassFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
   
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late'} | null>(null);
 
+  // iOS Style Classes
   const styles = {
-      header: isLowPower 
-        ? 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800'
-        : 'bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl border-b border-gray-200 dark:border-white/10 shadow-sm',
-      card: isLowPower
-        ? 'bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-xl mb-2'
-        : 'bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm hover:shadow-md dark:hover:bg-white/10',
-      search: 'bg-white dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/10',
-      select: 'bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/30 rounded-full',
-      btnGroup: 'bg-slate-50 dark:bg-black/10 rounded-xl border border-gray-100 dark:border-white/5 p-1.5',
-      statusBtn: 'rounded-lg',
+      header: 'bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/5 sticky top-0 z-30 transition-all duration-300',
+      contentContainer: 'px-4 pb-32 pt-4 overflow-y-auto custom-scrollbar',
+      card: 'bg-white dark:bg-[#1c1c1e] active:scale-[0.99] transition-transform duration-200 touch-manipulation',
+      search: 'bg-gray-100/80 dark:bg-white/10 rounded-xl border-none text-center focus:text-right transition-all',
+      pill: 'rounded-full text-xs font-bold transition-all',
   };
 
   const formatDateDisplay = (dateString: string) => {
       const d = new Date(dateString);
       return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+
+  const getStatus = (student: Student) => {
+    return student.attendance.find(a => a.date === selectedDate)?.status;
   };
 
   const toggleAttendance = (studentId: string, status: AttendanceStatus) => {
@@ -72,33 +73,49 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
               return s;
           }
           const filtered = s.attendance.filter(a => a.date !== selectedDate);
-          if (status === 'reset') return { ...s, attendance: filtered };
-          return { ...s, attendance: [...filtered, { date: selectedDate, status }] };
+          if (status === 'reset') {
+              return { ...s, attendance: filtered };
+          }
+          return {
+              ...s,
+              attendance: [...filtered, { date: selectedDate, status }]
+          };
       }));
   };
 
-  const handleNotifyParent = (student: Student, type: 'absent' | 'late') => {
-    if (!student.parentPhone) {
-      alert('رقم ولي الأمر غير متوفر لهذا الطالب');
-      return;
-    }
-    setNotificationTarget({ student, type });
-  };
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
+      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesClass && matchesSearch;
+    });
+  }, [students, classFilter, searchQuery]);
+
+  const stats = useMemo(() => {
+      const present = filteredStudents.filter(s => getStatus(s) === 'present').length;
+      const absent = filteredStudents.filter(s => getStatus(s) === 'absent').length;
+      const late = filteredStudents.filter(s => getStatus(s) === 'late').length;
+      return { present, absent, late, total: filteredStudents.length };
+  }, [filteredStudents, selectedDate]);
 
   const performNotification = async (method: 'whatsapp' | 'sms') => {
       if(!notificationTarget || !notificationTarget.student.parentPhone) {
           alert('لا يوجد رقم هاتف مسجل');
           return;
       }
+      
       const { student, type } = notificationTarget;
       
+      // Clean phone number strictly
       let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
       
+      // Validate length (Oman numbers are usually 8 digits, with 968 country code becomes 11)
       if (!cleanPhone || cleanPhone.length < 5) {
           alert('رقم الهاتف غير صحيح أو قصير جداً');
           return;
       }
       
+      // Add country code if missing (Assuming Oman +968)
       if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
       
       if (cleanPhone.length === 8) {
@@ -107,15 +124,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           cleanPhone = '968' + cleanPhone.substring(1);
       }
 
-      const statusText = type === 'absent' ? 'تغيب عن المدرسة' : 'تأخر في الحضور إلى المدرسة';
-      const msg = encodeURIComponent(`السلام عليكم، نود إبلاغكم بأن الطالب ${student.name} قد ${statusText} اليوم ${new Date(selectedDate).toLocaleDateString('ar-EG')}.`);
-
+      const statusText = type === 'absent' ? 'غائب' : 'متأخر';
+      const dateText = new Date().toLocaleDateString('ar-EG');
+      const msg = encodeURIComponent(`السلام عليكم، نود إشعاركم بأن الطالب ${student.name} تم تسجيله *${statusText}* اليوم (${dateText}).`);
+      
       if (method === 'whatsapp') {
+          // Use https link which works better universally with Browser plugin
           const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
           try {
-            await Browser.open({ url: url });
+              await Browser.open({ url: url });
           } catch (e) {
-            window.open(url, '_blank');
+              window.open(url, '_blank');
           }
       } else {
           window.location.href = `sms:${cleanPhone}?body=${msg}`;
@@ -123,489 +142,305 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       setNotificationTarget(null);
   };
 
-  const getStatus = (student: Student) => {
-    return student.attendance.find(a => a.date === selectedDate)?.status;
+  // --- iOS Compatible Excel Export ---
+  const handleExportDailyExcel = async () => {
+      if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
+      setIsExportingExcel(true);
+
+      try {
+          const data = filteredStudents.map((s, i) => ({
+              'م': i + 1,
+              'الاسم': s.name,
+              'الصف': s.classes[0] || '',
+              'الحالة': getStatus(s) === 'present' ? 'حاضر' : getStatus(s) === 'absent' ? 'غائب' : getStatus(s) === 'late' ? 'تأخر' : 'غير مسجل',
+              'التاريخ': selectedDate
+          }));
+
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "الحضور اليومي");
+          
+          const fileName = `حضور_${selectedDate}.xlsx`;
+
+          if (Capacitor.isNativePlatform()) {
+              // 1. Write File
+              const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+              const result = await Filesystem.writeFile({
+                  path: fileName,
+                  data: wbout,
+                  directory: Directory.Cache
+              });
+
+              // 2. Share File
+              await Share.share({
+                  title: 'مشاركة ملف الحضور',
+                  text: `كشف حضور ليوم ${selectedDate}`,
+                  url: result.uri,
+                  dialogTitle: 'مشاركة عبر'
+              });
+          } else {
+              // Web Fallback
+              XLSX.writeFile(wb, fileName);
+          }
+      } catch (error) {
+          console.error("Export Error:", error);
+          alert("حدث خطأ أثناء التصدير.");
+      } finally {
+          setIsExportingExcel(false);
+      }
   };
 
-  const filteredStudents = students.filter(s => {
-      const matchClass = classFilter === 'all' || (s.classes && s.classes.includes(classFilter));
-      const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchClass && matchSearch;
-  });
-
-  // --- PDF Printing Logic ---
+  // --- PDF Export Logic ---
   const getBase64Image = async (url: string): Promise<string> => {
       try {
           const response = await fetch(url);
-          if (!response.ok) return "";
           const blob = await response.blob();
           return new Promise((resolve) => {
               const reader = new FileReader();
-              reader.onloadend = () => {
-                  const result = reader.result as string;
-                  if (result && result.startsWith('data:')) resolve(result);
-                  else resolve("");
-              };
-              reader.onerror = () => resolve("");
+              reader.onloadend = () => resolve(reader.result as string);
               reader.readAsDataURL(blob);
           });
-      } catch (error) { return ""; }
-  };
-
-  const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void, orientation: 'portrait' | 'landscape' = 'portrait') => {
-    setLoader(true);
-    const opt = {
-        margin: 5,
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: orientation }
-    };
-
-    if (typeof html2pdf !== 'undefined') {
-        try {
-            const worker = html2pdf().set(opt).from(element).toPdf();
-            if (Capacitor.isNativePlatform()) {
-                 const pdfBase64 = await worker.output('datauristring');
-                 const base64Data = pdfBase64.split(',')[1];
-                 const result = await Filesystem.writeFile({ path: filename, data: base64Data, directory: Directory.Cache });
-                 await Share.share({ title: filename, url: result.uri, dialogTitle: 'مشاركة/حفظ' });
-            } else {
-                 const pdfBlob = await worker.output('blob');
-                 const url = URL.createObjectURL(pdfBlob);
-                 const link = document.createElement('a');
-                 link.href = url; link.download = filename; link.target = "_blank";
-                 document.body.appendChild(link); link.click();
-                 setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 2000);
-            }
-        } catch (err) { console.error('PDF Error:', err); } finally { setLoader(false); }
-    } else { alert('مكتبة PDF غير جاهزة'); setLoader(false); }
+      } catch { return ""; }
   };
 
   const handlePrintDailyReport = async () => {
-      if (filteredStudents.length === 0) {
-          alert('لا يوجد طلاب في القائمة المختارة');
-          return;
-      }
+    if (filteredStudents.length === 0) return alert('لا يوجد بيانات');
+    setIsGeneratingPdf(true);
 
-      setIsGeneratingPdf(true);
+    const teacherName = localStorage.getItem('teacherName') || '................';
+    const schoolName = localStorage.getItem('schoolName') || '................';
+    let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
 
-      const teacherName = localStorage.getItem('teacherName') || '................';
-      const schoolName = localStorage.getItem('schoolName') || '................';
-      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
-
-      const dateStr = new Date(selectedDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-      // Sort students: absent/late first, then alphabetical
-      const sortedStudents = [...filteredStudents].sort((a, b) => {
-          const statusA = getStatus(a) || '';
-          const statusB = getStatus(b) || '';
-          if (statusA === statusB) return a.name.localeCompare(b.name);
-          if (statusA === 'absent') return -1;
-          if (statusB === 'absent') return 1;
-          if (statusA === 'late') return -1;
-          if (statusB === 'late') return 1;
-          return 0;
-      });
-
-      const rows = sortedStudents.map((s, i) => {
-          const status = getStatus(s);
-          let statusText = 'حاضر';
-          let statusColor = '#000';
-          let bgColor = '#fff';
-
-          if (status === 'absent') { statusText = 'غائب'; statusColor = '#dc2626'; bgColor = '#fef2f2'; }
-          else if (status === 'late') { statusText = 'متأخر'; statusColor = '#d97706'; bgColor = '#fffbeb'; }
-          else if (!status) { statusText = 'غير مرصود'; statusColor = '#9ca3af'; }
-
-          // Cumulative stats
-          const totalAbsent = s.attendance.filter(a => a.status === 'absent').length;
-          const totalLate = s.attendance.filter(a => a.status === 'late').length;
-
-          const cellStyle = "border: 1px solid #000 !important; padding: 8px; text-align: center; color: #000 !important;";
-          
-          return `
-            <tr style="background-color: ${bgColor};">
-                <td style="${cellStyle}">${i + 1}</td>
-                <td style="${cellStyle}; text-align: right;">${s.name}</td>
-                <td style="${cellStyle}; font-weight: bold; color: ${statusColor} !important;">${statusText}</td>
-                <td style="${cellStyle}">${totalAbsent}</td>
-                <td style="${cellStyle}">${totalLate}</td>
-                <td style="${cellStyle}"></td>
-            </tr>
-          `;
-      }).join('');
-
-      const element = document.createElement('div');
-      element.setAttribute('dir', 'rtl');
-      element.style.fontFamily = 'Tajawal, sans-serif';
-      element.style.padding = '20px';
-      element.style.backgroundColor = '#ffffff';
-      element.style.color = '#000000';
-
-      const headerStyle = "border: 1px solid #000 !important; padding: 10px; color: #000 !important; font-weight: bold; background-color: #f3f4f6;";
-
-      element.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px; color: #000 !important;">
-            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 60px; margin-bottom: 10px;" />` : ''}
-            <h2 style="margin: 0; font-size: 22px; font-weight: 800; color: #000 !important;">تقرير متابعة الحضور والغياب اليومي</h2>
-            <div style="display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 10px; color: #000 !important; font-size: 14px;">
-                <span>المدرسة: ${schoolName}</span>
-                <span>المعلم: ${teacherName}</span>
-                <span>التاريخ: ${dateStr}</span>
-                <span>الفصل: ${classFilter === 'all' ? 'جميع الفصول' : classFilter}</span>
-            </div>
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; border: 1px solid #000 !important;">
-            <thead>
-                <tr>
-                    <th style="${headerStyle}; width: 40px;">#</th>
-                    <th style="${headerStyle}; text-align: right;">اسم الطالب</th>
-                    <th style="${headerStyle}; width: 15%;">الحالة اليوم</th>
-                    <th style="${headerStyle}; width: 10%;">مجموع الغياب</th>
-                    <th style="${headerStyle}; width: 10%;">مجموع التأخر</th>
-                    <th style="${headerStyle}; width: 20%;">ملاحظات</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows}
-            </tbody>
-        </table>
-        
-        <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 50px; color: #000 !important;">
-            <div style="text-align: center;">
-                <p style="font-weight: bold; margin-bottom: 40px;">توقيع المعلم</p>
-                <p>......................</p>
-            </div>
-            <div style="text-align: center;">
-                <p style="font-weight: bold; margin-bottom: 40px;">مدير المدرسة</p>
-                <p>......................</p>
-            </div>
-        </div>
-      `;
-
-      exportPDF(element, `تقرير_غياب_${selectedDate}.pdf`, setIsGeneratingPdf, 'portrait');
-  };
-
-  const handlePrintFullReport = async () => {
-      if (filteredStudents.length === 0) {
-          alert('لا يوجد طلاب في القائمة المختارة');
-          return;
-      }
-
-      setIsGeneratingPdf(true);
-
-      const teacherName = localStorage.getItem('teacherName') || '................';
-      const schoolName = localStorage.getItem('schoolName') || '................';
-      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
-
-      // 1. Collect all unique dates recorded for the filtered students
-      const allDates = new Set<string>();
-      filteredStudents.forEach(s => {
-          s.attendance.forEach(a => allDates.add(a.date));
-      });
-      const sortedDates = Array.from(allDates).sort();
-
-      if (sortedDates.length === 0) {
-          alert('لا توجد سجلات حضور مسجلة حتى الآن');
-          setIsGeneratingPdf(false);
-          return;
-      }
-
-      // 2. Build Date Headers HTML (Smart Vertical Stacking)
-      const dateHeaders = sortedDates.map(date => {
-          const d = new Date(date);
-          const day = d.getDate();
-          const month = d.getMonth() + 1;
-          
-          return `<th style="border: 1px solid #000; padding: 2px; width: 28px; background-color: #f3f4f6; vertical-align: middle;">
-              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;">
-                  <span style="font-size: 11px; font-weight: 900; color: #000;">${day}</span>
-                  <span style="font-size: 8px; color: #666; font-weight: bold;">${month}</span>
-              </div>
-          </th>`;
-      }).join('');
-
-      // 3. Build Student Rows
-      const rows = filteredStudents.map((s, i) => {
-          const totalAbsent = s.attendance.filter(a => a.status === 'absent').length;
-          const totalLate = s.attendance.filter(a => a.status === 'late').length;
-
-          const dateCells = sortedDates.map(date => {
-              const record = s.attendance.find(a => a.date === date);
-              let symbol = '';
-              let color = 'transparent';
-              
-              if (record?.status === 'present') { symbol = '✔'; color = '#dcfce7'; } // green-100
-              else if (record?.status === 'absent') { symbol = '✖'; color = '#fee2e2'; } // red-100
-              else if (record?.status === 'late') { symbol = 'ت'; color = '#fef3c7'; } // amber-100
-              
-              return `<td style="border: 1px solid #000; padding: 2px; text-align: center; background-color: ${color}; font-size: 10px;">${symbol}</td>`;
-          }).join('');
-
-          return `
+    const rows = filteredStudents.map((s, i) => {
+        const st = getStatus(s);
+        const stText = st === 'present' ? 'حاضر' : st === 'absent' ? 'غائب' : st === 'late' ? 'تأخر' : '-';
+        const stColor = st === 'absent' ? 'red' : 'black';
+        return `
             <tr>
-                <td style="border: 1px solid #000; padding: 4px; text-align: center;">${i + 1}</td>
-                <td style="border: 1px solid #000; padding: 4px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${s.name}</td>
-                ${dateCells}
-                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold;">${totalAbsent}</td>
-                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold;">${totalLate}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${i + 1}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:right;">${s.name}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${s.classes[0] || ''}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:center; color:${stColor}; font-weight:bold;">${stText}</td>
             </tr>
-          `;
-      }).join('');
+        `;
+    }).join('');
 
-      const element = document.createElement('div');
-      
-      // Strict RTL enforcement
-      element.setAttribute('dir', 'rtl');
-      element.style.direction = 'rtl';
-      element.style.fontFamily = 'Tajawal, sans-serif';
-      element.style.padding = '10px';
-      element.style.backgroundColor = '#ffffff';
-      element.style.color = '#000000';
-
-      const headerStyle = "border: 1px solid #000 !important; padding: 5px; color: #000 !important; font-weight: bold; background-color: #f3f4f6;";
-
-      element.innerHTML = `
-        <style>
-            table { direction: rtl; border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #000; }
-        </style>
-        <div style="text-align: center; margin-bottom: 20px; color: #000 !important;">
-            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 50px; margin-bottom: 10px;" />` : ''}
-            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #000 !important;">سجل الحضور والغياب الشامل (التفريغ)</h2>
-            <div style="display: flex; justify-content: space-between; margin-top: 15px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; color: #000 !important; font-size: 12px;">
-                <span>المدرسة: ${schoolName}</span>
-                <span>المعلم: ${teacherName}</span>
-                <span>الفصل: ${classFilter === 'all' ? 'جميع الفصول' : classFilter}</span>
-                <span>عدد الأيام: ${sortedDates.length}</span>
+    const content = `
+        <div style="font-family:'Tajawal',sans-serif; direction:rtl; padding:20px; color:#000;">
+            <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px;">
+                ${emblemSrc ? `<img src="${emblemSrc}" style="height:60px; margin-bottom:5px;" />` : ''}
+                <h2 style="margin:5px 0;">كشف الحضور اليومي</h2>
+                <p style="margin:0; font-size:12px;">التاريخ: ${selectedDate} | المدرسة: ${schoolName}</p>
             </div>
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #000 !important; direction: rtl;">
-            <thead>
-                <tr>
-                    <th style="${headerStyle}; width: 30px;">#</th>
-                    <th style="${headerStyle}; text-align: right; min-width: 120px;">اسم الطالب</th>
-                    ${dateHeaders}
-                    <th style="${headerStyle}; width: 30px;">غ</th>
-                    <th style="${headerStyle}; width: 30px;">ت</th>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:bold; font-size:12px; background:#f0f0f0; padding:5px; border-radius:5px;">
+                <span>إجمالي الطلاب: ${stats.total}</span>
+                <span>حضور: ${stats.present}</span>
+                <span style="color:red;">غياب: ${stats.absent}</span>
+                <span style="color:#d97706;">تأخر: ${stats.late}</span>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <tr style="background:#e5e5e5;">
+                    <th style="border:1px solid #000; padding:5px; width:40px;">#</th>
+                    <th style="border:1px solid #000; padding:5px;">الطالب</th>
+                    <th style="border:1px solid #000; padding:5px; width:60px;">الصف</th>
+                    <th style="border:1px solid #000; padding:5px; width:60px;">الحالة</th>
                 </tr>
-            </thead>
-            <tbody>
                 ${rows}
-            </tbody>
-        </table>
-        
-        <div style="margin-top: 20px; font-size: 10px;">
-            <p><strong>المفتاح:</strong> (✔) حاضر ، (✖) غائب ، (ت) متأخر</p>
+            </table>
         </div>
+    `;
 
-        <div style="margin-top: 40px; display: flex; justify-content: space-between; padding: 0 50px; color: #000 !important;">
-            <div style="text-align: center;">
-                <p style="font-weight: bold; margin-bottom: 30px;">توقيع المعلم</p>
-                <p>......................</p>
-            </div>
-            <div style="text-align: center;">
-                <p style="font-weight: bold; margin-bottom: 30px;">مدير المدرسة</p>
-                <p>......................</p>
-            </div>
-        </div>
-      `;
+    const element = document.createElement('div');
+    element.innerHTML = content;
+    
+    // PDF Generation
+    const opt = {
+        margin: 10,
+        filename: `Attendance_${selectedDate}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
 
-      // Use Landscape for the full record
-      exportPDF(element, `سجل_حضور_شامل_${classFilter}.pdf`, setIsGeneratingPdf, 'landscape');
+    if (typeof html2pdf !== 'undefined') {
+        const worker = html2pdf().set(opt).from(element).toPdf();
+        if (Capacitor.isNativePlatform()) {
+             const pdfBase64 = await worker.output('datauristring');
+             const base64Data = pdfBase64.split(',')[1];
+             const result = await Filesystem.writeFile({
+                  path: `Attendance_${selectedDate}.pdf`,
+                  data: base64Data,
+                  directory: Directory.Cache
+             });
+             await Share.share({
+                  url: result.uri,
+                  title: 'مشاركة التقرير'
+             });
+        } else {
+             worker.save();
+        }
+    }
+    setIsGeneratingPdf(false);
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)] -mt-4 -mx-4 text-slate-900 dark:text-white">
-      
-      {/* Sticky Full Width Header */}
-      <div className={`${styles.header} px-4 pt-4 pb-2 sticky top-0 z-30 shrink-0`}>
-          <div className="flex items-end justify-between mb-3">
-             <div>
-                 <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">الحضور</h1>
-                 <p className="text-xs text-slate-500 dark:text-white/50 font-bold mt-1">{formatDateDisplay(selectedDate)}</p>
-             </div>
-             <div className="flex gap-2">
-                 {/* Print Daily Button */}
-                 <button 
-                    onClick={handlePrintDailyReport}
-                    disabled={isGeneratingPdf}
-                    className="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-500/30 active:scale-95 transition-all"
-                    title="طباعة تقرير الحضور (يومي)"
-                 >
-                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                 </button>
+    <div className="flex flex-col h-[calc(100vh-60px)] -mt-4 -mx-4 text-slate-900 dark:text-white relative bg-slate-50 dark:bg-[#000]">
+        
+        {/* iOS Style Header */}
+        <div className={styles.header}>
+            <div className="px-5 pt-4 pb-2">
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white">الغياب</h1>
+                    <div className="flex gap-2">
+                         <button onClick={handlePrintDailyReport} disabled={isGeneratingPdf} className="w-9 h-9 bg-slate-100 dark:bg-white/10 rounded-full flex items-center justify-center text-slate-600 dark:text-white shadow-sm active:scale-90 transition-transform">
+                             {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-5 h-5"/>}
+                         </button>
+                         <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm active:scale-90 transition-transform">
+                             {isExportingExcel ? <Loader2 className="w-4 h-4 animate-spin"/> : <Share2 className="w-5 h-5"/>}
+                         </button>
+                    </div>
+                </div>
 
-                 {/* Print Full Record Button (NEW) */}
-                 <button 
-                    onClick={handlePrintFullReport}
-                    disabled={isGeneratingPdf}
-                    className="w-9 h-9 flex items-center justify-center bg-amber-500 text-white rounded-full shadow-lg shadow-amber-500/30 active:scale-95 transition-all"
-                    title="طباعة السجل الكامل (تفريغ)"
-                 >
-                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarRange className="w-4 h-4" />}
-                 </button>
+                {/* Date Scroller (Simplified) */}
+                <div className="flex items-center justify-between bg-gray-100/50 dark:bg-white/5 rounded-xl p-1 mb-3">
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-2 rounded-lg hover:bg-white dark:hover:bg-white/10 shadow-sm"><ChevronDown className="w-4 h-4 rotate-90"/></button>
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                        <Calendar className="w-4 h-4 text-indigo-500"/>
+                        {formatDateDisplay(selectedDate)}
+                    </div>
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-2 rounded-lg hover:bg-white dark:hover:bg-white/10 shadow-sm"><ChevronDown className="w-4 h-4 -rotate-90"/></button>
+                </div>
 
-                 {/* Class Filter Button */}
-                 <div className="relative">
-                    <select 
-                        value={classFilter} 
-                        onChange={(e) => setClassFilter(e.target.value)} 
-                        className={`appearance-none text-indigo-700 dark:text-indigo-200 font-bold text-xs py-2 pl-3 pr-8 shadow-sm focus:ring-0 cursor-pointer outline-none transition-colors ${styles.select}`}
-                    >
-                        <option value="all" className="text-black">كل الفصول</option>
-                        {classes.map(c => <option key={c} value={c} className="text-black">{c}</option>)}
-                    </select>
-                    <ChevronDown className="w-3 h-3 text-indigo-400 dark:text-indigo-300 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                 </div>
-                 {/* Date Picker Button */}
-                 <div className="relative">
-                    <input 
-                        type="date" 
-                        value={selectedDate} 
-                        onChange={(e) => setSelectedDate(e.target.value)} 
-                        className="absolute inset-0 opacity-0 z-10 w-full cursor-pointer"
-                    />
-                    <button className="text-slate-700 dark:text-white/80 font-bold text-xs py-2 px-3 shadow-sm flex items-center gap-1 hover:bg-gray-50 dark:hover:bg-white/20 transition-all bg-white dark:bg-white/10 rounded-full border border-gray-200 dark:border-white/10">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>التاريخ</span>
-                    </button>
-                 </div>
-             </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative mb-2">
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-slate-400 dark:text-white/40" />
-              </div>
-              <input
-                  type="text"
-                  className={`w-full text-slate-900 dark:text-white text-sm py-2 pr-9 pl-4 outline-none placeholder:text-slate-400 dark:placeholder:text-white/30 transition-all text-right shadow-sm ${styles.search}`}
-                  placeholder="بحث عن طالب..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-              />
-          </div>
-
-          {/* Batch Actions */}
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <button 
-                  onClick={() => handleMarkAll('present')}
-                  className="flex-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 py-1.5 text-[10px] font-bold shadow-sm active:scale-95 transition-all hover:bg-emerald-200 dark:hover:bg-emerald-500/30 rounded-xl border border-emerald-200 dark:border-emerald-500/20"
-              >
-                  تحديد الكل "حاضر"
-              </button>
-              <button 
-                  onClick={() => handleMarkAll('reset')}
-                  className="px-4 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 py-1.5 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white rounded-xl border border-gray-200 dark:border-white/10"
-              >
-                  <RotateCcw className="w-4 h-4" />
-              </button>
-          </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-32 custom-scrollbar">
-          {filteredStudents.length > 0 ? (
-              <div className="space-y-2">
-                  {filteredStudents.map((student, index) => {
-                    const status = getStatus(student);
-                    return (
-                        <div 
-                            key={student.id} 
-                            className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-3 transition-all ${styles.card}`}
-                        >
-                            
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm ${
-                                    status === 'present' ? 'bg-emerald-500 border border-emerald-400' : 
-                                    status === 'absent' ? 'bg-rose-500 border border-rose-400' : 
-                                    status === 'late' ? 'bg-amber-500 border border-amber-400' : 
-                                    'bg-slate-200 dark:bg-white/10 border border-slate-300 dark:border-white/20 text-slate-500 dark:text-white'
-                                }`}>
-                                    {student.name.charAt(0)}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate text-right">{student.name}</h4>
-                                    <p className="text-[9px] text-slate-500 dark:text-white/40 truncate text-right font-bold px-1.5 py-0.5 inline-block mt-0.5 bg-slate-100 dark:bg-white/5 rounded-md">{student.classes[0]}</p>
-                                </div>
-                            </div>
-
-                            <div className={`flex items-center justify-end gap-2 w-full sm:w-auto ${styles.btnGroup}`}>
-                                <div className="flex gap-1">
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'present')} 
-                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'present' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-emerald-400/50 border border-gray-100 dark:border-transparent hover:bg-emerald-50 dark:hover:bg-emerald-500/20'}`}
-                                        title="حاضر"
-                                    >
-                                        <Check className="w-4 h-4" strokeWidth={3} />
-                                    </button>
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'absent')} 
-                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'absent' ? 'bg-rose-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-rose-400/50 border border-gray-100 dark:border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/20'}`}
-                                        title="غائب"
-                                    >
-                                        <X className="w-4 h-4" strokeWidth={3} />
-                                    </button>
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'late')} 
-                                        className={`w-9 h-9 flex items-center justify-center transition-all ${styles.statusBtn} ${status === 'late' ? 'bg-amber-500 text-white shadow-sm' : 'bg-white dark:bg-white/5 text-slate-400 dark:text-amber-400/50 border border-gray-100 dark:border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/20'}`}
-                                        title="تأخير"
-                                    >
-                                        <Clock className="w-4 h-4" strokeWidth={3} />
-                                    </button>
-                                </div>
-                                
-                                {(status === 'absent' || status === 'late') && (
-                                    <button 
-                                        onClick={() => handleNotifyParent(student, status)} 
-                                        className={`w-9 h-9 flex items-center justify-center bg-blue-500 text-white active:scale-90 transition-transform shadow-sm ml-1 ${styles.statusBtn}`}
-                                    >
-                                        <MessageCircle className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-
-                        </div>
-                    );
-                  })}
-              </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                <Filter className="w-12 h-12 text-slate-400 dark:text-white mb-2" />
-                <p className="text-sm font-bold text-slate-500 dark:text-white">لا يوجد طلاب مطابقين</p>
+                {/* Filters Row */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                    <div className="relative flex-1 min-w-[120px]">
+                        <Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-gray-400"/>
+                        <input 
+                            type="text" 
+                            placeholder="بحث..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className={`w-full py-2 pr-8 pl-3 text-xs font-bold outline-none ${styles.search}`} 
+                        />
+                    </div>
+                    <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-1 shrink-0"></div>
+                    <button onClick={() => setClassFilter('all')} className={`px-4 py-2 text-[10px] whitespace-nowrap ${styles.pill} ${classFilter === 'all' ? 'bg-indigo-600 text-white border-transparent' : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>الكل</button>
+                    {classes.map(c => (
+                        <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-2 text-[10px] whitespace-nowrap ${styles.pill} ${classFilter === c ? 'bg-indigo-600 text-white border-transparent' : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>{c}</button>
+                    ))}
+                </div>
             </div>
-          )}
-      </div>
 
-      {/* Notification Modal */}
-      <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="rounded-[28px]">
-          <h3 className="text-center font-black text-slate-900 dark:text-white text-lg mb-1 shrink-0">
-              إبلاغ ولي الأمر
-          </h3>
-          <p className="text-center text-xs font-bold text-slate-500 dark:text-white/50 mb-6 shrink-0">
-              {notificationTarget?.type === 'absent' ? 'الطالب غائب اليوم' : 'الطالب متأخر اليوم'}
-          </p>
-          
-          <div className="space-y-3">
-              <button onClick={() => performNotification('whatsapp')} className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-lg shadow-[#25D366]/30 transition-all">
-                  <MessageCircle className="w-6 h-6 fill-white" />
-                  فتح واتساب مباشرة
-              </button>
-              <button onClick={() => performNotification('sms')} className="w-full bg-slate-100 dark:bg-white/10 active:bg-slate-200 dark:active:bg-white/20 py-4 rounded-2xl text-slate-700 dark:text-white font-black text-sm flex items-center justify-center gap-2 border border-gray-200 dark:border-white/10">
-                  <CheckCircle2 className="w-5 h-5" />
-                  رسالة نصية SMS
-              </button>
-          </div>
-          
-          <button onClick={() => setNotificationTarget(null)} className="w-full mt-3 bg-transparent py-3 rounded-xl text-rose-500 dark:text-rose-400 font-bold text-sm hover:bg-rose-50 dark:hover:bg-white/5">
-              إلغاء
-          </button>
-      </Modal>
+            {/* Live Stats Strip */}
+            <div className="grid grid-cols-4 gap-px bg-gray-200 dark:bg-white/10 border-t border-gray-200 dark:border-white/5">
+                <button onClick={() => handleMarkAll('present')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">حضور</span>
+                    <span className="text-sm font-black text-emerald-500">{stats.present}</span>
+                </button>
+                <button onClick={() => handleMarkAll('absent')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">غياب</span>
+                    <span className="text-sm font-black text-rose-500">{stats.absent}</span>
+                </button>
+                <button onClick={() => handleMarkAll('late')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">تأخر</span>
+                    <span className="text-sm font-black text-amber-500">{stats.late}</span>
+                </button>
+                <button onClick={() => handleMarkAll('reset')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">غير محدد</span>
+                    <span className="text-sm font-black text-gray-400">{stats.total - (stats.present + stats.absent + stats.late)}</span>
+                </button>
+            </div>
+        </div>
+
+        {/* Student List */}
+        <div className={styles.contentContainer}>
+            {filteredStudents.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                    {filteredStudents.map((student) => {
+                        const status = getStatus(student);
+                        return (
+                            <motion.div 
+                                layout
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                key={student.id} 
+                                className={`p-3 rounded-[18px] border flex items-center justify-between ${styles.card} ${
+                                    status === 'absent' ? 'border-rose-100 bg-rose-50/30 dark:border-rose-500/20 dark:bg-rose-500/5' : 
+                                    status === 'present' ? 'border-emerald-100 bg-emerald-50/30 dark:border-emerald-500/20 dark:bg-emerald-500/5' : 
+                                    status === 'late' ? 'border-amber-100 bg-amber-50/30 dark:border-amber-500/20 dark:bg-amber-500/5' : 
+                                    'border-transparent'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-black shrink-0 shadow-sm ${
+                                        status === 'absent' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300' :
+                                        status === 'late' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300' :
+                                        status === 'present' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                                        'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                                    }`}>
+                                        {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover rounded-full" /> : student.name.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className={`text-sm font-bold truncate ${status ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-gray-300'}`}>{student.name}</h3>
+                                        {(status === 'absent' || status === 'late') && (
+                                            <button 
+                                                onClick={() => setNotificationTarget({ student, type: status === 'absent' ? 'absent' : 'late' })}
+                                                className={`mt-1 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md w-fit active:scale-95 ${
+                                                    status === 'absent' 
+                                                    ? 'text-rose-500 bg-rose-100 dark:bg-rose-500/20' 
+                                                    : 'text-amber-600 bg-amber-100 dark:bg-amber-500/20'
+                                                }`}
+                                            >
+                                                <MessageCircle className="w-3 h-3" /> {status === 'absent' ? 'إشعار غياب' : 'إشعار تأخير'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <button onClick={() => toggleAttendance(student.id, 'present')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-500'}`}>
+                                        <Check className="w-5 h-5" strokeWidth={3} />
+                                    </button>
+                                    <button onClick={() => toggleAttendance(student.id, 'absent')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:text-rose-500'}`}>
+                                        <X className="w-5 h-5" strokeWidth={3} />
+                                    </button>
+                                    <button onClick={() => toggleAttendance(student.id, 'late')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 hover:text-amber-500'}`}>
+                                        <Clock className="w-5 h-5" strokeWidth={3} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                    <UserCircle2 className="w-16 h-16 text-slate-300 dark:text-white mb-4" />
+                    <p className="text-sm font-bold text-slate-400 dark:text-white">لا يوجد طلاب مطابقين</p>
+                </div>
+            )}
+        </div>
+
+        {/* Notification Modal */}
+        <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="max-w-xs rounded-[2rem]">
+            <div className="text-center">
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
+                    <MessageCircle className="w-8 h-8" />
+                </div>
+                <h3 className="font-black text-lg mb-1 dark:text-white">إرسال إشعار</h3>
+                <p className="text-xs text-gray-500 mb-6 font-bold">{notificationTarget?.student.name}</p>
+                
+                <div className="space-y-3">
+                    <button onClick={() => performNotification('whatsapp')} className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all active:scale-95">
+                        <MessageCircle className="w-5 h-5" /> واتساب
+                    </button>
+                    <button onClick={() => performNotification('sms')} className="w-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 text-slate-700 dark:text-white py-3.5 rounded-xl font-black text-sm transition-all active:scale-95">
+                        رسالة نصية (SMS)
+                    </button>
+                    <button onClick={() => setNotificationTarget(null)} className="text-xs font-bold text-gray-400 mt-2">إلغاء</button>
+                </div>
+            </div>
+        </Modal>
+
     </div>
   );
 };

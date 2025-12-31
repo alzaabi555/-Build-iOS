@@ -49,6 +49,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [editingGrade, setEditingGrade] = useState<GradeRecord | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false); // Added State for Export Loading
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showToolsManager, setShowToolsManager] = useState(false);
@@ -265,32 +266,61 @@ const GradeBook: React.FC<GradeBookProps> = ({
     setEditingGrade(null);
   };
 
-  const handleExportExcel = () => {
+  // --- REVISED: iOS Compatible Excel Export ---
+  const handleExportExcel = async () => {
       if (filteredStudents.length === 0) return alert('لا يوجد طلاب لتصديرهم');
+      setIsExporting(true);
 
-      const data = filteredStudents.map((s, i) => {
-          const semGrades = getSemesterGrades(s, currentSemester);
-          const stats = calculateStudentSemesterStats(s, currentSemester);
-          
-          const row: any = { 'م': i + 1, 'الاسم': s.name };
+      try {
+          const data = filteredStudents.map((s, i) => {
+              const semGrades = getSemesterGrades(s, currentSemester);
+              const stats = calculateStudentSemesterStats(s, currentSemester);
+              
+              const row: any = { 'م': i + 1, 'الاسم': s.name };
 
-          tools.forEach(tool => {
-              const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(tool.name));
-              row[tool.name] = grade ? grade.score : '';
+              tools.forEach(tool => {
+                  const grade = semGrades.find(g => normalizeKey(g.category) === normalizeKey(tool.name));
+                  row[tool.name] = grade ? grade.score : '';
+              });
+
+              row['المجموع'] = stats.totalScore;
+              row['التقدير'] = getGradeSymbol(stats.totalScore);
+              
+              return row;
           });
 
-          row['المجموع'] = stats.totalScore;
-          row['التقدير'] = getGradeSymbol(stats.totalScore);
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, `درجات_${currentSemester}`);
           
-          return row;
-      });
+          const fileName = `سجل_الدرجات_${selectedClass === 'all' ? 'عام' : selectedClass}_ف${currentSemester}.xlsx`;
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `درجات_${currentSemester}`);
-      
-      const fileName = `سجل_الدرجات_${selectedClass === 'all' ? 'عام' : selectedClass}_ف${currentSemester}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+          if (Capacitor.isNativePlatform()) {
+              // 1. Write File to Cache
+              const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+              const result = await Filesystem.writeFile({
+                  path: fileName,
+                  data: wbout,
+                  directory: Directory.Cache
+              });
+
+              // 2. Share/Save File
+              await Share.share({
+                  title: 'تصدير درجات الطلاب',
+                  text: `سجل درجات فصل ${currentSemester}`,
+                  url: result.uri,
+                  dialogTitle: 'حفظ أو مشاركة السجل'
+              });
+          } else {
+              // Web Fallback
+              XLSX.writeFile(wb, fileName);
+          }
+      } catch (error) {
+          console.error("Export Error:", error);
+          alert("حدث خطأ أثناء التصدير. يرجى المحاولة مرة أخرى.");
+      } finally {
+          setIsExporting(false);
+      }
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -463,9 +493,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
       const element = document.createElement('div');
       element.setAttribute('dir', 'rtl');
       element.style.fontFamily = 'Tajawal, sans-serif';
-      element.style.padding = '20px';
+      element.style.padding = '10px';
       element.style.color = '#000';
       element.style.background = '#fff';
+      
+      // CRITICAL FIX FOR IPHONE:
+      // Force the container width to match A4 landscape (approx 297mm)
+      // This prevents the table from compressing to the phone's viewport width before PDF generation.
+      element.style.width = '290mm'; 
+      element.style.maxWidth = '290mm';
 
       element.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
@@ -482,7 +518,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             <thead>
                 <tr>
                     <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:30px;">#</th>
-                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:20%;">الاسم</th>
+                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:150px;">الاسم</th>
                     ${toolHeaders}
                     <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:50px;">المجموع</th>
                     <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:40px;">التقدير</th>
@@ -516,8 +552,8 @@ const GradeBook: React.FC<GradeBookProps> = ({
                      <button onClick={() => setShowToolsManager(true)} className={`p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-[10px] font-black flex items-center justify-center transition-all ${styles.pill}`} title="إدارة الأدوات">
                          <Settings className="w-4 h-4" />
                      </button>
-                     <button onClick={handleExportExcel} className={`p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-[10px] font-black flex items-center justify-center transition-all ${styles.pill}`} title="تصدير Excel">
-                         <FileSpreadsheet className="w-4 h-4" />
+                     <button onClick={handleExportExcel} disabled={isExporting} className={`p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-[10px] font-black flex items-center justify-center transition-all ${styles.pill}`} title="تصدير Excel">
+                         {isExporting ? <Loader2 className="w-4 h-4 animate-spin"/> : <FileSpreadsheet className="w-4 h-4" />}
                      </button>
                      <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className={`p-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-[10px] font-black flex items-center justify-center transition-all ${styles.pill}`} title="استيراد Excel">
                          {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}

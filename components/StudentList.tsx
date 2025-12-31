@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, X, UserPlus, Edit2, FileSpreadsheet, Sparkles, Shuffle, Trash2, CheckCircle2, MessageCircle, Plus, UploadCloud, UserX, Image as ImageIcon, PhoneOff, AlertCircle, FileUp, User, Camera, Printer, Loader2, Star } from 'lucide-react';
@@ -99,15 +98,25 @@ const StudentItem = React.memo(({ student, theme, onViewReport, onAction, styles
                             {gradeSymbol}
                         </div>
 
-                        <div className="w-px h-3 bg-gray-200 dark:bg-white/10 mx-1"></div>
+                        <div className="w-px h-4 bg-gray-200 dark:bg-white/10 mx-2"></div>
 
-                        {/* Quick Actions */}
-                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                            <Edit2 className="w-3 h-3" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
-                            <Trash2 className="w-3 h-3" />
-                        </button>
+                        {/* Quick Actions - IMPROVED UI FOR TOUCH SAFETY */}
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} 
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all active:scale-90"
+                                title="تعديل"
+                            >
+                                <Edit2 className="w-4 h-4" strokeWidth={2.5} />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} 
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all active:scale-90"
+                                title="حذف"
+                            >
+                                <Trash2 className="w-4 h-4" strokeWidth={2.5} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -142,6 +151,17 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [editClass, setEditClass] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setEditAvatar(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
   const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
   const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
   const [customReason, setCustomReason] = useState('');
@@ -149,6 +169,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const positiveBehaviors = [
       { name: 'مشاركة فعالة', points: 1 },
@@ -246,17 +267,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       setShowManualAddModal(false);
       setEditingStudent(null);
       setEditName(''); setEditPhone(''); setEditClass(''); setEditAvatar('');
-  };
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setEditAvatar(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
   };
 
   const confirmDeleteClass = () => {
@@ -409,17 +419,50 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       setNotificationTarget(null);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
       if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
-      const data = filteredStudents.map(s => ({
-          'الاسم': s.name, 'الصف': s.classes[0] || '', 'رقم الولي': s.parentPhone || '',
-          'نقاط إيجابية': (s.behaviors || []).filter(b => b.type === 'positive').reduce((a,b) => a + b.points, 0),
-          'نقاط سلبية': (s.behaviors || []).filter(b => b.type === 'negative').reduce((a,b) => a + Math.abs(b.points), 0),
-      }));
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
-      XLSX.writeFile(wb, `Students_Export.xlsx`);
+      setIsExportingExcel(true);
+      
+      try {
+          const data = filteredStudents.map(s => ({
+              'الاسم': s.name, 
+              'الصف': s.classes[0] || '', 
+              'رقم الولي': s.parentPhone || '',
+              'نقاط إيجابية': (s.behaviors || []).filter(b => b.type === 'positive').reduce((a,b) => a + b.points, 0),
+              'نقاط سلبية': (s.behaviors || []).filter(b => b.type === 'negative').reduce((a,b) => a + Math.abs(b.points), 0),
+          }));
+
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
+          
+          const fileName = `Behavior_Summary_${selectedClass !== 'all' ? selectedClass : 'All'}.xlsx`;
+
+          if (Capacitor.isNativePlatform()) {
+              // iOS/Android Logic: Write to Cache then Share
+              const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+              const result = await Filesystem.writeFile({
+                  path: fileName,
+                  data: wbout,
+                  directory: Directory.Cache
+              });
+              
+              await Share.share({
+                  title: 'مشاركة ملخص السلوك',
+                  text: 'ملخص سلوكيات الطلاب',
+                  url: result.uri,
+                  dialogTitle: 'مشاركة الملف'
+              });
+          } else {
+              // Web Fallback
+              XLSX.writeFile(wb, fileName);
+          }
+      } catch (e) {
+          console.error("Export error", e);
+          alert("حدث خطأ أثناء التصدير.");
+      } finally {
+          setIsExportingExcel(false);
+      }
   };
 
   // --- PDF Generation for General Class Report ---
@@ -618,7 +661,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                       {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-4 h-4" />}
                   </button>
 
-                  <button onClick={handleExportExcel} className={`w-9 h-9 flex items-center justify-center transition-all bg-blue-50 dark:bg-white/10 rounded-full text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-white/5`}><FileSpreadsheet className="w-4 h-4" /></button>
+                  <button onClick={handleExportExcel} disabled={isExportingExcel} className={`w-9 h-9 flex items-center justify-center transition-all bg-blue-50 dark:bg-white/10 rounded-full text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-white/5`}>
+                      {isExportingExcel ? <Loader2 className="w-4 h-4 animate-spin"/> : <FileSpreadsheet className="w-4 h-4" />}
+                  </button>
+                  
                   <button onClick={onSwitchToImport} className={`w-9 h-9 flex items-center justify-center transition-all bg-emerald-50 dark:bg-white/10 rounded-full text-emerald-600 dark:text-emerald-300 border border-emerald-100 dark:border-white/5`}><UploadCloud className="w-4 h-4" /></button>
                   
                   <button onClick={() => setShowSelectionModal(true)} className={`w-9 h-9 flex items-center justify-center transition-all bg-indigo-600 text-white rounded-full active:scale-95 hover:bg-indigo-500 border border-indigo-500 shadow-sm`}><UserPlus className="w-4 h-4" /></button>
