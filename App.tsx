@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
@@ -75,15 +76,17 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = {
-    hasError: false
-  };
+  state: ErrorBoundaryState = { hasError: false };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState { return { hasError: true }; }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Uncaught error:", error, errorInfo); }
   render() {
     if (this.state.hasError) return <div className="p-10 text-center"><h1>حدث خطأ غير متوقع.</h1><button onClick={() => window.location.reload()} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">إعادة تحميل</button></div>;
-    return this.props.children;
+    return (this.props as any).children;
   }
 }
 
@@ -408,7 +411,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
           
-          {/* Mobile Header (Cleaned up - removing the hamburger menu) */}
+          {/* Mobile Header */}
           <header className="md:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 z-20 sticky top-0">
              <div className="flex items-center gap-3">
                  <div className="w-8 h-8"><BrandLogo className="w-full h-full" showText={false} /></div>
@@ -424,37 +427,41 @@ const AppContent: React.FC = () => {
              </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 custom-scrollbar relative pb-28 md:pb-8">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 custom-scrollbar relative pb-24 md:pb-8">
               <div className="max-w-7xl mx-auto h-full">
                 {renderContent()}
               </div>
           </div>
 
-          {/* Floating Bottom Navigation Bar (Mobile Only) */}
-          <nav className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-[2rem] shadow-2xl z-50 flex items-center justify-between p-2 px-4">
+          {/* 
+             === UPGRADED MOBILE NAV BAR === 
+             Changed from floating island to anchored tab bar for stability and symmetry with header 
+          */}
+          <nav className="md:hidden fixed bottom-0 w-full bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl border-t border-gray-200 dark:border-white/5 z-50 flex items-center justify-between px-6 py-2 pb-5 transition-all">
               {navItems.slice(0, 5).map((item) => {
                   const isActive = activeTab === item.id;
                   return (
                       <button
                           key={item.id}
                           onClick={() => setActiveTab(item.id)}
-                          className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all duration-300 relative ${isActive ? 'text-indigo-600 dark:text-white -translate-y-2' : 'text-slate-400 dark:text-white/40'}`}
+                          className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 relative ${isActive ? 'text-indigo-600 dark:text-white -translate-y-1' : 'text-slate-400 dark:text-white/40'}`}
                       >
-                          <div className={`p-2 rounded-2xl transition-all ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'hover:bg-slate-100 dark:hover:bg-white/5'}`}>
-                              <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                          <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-indigo-50 dark:bg-white/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}>
+                              <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
                           </div>
-                          {isActive && <div className="w-1 h-1 bg-indigo-600 dark:bg-white rounded-full mt-1 absolute -bottom-2" />}
+                          {isActive && <div className="w-1 h-1 bg-indigo-600 dark:bg-white rounded-full mt-1" />}
                       </button>
                   );
               })}
               {/* More Menu for remaining items */}
               <button
                   onClick={() => setActiveTab('guide')}
-                  className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all duration-300 relative ${activeTab === 'guide' || activeTab === 'noor' ? 'text-indigo-600 dark:text-white -translate-y-2' : 'text-slate-400 dark:text-white/40'}`}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 relative ${activeTab === 'guide' || activeTab === 'noor' ? 'text-indigo-600 dark:text-white -translate-y-1' : 'text-slate-400 dark:text-white/40'}`}
               >
-                   <div className={`p-2 rounded-2xl transition-all ${activeTab === 'guide' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'hover:bg-slate-100 dark:hover:bg-white/5'}`}>
-                      <Menu className="w-5 h-5" strokeWidth={activeTab === 'guide' ? 2.5 : 2} />
+                   <div className={`p-1.5 rounded-xl transition-all ${activeTab === 'guide' ? 'bg-indigo-50 dark:bg-white/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}>
+                      <Menu className="w-6 h-6" strokeWidth={activeTab === 'guide' ? 2.5 : 2} />
                    </div>
+                   {(activeTab === 'guide' || activeTab === 'noor') && <div className="w-1 h-1 bg-indigo-600 dark:bg-white rounded-full mt-1" />}
               </button>
           </nav>
 
