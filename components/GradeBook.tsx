@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Student, GradeRecord, AssessmentTool } from '../types';
-import { Plus, Search, X, Trash2, Settings, Check, FileSpreadsheet, Loader2, Info, Edit2, Download, AlertTriangle, Eye, UploadCloud, Printer, PieChart, Save } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Plus, Search, X, Trash2, Settings, Check, Loader2, Edit2, Printer } from 'lucide-react';
 import Modal from './Modal';
 import { useTheme } from '../context/ThemeContext';
-import { useApp } from '../context/AppContext'; // Import Context
+import { useApp } from '../context/AppContext';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -22,26 +21,37 @@ interface GradeBookProps {
   teacherInfo?: { name: string; school: string; subject: string; governorate: string };
 }
 
-const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStudent, setStudents, currentSemester, onSemesterChange, teacherInfo }) => {
+const GradeBook: React.FC<GradeBookProps> = ({ 
+    students = [], 
+    classes = [], 
+    onUpdateStudent, 
+    setStudents, 
+    currentSemester, 
+    onSemesterChange, 
+    teacherInfo 
+}) => {
   const { theme, isLowPower } = useTheme();
-  const { assessmentTools: tools, setAssessmentTools: setTools } = useApp(); 
+  const contextData = useApp();
   
-  const [selectedClass, setSelectedClass] = useState(classes[0] || 'all');
+  // Safe Access to Context Data
+  const assessmentTools = contextData?.assessmentTools || [];
+  const setAssessmentTools = contextData?.setAssessmentTools || (() => {});
+  
+  const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
+
+  const [selectedClass, setSelectedClass] = useState(() => {
+      if (Array.isArray(classes) && classes.length > 0) return classes[0];
+      return 'all';
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddGrade, setShowAddGrade] = useState<{ student: Student } | null>(null);
   const [editingGrade, setEditingGrade] = useState<GradeRecord | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
-  // Bulk Import State
-  const [isImporting, setIsImporting] = useState(false);
-
-  // Tools Manager State
   const [showToolsManager, setShowToolsManager] = useState(false);
-
   const [isAddingTool, setIsAddingTool] = useState(false);
   const [newToolName, setNewToolName] = useState('');
-  
-  // --- New State for Editing Tools ---
   const [editingToolId, setEditingToolId] = useState<string | null>(null);
   const [editToolName, setEditToolName] = useState('');
 
@@ -56,7 +66,6 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       header: isLowPower
         ? 'bg-white dark:bg-[#0f172a] border-b border-gray-200 dark:border-gray-800'
         : 'bg-white/80 dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm backdrop-blur-xl',
-      toolBtn: 'rounded-xl border shadow-sm',
   };
 
   useEffect(() => {
@@ -66,33 +75,40 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
      }
   }, [showAddGrade, editingGrade]);
 
-  const filteredStudents = students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || s.classes?.includes(selectedClass);
-    return matchesSearch && matchesClass;
-  });
+  // --- Strict Filtering & Safety Checks ---
+  const filteredStudents = useMemo(() => {
+    if (!Array.isArray(students)) return [];
+    return students.filter(s => {
+      // Critical check to prevent crash on bad data
+      if (!s || typeof s !== 'object') return false;
+      
+      const name = String(s.name || '').toLowerCase();
+      const matchesSearch = name.includes(searchTerm.toLowerCase());
+      
+      const studentClasses = Array.isArray(s.classes) ? s.classes : [];
+      const matchesClass = selectedClass === 'all' || studentClasses.includes(selectedClass);
+      
+      return matchesSearch && matchesClass;
+    });
+  }, [students, searchTerm, selectedClass]);
 
   const getSemesterGrades = (student: Student, sem: '1' | '2') => {
-      return (student.grades || []).filter(g => {
-          if (!g.semester) return sem === '1';
+      if (!student || !Array.isArray(student.grades)) return [];
+      return student.grades.filter(g => {
+          if (!g.semester) return sem === '1'; // Default to sem 1 if undefined
           return g.semester === sem;
       });
   };
 
-  // --- Calculate Stats (Sum Only) ---
   const calculateStudentSemesterStats = (student: Student, sem: '1' | '2') => {
       const grades = getSemesterGrades(student, sem);
-      
       let totalScore = 0;
-
       grades.forEach(g => {
           totalScore += Number(g.score) || 0;
       });
-
       return { totalScore };
   };
 
-  // --- Grade Symbol Logic ---
   const getGradeSymbol = (score: number) => {
       if (score >= 90) return 'أ';
       if (score >= 80) return 'ب';
@@ -109,7 +125,45 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
       return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300';
   };
 
-  // --- Handlers ---
+  const handleAddTool = () => {
+      if (newToolName.trim()) {
+          const newTool: AssessmentTool = {
+              id: Math.random().toString(36).substr(2, 9),
+              name: newToolName.trim(),
+              maxScore: 0
+          };
+          setAssessmentTools([...tools, newTool]);
+          setNewToolName('');
+          setIsAddingTool(false);
+      }
+  };
+
+  const handleDeleteTool = (id: string) => {
+      if (confirm('هل أنت متأكد من حذف هذه الأداة؟ لن يتم حذف الدرجات المرصودة سابقاً.')) {
+          setAssessmentTools(tools.filter(t => t.id !== id));
+      }
+  };
+
+  const startEditingTool = (tool: AssessmentTool) => {
+      setEditingToolId(tool.id);
+      setEditToolName(tool.name);
+  };
+
+  const saveEditedTool = () => {
+      if (editingToolId && editToolName.trim()) {
+          const updatedTools = tools.map(t => 
+              t.id === editingToolId ? { ...t, name: editToolName.trim() } : t
+          );
+          setAssessmentTools(updatedTools);
+          setEditingToolId(null);
+          setEditToolName('');
+      }
+  };
+
+  const cancelEditingTool = () => {
+      setEditingToolId(null);
+      setEditToolName('');
+  };
 
   const handleDeleteGrade = (gradeId: string) => {
     if(!showAddGrade) return;
@@ -121,31 +175,24 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     }
   };
 
-  // --- Delete All Grades ---
   const handleDeleteAllGrades = () => {
     if (selectedClass === 'all') {
         alert('يرجى تحديد صف معين أولاً لحذف درجاته.');
         return;
     }
 
-    const confirmMsg = `تحذير هام: سيتم حذف جميع درجات طلاب الصف (${selectedClass}) للفصل الدراسي (${currentSemester}).\n\nهل أنت متأكد؟`;
-
-    if (confirm(confirmMsg)) {
+    if (confirm(`تحذير هام: سيتم حذف جميع درجات طلاب الصف (${selectedClass}) للفصل الدراسي (${currentSemester}).\n\nهل أنت متأكد؟`)) {
         const updatedStudents = students.map(s => {
-            if (!s.classes.includes(selectedClass)) {
-                return s;
-            }
+            if (!s.classes || !s.classes.includes(selectedClass)) return s;
             return {
                 ...s,
-                grades: s.grades.filter(g => {
+                grades: (s.grades || []).filter(g => {
                     const gSem = g.semester || '1';
                     return gSem !== currentSemester;
                 })
             };
         });
         setStudents(updatedStudents);
-        setEditingGrade(null);
-        setShowAddGrade(null);
     }
   };
 
@@ -178,15 +225,15 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
         subject: teacherInfo?.subject || 'المادة',
         category: categoryName,
         score: Number(score),
-        maxScore: 0, // Disabled
+        maxScore: 0,
         date: new Date().toISOString(),
         semester: currentSemester
     };
     let updatedGrades;
     if (editingGrade) {
-        updatedGrades = student.grades.map(g => g.id === editingGrade.id ? newGrade : g);
+        updatedGrades = (student.grades || []).map(g => g.id === editingGrade.id ? newGrade : g);
     } else {
-        const otherGrades = student.grades.filter(
+        const otherGrades = (student.grades || []).filter(
             g => !(g.category === categoryName && (g.semester === currentSemester || (!g.semester && currentSemester === '1')))
         );
         updatedGrades = [newGrade, ...otherGrades];
@@ -195,273 +242,28 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     onUpdateStudent(updatedStudent);
     setShowAddGrade({ student: updatedStudent });
     setScore('');
-    if (editingGrade) {
-        setEditingGrade(null);
-        setSelectedToolId('');
-    }
+    setEditingGrade(null);
   };
 
-  const handleBulkImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setIsImporting(true);
+  // --- PDF Export Logic ---
+  const getBase64Image = async (url: string): Promise<string> => {
       try {
-          const data = await file.arrayBuffer();
-          const workbook = XLSX.read(data);
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as any[];
-
-          if (jsonData.length === 0) throw new Error("الملف فارغ");
-
-          const cleanStr = (str: string) => String(str).trim().replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase();
-
-          const headers = Object.keys(jsonData[0]);
-          const nameKeywords = ['الاسم', 'name', 'student', 'الطالب', 'full name', 'اسم'];
-          
-          let nameKeyOriginal = headers.find(h => nameKeywords.some(kw => cleanStr(h).includes(kw)));
-          if (!nameKeyOriginal && headers.length > 0) nameKeyOriginal = headers[0];
-          
-          if (!nameKeyOriginal) throw new Error("لم يتم العثور على عمود الاسم.");
-
-          const nonGradeKeywords = ['phone', 'رقم', 'صف', 'class', 'grade', 'موبايل', 'هاتف', 'ولي', 'parent', 'gender', 'sex', 'type', 'id', 'date', '#'];
-          const gradeKeys = headers.filter(h => {
-              const cleanH = cleanStr(h);
-              return h !== nameKeyOriginal && !nonGradeKeywords.some(kw => cleanH.includes(kw));
+          const response = await fetch(url);
+          if (!response.ok) return "";
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                  const result = reader.result as string;
+                  if (result && result.startsWith('data:')) resolve(result);
+                  else resolve("");
+              };
+              reader.onerror = () => resolve("");
+              reader.readAsDataURL(blob);
           });
-
-          const newTools: AssessmentTool[] = [];
-          gradeKeys.forEach(key => {
-              const exists = tools.some(t => t.name.trim().toLowerCase() === key.trim().toLowerCase()) || newTools.some(t => t.name.trim().toLowerCase() === key.trim().toLowerCase());
-              if (!exists) {
-                  newTools.push({
-                      id: Math.random().toString(36).substr(2, 9),
-                      name: key.trim(),
-                      maxScore: 0
-                  });
-              }
-          });
-
-          if (newTools.length > 0) {
-              setTools(prev => [...prev, ...newTools]);
-          }
-
-          let updatedStudents = [...students];
-          let matchedCount = 0;
-
-          jsonData.forEach(row => {
-              const studentName = String(row[nameKeyOriginal!] || '').trim();
-              if (!studentName) return;
-
-              const studentIndex = updatedStudents.findIndex(s => s.name.trim().toLowerCase() === studentName.toLowerCase());
-              
-              if (studentIndex !== -1) {
-                  matchedCount++;
-                  const student = updatedStudents[studentIndex];
-                  const newGrades: GradeRecord[] = [];
-
-                  Object.keys(row).forEach(rawKey => {
-                      if (gradeKeys.includes(rawKey)) {
-                          const scoreVal = row[rawKey];
-                          if (scoreVal !== undefined && scoreVal !== '' && !isNaN(Number(scoreVal))) {
-                              const existingGradeIndex = student.grades.findIndex(g => g.category === rawKey.trim() && g.semester === currentSemester);
-                              if (existingGradeIndex === -1) {
-                                  newGrades.push({
-                                      id: Math.random().toString(36).substr(2, 9),
-                                      subject: teacherInfo?.subject || 'General',
-                                      category: rawKey.trim(),
-                                      score: Number(scoreVal),
-                                      maxScore: 0,
-                                      date: new Date().toISOString(),
-                                      semester: currentSemester
-                                  });
-                              }
-                          }
-                      }
-                  });
-                  
-                  if (newGrades.length > 0) {
-                      updatedStudents[studentIndex] = {
-                          ...student,
-                          grades: [...student.grades, ...newGrades]
-                      };
-                  }
-              }
-          });
-
-          setStudents(updatedStudents);
-          alert(`تم استيراد الدرجات لـ ${matchedCount} طالب بنجاح.`);
-
-      } catch (err: any) {
-          console.error(err);
-          alert(`فشل الاستيراد: ${err.message}`);
-      } finally {
-          setIsImporting(false);
-          if (e.target) e.target.value = '';
-      }
+      } catch (error) { return ""; }
   };
 
-  // --- Export Logic ---
-
-  const prepareClassStats = () => {
-      const uniqueTools = new Set<string>();
-      
-      const rows = filteredStudents.map(s => {
-          const semStats = calculateStudentSemesterStats(s, currentSemester);
-          const grades = getSemesterGrades(s, currentSemester);
-          grades.forEach(g => uniqueTools.add(g.category));
-
-          return {
-              name: s.name,
-              grades: grades,
-              total: semStats.totalScore,
-              symbol: getGradeSymbol(semStats.totalScore)
-          };
-      });
-
-      return { rows, uniqueTools: Array.from(uniqueTools) };
-  };
-
-  const handleExportGradeBook = async () => {
-      const { rows, uniqueTools } = prepareClassStats();
-      
-      const data = rows.map(r => {
-          const rowObj: any = { 
-              'الاسم': r.name, 
-              'الفصل': selectedClass === 'all' ? 'متعدد' : selectedClass 
-          };
-          
-          uniqueTools.forEach(toolName => {
-              const g = r.grades.find(gr => gr.category === toolName);
-              rowObj[toolName] = g ? g.score : '-';
-          });
-
-          rowObj['المجموع'] = r.total;
-          rowObj['الرمز'] = r.symbol;
-          
-          return rowObj;
-      });
-
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `سجل_فصل_${currentSemester}`);
-      XLSX.writeFile(wb, `سجل_الدرجات_${selectedClass}_ف${currentSemester}.xlsx`);
-  };
-
-  const handlePrintClassReport = async () => {
-      setIsGeneratingPdf(true);
-      const { rows, uniqueTools } = prepareClassStats();
-      
-      const element = document.createElement('div');
-      element.setAttribute('dir', 'rtl');
-      element.style.fontFamily = 'Tajawal, sans-serif';
-      element.style.padding = '20px';
-      element.style.backgroundColor = '#ffffff'; // Force white background
-      element.style.color = '#000000'; // Force black text
-
-      const thStyle = "border: 1px solid #000000 !important; padding: 8px; background-color: #f3f4f6 !important; font-weight: bold; font-size: 12px; color: #000000 !important;";
-      const tdStyle = "border: 1px solid #000000 !important; padding: 8px; font-size: 12px; text-align: center; color: #000000 !important;";
-
-      const toolHeaders = uniqueTools.map(t => {
-          return `<th style="${thStyle}">${t}</th>`;
-      }).join('');
-
-      const studentRows = rows.map((r, i) => {
-          const toolCells = uniqueTools.map(t => {
-              const g = r.grades.find(gr => gr.category === t);
-              return `<td style="${tdStyle}">${g ? g.score : '-'}</td>`;
-          }).join('');
-          
-          return `<tr>
-              <td style="${tdStyle}">${i + 1}</td>
-              <td style="${tdStyle}; text-align: right;">${r.name}</td>
-              ${toolCells}
-              <td style="${tdStyle}; font-weight: bold;">${r.total}</td>
-              <td style="${tdStyle}; font-weight: bold;">${r.symbol}</td>
-          </tr>`;
-      }).join('');
-
-      element.innerHTML = `
-        <div style="text-align: center; margin-bottom: 30px; color: #000000 !important;">
-            <h2 style="margin: 0 0 10px 0; font-size: 24px; font-weight: bold;">تقرير الأداء الفصلي لمادة ${teacherInfo?.subject || '.....'}</h2>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; border-bottom: 2px solid #000000; padding-bottom: 15px; color: #000000 !important;">
-                <span>المحافظة: ${teacherInfo?.governorate || '.....'}</span>
-                <span>المدرسة: ${teacherInfo?.school || '.....'}</span>
-                <span>المعلم: ${teacherInfo?.name || '.....'}</span>
-                <span>الفصل الدراسي: ${currentSemester}</span>
-                <span>الصف: ${selectedClass === 'all' ? 'متعدد' : selectedClass}</span>
-            </div>
-        </div>
-
-        <h3 style="margin-bottom: 10px; font-size: 16px; font-weight: bold; color: #000000 !important;">كشف الدرجات</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; color: #000000 !important;">
-            <thead>
-                <tr>
-                    <th style="${thStyle}; width: 40px;">#</th>
-                    <th style="${thStyle}; text-align: right;">اسم الطالب</th>
-                    ${toolHeaders}
-                    <th style="${thStyle}; background-color: #e5e7eb;">المجموع</th>
-                    <th style="${thStyle}; background-color: #e5e7eb;">الرمز</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${studentRows}
-            </tbody>
-        </table>`;
-
-      exportPDF(element, `سجل_درجات_${selectedClass}.pdf`, setIsGeneratingPdf);
-  };
-
-  const handleAddTool = () => {
-    if (newToolName) {
-        setTools(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: newToolName.trim(), maxScore: 0 }]);
-        setNewToolName('');
-        setIsAddingTool(false);
-    } else {
-        alert("الرجاء إدخال اسم الأداة");
-    }
-  };
-
-  const handleDeleteTool = (toolId: string) => {
-    if (confirm('هل أنت متأكد من حذف هذه الأداة؟')) {
-        setTools(prev => prev.filter(t => t.id !== toolId));
-    }
-  };
-
-  const startEditingTool = (tool: AssessmentTool) => {
-      setEditingToolId(tool.id);
-      setEditToolName(tool.name);
-  };
-
-  const saveToolChanges = () => {
-      if (!editingToolId || !editToolName) return;
-      
-      const originalTool = tools.find(t => t.id === editingToolId);
-      const originalName = originalTool?.name;
-
-      if (!originalName) return;
-
-      const confirmMsg = `تنبيه: سيتم تعديل الأداة "${originalName}" إلى "${editToolName}".\nهل أنت متأكد؟`;
-
-      if (confirm(confirmMsg)) {
-          setTools(prev => prev.map(t => t.id === editingToolId ? { ...t, name: editToolName.trim() } : t));
-
-          const updatedStudents = students.map(s => {
-              const updatedGrades = s.grades.map(g => {
-                  if (g.category.trim() === originalName.trim()) {
-                      return { ...g, category: editToolName.trim() };
-                  }
-                  return g;
-              });
-              return { ...s, grades: updatedGrades };
-          });
-
-          setStudents(updatedStudents);
-          setEditingToolId(null);
-          setEditToolName('');
-      }
-  };
-
-  // Re-declare exportPDF inside component or move to util
   const exportPDF = async (element: HTMLElement, filename: string, setLoader: (val: boolean) => void) => {
     setLoader(true);
     const opt = {
@@ -492,214 +294,314 @@ const GradeBook: React.FC<GradeBookProps> = ({ students, classes, onUpdateStuden
     } else { alert('مكتبة PDF غير جاهزة'); setLoader(false); }
   };
 
-  return (
-    <div className="space-y-4 pb-20 text-slate-900 dark:text-white">
-      {/* Header */}
-      <div className={`${styles.header} p-4 rounded-[2rem] sticky top-0 z-20 transition-all`}>
-        <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-                 <div className="flex items-center gap-3">
-                     <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
-                         <FileSpreadsheet className="w-6 h-6" />
-                     </div>
-                     <div>
-                         <h2 className="text-xl font-black text-slate-900 dark:text-white">سجل الدرجات</h2>
-                         <p className="text-xs font-bold text-slate-500 dark:text-white/50">الفصل الدراسي {currentSemester === '1' ? 'الأول' : 'الثاني'}</p>
-                     </div>
-                 </div>
-                 
-                 <div className="flex gap-2">
-                     <button onClick={() => setShowToolsManager(true)} className={`p-3 bg-slate-100 dark:bg-white/10 rounded-2xl text-slate-600 dark:text-white hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors border border-gray-200 dark:border-white/5`}>
-                         <Settings className="w-5 h-5" />
-                     </button>
-                     <button onClick={() => onSemesterChange(currentSemester === '1' ? '2' : '1')} className={`px-4 py-2 bg-indigo-600 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-500/30 flex items-center gap-2`}>
-                         <RefreshCwIcon className="w-3 h-3" />
-                         تحويل للفصل {currentSemester === '1' ? '2' : '1'}
-                     </button>
-                 </div>
-            </div>
+  const handlePrintGradeReport = async () => {
+      if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
+      setIsGeneratingPdf(true);
+      
+      const teacherName = localStorage.getItem('teacherName') || '................';
+      const schoolName = localStorage.getItem('schoolName') || '................';
+      const subjectName = localStorage.getItem('subjectName') || '................';
+      let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
 
-            <div className="flex flex-wrap items-center gap-2">
-                 <div className="relative flex-1 min-w-[200px]">
-                     <Search className="absolute right-3 top-3 w-4 h-4 text-slate-400 dark:text-white/40" />
-                     <input 
-                        type="text" 
-                        placeholder="بحث عن طالب..." 
-                        value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)} 
-                        className="w-full bg-slate-50 dark:bg-black/20 rounded-xl py-2.5 pr-9 pl-4 text-xs font-bold outline-none border border-gray-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors text-slate-900 dark:text-white"
-                     />
-                 </div>
-                 <div className="flex gap-2 overflow-x-auto pb-1 max-w-full custom-scrollbar">
-                     <button onClick={() => setSelectedClass('all')} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all border ${selectedClass === 'all' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border-gray-200 dark:border-white/10'} rounded-xl`}>الكل</button>
-                     {classes.map(c => <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all border ${selectedClass === c ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border-gray-200 dark:border-white/10'} rounded-xl`}>{c}</button>)}
-                 </div>
-            </div>
-            
-            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                <button onClick={handlePrintClassReport} title="طباعة التقرير" className="p-3 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-500/20 active:scale-95 transition-all">
-                    {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin"/> : <Printer className="w-5 h-5"/>}
-                </button>
-                <button onClick={handleExportGradeBook} title="تصدير Excel" className="p-3 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-xl border border-blue-200 dark:border-blue-500/20 active:scale-95 transition-all">
-                    <FileSpreadsheet className="w-5 h-5"/>
-                </button>
-                <label title="استيراد درجات" className="p-3 bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-500/20 active:scale-95 transition-all cursor-pointer">
-                    {isImporting ? <Loader2 className="w-5 h-5 animate-spin"/> : <UploadCloud className="w-5 h-5"/>}
-                    <input type="file" accept=".xlsx, .xls" onChange={handleBulkImport} disabled={isImporting} className="hidden" />
-                </label>
-                <button onClick={handleDeleteAllGrades} title="حذف الدرجات" className="p-3 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 rounded-xl border border-rose-200 dark:border-rose-500/20 active:scale-95 transition-all">
-                    <Trash2 className="w-5 h-5"/>
-                </button>
+      const rows = filteredStudents.map((s, i) => {
+          const semGrades = getSemesterGrades(s, currentSemester);
+          const stats = calculateStudentSemesterStats(s, currentSemester);
+          const sName = s.name || '';
+          
+          const toolCells = tools.map(tool => {
+              const grade = semGrades.find(g => g.category === tool.name);
+              return `<td style="border:1px solid #000; padding:5px; text-align:center;">${grade ? grade.score : '-'}</td>`;
+          }).join('');
+
+          return `
+            <tr>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${i + 1}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:right;">${sName}</td>
+                ${toolCells}
+                <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:bold;">${stats.totalScore}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${getGradeSymbol(stats.totalScore)}</td>
+            </tr>
+          `;
+      }).join('');
+
+      const toolHeaders = tools.map(t => `<th style="border:1px solid #000; padding:5px; background:#f3f4f6;">${t.name}</th>`).join('');
+
+      const element = document.createElement('div');
+      element.setAttribute('dir', 'rtl');
+      element.style.fontFamily = 'Tajawal, sans-serif';
+      element.style.padding = '20px';
+      element.style.color = '#000';
+      element.style.background = '#fff';
+
+      element.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            ${emblemSrc ? `<img src="${emblemSrc}" style="height: 60px; margin-bottom: 10px;" />` : ''}
+            <h2 style="margin:0; font-size:20px; font-weight:bold;">سجل درجات الطلاب - الفصل الدراسي ${currentSemester}</h2>
+            <div style="display:flex; justify-content:space-between; margin-top:15px; border-bottom:2px solid #000; padding-bottom:10px; font-weight:bold; font-size:12px;">
+                <span>المدرسة: ${schoolName}</span>
+                <span>المعلم: ${teacherName}</span>
+                <span>المادة: ${subjectName}</span>
+                <span>الصف: ${selectedClass === 'all' ? 'جميع الفصول' : selectedClass}</span>
             </div>
         </div>
-      </div>
+        <table style="width:100%; border-collapse:collapse; font-size:10px;">
+            <thead>
+                <tr>
+                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:30px;">#</th>
+                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:20%;">الاسم</th>
+                    ${toolHeaders}
+                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:50px;">المجموع</th>
+                    <th style="border:1px solid #000; padding:5px; background:#f3f4f6; width:40px;">التقدير</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+      `;
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-2">
-          {filteredStudents.map(student => {
-              const stats = calculateStudentSemesterStats(student, currentSemester);
-              return (
-                  <div key={student.id} onClick={() => setShowAddGrade({ student })} className={`relative group p-4 rounded-3xl transition-all cursor-pointer hover:shadow-md ${styles.card}`}>
-                      <div className="flex items-start justify-between mb-3 w-full">
-                          <div className="flex items-start gap-3 w-full">
-                              <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center font-black text-slate-600 dark:text-white border border-gray-200 dark:border-white/10 shrink-0">
-                                  {student.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                  <h3 className="font-black text-xs text-slate-800 dark:text-white leading-5 mb-0.5 break-words line-clamp-2" title={student.name}>
-                                      {student.name}
-                                  </h3>
-                                  <span className="text-[9px] font-bold text-slate-400 dark:text-white/40 block">{student.classes[0]}</span>
-                              </div>
-                          </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-end">
-                          <div className="flex flex-col gap-1">
-                              <span className="text-[9px] text-slate-400 dark:text-white/40 font-bold">المجموع</span>
-                              <div className="flex items-center gap-2">
-                                  <span className="text-lg font-black text-slate-800 dark:text-white">{stats.totalScore}</span>
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${getSymbolColor(stats.totalScore)}`}>
-                                      {getGradeSymbol(stats.totalScore)}
-                                  </span>
-                              </div>
-                          </div>
-                          <button className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
-                              <Edit2 className="w-4 h-4" />
-                          </button>
-                      </div>
-                  </div>
-              );
-          })}
-      </div>
+      exportPDF(element, `سجل_الدرجات_${selectedClass}.pdf`, setIsGeneratingPdf);
+  };
 
-      {/* Add/Edit Grade Modal */}
-      <Modal isOpen={!!showAddGrade} onClose={() => { setShowAddGrade(null); setEditingGrade(null); }}>
-          {showAddGrade && (
-              <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-2">
-                      <div>
-                          <h3 className="font-black text-lg text-slate-900 dark:text-white">{showAddGrade.student.name}</h3>
-                          <p className="text-xs text-slate-500 dark:text-white/50 font-bold">إدارة الدرجات - {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}</p>
-                      </div>
-                      {editingGrade && <button onClick={() => { setEditingGrade(null); setScore(''); setSelectedToolId(''); }} className="text-xs text-blue-500 font-bold underline">إلغاء التعديل</button>}
-                  </div>
+  return (
+    <div className="space-y-4 pb-20 text-slate-900 dark:text-white">
+        
+        {/* Header */}
+        <div className={`p-4 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 ${styles.header}`}>
+            <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex bg-gray-100 dark:bg-white/10 rounded-xl p-1 shrink-0">
+                    <button onClick={() => onSemesterChange('1')} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${currentSemester === '1' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 dark:text-white/50'}`}>فصل 1</button>
+                    <button onClick={() => onSemesterChange('2')} className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all ${currentSemester === '2' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 dark:text-white/50'}`}>فصل 2</button>
+                </div>
+                <div>
+                    <h2 className="text-lg font-black text-slate-900 dark:text-white">سجل الدرجات</h2>
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-white/50">{filteredStudents.length} طالب • {tools.length} أدوات تقويم</p>
+                </div>
+            </div>
 
-                  {/* Input Area */}
-                  <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
-                      <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                          {tools.map(tool => (
-                              <button 
-                                key={tool.id} 
-                                onClick={() => handleToolClick(tool)} 
-                                className={`px-3 py-2 rounded-xl text-[10px] font-black border transition-all whitespace-nowrap ${selectedToolId === tool.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-white/5 text-slate-600 dark:text-white/60 border-gray-200 dark:border-white/10'}`}
-                              >
-                                  {tool.name}
-                              </button>
-                          ))}
-                          <button onClick={() => setShowToolsManager(true)} className="px-3 py-2 rounded-xl text-[10px] font-black border border-dashed border-gray-300 dark:border-white/20 text-slate-400 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center gap-1">
-                              <Plus className="w-3 h-3" /> أداة
-                          </button>
-                      </div>
+            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto custom-scrollbar pb-1">
+                 <button onClick={() => setShowToolsManager(true)} className={`px-3 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-[10px] font-black flex items-center gap-1 transition-all ${styles.pill}`}>
+                     <Settings className="w-3.5 h-3.5" /> أدوات
+                 </button>
+                 <button onClick={handlePrintGradeReport} disabled={isGeneratingPdf} className={`px-3 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-[10px] font-black flex items-center gap-1 transition-all ${styles.pill}`}>
+                     {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />} طباعة
+                 </button>
+                 {classes.length > 0 && (
+                     <>
+                        <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-1"></div>
+                        <button onClick={() => setSelectedClass('all')} className={`px-3 py-2 text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === 'all' ? 'bg-slate-800 text-white shadow-md' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-white/60'} ${styles.pill}`}>الكل</button>
+                        {classes.map(c => (
+                            <button key={c} onClick={() => setSelectedClass(c)} className={`px-3 py-2 text-[10px] font-black whitespace-nowrap transition-all ${selectedClass === c ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-white/60'} ${styles.pill}`}>{c}</button>
+                        ))}
+                     </>
+                 )}
+            </div>
+        </div>
 
-                      <div className="flex gap-3">
-                           <div className="flex-1">
-                               <label className="text-[10px] font-bold text-slate-400 dark:text-white/40 mb-1 block">الدرجة</label>
-                               <input type="number" value={score} onChange={e => setScore(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-black outline-none focus:border-indigo-500 text-slate-900 dark:text-white" placeholder="0" />
-                           </div>
-                      </div>
+        {/* Search */}
+        <div className="relative">
+             <input type="text" placeholder="بحث عن طالب..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-3 pr-10 pl-4 text-xs font-bold outline-none focus:border-indigo-500/50" />
+             <Search className="absolute right-3 top-3 w-4 h-4 text-slate-400" />
+        </div>
 
-                      <button onClick={handleSaveGrade} disabled={!score} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-xs shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all">
-                          {editingGrade ? 'تحديث الدرجة' : 'رصد الدرجة'}
-                      </button>
-                  </div>
+        {/* Data Table */}
+        <div className={`${styles.card} overflow-hidden`}>
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[600px]">
+                    <thead>
+                        <tr className="border-b border-gray-100 dark:border-white/5">
+                            <th className="p-3 text-right text-[10px] font-black text-slate-400 dark:text-white/40 w-10">#</th>
+                            <th className="p-3 text-right text-[10px] font-black text-slate-400 dark:text-white/40 min-w-[150px]">الطالب</th>
+                            {tools.map(t => (
+                                <th key={t.id} className="p-3 text-center text-[10px] font-black text-indigo-500 dark:text-indigo-400 whitespace-nowrap">{t.name}</th>
+                            ))}
+                            <th className="p-3 text-center text-[10px] font-black text-slate-400 dark:text-white/40 w-20">المجموع</th>
+                            <th className="p-3 text-center text-[10px] font-black text-slate-400 dark:text-white/40 w-16">التقدير</th>
+                            <th className="p-3 text-center text-[10px] font-black text-slate-400 dark:text-white/40 w-16">رصد</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                        {filteredStudents.length > 0 ? filteredStudents.map((student, idx) => {
+                            const semGrades = getSemesterGrades(student, currentSemester);
+                            const stats = calculateStudentSemesterStats(student, currentSemester);
+                            const displayName = student.name || 'غير معروف';
+                            const initial = displayName.charAt(0) || '?';
+                            
+                            return (
+                                <tr key={student.id || idx} className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                    <td className="p-3 text-[10px] font-bold text-slate-400 dark:text-white/30">{idx + 1}</td>
+                                    <td className="p-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-[10px] font-black text-slate-600 dark:text-white">{initial}</div>
+                                            <span className="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[120px]">{displayName}</span>
+                                        </div>
+                                    </td>
+                                    
+                                    {tools.map(tool => {
+                                        const grade = semGrades.find(g => g.category === tool.name);
+                                        return (
+                                            <td key={tool.id} className="p-3 text-center">
+                                                {grade ? (
+                                                    <span className="inline-block px-2 py-0.5 rounded-md bg-white dark:bg-black/20 border border-gray-100 dark:border-white/10 text-xs font-black shadow-sm">{grade.score}</span>
+                                                ) : <span className="text-slate-200 dark:text-white/10 text-[10px]">-</span>}
+                                            </td>
+                                        );
+                                    })}
 
-                  {/* Grades List */}
-                  <div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                      {getSemesterGrades(showAddGrade.student, currentSemester).length > 0 ? getSemesterGrades(showAddGrade.student, currentSemester).map(g => (
-                          <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border ${editingGrade?.id === g.id ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/30' : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
-                              <div>
-                                  <span className="block text-[10px] font-black text-slate-800 dark:text-white">{g.category}</span>
-                                  <span className="text-[9px] text-slate-400 dark:text-white/40 font-bold">{new Date(g.date).toLocaleDateString('ar-EG')}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                  <span className="text-sm font-black text-slate-900 dark:text-white">{g.score}</span>
-                                  <div className="flex gap-1">
-                                      <button onClick={() => handleEditGrade(g)} className="p-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
-                                      <button onClick={() => handleDeleteGrade(g.id)} className="p-1.5 bg-rose-50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-300 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
-                                  </div>
-                              </div>
-                          </div>
-                      )) : <p className="text-center text-[10px] text-slate-400 dark:text-white/30 py-4 font-bold">لا توجد درجات مرصودة لهذا الفصل</p>}
-                  </div>
-              </div>
-          )}
-      </Modal>
+                                    <td className="p-3 text-center"><span className="text-xs font-black text-slate-800 dark:text-white">{stats.totalScore}</span></td>
+                                    <td className="p-3 text-center">
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${getSymbolColor(stats.totalScore)}`}>
+                                            {getGradeSymbol(stats.totalScore)}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <button onClick={() => setShowAddGrade({ student })} className="w-7 h-7 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 rounded-lg flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-500/20 active:scale-95 transition-all">
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        }) : (
+                            <tr><td colSpan={5 + tools.length} className="p-8 text-center text-xs text-slate-400 dark:text-white/30 font-bold">لا يوجد طلاب مطابقين</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-      {/* Tools Manager Modal */}
-      <Modal isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setEditingToolId(null); }}>
-          <h3 className="font-black text-lg mb-4 text-slate-900 dark:text-white">إدارة أدوات التقويم</h3>
-          
-          <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-2xl mb-4 border border-gray-200 dark:border-white/10">
-              <h4 className="font-bold text-xs text-slate-600 dark:text-white/70 mb-3">إضافة أداة جديدة</h4>
-              <div className="flex gap-2 mb-2">
-                  <input type="text" placeholder="اسم الأداة (مثال: اختبار قصير 1)" value={newToolName} onChange={e => setNewToolName(e.target.value)} className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-bold outline-none text-slate-900 dark:text-white" />
-              </div>
-              <button onClick={handleAddTool} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-black hover:bg-emerald-700 transition-colors">إضافة للقائمة</button>
-          </div>
-
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">
-              {tools.map(tool => (
-                  <div key={tool.id} className="flex justify-between items-center p-3 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl">
-                      {editingToolId === tool.id ? (
-                          <div className="flex-1 flex gap-2 items-center">
-                              <input type="text" value={editToolName} onChange={e => setEditToolName(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 rounded-lg px-2 py-1 text-xs font-bold" autoFocus />
-                              <button onClick={saveToolChanges} className="p-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg"><Save className="w-4 h-4"/></button>
-                              <button onClick={() => setEditingToolId(null)} className="p-1.5 bg-gray-100 dark:bg-white/10 text-gray-500 rounded-lg"><X className="w-4 h-4"/></button>
-                          </div>
-                      ) : (
-                          <>
-                            <div>
-                                <span className="block text-xs font-black text-slate-800 dark:text-white">{tool.name}</span>
+        {/* Tools Manager Modal */}
+        <Modal isOpen={showToolsManager} onClose={() => setShowToolsManager(false)} className="rounded-[28px] max-w-sm">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-black text-slate-900 dark:text-white">إدارة أدوات التقويم</h3>
+                <button onClick={() => setShowToolsManager(false)} className="p-2 bg-slate-100 dark:bg-white/10 rounded-full hover:bg-slate-200 dark:hover:bg-white/20"><X className="w-4 h-4 text-slate-500"/></button>
+            </div>
+            
+            <div className="bg-slate-50 dark:bg-black/20 p-3 rounded-2xl mb-4 border border-gray-100 dark:border-white/5 max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                {tools.length > 0 ? tools.map(tool => (
+                    <div key={tool.id} className="bg-white dark:bg-white/5 p-3 rounded-xl flex items-center justify-between border border-gray-100 dark:border-white/5 group">
+                        {editingToolId === tool.id ? (
+                            <div className="flex items-center gap-2 w-full">
+                                <input autoFocus type="text" value={editToolName} onChange={e => setEditToolName(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/20 border-none rounded-lg px-2 py-1 text-xs font-bold outline-none" />
+                                <button onClick={saveEditedTool} className="p-1.5 bg-emerald-500 text-white rounded-lg"><Check className="w-3 h-3"/></button>
+                                <button onClick={cancelEditingTool} className="p-1.5 bg-gray-200 text-gray-600 rounded-lg"><X className="w-3 h-3"/></button>
                             </div>
-                            <div className="flex gap-1">
-                                <button onClick={() => startEditingTool(tool)} className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-500/10 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDeleteTool(tool.id)} className="p-2 text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-500/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-white">{tool.name}</span>
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => startEditingTool(tool)} className="p-1.5 text-blue-500 bg-blue-50 dark:bg-blue-500/10 rounded-lg hover:bg-blue-100"><Edit2 className="w-3 h-3" /></button>
+                                    <button onClick={() => handleDeleteTool(tool.id)} className="p-1.5 text-rose-500 bg-rose-50 dark:bg-rose-500/10 rounded-lg hover:bg-rose-100"><Trash2 className="w-3 h-3" /></button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )) : <p className="text-center text-[10px] text-slate-400 py-4">أضف أدوات تقويم مثل: اختبار قصير، واجب..</p>}
+            </div>
+
+            {/* Add New Tool */}
+            {!isAddingTool ? (
+                <button onClick={() => setIsAddingTool(true)} className="w-full py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all border border-indigo-100 dark:border-indigo-500/20">
+                    <Plus className="w-4 h-4" /> إضافة أداة جديدة
+                </button>
+            ) : (
+                <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2">
+                    <input autoFocus type="text" placeholder="اسم الأداة (مثال: اختبار 1)" value={newToolName} onChange={e => setNewToolName(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 rounded-xl px-3 text-xs font-bold outline-none text-slate-900 dark:text-white" />
+                    <button onClick={handleAddTool} className="bg-indigo-600 text-white px-4 rounded-xl"><Check className="w-4 h-4"/></button>
+                    <button onClick={() => setIsAddingTool(false)} className="bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/50 px-4 rounded-xl"><X className="w-4 h-4"/></button>
+                </div>
+            )}
+            
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                <button onClick={handleDeleteAllGrades} className="w-full py-3 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all border border-rose-100 dark:border-rose-500/20">
+                    <Trash2 className="w-4 h-4" /> تصفير درجات الفصل ({currentSemester})
+                </button>
+            </div>
+        </Modal>
+
+        {/* Grade Input Modal */}
+        <Modal isOpen={!!showAddGrade} onClose={() => { setShowAddGrade(null); setEditingGrade(null); setScore(''); }} className="rounded-[28px] max-w-sm">
+            {showAddGrade && (
+                <>
+                    <div className="text-center mb-6">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-white/10 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl font-black text-slate-700 dark:text-white shadow-inner">
+                            {(showAddGrade.student.name || '?').charAt(0)}
+                        </div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white">{showAddGrade.student.name || 'طالب غير معروف'}</h3>
+                        <p className="text-xs font-bold text-slate-500 dark:text-white/50">{editingGrade ? 'تعديل درجة' : 'رصد درجة جديدة'}</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Tool Selector */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-white/40 block">اختر الأداة</label>
+                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                {tools.length > 0 ? tools.map(tool => (
+                                    <button 
+                                        key={tool.id} 
+                                        onClick={() => handleToolClick(tool)}
+                                        className={`p-2 rounded-xl text-[10px] font-black transition-all border ${selectedToolId === tool.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' : 'bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/60 border-slate-100 dark:border-white/5 hover:bg-white dark:hover:bg-white/10'}`}
+                                    >
+                                        {tool.name}
+                                    </button>
+                                )) : <p className="col-span-2 text-center text-[10px] text-red-400 bg-red-50 p-2 rounded-lg">يجب إضافة أدوات تقويم أولاً</p>}
                             </div>
-                          </>
-                      )}
-                  </div>
-              ))}
-              {tools.length === 0 && <p className="text-center text-xs text-slate-400 dark:text-white/30">لا توجد أدوات مضافة</p>}
-          </div>
-      </Modal>
+                        </div>
+
+                        {/* Score Input */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-white/40 block">الدرجة</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    autoFocus
+                                    placeholder="0" 
+                                    value={score} 
+                                    onChange={e => setScore(e.target.value)} 
+                                    className="w-full bg-slate-50 dark:bg-black/20 border-2 border-transparent focus:border-indigo-500 dark:focus:border-indigo-400 rounded-2xl py-4 text-center text-2xl font-black outline-none text-slate-900 dark:text-white placeholder:text-slate-300" 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                             {editingGrade && (
+                                 <button onClick={() => handleDeleteGrade(editingGrade.id)} className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors">
+                                     <Trash2 className="w-5 h-5" />
+                                 </button>
+                             )}
+                             <button 
+                                onClick={handleSaveGrade} 
+                                disabled={!score || (!selectedToolId && !editingGrade)}
+                                className="flex-1 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none py-4"
+                             >
+                                 حفظ الدرجة
+                             </button>
+                        </div>
+
+                        {/* Recent Grades List */}
+                        <div className="pt-4 border-t border-gray-100 dark:border-white/5">
+                            <h4 className="text-[10px] font-black text-slate-400 dark:text-white/40 mb-2">سجل درجات الطالب (فصل {currentSemester})</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {getSemesterGrades(showAddGrade.student, currentSemester).map(g => (
+                                    <button 
+                                        key={g.id} 
+                                        onClick={() => handleEditGrade(g)}
+                                        className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors group"
+                                    >
+                                        <span className="text-[9px] text-slate-400 dark:text-white/40 font-bold">{g.category}</span>
+                                        <span className="text-xs font-black text-slate-800 dark:text-white bg-slate-100 dark:bg-black/20 px-1.5 rounded">{g.score}</span>
+                                    </button>
+                                ))}
+                                {getSemesterGrades(showAddGrade.student, currentSemester).length === 0 && <p className="text-[9px] text-slate-300">لا توجد درجات</p>}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </Modal>
 
     </div>
   );
 };
-
-const RefreshCwIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-);
 
 export default GradeBook;
