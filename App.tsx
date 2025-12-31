@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode, Component } from 'react';
+import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -16,6 +15,10 @@ import { ThemeProvider, useTheme, ThemeMode } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { useSchoolBell } from './hooks/useSchoolBell';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'; // Added Encoding
+import { Share } from '@capacitor/share';
+import { Browser } from '@capacitor/browser'; // Added Browser for WhatsApp
+import { Capacitor } from '@capacitor/core';
 import { 
   Users, 
   CalendarCheck, 
@@ -76,10 +79,7 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState { return { hasError: true }; }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Uncaught error:", error, errorInfo); }
@@ -217,7 +217,7 @@ const AppContent: React.FC = () => {
   };
 
   // --- Backup & Restore Logic ---
-  const handleBackupData = () => {
+  const handleBackupData = async () => {
       const backupData = {
           version: '3.4.0',
           timestamp: new Date().toISOString(),
@@ -232,14 +232,42 @@ const AppContent: React.FC = () => {
               assessmentTools
           }
       };
-      const blob = new Blob([JSON.stringify(backupData)], {type: "application/json"});
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      
+      const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      const jsonString = JSON.stringify(backupData);
+
+      if (Capacitor.isNativePlatform()) {
+          try {
+              // 1. Write file to Cache
+              const result = await Filesystem.writeFile({
+                  path: fileName,
+                  data: jsonString,
+                  directory: Directory.Cache,
+                  encoding: Encoding.UTF8
+              });
+
+              // 2. Open Native Share Sheet (Save to Files / AirDrop)
+              await Share.share({
+                  title: 'نسخة احتياطية - راصد',
+                  text: 'ملف النسخة الاحتياطية لبيانات تطبيق راصد',
+                  url: result.uri,
+                  dialogTitle: 'حفظ النسخة الاحتياطية'
+              });
+          } catch (e) {
+              console.error("Backup Error:", e);
+              alert("تعذر حفظ النسخة الاحتياطية على الهاتف.");
+          }
+      } else {
+          // Web Fallback
+          const blob = new Blob([jsonString], {type: "application/json"});
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      }
   };
 
   const handleRestoreData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,6 +306,29 @@ const AppContent: React.FC = () => {
       if (confirm('هل أنت متأكد تماماً؟ سيتم حذف كل شيء! لا يمكن التراجع عن هذا الإجراء.')) {
           localStorage.clear();
           window.location.reload();
+      }
+  };
+
+  // --- NEW: Fix for Developer WhatsApp Contact on iOS (Deep Link First) ---
+  const handleContactDeveloper = async () => {
+      const phone = '96899834455';
+      const webUrl = `https://api.whatsapp.com/send?phone=${phone}`;
+      const appUrl = `whatsapp://send?phone=${phone}`;
+      
+      try {
+          if (Capacitor.isNativePlatform()) {
+              // Try opening app directly first
+              try {
+                  await Browser.open({ url: appUrl });
+              } catch (err) {
+                  // Fallback to web link if app not installed or fails
+                  await Browser.open({ url: webUrl });
+              }
+          } else {
+              window.open(webUrl, '_blank');
+          }
+      } catch (e) {
+          window.open(webUrl, '_blank');
       }
   };
 
@@ -535,14 +586,14 @@ const AppContent: React.FC = () => {
                  <p className="text-[10px] text-slate-500 dark:text-white/50 font-bold mb-6">تصميم وتطوير: محمد درويش الزعابي</p>
                  
                  <button 
-                    onClick={() => window.open('https://wa.me/96899834455', '_blank')} 
+                    onClick={handleContactDeveloper} 
                     className="w-full py-3.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all active:scale-95 mb-6"
                  >
                      <MessageCircle className="w-5 h-5" />
                      تواصل مع المطور (واتساب)
                  </button>
                  
-                 <p className="text-[9px] text-slate-300 dark:text-white/20 font-bold tracking-widest">Version 3.4.0 (Performance Update)</p>
+                 <p className="text-[9px] text-slate-300 dark:text-white/20 font-bold tracking-widest">Version 3.4.0 (DeepLink Update)</p>
              </div>
          </div>
       </Modal>
