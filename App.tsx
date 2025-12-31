@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode, Component } from 'react';
+import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -74,8 +74,10 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false
+  };
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState { return { hasError: true }; }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Uncaught error:", error, errorInfo); }
