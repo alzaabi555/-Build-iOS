@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, Suspense, useRef, ErrorInfo, ReactNode, Component } from 'react';
 import { Student, ScheduleDay, PeriodTime, Group } from './types';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -76,17 +76,16 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(_: Error): ErrorBoundaryState { return { hasError: true }; }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Uncaught error:", error, errorInfo); }
   render() {
     if (this.state.hasError) return <div className="p-10 text-center"><h1>حدث خطأ غير متوقع.</h1><button onClick={() => window.location.reload()} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">إعادة تحميل</button></div>;
-    return (this.props as any).children;
+    return this.props.children;
   }
 }
 
