@@ -1,255 +1,379 @@
-
 import React, { useState } from 'react';
 import { 
-    LayoutDashboard, Users, CalendarCheck, GraduationCap, 
-    Trophy, FileText, Download, Printer, ChevronLeft, 
-    Lightbulb, AlertCircle, CheckCircle2, Settings,
-    Smartphone, Globe, Share2, Info, Phone, HelpCircle,
-    Edit2, Trash2, Plus, Search, Filter, Save, UploadCloud,
-    ThumbsUp, ThumbsDown, Eye, X, FileSpreadsheet, MessageCircle,
-    CalendarRange, Sparkles, ShoppingBag, LayoutGrid
+  Printer, BookOpen, LayoutDashboard, Users, CalendarCheck, 
+  BarChart3, Award, Globe, Database, Settings, ShieldCheck, 
+  Menu, X, ChevronLeft, Lightbulb, MousePointerClick, FileText, 
+  Download, Code, Smartphone, Monitor, Apple, CheckCircle2
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
-import BrandLogo from './BrandLogo';
-
-// --- Sub-Components ---
-
-const SectionTitle = ({ title, subtitle }: { title: string, subtitle: string }) => (
-    <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-4">
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">{title}</h1>
-        <p className="text-lg text-slate-500 dark:text-white/60 font-medium">{subtitle}</p>
-    </div>
-);
-
-const IconDefinition = ({ icon: Icon, label, desc, color = "text-indigo-500" }: { icon: any, label: string, desc: string, color?: string }) => (
-    <div className="flex items-start gap-4 p-4 rounded-2xl bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-        <div className={`w-12 h-12 rounded-xl bg-slate-50 dark:bg-white/10 flex items-center justify-center shrink-0 ${color}`}>
-            <Icon className="w-6 h-6" />
-        </div>
-        <div>
-            <h4 className="font-black text-slate-900 dark:text-white text-sm mb-1">{label}</h4>
-            <p className="text-xs text-slate-500 dark:text-white/60 leading-relaxed font-medium">{desc}</p>
-        </div>
-    </div>
-);
-
-const FaqItem = ({ question, answer }: { question: string, answer: string }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden mb-3 bg-white dark:bg-white/5">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 text-right hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-            >
-                <span className="font-bold text-slate-900 dark:text-white text-sm">{question}</span>
-                <ChevronLeft className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isOpen ? '-rotate-90' : 'rotate-0'}`} />
-            </button>
-            {isOpen && (
-                <div className="p-4 pt-0 text-sm text-slate-600 dark:text-white/70 leading-relaxed bg-slate-50/50 dark:bg-black/20 border-t border-gray-100 dark:border-white/5">
-                    {answer}
-                </div>
-            )}
-        </div>
-    );
-};
-
-const NavButton = ({ id, label, icon: Icon, activeTab, onClick }: { id: string, label: string, icon: any, activeTab: string, onClick: (id: string) => void }) => (
-    <button 
-        onClick={() => onClick(id)}
-        className={`
-            w-full text-right p-3.5 rounded-xl flex items-center gap-3 transition-all duration-200 group relative overflow-hidden
-            ${activeTab === id 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-            }
-        `}
-    >
-        <Icon className={`w-5 h-5 relative z-10 ${activeTab === id ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-white'}`} />
-        <span className="font-bold text-sm relative z-10">{label}</span>
-        {activeTab === id && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
-        )}
-    </button>
-);
+import html2pdf from 'html2pdf.js';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 const UserGuide: React.FC = () => {
-    const { theme } = useTheme(); 
-    const [activeTab, setActiveTab] = useState('icons');
+  const [activeSection, setActiveSection] = useState('intro');
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
+  const [isExporting, setIsExporting] = useState(false);
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'icons':
-                return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-                        <SectionTitle title="دليل الرموز" subtitle="تعرف على وظيفة كل أيقونة في التطبيق" />
-                        
-                        <div>
-                            <h3 className="text-lg font-black text-indigo-600 dark:text-indigo-400 mb-4 flex items-center gap-2">
-                                <Users className="w-5 h-5" /> إدارة الفصل والطلاب
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <IconDefinition icon={Plus} label="إضافة" desc="تسجيل طالب جديد أو عنصر جديد يدوياً." color="text-indigo-500" />
-                                <IconDefinition icon={UploadCloud} label="استيراد" desc="رفع ملف Excel لإضافة مجموعة طلاب دفعة واحدة." color="text-emerald-500" />
-                                <IconDefinition icon={Sparkles} label="اختيار عشوائي" desc="اختيار طالب عشوائياً للمشاركة مع مؤثرات بصرية." color="text-amber-500" />
-                                <IconDefinition icon={Edit2} label="تعديل" desc="تغيير بيانات الطالب أو الفصل أو الدرجة." color="text-blue-500" />
-                                <IconDefinition icon={LayoutGrid} label="إدارة الحصص" desc="تعديل جدول الحصص وتوقيت الجرس المدرسي." color="text-purple-500" />
-                            </div>
-                        </div>
+  const sections = [
+    { id: 'intro', title: 'مقدمة وفلسفة التطبيق', icon: BookOpen },
+    { id: 'downloads', title: 'تحميل التطبيق (النسخ)', icon: Download },
+    { id: 'dashboard', title: 'لوحة التحكم والجدول', icon: LayoutDashboard },
+    { id: 'students', title: 'إدارة الطلاب والبيانات', icon: Users },
+    { id: 'attendance', title: 'نظام الحضور الذكي', icon: CalendarCheck },
+    { id: 'grades', title: 'سجل الدرجات المتطور', icon: BarChart3 },
+    { id: 'gamification', title: 'التحفيز ودوري العباقرة', icon: Award },
+    { id: 'ministry', title: 'الربط الوزاري الآمن', icon: Globe },
+    { id: 'data', title: 'البيانات والأمان', icon: Database },
+  ];
 
-                        <div>
-                            <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 mb-4 flex items-center gap-2">
-                                <Trophy className="w-5 h-5" /> السلوك والتحفيز
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <IconDefinition icon={ThumbsUp} label="تعزيز" desc="إضافة نقطة إيجابية للسلوك الجيد." color="text-emerald-600" />
-                                <IconDefinition icon={ThumbsDown} label="مخالفة" desc="تسجيل سلوك سلبي وخصم نقاط." color="text-rose-600" />
-                                <IconDefinition icon={Trophy} label="المنافسة" desc="الدخول لصفحة دوري المجموعات." color="text-amber-500" />
-                                <IconDefinition icon={ShoppingBag} label="المتجر" desc="استبدال نقاط الطالب بمكافآت (في دوري المجموعات)." color="text-indigo-500" />
-                            </div>
-                        </div>
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setSidebarOpen(false);
+  };
 
-                        <div>
-                            <h3 className="text-lg font-black text-blue-600 dark:text-blue-400 mb-4 flex items-center gap-2">
-                                <FileText className="w-5 h-5" /> التقارير والسجلات
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <IconDefinition icon={CalendarRange} label="السجل الشامل" desc="طباعة كشف حضور وغياب كامل للفصل (تفريغ)." color="text-amber-600" />
-                                <IconDefinition icon={Printer} label="تقرير يومي" desc="طباعة تقرير الحضور لليوم الحالي فقط." color="text-slate-600" />
-                                <IconDefinition icon={FileText} label="تقرير طالب" desc="تقرير PDF تفصيلي (درجات + سلوك) لطالب محدد." color="text-red-500" />
-                                <IconDefinition icon={FileSpreadsheet} label="Excel" desc="تصدير السجلات كملف إكسل." color="text-emerald-600" />
-                                <IconDefinition icon={Settings} label="أدوات التقويم" desc="إضافة وتعديل أدوات التقويم (اختبار، واجب) في سجل الدرجات." color="text-gray-500" />
-                            </div>
-                        </div>
+  const handleDownloadPDF = async () => {
+      setIsExporting(true);
+      const element = document.getElementById('guide-content-inner');
+      if (!element) return;
 
-                        <div>
-                            <h3 className="text-lg font-black text-teal-600 dark:text-teal-400 mb-4 flex items-center gap-2">
-                                <Globe className="w-5 h-5" /> روابط وتواصل
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <IconDefinition icon={MessageCircle} label="واتساب" desc="إرسال تنبيه (غياب/تسرب) أو تقرير لولي الأمر." color="text-green-500" />
-                                <IconDefinition icon={Globe} label="منصة نور" desc="فتح منصة نور التعليمية داخل التطبيق." color="text-blue-500" />
-                            </div>
-                        </div>
+      const opt = {
+          margin: [10, 10, 10, 10],
+          filename: 'Rased_User_Manual.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      try {
+          const worker = html2pdf().set(opt).from(element).toPdf();
+          
+          if (Capacitor.isNativePlatform()) {
+              const pdfBase64 = await worker.output('datauristring');
+              const base64Data = pdfBase64.split(',')[1];
+              const result = await Filesystem.writeFile({
+                  path: 'Rased_User_Manual.pdf',
+                  data: base64Data,
+                  directory: Directory.Cache
+              });
+              await Share.share({
+                  title: 'دليل مستخدم راصد',
+                  url: result.uri
+              });
+          } else {
+              worker.save();
+          }
+      } catch (e) {
+          console.error('PDF Export Error:', e);
+          alert('حدث خطأ أثناء تصدير الدليل.');
+      } finally {
+          setIsExporting(false);
+      }
+  };
+
+  const handleDownloadHTML = async () => {
+      const content = document.getElementById('guide-content-inner')?.innerHTML;
+      if (!content) return;
+
+      const fullHtml = `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل مستخدم تطبيق راصد</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; padding: 40px; line-height: 1.6; }
+        h1, h2, h3 { color: #1e293b; font-weight: 900; }
+        h1 { border-bottom: 4px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 30px; }
+        section { background: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        ul { padding-right: 20px; }
+        li { margin-bottom: 8px; }
+        .highlight { background: #e0e7ff; color: #1e3a8a; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: 0 auto;">
+        ${content}
+        <div style="text-align: center; margin-top: 50px; color: #64748b; font-size: 12px;">
+            <p>تم استخراج هذا الدليل من تطبيق راصد - الإصدار 3.6.0</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      if (Capacitor.isNativePlatform()) {
+          try {
+              const result = await Filesystem.writeFile({
+                  path: 'Rased_Guide.html',
+                  data: fullHtml,
+                  directory: Directory.Cache,
+                  encoding: Encoding.UTF8
+              });
+              await Share.share({
+                  title: 'دليل مستخدم راصد (HTML)',
+                  url: result.uri
+              });
+          } catch(e) { console.error(e); }
+      } else {
+          const blob = new Blob([fullHtml], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'Rased_Manual.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+      }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 font-sans relative">
+        
+        {/* ================= Header (Fixed Blue) ================= */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-8 transition-all duration-300">
+            <div className="flex justify-between items-center mt-2">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 bg-white/10 backdrop-blur-md rounded-xl hover:bg-white/20 lg:hidden text-white transition-colors">
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-black flex items-center gap-2">
+                            <BookOpen className="w-6 h-6 text-blue-300" />
+                            دليل المعلم المحترف
+                        </h1>
+                        <p className="text-[10px] font-bold text-blue-200 opacity-80">راصد V3.6.0 - الدليل الرسمي</p>
                     </div>
-                );
+                </div>
+                
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleDownloadPDF}
+                        disabled={isExporting}
+                        className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm hover:bg-white/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <Download className="w-4 h-4" />
+                        {isExporting ? 'جاري...' : 'PDF'}
+                    </button>
+                    <button 
+                        onClick={handleDownloadHTML}
+                        className="bg-white text-[#1e3a8a] px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg hover:bg-slate-100 transition-all active:scale-95 hidden sm:flex"
+                    >
+                        <Code className="w-4 h-4" />
+                        HTML
+                    </button>
+                </div>
+            </div>
+        </div>
 
-            case 'intro':
-                return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <SectionTitle title="البداية السريعة" subtitle="كيف تبدأ استخدام راصد في 3 خطوات" />
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                            <div className="bg-white dark:bg-white/5 p-6 rounded-3xl border border-indigo-100 dark:border-white/5 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all">
-                                <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-50 dark:bg-indigo-500/10 rounded-full group-hover:scale-125 transition-transform"></div>
-                                <span className="relative font-black text-4xl text-indigo-200 dark:text-white/10 mb-2 block">01</span>
-                                <h3 className="relative font-black text-xl text-indigo-900 dark:text-white mb-2">إضافة الطلاب</h3>
-                                <p className="relative text-sm text-slate-500 dark:text-white/60">ابدأ بإضافة أسماء الطلاب. الأسرع هو استخدام ميزة "استيراد Excel" إذا كان لديك كشف جاهز.</p>
-                            </div>
-
-                            <div className="bg-white dark:bg-white/5 p-6 rounded-3xl border border-emerald-100 dark:border-white/5 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all">
-                                <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-full group-hover:scale-125 transition-transform"></div>
-                                <span className="relative font-black text-4xl text-emerald-200 dark:text-white/10 mb-2 block">02</span>
-                                <h3 className="relative font-black text-xl text-emerald-900 dark:text-white mb-2">ضبط الجدول</h3>
-                                <p className="relative text-sm text-slate-500 dark:text-white/60">من الصفحة الرئيسية، اضغط على زر التعديل لضبط الحصص الدراسية وتوقيت الجرس.</p>
-                            </div>
-
-                            <div className="bg-white dark:bg-white/5 p-6 rounded-3xl border border-amber-100 dark:border-white/5 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all">
-                                <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 dark:bg-amber-500/10 rounded-full group-hover:scale-125 transition-transform"></div>
-                                <span className="relative font-black text-4xl text-amber-200 dark:text-white/10 mb-2 block">03</span>
-                                <h3 className="relative font-black text-xl text-amber-900 dark:text-white mb-2">رصد الدرجات</h3>
-                                <p className="relative text-sm text-slate-500 dark:text-white/60">انتقل لصفحة "الدرجات"، أضف أدوات التقويم (اختبار، واجب..) وابدأ الرصد.</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-6 border border-slate-200 dark:border-white/10">
-                            <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                <HelpCircle className="w-5 h-5 text-indigo-500" /> أسئلة شائعة
-                            </h3>
-                            <FaqItem question="هل يحتاج التطبيق إلى إنترنت؟" answer="لا، التطبيق يعمل بشكل كامل بدون إنترنت. يتم حفظ جميع البيانات على جهازك." />
-                            <FaqItem question="كيف أحفظ بياناتي من الضياع؟" answer="اذهب للإعدادات > حفظ نسخة احتياطية. سيتم تحميل ملف .json احتفظ به في مكان آمن." />
-                            <FaqItem question="كيف أطبع سجل الغياب الشهري؟" answer="اذهب لصفحة الحضور، واختر 'طباعة السجل الشامل' (أيقونة التقويم) للحصول على كشف كامل." />
-                            <FaqItem question="كيف أضيف درجات الفصل الثاني؟" answer="من صفحة 'الدرجات'، اضغط على زر التبديل بين الفصل الأول والثاني في الأعلى." />
-                        </div>
+        {/* ================= Main Content Layout ================= */}
+        <div className="flex flex-1 h-full pt-[130px] relative overflow-hidden">
+            
+            {/* Sidebar Navigation (Desktop: Sticky Left, Mobile: Drawer) */}
+            <aside className={`
+                fixed inset-y-0 right-0 z-40 w-64 bg-white border-l border-slate-200 shadow-2xl lg:shadow-none lg:static lg:block transition-transform duration-300 pt-[env(safe-area-inset-top)] lg:pt-0
+                ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+            `}>
+                <div className="flex flex-col h-full">
+                    <div className="p-4 lg:hidden flex justify-end">
+                        <button onClick={() => setSidebarOpen(false)} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5 text-slate-500"/></button>
                     </div>
-                );
-
-            case 'about':
-                return (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center min-h-[50vh]">
-                        <div className="w-32 h-32 bg-white dark:bg-white/10 rounded-full shadow-2xl flex items-center justify-center mb-6 overflow-hidden border-4 border-indigo-50 dark:border-white/10 p-1">
-                            <BrandLogo className="w-full h-full" showText={false} />
-                        </div>
-                        <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2">تطبيق راصد</h1>
-                        <p className="text-slate-500 dark:text-white/60 font-bold mb-8 bg-slate-100 dark:bg-white/10 px-4 py-1 rounded-full text-xs">الإصدار 3.4.0</p>
-                        
-                        <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-3xl p-8 max-w-md w-full text-center shadow-lg">
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">فريق العمل</h2>
-                            
-                            <div className="flex flex-col gap-6">
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl">
-                                    <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                        <Users className="w-6 h-6" />
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-bold text-slate-400 dark:text-white/40">إعداد وتصميم</p>
-                                        <h3 className="text-lg font-black text-slate-800 dark:text-white">أ. محمد درويش الزعابي</h3>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-black/20 rounded-2xl">
-                                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                        <Phone className="w-6 h-6" />
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-bold text-slate-400 dark:text-white/40">للتواصل والدعم الفني</p>
-                                        <h3 className="text-lg font-black text-slate-800 dark:text-white" dir="ltr">+968 99834455</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <p className="mt-8 text-xs text-slate-400 dark:text-white/30 font-bold leading-relaxed">
-                                تم تطوير هذا التطبيق لخدمة المعلم العماني وتسهيل المهام اليومية داخل الغرفة الصفية.
-                            </p>
-                        </div>
+                    <div className="p-4 space-y-1 h-full overflow-y-auto custom-scrollbar pb-20">
+                        <p className="text-xs font-black text-slate-400 mb-3 px-2">فهرس المحتويات</p>
+                        {sections.map(section => (
+                            <button
+                                key={section.id}
+                                onClick={() => scrollToSection(section.id)}
+                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-bold text-xs text-right ${activeSection === section.id ? 'bg-[#1e3a8a] text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                <section.icon className={`w-4 h-4 ${activeSection === section.id ? 'text-blue-300' : 'text-slate-400'}`} />
+                                {section.title}
+                            </button>
+                        ))}
                     </div>
-                );
-            default: return null;
-        }
-    };
-
-    const handleHTMLExport = () => {
-        const contentDiv = document.getElementById('user-guide-content');
-        const rawHTML = contentDiv ? contentDiv.innerHTML : '<h1>لا يوجد محتوى</h1>';
-        const htmlContent = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>دليل راصد</title><style>body { font-family: sans-serif; padding: 40px; line-height: 1.6; } h1, h2, h3 { color: #1e293b; } p { color: #475569; } .bg-slate-50 { background-color: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0; }</style></head><body>${rawHTML}</body></html>`;
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'Rased_Guide.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    };
-
-    return (
-        <div className="flex h-full bg-gray-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden" dir="rtl">
-            <aside className="w-64 bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-white/5 flex flex-col hidden md:flex print:hidden shrink-0 z-20 shadow-sm relative">
-                <div className="p-6 pb-2"><h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">الدليل الشامل</h2><p className="text-xs font-bold text-slate-400 dark:text-white/40 mt-1">شرح مفصل لكافة الخصائص</p></div>
-                <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
-                    <NavButton id="icons" label="دليل الرموز" icon={HelpCircle} activeTab={activeTab} onClick={setActiveTab} />
-                    <NavButton id="intro" label="كيف أبدأ؟" icon={Lightbulb} activeTab={activeTab} onClick={setActiveTab} />
-                    <NavButton id="about" label="حول التطبيق" icon={Info} activeTab={activeTab} onClick={setActiveTab} />
-                </nav>
-                <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-slate-50 dark:bg-black/20">
-                    <button onClick={handleHTMLExport} className="w-full bg-white dark:bg-white/5 text-slate-700 dark:text-white py-2.5 rounded-xl mb-2 hover:bg-slate-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 text-xs font-bold flex items-center justify-center gap-2 transition-all"><Download className="w-4 h-4" /> حفظ HTML</button>
-                    <button onClick={() => window.print()} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-xl hover:bg-slate-800 dark:hover:bg-white/90 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg dark:shadow-none"><Printer className="w-4 h-4" /> طباعة</button>
                 </div>
             </aside>
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 text-gray-800 dark:text-gray-100 custom-scrollbar relative" id="user-guide-content">
-                <div className="max-w-4xl mx-auto pb-20">
-                    <div className="md:hidden mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-center border border-blue-100 dark:border-blue-500/20 print:hidden"><p className="text-sm font-bold text-blue-800 dark:text-blue-200">للتصفح الكامل، يفضل استخدام جهاز أكبر.</p><div className="flex flex-wrap gap-2 justify-center mt-3">{['icons', 'intro', 'about'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 rounded-lg text-xs font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/10 text-slate-600 dark:text-slate-300'}`}>{tab === 'icons' ? 'الرموز' : tab === 'intro' ? 'البداية' : 'حول'}</button>))}</div></div>
-                    {renderContent()}
-                    <div className="mt-12 pt-8 border-t border-gray-200 dark:border-white/10 text-center print:hidden"><p className="text-xs font-bold text-slate-400 dark:text-white/30">جميع الحقوق محفوظة © {new Date().getFullYear()}</p></div>
+
+            {/* Sidebar Overlay for Mobile */}
+            {isSidebarOpen && <div className="fixed inset-0 bg-black/20 z-30 lg:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>}
+
+            {/* Content Area */}
+            <main className="flex-1 overflow-y-auto custom-scrollbar bg-[#f8fafc] p-4 md:p-6 scroll-smooth" id="guide-content">
+                <div id="guide-content-inner" className="max-w-4xl mx-auto space-y-8 pb-32">
+                    
+                    {/* 1. Intro */}
+                    <section id="intro" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><Lightbulb className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">1. فلسفة راصد</h2>
+                        </div>
+                        <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed font-medium text-sm md:text-base">
+                            <p className="mb-4">
+                                تم تصميم تطبيق <strong>راصد</strong> (Rased App) ليكون المساعد الرقمي الشخصي للمعلم العماني. الفكرة الأساسية هي "الأتمتة الكاملة" لمهام المعلم الروتينية.
+                            </p>
+                            <ul className="list-disc pr-5 space-y-2">
+                                <li>يعمل التطبيق <strong>بدون إنترنت</strong> بشكل كامل للحفاظ على الخصوصية والسرعة.</li>
+                                <li>تم تصميم واجهة المستخدم لتكون مريحة للعين وتدعم الاستخدام السريع بيد واحدة.</li>
+                                <li>يدعم التطبيق التزامن مع بوابة الوزارة عند توفر الإنترنت برغبة المعلم.</li>
+                            </ul>
+                        </div>
+                    </section>
+                    
+                    {/* 2. Downloads */}
+                    <section id="downloads" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36 no-print">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600"><Download className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">2. تحميل التطبيق</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center hover:shadow-lg transition-all bg-emerald-50/50">
+                                <Smartphone className="w-8 h-8 text-emerald-600 mb-2"/>
+                                <h3 className="font-black text-base text-slate-900">أندرويد (APK)</h3>
+                                <p className="text-[10px] text-gray-500 mt-1">تحميل مباشر</p>
+                            </div>
+                            <div className="border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center hover:shadow-lg transition-all bg-slate-50/50">
+                                <Apple className="w-8 h-8 text-slate-800 mb-2"/>
+                                <h3 className="font-black text-base text-slate-900">آيفون (iOS)</h3>
+                                <p className="text-[10px] text-gray-500 mt-1">ملف IPA</p>
+                            </div>
+                            <div className="border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center hover:shadow-lg transition-all bg-blue-50/50">
+                                <Monitor className="w-8 h-8 text-blue-600 mb-2"/>
+                                <h3 className="font-black text-base text-slate-900">كمبيوتر (PC)</h3>
+                                <p className="text-[10px] text-gray-500 mt-1">نظام Windows</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 3. Dashboard */}
+                    <section id="dashboard" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center text-violet-600"><LayoutDashboard className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">3. لوحة التحكم والجدول</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium space-y-4 text-sm md:text-base">
+                            <p>تعتبر لوحة التحكم هي واجهة الانطلاق اليومية للمعلم، حيث تعرض:</p>
+                            <ul className="space-y-3">
+                                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"/> <span><strong>جدول الحصص اليومي:</strong> يظهر جدول اليوم الحالي تلقائياً. الحصة الحالية يتم تمييزها بلون مختلف ومؤشر "الآن".</span></li>
+                                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"/> <span><strong>جرس الحصص:</strong> يمكنك تفعيل التنبيهات للحصول على إشعار صوتي عند بداية ونهاية كل حصة.</span></li>
+                                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"/> <span><strong>الملف الشخصي:</strong> يمكنك تحديث بياناتك (الاسم، المدرسة، الشعار) من خلال أيقونة القلم في الأعلى.</span></li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    {/* 4. Students */}
+                    <section id="students" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600"><Users className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">4. إدارة الطلاب والبيانات</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium text-sm md:text-base">
+                            <p className="mb-4">يمكنك إضافة الطلاب بطريقتين:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                    <h4 className="font-bold text-slate-900 mb-2">الإضافة اليدوية</h4>
+                                    <p className="text-xs">إضافة طالب واحد في كل مرة مع تحديد الاسم والصف ورقم ولي الأمر.</p>
+                                </div>
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                    <h4 className="font-bold text-slate-900 mb-2">الاستيراد من Excel</h4>
+                                    <p className="text-xs">الطريقة الأسرع. قم برفع ملف إكسل يحتوي على عمودي "الاسم" و"رقم الهاتف" وسيتم إضافة الفصل كاملاً.</p>
+                                </div>
+                            </div>
+                            <p><strong>تلميح:</strong> يمكنك استخدام ميزة "الاختيار العشوائي" في الفصل لطرح الأسئلة بشكل عادل.</p>
+                        </div>
+                    </section>
+
+                    {/* 5. Attendance */}
+                    <section id="attendance" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600"><CalendarCheck className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">5. نظام الحضور الذكي</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium space-y-4 text-sm md:text-base">
+                            <p>رصد الغياب أصبح أسهل من أي وقت مضى:</p>
+                            <ul className="list-disc pr-5 space-y-2">
+                                <li>اضغط على الأيقونات (صح، خطأ، ساعة، باب) أمام اسم الطالب لتحديد حالته (حضور، غياب، تأخير، تسرب).</li>
+                                <li><strong>تنبيهات الواتساب:</strong> عند تسجيل غياب أو تأخير، يظهر زر لإرسال رسالة جاهزة لولي الأمر بضغطة زر واحدة.</li>
+                                <li>يمكنك تصدير كشف غياب شهري بصيغة Excel من أعلى الصفحة.</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    {/* 6. Grades */}
+                    <section id="grades" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600"><BarChart3 className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">6. سجل الدرجات المتطور</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium space-y-4 text-sm md:text-base">
+                            <p>يتيح لك السجل إنشاء أدوات تقويم مخصصة (مثل: اختبار قصير 1، مشروع، واجبات) ورصد الدرجات بسهولة.</p>
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-900">
+                                <strong>ميزة المصحح الإلكتروني:</strong> يمكنك تصوير ورقة اختبار الطالب وتصحيحها داخل التطبيق وحفظ صورة الورقة المصححة مع الدرجة في ملف الطالب.
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 7. Gamification */}
+                    <section id="gamification" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600"><Award className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">7. التحفيز ودوري العباقرة</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium text-sm md:text-base">
+                            <p className="mb-4">حول فصلك إلى بيئة تنافسية ممتعة:</p>
+                            <ul className="space-y-3">
+                                <li><strong>نقاط السلوك:</strong> امنح نقاطاً إيجابية (👍) أو سلبية (👎) للطلاب. النقاط الإيجابية تتحول إلى "عملات ذهبية".</li>
+                                <li><strong>المتجر:</strong> يمكن للطلاب استبدال عملاتهم بمكافآت (مثل: تغيير المكان، قائد الطابور).</li>
+                                <li><strong>دوري المجموعات:</strong> قسّم الفصل إلى فرق وتنافسوا على اللقب.</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    {/* 8. Ministry Sync */}
+                    <section id="ministry" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600"><Globe className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">8. الربط الوزاري الآمن</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium text-sm md:text-base">
+                            <p className="mb-4">ميزة حصرية لربط التطبيق مع البوابة التعليمية لرفع الغياب والدرجات بضغطة زر.</p>
+                            <div className="bg-slate-100 p-4 rounded-xl text-[10px] font-mono mb-4 text-left text-slate-600" dir="ltr">
+                                https://mobile.moe.gov.om/...
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                <strong>ملاحظة هامة:</strong> يتم الاتصال مباشرة بين جهازك وخوادم الوزارة عبر قناة مشفرة. لا يتم تخزين كلمات المرور أو البيانات الحساسة على أي خوادم خارجية.
+                            </p>
+                        </div>
+                    </section>
+
+                    {/* 9. Data & Security */}
+                    <section id="data" className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 scroll-mt-36">
+                        <div className="flex items-center gap-4 mb-6 border-b border-slate-50 pb-4">
+                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><Database className="w-6 h-6" /></div>
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800">9. البيانات والأمان</h2>
+                        </div>
+                        <div className="text-slate-600 leading-relaxed font-medium space-y-4 text-sm md:text-base">
+                            <p>جميع البيانات مخزنة <strong>محلياً على جهازك</strong> ولا يتم رفعها لأي سحابة (Cloud).</p>
+                            <ul className="list-disc pr-5 space-y-2">
+                                <li>قم بعمل <strong>نسخة احتياطية</strong> بشكل دوري من صفحة الإعدادات.</li>
+                                <li>يمكنك استعادة البيانات عند تغيير الجهاز أو حذف التطبيق عن طريق الخطأ.</li>
+                                <li>استخدم ميزة "تصدير PDF" للاحتفاظ بنسخ ورقية من التقارير والسجلات.</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <div className="text-center pt-8 border-t border-slate-200">
+                        <p className="text-xs font-bold text-slate-400"> ❤️</p>
+                    </div>
                 </div>
             </main>
-            <style>{`@media print { aside, .print\\:hidden, .print-hide { display: none !important; } body { background: white !important; color: black !important; overflow: visible !important; height: auto !important; } #user-guide-content { width: 100% !important; padding: 20px !important; overflow: visible !important; height: auto !important; position: static !important; } .flex-1 { overflow: visible !important; } .overflow-y-auto { overflow-y: visible !important; } .overflow-hidden { overflow: visible !important; } }`}</style>
         </div>
-    );
+    </div>
+  );
 };
 
 export default UserGuide;
