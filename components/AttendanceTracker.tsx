@@ -1,453 +1,533 @@
-import React, { useState, useMemo } from 'react';
-import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, Filter, MessageCircle, ChevronDown, CheckCircle2, RotateCcw, Search, Printer, Loader2, CalendarRange, UserCircle2, Share2, Download, FileSpreadsheet } from 'lucide-react';
-import { Browser } from '@capacitor/browser';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Student, BehaviorType } from '../types';
+import { 
+  Search, ThumbsUp, ThumbsDown, Edit2, Sparkles, Trash2, Plus, 
+  UserPlus, Upload, Settings, Trophy, Frown, CloudRain, PartyPopper, 
+  Menu, FileSpreadsheet, X, Filter, User
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
-import { useTheme } from '../context/ThemeContext';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import { Capacitor } from '@capacitor/core';
+import ExcelImport from './ExcelImport';
+import { useApp } from '../context/AppContext';
 
-declare var html2pdf: any;
-
-interface AttendanceTrackerProps {
+interface StudentListProps {
   students: Student[];
   classes: string[];
-  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  onAddClass: (name: string) => void;
+  onAddStudentManually: (name: string, className: string, phone?: string, avatar?: string) => void;
+  onBatchAddStudents: (students: Student[]) => void;
+  onUpdateStudent: (student: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewReport: (student: Student) => void;
+  currentSemester: '1' | '2';
+  onDeleteClass?: (className: string) => void; 
+  onSemesterChange?: (sem: '1' | '2') => void;
+  onEditClass?: (oldName: string, newName: string) => void;
 }
 
-const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
-  const { theme, isLowPower } = useTheme();
-  const today = new Date().toLocaleDateString('en-CA'); 
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [classFilter, setClassFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isExportingExcel, setIsExportingExcel] = useState(false);
-  
-  const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late'} | null>(null);
-
-  // iOS Style Classes
-  const styles = {
-      header: 'bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/5 sticky top-0 z-30 transition-all duration-300',
-      contentContainer: 'px-4 pb-32 pt-4 overflow-y-auto custom-scrollbar',
-      card: 'bg-white dark:bg-[#1c1c1e] active:scale-[0.99] transition-transform duration-200 touch-manipulation',
-      search: 'bg-gray-100/80 dark:bg-white/10 rounded-xl border-none text-center focus:text-right transition-all',
-      pill: 'rounded-full text-xs font-bold transition-all',
-  };
-
-  const formatDateDisplay = (dateString: string) => {
-      const d = new Date(dateString);
-      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
-  };
-
-  const getStatus = (student: Student) => {
-    return student.attendance.find(a => a.date === selectedDate)?.status;
-  };
-
-  const toggleAttendance = (studentId: string, status: AttendanceStatus) => {
-    setStudents(prev => prev.map(s => {
-      if (s.id !== studentId) return s;
-      const filtered = s.attendance.filter(a => a.date !== selectedDate);
-      const currentStatus = s.attendance.find(a => a.date === selectedDate)?.status;
-      
-      if (currentStatus === status) {
-          return { ...s, attendance: filtered };
-      }
-      return {
-        ...s,
-        attendance: [...filtered, { date: selectedDate, status }]
-      };
-    }));
-  };
-
-  const handleMarkAll = (status: AttendanceStatus | 'reset') => {
-      if (classFilter === 'all' && students.length > 50) {
-          if (!confirm(`سيتم تطبيق هذا الإجراء على جميع الطلاب (${students.length}). هل أنت متأكد؟`)) return;
-      }
-      
-      setStudents(prev => prev.map(s => {
-          if (classFilter !== 'all' && (!s.classes || !s.classes.includes(classFilter))) {
-              return s;
-          }
-          const filtered = s.attendance.filter(a => a.date !== selectedDate);
-          if (status === 'reset') {
-              return { ...s, attendance: filtered };
-          }
-          return {
-              ...s,
-              attendance: [...filtered, { date: selectedDate, status }]
-          };
-      }));
-  };
-
-  const filteredStudents = useMemo(() => {
-    return students.filter(s => {
-      const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
-      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesClass && matchesSearch;
-    });
-  }, [students, classFilter, searchQuery]);
-
-  const stats = useMemo(() => {
-      const present = filteredStudents.filter(s => getStatus(s) === 'present').length;
-      const absent = filteredStudents.filter(s => getStatus(s) === 'absent').length;
-      const late = filteredStudents.filter(s => getStatus(s) === 'late').length;
-      return { present, absent, late, total: filteredStudents.length };
-  }, [filteredStudents, selectedDate]);
-
-  const performNotification = async (method: 'whatsapp' | 'sms') => {
-      if(!notificationTarget || !notificationTarget.student.parentPhone) {
-          alert('لا يوجد رقم هاتف مسجل');
-          return;
-      }
-      
-      const { student, type } = notificationTarget;
-      
-      // Clean phone number strictly
-      let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-      
-      // Validate length (Oman numbers are usually 8 digits, with 968 country code becomes 11)
-      if (!cleanPhone || cleanPhone.length < 5) {
-          alert('رقم الهاتف غير صحيح أو قصير جداً');
-          return;
-      }
-      
-      // Add country code if missing (Assuming Oman +968)
-      if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
-      
-      if (cleanPhone.length === 8) {
-          cleanPhone = '968' + cleanPhone;
-      } else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) {
-          cleanPhone = '968' + cleanPhone.substring(1);
-      }
-
-      const statusText = type === 'absent' ? 'غائب' : 'متأخر';
-      const dateText = new Date().toLocaleDateString('ar-EG');
-      const msg = encodeURIComponent(`السلام عليكم، نود إشعاركم بأن الطالب ${student.name} تم تسجيله *${statusText}* اليوم (${dateText}).`);
-      
-      if (method === 'whatsapp') {
-          const appUrl = `whatsapp://send?phone=${cleanPhone}&text=${msg}`;
-          const webUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
-          
-          if (Capacitor.isNativePlatform()) {
-              try {
-                  await Browser.open({ url: appUrl });
-              } catch (e) {
-                  await Browser.open({ url: webUrl });
-              }
-          } else {
-              window.open(webUrl, '_blank');
-          }
-      } else {
-          window.location.href = `sms:${cleanPhone}?body=${msg}`;
-      }
-      setNotificationTarget(null);
-  };
-
-  // --- iOS Compatible Excel Export ---
-  const handleExportDailyExcel = async () => {
-      if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
-      setIsExportingExcel(true);
-
-      try {
-          const data = filteredStudents.map((s, i) => ({
-              'م': i + 1,
-              'الاسم': s.name,
-              'الصف': s.classes[0] || '',
-              'الحالة': getStatus(s) === 'present' ? 'حاضر' : getStatus(s) === 'absent' ? 'غائب' : getStatus(s) === 'late' ? 'تأخر' : 'غير مسجل',
-              'التاريخ': selectedDate
-          }));
-
-          const ws = XLSX.utils.json_to_sheet(data);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "الحضور اليومي");
-          
-          const fileName = `حضور_${selectedDate}.xlsx`;
-
-          if (Capacitor.isNativePlatform()) {
-              // 1. Write File
-              const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-              const result = await Filesystem.writeFile({
-                  path: fileName,
-                  data: wbout,
-                  directory: Directory.Cache
-              });
-
-              // 2. Share File
-              await Share.share({
-                  title: 'مشاركة ملف الحضور',
-                  text: `كشف حضور ليوم ${selectedDate}`,
-                  url: result.uri,
-                  dialogTitle: 'مشاركة عبر'
-              });
-          } else {
-              // Web Fallback
-              XLSX.writeFile(wb, fileName);
-          }
-      } catch (error) {
-          console.error("Export Error:", error);
-          alert("حدث خطأ أثناء التصدير.");
-      } finally {
-          setIsExportingExcel(false);
-      }
-  };
-
-  // --- PDF Export Logic ---
-  const getBase64Image = async (url: string): Promise<string> => {
-      try {
-          const response = await fetch(url);
-          const blob = await response.blob();
-          return new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-          });
-      } catch { return ""; }
-  };
-
-  const handlePrintDailyReport = async () => {
-    if (filteredStudents.length === 0) return alert('لا يوجد بيانات');
-    setIsGeneratingPdf(true);
-
-    const teacherName = localStorage.getItem('teacherName') || '................';
-    const schoolName = localStorage.getItem('schoolName') || '................';
-    let emblemSrc = await getBase64Image('oman_logo.png') || await getBase64Image('icon.png');
-
-    const rows = filteredStudents.map((s, i) => {
-        const st = getStatus(s);
-        const stText = st === 'present' ? 'حاضر' : st === 'absent' ? 'غائب' : st === 'late' ? 'تأخر' : '-';
-        const stColor = st === 'absent' ? 'red' : 'black';
-        return `
-            <tr>
-                <td style="border:1px solid #000; padding:5px; text-align:center;">${i + 1}</td>
-                <td style="border:1px solid #000; padding:5px; text-align:right;">${s.name}</td>
-                <td style="border:1px solid #000; padding:5px; text-align:center;">${s.classes[0] || ''}</td>
-                <td style="border:1px solid #000; padding:5px; text-align:center; color:${stColor}; font-weight:bold;">${stText}</td>
-            </tr>
-        `;
-    }).join('');
-
-    const content = `
-        <div style="font-family:'Tajawal',sans-serif; direction:rtl; padding:20px; color:#000;">
-            <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px;">
-                ${emblemSrc ? `<img src="${emblemSrc}" style="height:60px; margin-bottom:5px;" />` : ''}
-                <h2 style="margin:5px 0;">كشف الحضور اليومي</h2>
-                <p style="margin:0; font-size:12px;">التاريخ: ${selectedDate} | المدرسة: ${schoolName}</p>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:bold; font-size:12px; background:#f0f0f0; padding:5px; border-radius:5px;">
-                <span>إجمالي الطلاب: ${stats.total}</span>
-                <span>حضور: ${stats.present}</span>
-                <span style="color:red;">غياب: ${stats.absent}</span>
-                <span style="color:#d97706;">تأخر: ${stats.late}</span>
-            </div>
-            <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                <tr style="background:#e5e5e5;">
-                    <th style="border:1px solid #000; padding:5px; width:40px;">#</th>
-                    <th style="border:1px solid #000; padding:5px;">الطالب</th>
-                    <th style="border:1px solid #000; padding:5px; width:60px;">الصف</th>
-                    <th style="border:1px solid #000; padding:5px; width:60px;">الحالة</th>
-                </tr>
-                ${rows}
-            </table>
-        </div>
-    `;
-
-    const element = document.createElement('div');
-    element.innerHTML = content;
-    
-    // PDF Generation
-    const opt = {
-        margin: 10,
-        filename: `Attendance_${selectedDate}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    if (typeof html2pdf !== 'undefined') {
-        const worker = html2pdf().set(opt).from(element).toPdf();
-        if (Capacitor.isNativePlatform()) {
-             const pdfBase64 = await worker.output('datauristring');
-             const base64Data = pdfBase64.split(',')[1];
-             const result = await Filesystem.writeFile({
-                  path: `Attendance_${selectedDate}.pdf`,
-                  data: base64Data,
-                  directory: Directory.Cache
-             });
-             await Share.share({
-                  url: result.uri,
-                  title: 'مشاركة التقرير'
-             });
-        } else {
-             worker.save();
-        }
-    }
-    setIsGeneratingPdf(false);
-  };
-
-  return (
-    <div className="flex flex-col h-[calc(100vh-60px)] -mt-4 -mx-4 text-slate-900 dark:text-white relative bg-slate-50 dark:bg-[#000]">
-        
-        {/* iOS Style Header */}
-        <div className={styles.header}>
-            <div className="px-5 pt-4 pb-2">
-                <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white">الغياب</h1>
-                    <div className="flex gap-2">
-                         <button onClick={handlePrintDailyReport} disabled={isGeneratingPdf} className="w-9 h-9 bg-slate-100 dark:bg-white/10 rounded-full flex items-center justify-center text-slate-600 dark:text-white shadow-sm active:scale-90 transition-transform">
-                             {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Printer className="w-5 h-5"/>}
-                         </button>
-                         <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm active:scale-90 transition-transform">
-                             {isExportingExcel ? <Loader2 className="w-4 h-4 animate-spin"/> : <Share2 className="w-5 h-5"/>}
-                         </button>
-                    </div>
-                </div>
-
-                {/* Date Scroller (Simplified) */}
-                <div className="flex items-center justify-between bg-gray-100/50 dark:bg-white/5 rounded-xl p-1 mb-3">
-                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-2 rounded-lg hover:bg-white dark:hover:bg-white/10 shadow-sm"><ChevronDown className="w-4 h-4 rotate-90"/></button>
-                    <div className="flex items-center gap-2 font-bold text-sm">
-                        <Calendar className="w-4 h-4 text-indigo-500"/>
-                        {formatDateDisplay(selectedDate)}
-                    </div>
-                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-2 rounded-lg hover:bg-white dark:hover:bg-white/10 shadow-sm"><ChevronDown className="w-4 h-4 -rotate-90"/></button>
-                </div>
-
-                {/* Filters Row */}
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
-                    <div className="relative flex-1 min-w-[120px]">
-                        <Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-gray-400"/>
-                        <input 
-                            type="text" 
-                            placeholder="بحث..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full py-2 pr-8 pl-3 text-xs font-bold outline-none ${styles.search}`} 
-                        />
-                    </div>
-                    <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-1 shrink-0"></div>
-                    <button onClick={() => setClassFilter('all')} className={`px-4 py-2 text-[10px] whitespace-nowrap ${styles.pill} ${classFilter === 'all' ? 'bg-indigo-600 text-white border-transparent' : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>الكل</button>
-                    {classes.map(c => (
-                        <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-2 text-[10px] whitespace-nowrap ${styles.pill} ${classFilter === c ? 'bg-indigo-600 text-white border-transparent' : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>{c}</button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Live Stats Strip */}
-            <div className="grid grid-cols-4 gap-px bg-gray-200 dark:bg-white/10 border-t border-gray-200 dark:border-white/5">
-                <button onClick={() => handleMarkAll('present')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
-                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">حضور</span>
-                    <span className="text-sm font-black text-emerald-500">{stats.present}</span>
-                </button>
-                <button onClick={() => handleMarkAll('absent')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
-                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">غياب</span>
-                    <span className="text-sm font-black text-rose-500">{stats.absent}</span>
-                </button>
-                <button onClick={() => handleMarkAll('late')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
-                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">تأخر</span>
-                    <span className="text-sm font-black text-amber-500">{stats.late}</span>
-                </button>
-                <button onClick={() => handleMarkAll('reset')} className="bg-white dark:bg-[#1c1c1e] py-3 flex flex-col items-center active:bg-gray-50 dark:active:bg-white/5">
-                    <span className="text-[10px] font-bold text-gray-400 mb-0.5">غير محدد</span>
-                    <span className="text-sm font-black text-gray-400">{stats.total - (stats.present + stats.absent + stats.late)}</span>
-                </button>
-            </div>
-        </div>
-
-        {/* Student List */}
-        <div className={styles.contentContainer}>
-            {filteredStudents.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                    {filteredStudents.map((student) => {
-                        const status = getStatus(student);
-                        return (
-                            <motion.div 
-                                layout
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                key={student.id} 
-                                className={`p-3 rounded-[18px] border flex items-center justify-between ${styles.card} ${
-                                    status === 'absent' ? 'border-rose-100 bg-rose-50/30 dark:border-rose-500/20 dark:bg-rose-500/5' : 
-                                    status === 'present' ? 'border-emerald-100 bg-emerald-50/30 dark:border-emerald-500/20 dark:bg-emerald-500/5' : 
-                                    status === 'late' ? 'border-amber-100 bg-amber-50/30 dark:border-amber-500/20 dark:bg-amber-500/5' : 
-                                    'border-transparent'
-                                }`}
-                            >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-black shrink-0 shadow-sm ${
-                                        status === 'absent' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300' :
-                                        status === 'late' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300' :
-                                        status === 'present' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300' :
-                                        'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400'
-                                    }`}>
-                                        {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover rounded-full" /> : student.name.charAt(0)}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className={`text-sm font-bold truncate ${status ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-gray-300'}`}>{student.name}</h3>
-                                        {(status === 'absent' || status === 'late') && (
-                                            <button 
-                                                onClick={() => setNotificationTarget({ student, type: status === 'absent' ? 'absent' : 'late' })}
-                                                className={`mt-1 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md w-fit active:scale-95 ${
-                                                    status === 'absent' 
-                                                    ? 'text-rose-500 bg-rose-100 dark:bg-rose-500/20' 
-                                                    : 'text-amber-600 bg-amber-100 dark:bg-amber-500/20'
-                                                }`}
-                                            >
-                                                <MessageCircle className="w-3 h-3" /> {status === 'absent' ? 'إشعار غياب' : 'إشعار تأخير'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button onClick={() => toggleAttendance(student.id, 'present')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-500'}`}>
-                                        <Check className="w-5 h-5" strokeWidth={3} />
-                                    </button>
-                                    <button onClick={() => toggleAttendance(student.id, 'absent')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:text-rose-500'}`}>
-                                        <X className="w-5 h-5" strokeWidth={3} />
-                                    </button>
-                                    <button onClick={() => toggleAttendance(student.id, 'late')} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 hover:text-amber-500'}`}>
-                                        <Clock className="w-5 h-5" strokeWidth={3} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                    <UserCircle2 className="w-16 h-16 text-slate-300 dark:text-white mb-4" />
-                    <p className="text-sm font-bold text-slate-400 dark:text-white">لا يوجد طلاب مطابقين</p>
-                </div>
-            )}
-        </div>
-
-        {/* Notification Modal */}
-        <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="max-w-xs rounded-[2rem]">
-            <div className="text-center">
-                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
-                    <MessageCircle className="w-8 h-8" />
-                </div>
-                <h3 className="font-black text-lg mb-1 dark:text-white">إرسال إشعار</h3>
-                <p className="text-xs text-gray-500 mb-6 font-bold">{notificationTarget?.student.name}</p>
-                
-                <div className="space-y-3">
-                    <button onClick={() => performNotification('whatsapp')} className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition-all active:scale-95">
-                        <MessageCircle className="w-5 h-5" /> واتساب
-                    </button>
-                    <button onClick={() => performNotification('sms')} className="w-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 text-slate-700 dark:text-white py-3.5 rounded-xl font-black text-sm transition-all active:scale-95">
-                        رسالة نصية (SMS)
-                    </button>
-                    <button onClick={() => setNotificationTarget(null)} className="text-xs font-bold text-gray-400 mt-2">إلغاء</button>
-                </div>
-            </div>
-        </Modal>
-
-    </div>
-  );
+const SOUNDS = {
+  positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+  negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
 };
 
-export default AttendanceTracker;
+const StudentItem = React.memo(({ student, onAction, currentSemester }: { 
+  student: Student, onAction: (s: Student, type: 'positive' | 'negative' | 'edit' | 'delete' | 'truant') => void, currentSemester: '1' | '2'
+}) => {
+  const totalScore = useMemo(() => (student.grades || []).filter(g => !g.semester || g.semester === currentSemester).reduce((sum, g) => sum + (Number(g.score) || 0), 0), [student.grades, currentSemester]);
+  const gradeSymbol = useMemo(() => { if (totalScore >= 90) return 'أ'; if (totalScore >= 80) return 'ب'; if (totalScore >= 65) return 'ج'; if (totalScore >= 50) return 'د'; return 'هـ'; }, [totalScore]);
+  
+  const gradeColor = useMemo(() => { 
+      if (totalScore >= 90) return 'text-emerald-700 bg-emerald-100 border-emerald-200'; 
+      if (totalScore >= 80) return 'text-blue-700 bg-blue-100 border-blue-200'; 
+      if (totalScore >= 65) return 'text-amber-700 bg-amber-100 border-amber-200'; 
+      return 'text-rose-700 bg-rose-100 border-rose-200'; 
+  }, [totalScore]);
+
+  return (
+      <motion.div 
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 mb-3 rounded-[1.5rem] gap-4 sm:gap-0 relative overflow-hidden transition-all duration-300
+          bg-white hover:bg-white shadow-sm hover:shadow-md border border-slate-100 shimmer-hover hover:-translate-y-0.5"
+      >
+          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${totalScore >= 90 ? 'bg-emerald-500' : totalScore >= 50 ? 'bg-indigo-500' : 'bg-rose-500'}`}></div>
+
+          <div className="flex items-center gap-4 flex-1 min-w-0 relative z-10 pl-3">
+              <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-slate-500 text-lg font-bold overflow-hidden shrink-0 shadow-inner border border-gray-100">
+                  {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover" /> : student.name.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                  <h3 className="font-black text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">{student.name}</h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-bold">{student.classes[0]}</span>
+                      <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border ${gradeColor}`}>{gradeSymbol} ({totalScore})</span>
+                  </div>
+              </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2 pl-1 relative z-10">
+              <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-100 shadow-inner">
+                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'positive'); }} className="w-10 h-10 rounded-lg flex items-center justify-center bg-white text-emerald-600 hover:text-white hover:bg-emerald-50 shadow-sm active:scale-95 transition-all">
+                      <ThumbsUp className="w-5 h-5" />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'negative'); }} className="w-10 h-10 rounded-lg flex items-center justify-center bg-white text-rose-600 hover:text-white hover:bg-rose-50 shadow-sm active:scale-95 transition-all">
+                      <ThumbsDown className="w-5 h-5" />
+                  </button>
+              </div>
+              
+              <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
+              
+              <div className="flex items-center gap-1">
+                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                  </button>
+              </div>
+          </div>
+      </motion.div>
+  );
+}, (prev, next) => prev.student === next.student && prev.currentSemester === next.currentSemester);
+
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, currentSemester, onDeleteClass }) => {
+const { teacherInfo } = useApp();
+const [searchTerm, setSearchTerm] = useState('');
+const [selectedGrade, setSelectedGrade] = useState<string>('all');
+const [selectedClass, setSelectedClass] = useState<string>('all');
+
+const [showManualAddModal, setShowManualAddModal] = useState(false);
+const [showImportModal, setShowImportModal] = useState(false);
+const [showAddClassModal, setShowAddClassModal] = useState(false);
+const [showManageClasses, setShowManageClasses] = useState(false); 
+const [showMenuDropdown, setShowMenuDropdown] = useState(false); // القائمة المنسدلة الجديدة
+
+const [newClassInput, setNewClassInput] = useState('');
+const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+const [editName, setEditName] = useState('');
+const [editPhone, setEditPhone] = useState('');
+const [editClass, setEditClass] = useState('');
+const [editAvatar, setEditAvatar] = useState('');
+
+const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
+const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
+const [customBehaviorReason, setCustomBehaviorReason] = useState('');
+const [customBehaviorPoints, setCustomBehaviorPoints] = useState<string>('1');
+
+const [feedbackAnimation, setFeedbackAnimation] = useState<{ type: BehaviorType, text: string } | null>(null);
+
+const [randomStudent, setRandomStudent] = useState<Student | null>(null);
+const [isRandomPicking, setIsRandomPicking] = useState(false);
+
+const availableGrades = useMemo(() => {
+    const grades = new Set<string>();
+    students.forEach(s => {
+        if (s.grade) grades.add(s.grade);
+        else if (s.classes[0]) {
+            const match = s.classes[0].match(/^(\d+)/);
+            if (match) grades.add(match[1]);
+        }
+    });
+    return Array.from(grades).sort();
+}, [students, classes]);
+
+const visibleClasses = useMemo(() => {
+    if (selectedGrade === 'all') return classes;
+    return classes.filter(c => c.startsWith(selectedGrade));
+}, [classes, selectedGrade]);
+
+const filteredStudents = useMemo(() => students.filter(s => {
+    const matchName = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchClass = selectedClass === 'all' || s.classes?.includes(selectedClass);
+    
+    let matchGrade = true;
+    if (selectedGrade !== 'all') {
+        matchGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
+    }
+
+    return matchName && matchClass && matchGrade;
+}), [students, searchTerm, selectedClass, selectedGrade]);
+
+useEffect(() => {
+    if (feedbackAnimation) {
+        const timer = setTimeout(() => setFeedbackAnimation(null), 1800);
+        return () => clearTimeout(timer);
+    }
+}, [feedbackAnimation]);
+
+const playBehaviorSound = (type: BehaviorType) => {
+    try {
+        const audio = new Audio(type === 'positive' ? SOUNDS.positive : SOUNDS.negative);
+        audio.volume = 0.6; 
+        audio.play().catch(e => console.warn('Audio play blocked', e));
+    } catch (e) {
+        console.error('Failed to play sound', e);
+    }
+};
+
+const handleAction = (student: Student, type: 'positive' | 'negative' | 'edit' | 'delete' | 'truant') => {
+    if (type === 'positive') setShowPositiveReasons({ student });
+    else if (type === 'negative') setShowNegativeReasons({ student });
+    else if (type === 'edit') {
+        setEditingStudent(student);
+        setEditName(student.name);
+        setEditClass(student.classes[0]);
+        setEditPhone(student.parentPhone || '');
+        setEditAvatar(student.avatar || '');
+        setShowManualAddModal(true);
+    }
+    else if (type === 'delete') {
+        if(confirm(`حذف الطالب ${student.name}؟`)) onDeleteStudent(student.id);
+    }
+};
+
+const handleSaveStudent = () => {
+    if (editName.trim() && editClass.trim()) {
+        const inferredGrade = editClass.trim().match(/^(\d+)/)?.[1] || '';
+        if (editingStudent) {
+            onUpdateStudent({ ...editingStudent, name: editName, classes: [editClass], parentPhone: editPhone, avatar: editAvatar, grade: inferredGrade });
+        } else {
+            onAddStudentManually(editName, editClass, editPhone, editAvatar);
+        }
+        setShowManualAddModal(false);
+        setEditingStudent(null);
+        setEditName(''); setEditPhone(''); setEditClass(''); setEditAvatar('');
+    }
+};
+
+const pickRandomStudent = () => {
+    if (filteredStudents.length === 0) return;
+    setIsRandomPicking(true);
+    let count = 0;
+    const interval = setInterval(() => {
+        const random = filteredStudents[Math.floor(Math.random() * filteredStudents.length)];
+        setRandomStudent(random);
+        count++;
+        if (count > 10) {
+            clearInterval(interval);
+            setIsRandomPicking(false);
+        }
+    }, 100);
+};
+
+const handleAddBehavior = (student: Student, type: BehaviorType, reason: string, points: number) => {
+    playBehaviorSound(type);
+    setFeedbackAnimation({ 
+        type, 
+        text: type === 'positive' ? 'أحسنت!' : 'انتبه!' 
+    });
+    const newBehavior = {
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date().toISOString(),
+        type,
+        description: reason,
+        points: Math.abs(points),
+        semester: currentSemester
+    };
+    const updatedStudent = { ...student, behaviors: [newBehavior, ...(student.behaviors || [])] };
+    onUpdateStudent(updatedStudent);
+    setShowPositiveReasons(null);
+    setShowNegativeReasons(null);
+};
+
+const handleManualBehaviorSubmit = (type: BehaviorType, student: Student) => {
+    if (customBehaviorReason.trim()) {
+        handleAddBehavior(student, type, customBehaviorReason, parseInt(customBehaviorPoints) || 1);
+        setCustomBehaviorReason('');
+    }
+};
+
+const executeDeleteClass = (className: string) => {
+    if (!onDeleteClass) return;
+    if (confirm(`هل أنت متأكد من حذف الفصل "${className}"؟\nسيتم حذفه من سجلات جميع الطلاب.`)) {
+        onDeleteClass(className);
+        if (selectedClass === className) setSelectedClass('all');
+    }
+};
+
+const executeDeleteGrade = (grade: string) => {
+    if (!onDeleteClass) return;
+    const relatedClasses = classes.filter(c => c.startsWith(grade));
+    if (confirm(`هل أنت متأكد من حذف الصف "${grade}" بالكامل؟\nسيتم حذف الفصول التالية: ${relatedClasses.join(', ')}`)) {
+        relatedClasses.forEach(c => onDeleteClass(c));
+        if (selectedGrade === grade) {
+            setSelectedGrade('all');
+            setSelectedClass('all');
+        }
+    }
+};
+
+return (
+  <div className="flex flex-col h-full text-slate-800 relative bg-[#f8fafc] animate-in fade-in duration-500">
+      
+      {/* --- FEEDBACK ANIMATION OVERLAY --- */}
+      <AnimatePresence>
+          {feedbackAnimation && (
+              <motion.div 
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 15 }}
+                  className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none"
+              >
+                  <div className={`
+                      p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4 border-4
+                      backdrop-blur-xl
+                      ${feedbackAnimation.type === 'positive' 
+                          ? 'bg-emerald-500/90 border-emerald-600 text-white shadow-emerald-500/50' 
+                          : 'bg-rose-500/90 border-rose-600 text-white shadow-rose-500/50'}
+                  `}>
+                      <div className="bg-white/20 p-6 rounded-full shadow-inner">
+                          {feedbackAnimation.type === 'positive' ? (
+                              <div className="relative">
+                                  <Trophy className="w-20 h-20 text-yellow-300 drop-shadow-md" />
+                                  <PartyPopper className="w-12 h-12 text-white absolute -top-4 -right-4 animate-bounce" />
+                              </div>
+                          ) : (
+                              <div className="relative">
+                                  <Frown className="w-20 h-20 text-white drop-shadow-md" />
+                                  <CloudRain className="w-12 h-12 text-slate-200 absolute -top-4 -right-4 animate-pulse" />
+                              </div>
+                          )}
+                      </div>
+                      <h2 className="text-4xl font-black tracking-tight drop-shadow-sm">{feedbackAnimation.text}</h2>
+                  </div>
+              </motion.div>
+          )}
+      </AnimatePresence>
+
+      {/* ================= Header الثابت (تصميم جديد) ================= */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300">
+          
+          <div className="flex justify-between items-center mb-6 mt-2">
+              <h1 className="text-2xl font-black tracking-tight">قائمة الطلاب</h1>
+              
+              {/* زر القائمة المنسدلة (الثلاث شرط) */}
+              <div className="relative">
+                  <button 
+                      onClick={() => setShowMenuDropdown(!showMenuDropdown)} 
+                      className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10"
+                  >
+                      <Menu className="w-6 h-6" />
+                  </button>
+
+                  {/* القائمة المنسدلة للأدوات */}
+                  {showMenuDropdown && (
+                      <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)}></div>
+                          <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-top-left z-50 animate-in zoom-in-95 duration-200">
+                              <div className="flex flex-col py-1">
+                                  <button onClick={() => { setShowManualAddModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group text-slate-800">
+                                      <UserPlus className="w-4 h-4 text-[#1e3a8a]" />
+                                      <span className="text-xs font-bold">إضافة طالب</span>
+                                  </button>
+                                  <button onClick={() => { setShowImportModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
+                                      <FileSpreadsheet className="w-4 h-4 text-[#1e3a8a]" />
+                                      <span className="text-xs font-bold">استيراد من Excel</span>
+                                  </button>
+                                  <button onClick={() => { pickRandomStudent(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
+                                      <Sparkles className="w-4 h-4 text-[#1e3a8a]" />
+                                      <span className="text-xs font-bold">القرعة العشوائية</span>
+                                  </button>
+                                  <button onClick={() => { setShowManageClasses(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
+                                      <Settings className="w-4 h-4 text-[#1e3a8a]" />
+                                      <span className="text-xs font-bold">إعدادات الفصول</span>
+                                  </button>
+                              </div>
+                          </div>
+                      </>
+                  )}
+              </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mb-4">
+              <Search className="absolute right-3 top-3.5 w-4 h-4 text-blue-200" />
+              <input 
+                  type="text" 
+                  placeholder="بحث عن طالب..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white/10 backdrop-blur-md rounded-xl py-3 pr-10 pl-3 text-xs font-bold text-white placeholder-blue-200/70 outline-none border border-white/10 focus:bg-white/20 transition-all" 
+              />
+          </div>
+
+          {/* Hierarchy Filters */}
+          <div className="space-y-2">
+              {/* 1. Grades (Level) */}
+              {availableGrades.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                      <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === 'all' ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>كل المراحل</button>
+                      {availableGrades.map(g => (
+                          <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>صف {g}</button>
+                      ))}
+                  </div>
+              )}
+
+              {/* 2. Classes (Sub-level) */}
+              <div className="flex items-center gap-3">
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
+                      {visibleClasses.map(c => (
+                          <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${selectedClass === c ? 'bg-[#3b82f6] text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>{c}</button>
+                      ))}
+                      <button onClick={() => setShowAddClassModal(true)} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 active:scale-95 transition-all"><Plus className="w-4 h-4"/></button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* ================= List Content ================= */}
+      <div className="h-full overflow-y-auto custom-scrollbar">
+          
+          {/* Spacer to push content below fixed header */}
+          <div className="w-full h-[280px] shrink-0"></div>
+
+          <div className="px-4 pb-24 pt-2">
+              <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a8a]"></span>
+                      الطلاب ({filteredStudents.length})
+                  </h3>
+              </div>
+
+              {filteredStudents.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                      {filteredStudents.map(student => (
+                          <StudentItem 
+                              key={student.id} 
+                              student={student} 
+                              onAction={handleAction} 
+                              currentSemester={currentSemester}
+                          />
+                      ))}
+                  </div>
+              ) : (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                      <User className="w-16 h-16 text-gray-400 mb-4" />
+                      <p className="text-sm font-bold text-gray-500">لا يوجد طلاب مطابقين</p>
+                  </div>
+              )}
+          </div>
+      </div>
+
+      {/* ... Modals (Unchanged Logic) ... */}
+      <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
+          <div className="text-center text-slate-900">
+              <h3 className="font-black text-xl mb-4">إعدادات الفصول والصفوف</h3>
+              <p className="text-xs text-gray-500 mb-6 font-bold">يمكنك هنا حذف الفصول أو الصفوف الدراسية بالكامل. <br/> <span className="text-rose-500">تنبيه: الحذف سيؤثر على جميع الصفحات.</span></p>
+              <div className="space-y-6 text-right">
+                  <div>
+                      <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">المراحل الدراسية (Grades)</h4>
+                      {availableGrades.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2">
+                              {availableGrades.map(g => (
+                                  <div key={g} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                      <span className="text-sm font-bold">الصف {g}</span>
+                                      <button onClick={() => executeDeleteGrade(g)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الصف بالكامل">
+                                          <Trash2 className="w-4 h-4" />
+                                      </button>
+                                  </div>
+                              ))}
+                          </div>
+                      ) : <p className="text-[10px] text-gray-400">لا توجد مراحل مضافة.</p>}
+                  </div>
+                  <div>
+                      <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">الفصول (Classes)</h4>
+                      {classes.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                              {classes.map(c => (
+                                  <div key={c} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                      <span className="text-sm font-bold">{c}</span>
+                                      <button onClick={() => executeDeleteClass(c)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الفصل">
+                                          <Trash2 className="w-4 h-4" />
+                                      </button>
+                                  </div>
+                              ))}
+                          </div>
+                      ) : <p className="text-[10px] text-gray-400">لا توجد فصول مضافة.</p>}
+                  </div>
+              </div>
+              <button onClick={() => setShowManageClasses(false)} className="mt-6 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200">إغلاق</button>
+          </div>
+      </Modal>
+
+      <Modal isOpen={showManualAddModal} onClose={() => { setShowManualAddModal(false); setEditingStudent(null); setEditName(''); setEditPhone(''); setEditClass(''); }}>
+          <div className="text-center">
+              <h3 className="font-black text-xl mb-4 text-slate-800">{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</h3>
+              <div className="space-y-3">
+                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الطالب" value={editName} onChange={e => setEditName(e.target.value)} />
+                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="الصف (مثال: 5/1)" value={editClass} onChange={e => setEditClass(e.target.value)} />
+                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="رقم ولي الأمر (اختياري)" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" />
+                  <button onClick={handleSaveStudent} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm shadow-lg">حفظ</button>
+              </div>
+          </div>
+      </Modal>
+
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-md rounded-[2rem]">
+          <ExcelImport existingClasses={classes} onImport={(s) => { onBatchAddStudents(s); setShowImportModal(false); }} onAddClass={onAddClass} />
+      </Modal>
+
+      <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-xs rounded-[2rem]">
+          <div className="text-center">
+              <h3 className="font-black text-lg mb-4 text-slate-800">إضافة فصل جديد</h3>
+              <input autoFocus className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm mb-4 outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الفصل" value={newClassInput} onChange={e => setNewClassInput(e.target.value)} />
+              <button onClick={() => { if(newClassInput.trim()) { onAddClass(newClassInput.trim()); setNewClassInput(''); setShowAddClassModal(false); } }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm">إضافة</button>
+          </div>
+      </Modal>
+
+      <Modal isOpen={isRandomPicking || !!randomStudent} onClose={() => { setRandomStudent(null); setIsRandomPicking(false); }} className="max-w-xs rounded-[2.5rem]">
+          <div className="text-center py-6">
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-indigo-100 shadow-xl overflow-hidden relative bg-white">
+                  {randomStudent ? (
+                      randomStudent.avatar ? <img src={randomStudent.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-black text-indigo-600">{randomStudent.name.charAt(0)}</div>
+                  ) : (
+                      <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
+                  )}
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2 min-h-[2rem]">
+                  {randomStudent ? randomStudent.name : 'جاري الاختيار...'}
+              </h3>
+              {randomStudent && <p className="text-sm font-bold text-gray-500 mb-6">{randomStudent.classes[0]}</p>}
+              
+              {randomStudent && (
+                  <button onClick={() => { setRandomStudent(null); pickRandomStudent(); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg w-full">
+                      اختيار آخر
+                  </button>
+              )}
+          </div>
+      </Modal>
+
+      <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-xs rounded-[2rem]">
+          <div className="text-center">
+              <h3 className="font-black text-lg mb-4 text-emerald-600">سلوك إيجابي</h3>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                  {['مشاركة مميزة', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
+                      <button key={r} onClick={() => { if(showPositiveReasons) handleAddBehavior(showPositiveReasons.student, 'positive', r, 1); }} className="p-3 bg-white text-xs font-bold hover:bg-emerald-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
+                  ))}
+              </div>
+              <div className="flex gap-2">
+                  <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-gray-200 text-slate-800" />
+                  <button onClick={() => { if(showPositiveReasons) handleManualBehaviorSubmit('positive', showPositiveReasons.student); }} className="p-2 bg-emerald-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
+              </div>
+          </div>
+      </Modal>
+
+      <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)} className="max-w-xs rounded-[2rem]">
+          <div className="text-center">
+              <h3 className="font-black text-lg mb-4 text-rose-600">سلوك سلبي</h3>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                  {['إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
+                      <button key={r} onClick={() => { if(showNegativeReasons) handleAddBehavior(showNegativeReasons.student, 'negative', r, -1); }} className="p-3 bg-white text-xs font-bold hover:bg-rose-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
+                  ))}
+              </div>
+              <div className="flex gap-2">
+                  <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-gray-200 text-slate-800" />
+                  <button onClick={() => { if(showNegativeReasons) handleManualBehaviorSubmit('negative', showNegativeReasons.student); }} className="p-2 bg-rose-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
+              </div>
+          </div>
+      </Modal>
+
+  </div>
+);
+};
+
+export default StudentList;
