@@ -31,6 +31,19 @@ jobs:
           fi
           npx cap sync ios
 
+      # هذه الخطوة مهمة جداً للآيفون: إضافة نصوص طلب الإذن للكاميرا والصور
+      - name: Inject iOS Permissions
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          # إضافة وصف لاستخدام الكاميرا
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST
+          
+          # إضافة وصف لمكتبة الصور (قراءة)
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST
+          
+          # إضافة وصف لمكتبة الصور (إضافة/حفظ)
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST
+
       - name: Generate App Icons
         run: npx capacitor-assets generate --ios
 
