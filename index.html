@@ -1,213 +1,53 @@
 
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="vision" class="dark">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  
-  <title>راصد</title>
-  
-  <link rel="icon" type="image/png" href="icon.png?v=6">
-  <link rel="apple-touch-icon" href="icon.png?v=6">
-  
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="راصد">
-  
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0f172a">
-  <link rel="manifest" href="manifest.json">
-  
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            surface: {
-               DEFAULT: '#fdfcf4', 
-               variant: '#f0f4f8',
-            }
-          }
-        }
-      }
-    }
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
-  
-  <style>
-    :root { 
-      --sat: env(safe-area-inset-top, 20px); 
-      --sab: env(safe-area-inset-bottom, 20px); 
-    }
-    html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-      -webkit-tap-highlight-color: transparent;
-      height: 100dvh;
-      overscroll-behavior-y: none;
-    }
-    body { 
-      font-family: 'Tajawal', sans-serif; 
-      margin: 0; padding: 0; 
-      position: fixed; inset: 0; height: 100dvh; width: 100vw;
-      overflow: hidden;
-      -webkit-user-select: none; user-select: none;
-      font-size: 14px;
-      overscroll-behavior-y: none;
-      transition: background-color 0.5s ease, color 0.5s ease;
-    }
-
-    /* THEME: VISION (Dark Mode) */
-    html[data-theme='vision'] body {
-      background-color: #000000;
-      background-image: 
-        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-      color: #ffffff;
-    }
-
-    /* THEME: CERAMIC (Light iOS Mode) */
-    html[data-theme='ceramic'] body {
-      background-color: #f2f2f7; /* iOS System Gray 6 */
-      color: #000000;
-    }
-
-    #root {
-      height: 100%; width: 100%; display: flex; flex-direction: column;
-    }
-
-    #initial-loader {
-      position: fixed; inset: 0; background: #000; 
-      display: flex; flex-direction: column; align-items: center; 
-      justify-content: center; z-index: 9999;
-      transition: opacity 0.4s ease;
-    }
-    .loader-spinner {
-      width: 50px; height: 50px; border: 2px solid rgba(255,255,255,0.1);
-      border-top-color: #6366f1; border-radius: 50%;
-      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>راصد</title>
     
-    #loader-error {
-        display: none;
-        margin-top: 20px;
-        text-align: center;
-        animation: fadeIn 0.5s;
-    }
-    .retry-btn {
-        margin-top: 15px;
-        padding: 10px 20px;
-        background: rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-        color: white;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 20px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    /* VisionOS/iOS Scrollbar */
-    @media (pointer: coarse) {
-        .custom-scrollbar::-webkit-scrollbar, .scrollbar-thin::-webkit-scrollbar, ::-webkit-scrollbar {
-            width: 0px; height: 0px; background: transparent;
-        }
-    }
-    @media (pointer: fine) {
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.2);
-            border-radius: 20px;
-        }
-        html.dark ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        ::-webkit-scrollbar-thumb:hover { background-color: rgba(100, 116, 139, 0.4); }
-        html.dark ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.4); }
-        
-        .custom-scrollbar::-webkit-scrollbar, .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
-    }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    <!-- Generated CSS (Offline) -->
+    <link rel="stylesheet" href="./index.css">
     
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    
-  </style>
-
-  <script>
-    window.process = window.process || { env: { NODE_ENV: 'production' } };
-  </script>
+    <!-- No external scripts. All logic is bundled into index.js for full offline support -->
 <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@0.292.0",
-    "@capacitor/filesystem": "https://esm.sh/@capacitor/filesystem@5.0.0",
-    "@capacitor/core": "https://esm.sh/@capacitor/core@5.0.0",
-    "@capacitor/app": "https://esm.sh/@capacitor/app@5.0.0",
-    "@capacitor/local-notifications": "https://esm.sh/@capacitor/local-notifications@5.0.0",
-    "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
-    "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "@capacitor/share": "https://esm.sh/@capacitor/share@5.0.0",
-    "html-docx-js-typescript": "https://esm.sh/html-docx-js-typescript@0.1.5",
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
-    "react/": "https://esm.sh/react@18.3.1/",
-    "@capacitor/browser": "https://esm.sh/@capacitor/browser@5.0.0",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "framer-motion": "https://esm.sh/framer-motion@10.16.4?external=react,react-dom"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@capacitor/core": "https://esm.sh/@capacitor/core@^8.0.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "framer-motion": "https://esm.sh/framer-motion@^12.24.12",
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@^5.4.530",
+    "html2pdf.js": "https://esm.sh/html2pdf.js@^0.13.0",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "@capacitor/local-notifications": "https://esm.sh/@capacitor/local-notifications@^8.0.0",
+    "@capacitor/clipboard": "https://esm.sh/@capacitor/clipboard@^8.0.0",
+    "@capacitor/filesystem": "https://esm.sh/@capacitor/filesystem@^8.0.0",
+    "@capacitor/share": "https://esm.sh/@capacitor/share@^8.0.0",
+    "@capacitor/browser": "https://esm.sh/@capacitor/browser@^8.0.0",
+    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.0"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body oncontextmenu="return false;">
-  <div id="initial-loader">
-    <div class="loader-spinner"></div>
-    <div style="margin-top:20px; font-weight: 800; color: #fff; font-size: 16px; letter-spacing: 1px;">RASED OS</div>
-    <div style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 5px;">Loading Environment...</div>
+<body class="bg-[#F2F2F7] text-slate-900 select-none antialiased overflow-hidden">
+    <div id="root" class="h-full w-full"></div>
     
-    <div id="loader-error">
-        <p style="color: #ef4444; font-weight: bold; font-size: 12px;">Connection Timeout</p>
-        <button class="retry-btn" onclick="window.location.reload()">Reload System</button>
+    <!-- Loader -->
+    <div id="initial-loader" style="position:fixed;inset:0;background:#F2F2F7;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.4s;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:15px;">
+            <div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#4F46E5;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+            <p style="font-family:-apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;color:#6B7280;font-size:14px;">جاري التحميل...</p>
+        </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
-  </div>
 
-  <div id="root"></div>
-
-  <script type="module" src="./index.js?v=7.0.0"></script>
-  
-  <script>
-    window.onerror = function(msg) {
-      console.error("Global Error:", msg);
-      var loader = document.getElementById('initial-loader');
-      var errorDiv = document.getElementById('loader-error');
-      if(loader && errorDiv) {
-         document.querySelector('.loader-spinner').style.display = 'none';
-         errorDiv.style.display = 'block';
-         errorDiv.innerHTML += '<br><span style="font-size:10px;color:rgba(255,255,255,0.5)">' + msg + '</span>';
-      }
-      return false;
-    };
-
-    setTimeout(function() {
-      var loader = document.getElementById('initial-loader');
-      var errorDiv = document.getElementById('loader-error');
-      if(loader && loader.style.opacity !== '0' && errorDiv) {
-         errorDiv.style.display = 'block';
-      }
-    }, 10000);
-  </script>
+    <!-- Main Script (Bundled) -->
+    <script type="module" src="./index.js"></script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
