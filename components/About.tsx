@@ -72,10 +72,10 @@ const About: React.FC = () => {
 
           <div className="text-center mt-8 mb-4">
               <p className="text-[10px] font-bold text-slate-400 flex items-center justify-center gap-1">
-                  صنع بكل حب <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> في سلطنة عمان
+                 هديتي لكم با معلميني الاعزاء  <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> 
               </p>
               <p className="text-[10px] font-bold text-slate-300 mt-1">
-                  جميع الحقوق محفوظة © {new Date().getFullYear()}
+                 alzaabi555 جميع الحقوق محفوظة © {new Date().getFullYear()}
               </p>
           </div>
 
