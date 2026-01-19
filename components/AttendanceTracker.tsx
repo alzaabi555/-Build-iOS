@@ -1,533 +1,351 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Student, BehaviorType } from '../types';
-import { 
-  Search, ThumbsUp, ThumbsDown, Edit2, Sparkles, Trash2, Plus, 
-  UserPlus, Upload, Settings, Trophy, Frown, CloudRain, PartyPopper, 
-  Menu, FileSpreadsheet, X, Filter, User
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
+import { Student, AttendanceStatus } from '../types';
+import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, ArrowUpDown, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
+import * as XLSX from 'xlsx';
 import Modal from './Modal';
-import ExcelImport from './ExcelImport';
-import { useApp } from '../context/AppContext';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
-interface StudentListProps {
+interface AttendanceTrackerProps {
   students: Student[];
   classes: string[];
-  onAddClass: (name: string) => void;
-  onAddStudentManually: (name: string, className: string, phone?: string, avatar?: string) => void;
-  onBatchAddStudents: (students: Student[]) => void;
-  onUpdateStudent: (student: Student) => void;
-  onDeleteStudent: (id: string) => void;
-  onViewReport: (student: Student) => void;
-  currentSemester: '1' | '2';
-  onDeleteClass?: (className: string) => void; 
-  onSemesterChange?: (sem: '1' | '2') => void;
-  onEditClass?: (oldName: string, newName: string) => void;
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-const SOUNDS = {
-  positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-  negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
-};
+const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
+  const today = new Date().toLocaleDateString('en-CA'); 
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedGrade, setSelectedGrade] = useState<string>('all');
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
 
-const StudentItem = React.memo(({ student, onAction, currentSemester }: { 
-  student: Student, onAction: (s: Student, type: 'positive' | 'negative' | 'edit' | 'delete' | 'truant') => void, currentSemester: '1' | '2'
-}) => {
-  const totalScore = useMemo(() => (student.grades || []).filter(g => !g.semester || g.semester === currentSemester).reduce((sum, g) => sum + (Number(g.score) || 0), 0), [student.grades, currentSemester]);
-  const gradeSymbol = useMemo(() => { if (totalScore >= 90) return 'أ'; if (totalScore >= 80) return 'ب'; if (totalScore >= 65) return 'ج'; if (totalScore >= 50) return 'د'; return 'هـ'; }, [totalScore]);
-  
-  const gradeColor = useMemo(() => { 
-      if (totalScore >= 90) return 'text-emerald-700 bg-emerald-100 border-emerald-200'; 
-      if (totalScore >= 80) return 'text-blue-700 bg-blue-100 border-blue-200'; 
-      if (totalScore >= 65) return 'text-amber-700 bg-amber-100 border-amber-200'; 
-      return 'text-rose-700 bg-rose-100 border-rose-200'; 
-  }, [totalScore]);
+  const formatDateDisplay = (dateString: string) => {
+      const d = new Date(dateString);
+      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+
+  const getStatus = (student: Student) => {
+    return student.attendance.find(a => a.date === selectedDate)?.status;
+  };
+
+  const toggleAttendance = (studentId: string, status: AttendanceStatus) => {
+    setStudents(prev => prev.map(s => {
+      if (s.id !== studentId) return s;
+      const filtered = s.attendance.filter(a => a.date !== selectedDate);
+      const currentStatus = s.attendance.find(a => a.date === selectedDate)?.status;
+      
+      const newStudent = {
+        ...s,
+        attendance: currentStatus === status ? filtered : [...filtered, { date: selectedDate, status }]
+      };
+
+      if (status === 'truant' && currentStatus !== 'truant') {
+          setTimeout(() => setNotificationTarget({ student: newStudent, type: 'truant' }), 50);
+      }
+
+      return newStudent;
+    }));
+  };
+
+  const handleMarkAll = (status: AttendanceStatus | 'reset') => {
+      if (classFilter === 'all' && students.length > 50) {
+          if (!confirm(`سيتم تطبيق هذا الإجراء على جميع الطلاب (${students.length}). هل أنت متأكد؟`)) return;
+      }
+      
+      setStudents(prev => prev.map(s => {
+          const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
+          let matchesGrade = true;
+          if (selectedGrade !== 'all') {
+              matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
+          }
+
+          if (!matchesClass || !matchesGrade) return s;
+
+          const filtered = s.attendance.filter(a => a.date !== selectedDate);
+          if (status === 'reset') {
+              return { ...s, attendance: filtered };
+          }
+          return {
+              ...s,
+              attendance: [...filtered, { date: selectedDate, status }]
+          };
+      }));
+  };
+
+  const availableGrades = useMemo(() => {
+      const grades = new Set<string>();
+      students.forEach(s => {
+          if (s.grade) grades.add(s.grade);
+          else if (s.classes[0]) {
+              const match = s.classes[0].match(/^(\d+)/);
+              if (match) grades.add(match[1]);
+          }
+      });
+      return Array.from(grades).sort();
+  }, [students, classes]);
+
+  const visibleClasses = useMemo(() => {
+      if (selectedGrade === 'all') return classes;
+      return classes.filter(c => c.startsWith(selectedGrade));
+  }, [classes, selectedGrade]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
+      let matchesGrade = true;
+      if (selectedGrade !== 'all') {
+          matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
+      }
+      return matchesClass && matchesGrade;
+    });
+  }, [students, classFilter, selectedGrade]);
+
+  const stats = useMemo(() => {
+      const present = filteredStudents.filter(s => getStatus(s) === 'present').length;
+      const absent = filteredStudents.filter(s => getStatus(s) === 'absent').length;
+      const late = filteredStudents.filter(s => getStatus(s) === 'late').length;
+      const truant = filteredStudents.filter(s => getStatus(s) === 'truant').length;
+      return { present, absent, late, truant, total: filteredStudents.length };
+  }, [filteredStudents, selectedDate]);
+
+  const performNotification = async (method: 'whatsapp' | 'sms') => {
+      if(!notificationTarget || !notificationTarget.student.parentPhone) { alert('لا يوجد رقم هاتف مسجل'); return; }
+      const { student, type } = notificationTarget;
+      let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+      if (!cleanPhone || cleanPhone.length < 5) return alert('رقم الهاتف غير صحيح');
+      if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+      if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+      else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+      let statusText = '';
+      if (type === 'absent') statusText = 'غائب'; else if (type === 'late') statusText = 'متأخر'; else if (type === 'truant') statusText = 'تسرب من الحصة (هروب)';
+      const dateText = new Date().toLocaleDateString('ar-EG');
+      const msg = encodeURIComponent(`السلام عليكم، نود إشعاركم بأن الطالب ${student.name} تم تسجيل حالة: *${statusText}* اليوم (${dateText}). نرجو المتابعة.`);
+      if (method === 'whatsapp') {
+          if (window.electron) { window.electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); } 
+          else { const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; try { if (Capacitor.isNativePlatform()) { await Browser.open({ url: universalUrl }); } else { window.open(universalUrl, '_blank'); } } catch (e) { window.open(universalUrl, '_blank'); } }
+      } else { window.location.href = `sms:${cleanPhone}?body=${msg}`; }
+      setNotificationTarget(null);
+  };
+
+  const handleExportDailyExcel = async () => {
+      if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
+      setIsExportingExcel(true);
+      try {
+          const targetDate = new Date(selectedDate);
+          const year = targetDate.getFullYear();
+          const month = targetDate.getMonth();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          const data = filteredStudents.map((s, idx) => {
+              const row: any = { 'م': idx + 1, 'اسم الطالب': s.name, 'الفصل': s.classes[0] || '' };
+              let abs = 0, late = 0, truant = 0;
+              for (let d = 1; d <= daysInMonth; d++) {
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  const record = s.attendance.find(a => a.date === dateStr);
+                  let symbol = '';
+                  if (record) {
+                      if (record.status === 'present') symbol = '✓';
+                      else if (record.status === 'absent') { symbol = 'غ'; abs++; }
+                      else if (record.status === 'late') { symbol = 'ت'; late++; }
+                      else if (record.status === 'truant') { symbol = 'س'; truant++; }
+                  }
+                  row[`${d}`] = symbol;
+              }
+              row['مجموع الغياب'] = abs; row['مجموع التأخير'] = late; row['مجموع التسرب'] = truant;
+              return row;
+          });
+          const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(data);
+          const wscols = [{wch:5}, {wch:25}, {wch:10}]; for(let i=0; i<daysInMonth; i++) wscols.push({wch:3});
+          ws['!cols'] = wscols; if(!ws['!views']) ws['!views'] = []; ws['!views'].push({ rightToLeft: true });
+          XLSX.utils.book_append_sheet(wb, ws, `شهر_${month + 1}`);
+          const fileName = `Attendance_${month + 1}_${year}.xlsx`;
+          if (Capacitor.isNativePlatform()) {
+              const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+              const result = await Filesystem.writeFile({ path: fileName, data: wbout, directory: Directory.Cache });
+              await Share.share({ title: 'سجل الحضور الشهري', url: result.uri });
+          } else { XLSX.writeFile(wb, fileName); }
+      } catch (error) { console.error(error); alert('خطأ في التصدير'); } finally { setIsExportingExcel(false); }
+  };
 
   return (
-      <motion.div 
-          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 mb-3 rounded-[1.5rem] gap-4 sm:gap-0 relative overflow-hidden transition-all duration-300
-          bg-white hover:bg-white shadow-sm hover:shadow-md border border-slate-100 shimmer-hover hover:-translate-y-0.5"
-      >
-          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${totalScore >= 90 ? 'bg-emerald-500' : totalScore >= 50 ? 'bg-indigo-500' : 'bg-rose-500'}`}></div>
+    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 relative animate-in fade-in duration-500 font-sans">
+        
+        {/* ================= Fixed Header (Blue & Curved) ================= */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300">
+            
+            {/* Top Row: Title & Export */}
+            <div className="flex justify-between items-center mb-6 mt-2">
+                <h1 className="text-xl font-black tracking-wide">رصد الحضور</h1>
+                <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10" title="تصدير سجل شهري">
+                     {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
+                </button>
+            </div>
 
-          <div className="flex items-center gap-4 flex-1 min-w-0 relative z-10 pl-3">
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-slate-500 text-lg font-bold overflow-hidden shrink-0 shadow-inner border border-gray-100">
-                  {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover" /> : student.name.charAt(0)}
-              </div>
-              <div className="min-w-0">
-                  <h3 className="font-black text-slate-900 text-sm truncate group-hover:text-indigo-700 transition-colors">{student.name}</h3>
-                  <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-bold">{student.classes[0]}</span>
-                      <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border ${gradeColor}`}>{gradeSymbol} ({totalScore})</span>
-                  </div>
-              </div>
-          </div>
+            {/* Date Scroller (Glassmorphism) */}
+            <div className="flex items-center justify-between bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 mb-4 shadow-sm mx-1">
+                <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-3 rounded-xl hover:bg-white/10 active:scale-95 transition-all text-white"><ChevronDown className="w-5 h-5 rotate-90"/></button>
+                <div className="flex items-center gap-2 font-bold text-sm text-white px-4 py-2">
+                    <Calendar className="w-4 h-4 text-blue-200"/>
+                    {formatDateDisplay(selectedDate)}
+                </div>
+                <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toLocaleDateString('en-CA')); }} className="p-3 rounded-xl hover:bg-white/10 active:scale-95 transition-all text-white"><ChevronDown className="w-5 h-5 -rotate-90"/></button>
+            </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2 pl-1 relative z-10">
-              <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-100 shadow-inner">
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'positive'); }} className="w-10 h-10 rounded-lg flex items-center justify-center bg-white text-emerald-600 hover:text-white hover:bg-emerald-50 shadow-sm active:scale-95 transition-all">
-                      <ThumbsUp className="w-5 h-5" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'negative'); }} className="w-10 h-10 rounded-lg flex items-center justify-center bg-white text-rose-600 hover:text-white hover:bg-rose-50 shadow-sm active:scale-95 transition-all">
-                      <ThumbsDown className="w-5 h-5" />
-                  </button>
-              </div>
-              
-              <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
-              
-              <div className="flex items-center gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                  </button>
-              </div>
-          </div>
-      </motion.div>
+            {/* Filters */}
+            <div className="space-y-2 mb-2 px-1">
+                {availableGrades.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === 'all' ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>كل المراحل</button>
+                        {availableGrades.map(g => (
+                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>صف {g}</button>
+                        ))}
+                    </div>
+                )}
+
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {visibleClasses.map(c => (
+                        <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${classFilter === c ? 'bg-[#3b82f6] text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>{c}</button>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        {/* ================= Main Scrollable Content ================= */}
+        <div className="flex-1 h-full overflow-y-auto custom-scrollbar">
+            
+            {/* Space for Fixed Header + Floating Stats */}
+            <div className="w-full h-[270px] shrink-0"></div>
+
+            {/* Floating Stats Strip (Now overlaps the header curve) */}
+            <div className="px-4 -mt-8 mb-6 relative z-40">
+                <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-1">
+                    <div className="grid grid-cols-5 divide-x divide-x-reverse divide-slate-100">
+                        <button onClick={() => handleMarkAll('present')} className="py-3 flex flex-col items-center justify-center active:bg-gray-50 rounded-r-xl transition-colors group">
+                            <span className="text-[10px] font-bold text-gray-400 mb-1 group-hover:text-emerald-500">حضور</span>
+                            <span className="text-sm font-black text-emerald-600">{stats.present}</span>
+                        </button>
+                        <button onClick={() => handleMarkAll('absent')} className="py-3 flex flex-col items-center justify-center active:bg-gray-50 transition-colors group">
+                            <span className="text-[10px] font-bold text-gray-400 mb-1 group-hover:text-rose-500">غياب</span>
+                            <span className="text-sm font-black text-rose-600">{stats.absent}</span>
+                        </button>
+                        <button onClick={() => handleMarkAll('late')} className="py-3 flex flex-col items-center justify-center active:bg-gray-50 transition-colors group">
+                            <span className="text-[10px] font-bold text-gray-400 mb-1 group-hover:text-amber-500">تأخر</span>
+                            <span className="text-sm font-black text-amber-500">{stats.late}</span>
+                        </button>
+                        <button onClick={() => handleMarkAll('truant')} className="py-3 flex flex-col items-center justify-center active:bg-gray-50 transition-colors group">
+                            <span className="text-[10px] font-bold text-gray-400 mb-1 group-hover:text-purple-500">تسرب</span>
+                            <span className="text-sm font-black text-purple-600">{stats.truant}</span>
+                        </button>
+                        <button onClick={() => handleMarkAll('reset')} className="py-3 flex flex-col items-center justify-center active:bg-gray-50 rounded-l-xl transition-colors group">
+                            <span className="text-[10px] font-bold text-gray-400 mb-1 group-hover:text-slate-600">باقي</span>
+                            <span className="text-sm font-black text-slate-500">{stats.total - (stats.present + stats.absent + stats.late + stats.truant)}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Student List */}
+            <div className="px-4 pb-24">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a8a]"></span>
+                        قائمة الطلاب ({filteredStudents.length})
+                    </h3>
+                </div>
+
+                {filteredStudents.length > 0 ? (
+                    <div className="space-y-3">
+                        {filteredStudents.map((student, index) => {
+                            const status = getStatus(student);
+                            return (
+                                <div 
+                                    key={student.id} 
+                                    className={`
+                                        group flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden
+                                        ${status 
+                                            ? 'bg-white border-blue-200 shadow-md shadow-blue-500/10' 
+                                            : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-md shadow-sm'
+                                        }
+                                    `}
+                                >
+                                    {/* Status Indicator Bar */}
+                                    <div className={`absolute top-0 right-0 w-1 h-full transition-colors ${
+                                        status === 'present' ? 'bg-emerald-500' :
+                                        status === 'absent' ? 'bg-rose-500' :
+                                        status === 'late' ? 'bg-amber-500' :
+                                        status === 'truant' ? 'bg-purple-500' : 'bg-transparent'
+                                    }`}></div>
+
+                                    {/* Info */}
+                                    <div className="flex items-center gap-4 min-w-0 flex-1 relative z-10 pl-3">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shrink-0 bg-slate-50 text-slate-400 overflow-hidden border border-slate-100 shadow-sm`}>
+                                            {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover" /> : student.name.charAt(0)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className={`text-sm font-bold truncate ${status ? 'text-[#1e3a8a]' : 'text-slate-800'}`}>{student.name}</h3>
+                                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">{student.classes[0]}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-2 shrink-0 relative z-10">
+                                        <button onClick={() => toggleAttendance(student.id, 'present')} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500'}`}>
+                                            <Check className="w-5 h-5" strokeWidth={2.5} />
+                                        </button>
+                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500'}`}>
+                                            <X className="w-5 h-5" strokeWidth={2.5} />
+                                        </button>
+                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${status === 'late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' : 'bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}`}>
+                                            <Clock className="w-5 h-5" strokeWidth={2.5} />
+                                        </button>
+                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${status === 'truant' ? 'bg-purple-500 text-white shadow-lg shadow-purple-200' : 'bg-slate-50 text-slate-400 hover:bg-purple-50 hover:text-purple-500'}`}>
+                                            <DoorOpen className="w-5 h-5" strokeWidth={2.5} />
+                                        </button>
+                                        {/* زر إشعار ولي الأمر يظهر فقط عند وجود حالة */}
+                                        {status && status !== 'present' && (
+                                            <button onClick={() => setNotificationTarget({ student, type: status as any })} className="w-9 h-9 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center active:scale-95 hover:bg-blue-100 transition-colors ml-1 border border-blue-100">
+                                                <MessageCircle className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                        <UserCircle2 className="w-16 h-16 text-gray-300 mb-4" />
+                        <p className="text-xs font-bold text-gray-400">لا يوجد طلاب</p>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Notification Modal */}
+        <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="max-w-xs rounded-[2rem]">
+            <div className="text-center">
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 shadow-sm border border-blue-100">
+                    <MessageCircle className="w-8 h-8" />
+                </div>
+                <h3 className="font-black text-lg mb-1 text-slate-800">إشعار ولي الأمر</h3>
+                <p className="text-xs text-gray-500 mb-6 font-bold">{notificationTarget?.student.name} - {notificationTarget?.type === 'truant' ? 'تسرب من الحصة' : (notificationTarget?.type === 'absent' ? 'غياب' : 'تأخير')}</p>
+                
+                <div className="space-y-3">
+                    <button onClick={() => performNotification('whatsapp')} className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-200 transition-all active:scale-95">
+                        <MessageCircle className="w-5 h-5" /> واتساب
+                    </button>
+                    <button onClick={() => performNotification('sms')} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 border border-slate-700">
+                        رسالة نصية (SMS)
+                    </button>
+                    <button onClick={() => setNotificationTarget(null)} className="text-xs font-bold text-gray-400 mt-2 hover:text-gray-600">إلغاء</button>
+                </div>
+            </div>
+        </Modal>
+
+    </div>
   );
-}, (prev, next) => prev.student === next.student && prev.currentSemester === next.currentSemester);
-
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, currentSemester, onDeleteClass }) => {
-const { teacherInfo } = useApp();
-const [searchTerm, setSearchTerm] = useState('');
-const [selectedGrade, setSelectedGrade] = useState<string>('all');
-const [selectedClass, setSelectedClass] = useState<string>('all');
-
-const [showManualAddModal, setShowManualAddModal] = useState(false);
-const [showImportModal, setShowImportModal] = useState(false);
-const [showAddClassModal, setShowAddClassModal] = useState(false);
-const [showManageClasses, setShowManageClasses] = useState(false); 
-const [showMenuDropdown, setShowMenuDropdown] = useState(false); // القائمة المنسدلة الجديدة
-
-const [newClassInput, setNewClassInput] = useState('');
-const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-const [editName, setEditName] = useState('');
-const [editPhone, setEditPhone] = useState('');
-const [editClass, setEditClass] = useState('');
-const [editAvatar, setEditAvatar] = useState('');
-
-const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
-const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
-const [customBehaviorReason, setCustomBehaviorReason] = useState('');
-const [customBehaviorPoints, setCustomBehaviorPoints] = useState<string>('1');
-
-const [feedbackAnimation, setFeedbackAnimation] = useState<{ type: BehaviorType, text: string } | null>(null);
-
-const [randomStudent, setRandomStudent] = useState<Student | null>(null);
-const [isRandomPicking, setIsRandomPicking] = useState(false);
-
-const availableGrades = useMemo(() => {
-    const grades = new Set<string>();
-    students.forEach(s => {
-        if (s.grade) grades.add(s.grade);
-        else if (s.classes[0]) {
-            const match = s.classes[0].match(/^(\d+)/);
-            if (match) grades.add(match[1]);
-        }
-    });
-    return Array.from(grades).sort();
-}, [students, classes]);
-
-const visibleClasses = useMemo(() => {
-    if (selectedGrade === 'all') return classes;
-    return classes.filter(c => c.startsWith(selectedGrade));
-}, [classes, selectedGrade]);
-
-const filteredStudents = useMemo(() => students.filter(s => {
-    const matchName = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchClass = selectedClass === 'all' || s.classes?.includes(selectedClass);
-    
-    let matchGrade = true;
-    if (selectedGrade !== 'all') {
-        matchGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
-    }
-
-    return matchName && matchClass && matchGrade;
-}), [students, searchTerm, selectedClass, selectedGrade]);
-
-useEffect(() => {
-    if (feedbackAnimation) {
-        const timer = setTimeout(() => setFeedbackAnimation(null), 1800);
-        return () => clearTimeout(timer);
-    }
-}, [feedbackAnimation]);
-
-const playBehaviorSound = (type: BehaviorType) => {
-    try {
-        const audio = new Audio(type === 'positive' ? SOUNDS.positive : SOUNDS.negative);
-        audio.volume = 0.6; 
-        audio.play().catch(e => console.warn('Audio play blocked', e));
-    } catch (e) {
-        console.error('Failed to play sound', e);
-    }
 };
 
-const handleAction = (student: Student, type: 'positive' | 'negative' | 'edit' | 'delete' | 'truant') => {
-    if (type === 'positive') setShowPositiveReasons({ student });
-    else if (type === 'negative') setShowNegativeReasons({ student });
-    else if (type === 'edit') {
-        setEditingStudent(student);
-        setEditName(student.name);
-        setEditClass(student.classes[0]);
-        setEditPhone(student.parentPhone || '');
-        setEditAvatar(student.avatar || '');
-        setShowManualAddModal(true);
-    }
-    else if (type === 'delete') {
-        if(confirm(`حذف الطالب ${student.name}؟`)) onDeleteStudent(student.id);
-    }
-};
-
-const handleSaveStudent = () => {
-    if (editName.trim() && editClass.trim()) {
-        const inferredGrade = editClass.trim().match(/^(\d+)/)?.[1] || '';
-        if (editingStudent) {
-            onUpdateStudent({ ...editingStudent, name: editName, classes: [editClass], parentPhone: editPhone, avatar: editAvatar, grade: inferredGrade });
-        } else {
-            onAddStudentManually(editName, editClass, editPhone, editAvatar);
-        }
-        setShowManualAddModal(false);
-        setEditingStudent(null);
-        setEditName(''); setEditPhone(''); setEditClass(''); setEditAvatar('');
-    }
-};
-
-const pickRandomStudent = () => {
-    if (filteredStudents.length === 0) return;
-    setIsRandomPicking(true);
-    let count = 0;
-    const interval = setInterval(() => {
-        const random = filteredStudents[Math.floor(Math.random() * filteredStudents.length)];
-        setRandomStudent(random);
-        count++;
-        if (count > 10) {
-            clearInterval(interval);
-            setIsRandomPicking(false);
-        }
-    }, 100);
-};
-
-const handleAddBehavior = (student: Student, type: BehaviorType, reason: string, points: number) => {
-    playBehaviorSound(type);
-    setFeedbackAnimation({ 
-        type, 
-        text: type === 'positive' ? 'أحسنت!' : 'انتبه!' 
-    });
-    const newBehavior = {
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString(),
-        type,
-        description: reason,
-        points: Math.abs(points),
-        semester: currentSemester
-    };
-    const updatedStudent = { ...student, behaviors: [newBehavior, ...(student.behaviors || [])] };
-    onUpdateStudent(updatedStudent);
-    setShowPositiveReasons(null);
-    setShowNegativeReasons(null);
-};
-
-const handleManualBehaviorSubmit = (type: BehaviorType, student: Student) => {
-    if (customBehaviorReason.trim()) {
-        handleAddBehavior(student, type, customBehaviorReason, parseInt(customBehaviorPoints) || 1);
-        setCustomBehaviorReason('');
-    }
-};
-
-const executeDeleteClass = (className: string) => {
-    if (!onDeleteClass) return;
-    if (confirm(`هل أنت متأكد من حذف الفصل "${className}"؟\nسيتم حذفه من سجلات جميع الطلاب.`)) {
-        onDeleteClass(className);
-        if (selectedClass === className) setSelectedClass('all');
-    }
-};
-
-const executeDeleteGrade = (grade: string) => {
-    if (!onDeleteClass) return;
-    const relatedClasses = classes.filter(c => c.startsWith(grade));
-    if (confirm(`هل أنت متأكد من حذف الصف "${grade}" بالكامل؟\nسيتم حذف الفصول التالية: ${relatedClasses.join(', ')}`)) {
-        relatedClasses.forEach(c => onDeleteClass(c));
-        if (selectedGrade === grade) {
-            setSelectedGrade('all');
-            setSelectedClass('all');
-        }
-    }
-};
-
-return (
-  <div className="flex flex-col h-full text-slate-800 relative bg-[#f8fafc] animate-in fade-in duration-500">
-      
-      {/* --- FEEDBACK ANIMATION OVERLAY --- */}
-      <AnimatePresence>
-          {feedbackAnimation && (
-              <motion.div 
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: 'spring', damping: 15 }}
-                  className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none"
-              >
-                  <div className={`
-                      p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4 border-4
-                      backdrop-blur-xl
-                      ${feedbackAnimation.type === 'positive' 
-                          ? 'bg-emerald-500/90 border-emerald-600 text-white shadow-emerald-500/50' 
-                          : 'bg-rose-500/90 border-rose-600 text-white shadow-rose-500/50'}
-                  `}>
-                      <div className="bg-white/20 p-6 rounded-full shadow-inner">
-                          {feedbackAnimation.type === 'positive' ? (
-                              <div className="relative">
-                                  <Trophy className="w-20 h-20 text-yellow-300 drop-shadow-md" />
-                                  <PartyPopper className="w-12 h-12 text-white absolute -top-4 -right-4 animate-bounce" />
-                              </div>
-                          ) : (
-                              <div className="relative">
-                                  <Frown className="w-20 h-20 text-white drop-shadow-md" />
-                                  <CloudRain className="w-12 h-12 text-slate-200 absolute -top-4 -right-4 animate-pulse" />
-                              </div>
-                          )}
-                      </div>
-                      <h2 className="text-4xl font-black tracking-tight drop-shadow-sm">{feedbackAnimation.text}</h2>
-                  </div>
-              </motion.div>
-          )}
-      </AnimatePresence>
-
-      {/* ================= Header الثابت (تصميم جديد) ================= */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300">
-          
-          <div className="flex justify-between items-center mb-6 mt-2">
-              <h1 className="text-2xl font-black tracking-tight">قائمة الطلاب</h1>
-              
-              {/* زر القائمة المنسدلة (الثلاث شرط) */}
-              <div className="relative">
-                  <button 
-                      onClick={() => setShowMenuDropdown(!showMenuDropdown)} 
-                      className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10"
-                  >
-                      <Menu className="w-6 h-6" />
-                  </button>
-
-                  {/* القائمة المنسدلة للأدوات */}
-                  {showMenuDropdown && (
-                      <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)}></div>
-                          <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-top-left z-50 animate-in zoom-in-95 duration-200">
-                              <div className="flex flex-col py-1">
-                                  <button onClick={() => { setShowManualAddModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group text-slate-800">
-                                      <UserPlus className="w-4 h-4 text-[#1e3a8a]" />
-                                      <span className="text-xs font-bold">إضافة طالب</span>
-                                  </button>
-                                  <button onClick={() => { setShowImportModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
-                                      <FileSpreadsheet className="w-4 h-4 text-[#1e3a8a]" />
-                                      <span className="text-xs font-bold">استيراد من Excel</span>
-                                  </button>
-                                  <button onClick={() => { pickRandomStudent(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
-                                      <Sparkles className="w-4 h-4 text-[#1e3a8a]" />
-                                      <span className="text-xs font-bold">القرعة العشوائية</span>
-                                  </button>
-                                  <button onClick={() => { setShowManageClasses(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
-                                      <Settings className="w-4 h-4 text-[#1e3a8a]" />
-                                      <span className="text-xs font-bold">إعدادات الفصول</span>
-                                  </button>
-                              </div>
-                          </div>
-                      </>
-                  )}
-              </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative mb-4">
-              <Search className="absolute right-3 top-3.5 w-4 h-4 text-blue-200" />
-              <input 
-                  type="text" 
-                  placeholder="بحث عن طالب..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white/10 backdrop-blur-md rounded-xl py-3 pr-10 pl-3 text-xs font-bold text-white placeholder-blue-200/70 outline-none border border-white/10 focus:bg-white/20 transition-all" 
-              />
-          </div>
-
-          {/* Hierarchy Filters */}
-          <div className="space-y-2">
-              {/* 1. Grades (Level) */}
-              {availableGrades.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                      <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === 'all' ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>كل المراحل</button>
-                      {availableGrades.map(g => (
-                          <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>صف {g}</button>
-                      ))}
-                  </div>
-              )}
-
-              {/* 2. Classes (Sub-level) */}
-              <div className="flex items-center gap-3">
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
-                      {visibleClasses.map(c => (
-                          <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${selectedClass === c ? 'bg-[#3b82f6] text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>{c}</button>
-                      ))}
-                      <button onClick={() => setShowAddClassModal(true)} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 active:scale-95 transition-all"><Plus className="w-4 h-4"/></button>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      {/* ================= List Content ================= */}
-      <div className="h-full overflow-y-auto custom-scrollbar">
-          
-          {/* Spacer to push content below fixed header */}
-          <div className="w-full h-[280px] shrink-0"></div>
-
-          <div className="px-4 pb-24 pt-2">
-              <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a8a]"></span>
-                      الطلاب ({filteredStudents.length})
-                  </h3>
-              </div>
-
-              {filteredStudents.length > 0 ? (
-                  <div className="flex flex-col gap-3">
-                      {filteredStudents.map(student => (
-                          <StudentItem 
-                              key={student.id} 
-                              student={student} 
-                              onAction={handleAction} 
-                              currentSemester={currentSemester}
-                          />
-                      ))}
-                  </div>
-              ) : (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                      <User className="w-16 h-16 text-gray-400 mb-4" />
-                      <p className="text-sm font-bold text-gray-500">لا يوجد طلاب مطابقين</p>
-                  </div>
-              )}
-          </div>
-      </div>
-
-      {/* ... Modals (Unchanged Logic) ... */}
-      <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
-          <div className="text-center text-slate-900">
-              <h3 className="font-black text-xl mb-4">إعدادات الفصول والصفوف</h3>
-              <p className="text-xs text-gray-500 mb-6 font-bold">يمكنك هنا حذف الفصول أو الصفوف الدراسية بالكامل. <br/> <span className="text-rose-500">تنبيه: الحذف سيؤثر على جميع الصفحات.</span></p>
-              <div className="space-y-6 text-right">
-                  <div>
-                      <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">المراحل الدراسية (Grades)</h4>
-                      {availableGrades.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-2">
-                              {availableGrades.map(g => (
-                                  <div key={g} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                      <span className="text-sm font-bold">الصف {g}</span>
-                                      <button onClick={() => executeDeleteGrade(g)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الصف بالكامل">
-                                          <Trash2 className="w-4 h-4" />
-                                      </button>
-                                  </div>
-                              ))}
-                          </div>
-                      ) : <p className="text-[10px] text-gray-400">لا توجد مراحل مضافة.</p>}
-                  </div>
-                  <div>
-                      <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">الفصول (Classes)</h4>
-                      {classes.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar">
-                              {classes.map(c => (
-                                  <div key={c} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                      <span className="text-sm font-bold">{c}</span>
-                                      <button onClick={() => executeDeleteClass(c)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الفصل">
-                                          <Trash2 className="w-4 h-4" />
-                                      </button>
-                                  </div>
-                              ))}
-                          </div>
-                      ) : <p className="text-[10px] text-gray-400">لا توجد فصول مضافة.</p>}
-                  </div>
-              </div>
-              <button onClick={() => setShowManageClasses(false)} className="mt-6 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200">إغلاق</button>
-          </div>
-      </Modal>
-
-      <Modal isOpen={showManualAddModal} onClose={() => { setShowManualAddModal(false); setEditingStudent(null); setEditName(''); setEditPhone(''); setEditClass(''); }}>
-          <div className="text-center">
-              <h3 className="font-black text-xl mb-4 text-slate-800">{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</h3>
-              <div className="space-y-3">
-                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الطالب" value={editName} onChange={e => setEditName(e.target.value)} />
-                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="الصف (مثال: 5/1)" value={editClass} onChange={e => setEditClass(e.target.value)} />
-                  <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="رقم ولي الأمر (اختياري)" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" />
-                  <button onClick={handleSaveStudent} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm shadow-lg">حفظ</button>
-              </div>
-          </div>
-      </Modal>
-
-      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-md rounded-[2rem]">
-          <ExcelImport existingClasses={classes} onImport={(s) => { onBatchAddStudents(s); setShowImportModal(false); }} onAddClass={onAddClass} />
-      </Modal>
-
-      <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-xs rounded-[2rem]">
-          <div className="text-center">
-              <h3 className="font-black text-lg mb-4 text-slate-800">إضافة فصل جديد</h3>
-              <input autoFocus className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm mb-4 outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الفصل" value={newClassInput} onChange={e => setNewClassInput(e.target.value)} />
-              <button onClick={() => { if(newClassInput.trim()) { onAddClass(newClassInput.trim()); setNewClassInput(''); setShowAddClassModal(false); } }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm">إضافة</button>
-          </div>
-      </Modal>
-
-      <Modal isOpen={isRandomPicking || !!randomStudent} onClose={() => { setRandomStudent(null); setIsRandomPicking(false); }} className="max-w-xs rounded-[2.5rem]">
-          <div className="text-center py-6">
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-indigo-100 shadow-xl overflow-hidden relative bg-white">
-                  {randomStudent ? (
-                      randomStudent.avatar ? <img src={randomStudent.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-black text-indigo-600">{randomStudent.name.charAt(0)}</div>
-                  ) : (
-                      <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
-                  )}
-              </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2 min-h-[2rem]">
-                  {randomStudent ? randomStudent.name : 'جاري الاختيار...'}
-              </h3>
-              {randomStudent && <p className="text-sm font-bold text-gray-500 mb-6">{randomStudent.classes[0]}</p>}
-              
-              {randomStudent && (
-                  <button onClick={() => { setRandomStudent(null); pickRandomStudent(); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg w-full">
-                      اختيار آخر
-                  </button>
-              )}
-          </div>
-      </Modal>
-
-      <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-xs rounded-[2rem]">
-          <div className="text-center">
-              <h3 className="font-black text-lg mb-4 text-emerald-600">سلوك إيجابي</h3>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                  {['مشاركة مميزة', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
-                      <button key={r} onClick={() => { if(showPositiveReasons) handleAddBehavior(showPositiveReasons.student, 'positive', r, 1); }} className="p-3 bg-white text-xs font-bold hover:bg-emerald-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
-                  ))}
-              </div>
-              <div className="flex gap-2">
-                  <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-gray-200 text-slate-800" />
-                  <button onClick={() => { if(showPositiveReasons) handleManualBehaviorSubmit('positive', showPositiveReasons.student); }} className="p-2 bg-emerald-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
-              </div>
-          </div>
-      </Modal>
-
-      <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)} className="max-w-xs rounded-[2rem]">
-          <div className="text-center">
-              <h3 className="font-black text-lg mb-4 text-rose-600">سلوك سلبي</h3>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                  {['إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
-                      <button key={r} onClick={() => { if(showNegativeReasons) handleAddBehavior(showNegativeReasons.student, 'negative', r, -1); }} className="p-3 bg-white text-xs font-bold hover:bg-rose-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
-                  ))}
-              </div>
-              <div className="flex gap-2">
-                  <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-gray-200 text-slate-800" />
-                  <button onClick={() => { if(showNegativeReasons) handleManualBehaviorSubmit('negative', showNegativeReasons.student); }} className="p-2 bg-rose-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
-              </div>
-          </div>
-      </Modal>
-
-  </div>
-);
-};
-
-export default StudentList;
+export default AttendanceTracker;
