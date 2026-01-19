@@ -10,6 +10,11 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import html2pdf from 'html2pdf.js';
 
+// --- واجهة الخصائص الجديدة لدعم التوجيه المباشر ---
+interface ReportsProps {
+    initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'summon';
+}
+
 // --- إعدادات افتراضية لحماية التطبيق من الانهيار ---
 const DEFAULT_CERT_SETTINGS = {
     title: 'شهادة تقدير',
@@ -19,7 +24,6 @@ const DEFAULT_CERT_SETTINGS = {
 };
 
 // --- 1. محرك الطباعة والمعاينة (The Print Engine) ---
-// تم تحسينه لضمان عدم طباعة صفحات فارغة وضبط المقاسات بدقة
 const PrintPreviewModal: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void; 
@@ -35,36 +39,32 @@ const PrintPreviewModal: React.FC<{
 
         setIsPrinting(true);
         
-        // إعادة التمرير للأعلى لضمان التقاط كامل المحتوى
         const scrollContainer = document.getElementById('preview-scroll-container');
         if (scrollContainer) scrollContainer.scrollTop = 0;
 
-        // إعدادات دقيقة للطباعة
         const opt = {
-            margin: [0, 0, 0, 0], // هوامش صفرية للسيطرة الكاملة عبر CSS
+            margin: [0, 0, 0, 0],
             filename: `${title.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 }, // جودة صورة عالية
+            image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
-                scale: 2, // زيادة الدقة للنصوص
-                useCORS: true, // ضروري لتحميل صور البروفايل والشعارات
+                scale: 2,
+                useCORS: true, 
                 logging: false,
-                backgroundColor: '#ffffff', // خلفية بيضاء إجبارية
-                windowWidth: landscape ? 1123 : 794 // عرض A4 بالبكسل (تقريبي)
+                backgroundColor: '#ffffff',
+                windowWidth: landscape ? 1123 : 794 
             },
             jsPDF: { 
                 unit: 'mm', 
                 format: 'a4', 
                 orientation: landscape ? 'landscape' : 'portrait' 
             },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // منع قص الجداول
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         try {
-            // توليد ملف PDF
             const worker = html2pdf().set(opt).from(element).toPdf();
             
             if (Capacitor.isNativePlatform()) {
-                // منطق الموبايل (أندرويد/آيفون)
                 const pdfBase64 = await worker.output('datauristring');
                 const base64Data = pdfBase64.split(',')[1];
                 
@@ -80,7 +80,6 @@ const PrintPreviewModal: React.FC<{
                     dialogTitle: 'مشاركة التقرير'
                 });
             } else {
-                // منطق الويب (تحميل مباشر)
                 worker.save();
             }
         } catch (e) {
@@ -95,7 +94,6 @@ const PrintPreviewModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
-            {/* الشريط العلوي للمعاينة */}
             <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top">
                 <div className="flex items-center gap-3">
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowRight className="w-6 h-6" /></button>
@@ -114,14 +112,13 @@ const PrintPreviewModal: React.FC<{
                 </button>
             </div>
 
-            {/* منطقة العرض (Canvas) */}
             <div id="preview-scroll-container" className="flex-1 overflow-auto bg-slate-800 p-4 md:p-8 flex justify-center cursor-default">
                 <div 
                     id="preview-content-area" 
                     className="bg-white text-black shadow-2xl origin-top"
                     style={{ 
                         width: landscape ? '297mm' : '210mm', 
-                        minHeight: landscape ? '210mm' : '297mm', // الحد الأدنى لصفحة واحدة
+                        minHeight: landscape ? '210mm' : '297mm',
                         padding: '0', 
                         direction: 'rtl', 
                         fontFamily: 'Tajawal, sans-serif', 
@@ -207,7 +204,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
 
     const containerStyle: React.CSSProperties = {
         width: '100%',
-        height: '210mm', // ارتفاع صفحة A4 بالعرض
+        height: '210mm', 
         position: 'relative',
         backgroundColor: '#ffffff',
         color: '#000000',
@@ -305,7 +302,7 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
         <div className="w-full text-black bg-white p-16 font-serif text-right h-full" dir="rtl">
              <div className="text-center mb-12 border-b-2 border-black pb-6">
                 <div className="flex justify-center mb-4">
-                    {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <School className="w-20 h-20 text-slate-300"/>}
+                    {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <div className="w-20 h-20 bg-slate-100 rounded-full"></div>}
                 </div>
                 <h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التربية والتعليم</h3>
                 <h3 className="font-bold text-lg">مدرسة {teacherInfo?.school || '................'}</h3>
@@ -374,7 +371,6 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
     return (
         <div className="w-full text-black bg-white">
             {students.map((student: any, index: number) => {
-                // حسابات الدرجات والسلوك (نفس المنطق السابق)
                 const behaviors = (student.behaviors || []).filter((b: any) => !b.semester || b.semester === (semester || '1'));
                 const grades = (student.grades || []).filter((g: any) => !g.semester || g.semester === (semester || '1'));
                 
@@ -398,85 +394,52 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                 return (
                     <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-gray-300 page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
                         
-                        {/* Header */}
                         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-4">
-                            <div className="text-right w-1/3 text-sm font-bold"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p></div>
+                            <div className="text-right w-1/3 text-sm font-bold"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p><p>مدرسة {teacherInfo?.school}</p></div>
                             <div className="text-center w-1/3">
                                 {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-16 object-contain mx-auto" />}
-                                <h2 className="text-xl font-black underline mt-2">تقرير مستوى الطالب</h2>
+                                <h2 className="text-lg font-black underline mt-2 text-black">تقرير مستوى طالب</h2>
                             </div>
-                            <div className="text-left w-1/3 text-sm font-bold"><p>مدرسة {teacherInfo?.school}</p><p>العام: {teacherInfo?.academicYear}</p></div>
+                            <div className="text-left w-1/3 text-xs font-bold text-black"><p>العام: {teacherInfo?.academicYear}</p><p>الفصل: {semester === '1' ? 'الأول' : 'الثاني'}</p></div>
                         </div>
 
-                        {/* Student Info Card */}
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-2xl font-black mb-1">{student.name}</h3>
-                                <p className="text-base text-slate-600 font-bold">الصف: {student.classes[0]}</p>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="text-center bg-white p-2 rounded-lg border border-emerald-100 min-w-[80px]">
-                                    <span className="block text-emerald-600 font-black text-xl">{totalPositive}</span>
-                                    <span className="text-[10px] text-gray-500 font-bold">سلوك إيجابي</span>
-                                </div>
-                                <div className="text-center bg-white p-2 rounded-lg border border-rose-100 min-w-[80px]">
-                                    <span className="block text-rose-600 font-black text-xl">{totalNegative}</span>
-                                    <span className="text-[10px] text-gray-500 font-bold">سلوك سلبي</span>
-                                </div>
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 flex justify-between items-center text-black">
+                            <div><h3 className="text-2xl font-black mb-1">{student.name}</h3><p className="text-base text-slate-600 font-bold">الصف: {student.classes[0]}</p></div>
+                            <div className="flex gap-4 text-xs font-bold">
+                                <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded">إيجابي: {totalPositive}</span>
+                                <span className="bg-rose-100 text-rose-800 px-3 py-1 rounded">سلبي: {totalNegative}</span>
                             </div>
                         </div>
 
-                        {/* Grades Table */}
-                        <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">التحصيل الدراسي</h3>
-                        <table className="w-full border-collapse border border-black text-sm mb-8">
+                        <h3 className="font-bold mb-3 border-b border-black inline-block text-black">التحصيل الدراسي</h3>
+                        <table className="w-full border-collapse border border-black text-sm mb-8 text-black">
                             <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="border border-black p-3 text-right">المادة</th>
-                                    <th className="border border-black p-3 text-center">أداة التقويم</th>
-                                    <th className="border border-black p-3 text-center w-24">الدرجة</th>
+                                <tr className="bg-gray-100 text-black">
+                                    <th className="border border-black p-3">المادة</th><th className="border border-black p-3">الأداة</th><th className="border border-black p-3">الدرجة</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {continuousTools.map((t: any) => {
                                     const g = grades.find((r: any) => r.category.trim() === t.name.trim());
-                                    return <tr key={t.id}><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center">{t.name}</td><td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td></tr>
+                                    return <tr key={t.id}><td className="border border-black p-3 text-right">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center">{t.name}</td><td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td></tr>
                                 })}
                                 {finalTool && (() => {
                                     const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim());
-                                    return <tr><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center bg-pink-50 font-bold">{finalTool.name}</td><td className="border border-black p-3 text-center font-black">{g ? g.score : '-'}</td></tr>
+                                    return <tr><td className="border border-black p-3 text-right">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center bg-pink-50">{finalTool.name}</td><td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td></tr>
                                 })()}
-                                <tr className="bg-slate-200 font-bold">
-                                    <td colSpan={2} className="border border-black p-3 text-right text-base">المجموع الكلي</td>
-                                    <td className="border border-black p-3 text-center text-lg font-black">{totalScore}</td>
-                                </tr>
+                                <tr className="bg-slate-200 font-bold text-black"><td colSpan={2} className="border border-black p-3 text-right">المجموع الكلي</td><td className="border border-black p-3 text-center text-lg">{totalScore}</td></tr>
                             </tbody>
                         </table>
 
-                        {/* Attendance Summary */}
-                        <div className="flex gap-6 mb-12">
-                            <div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center">
-                                <p className="text-sm font-bold text-slate-500 mb-1">أيام الغياب</p>
-                                <p className="text-3xl font-black text-rose-600">{absenceCount}</p>
-                            </div>
-                            <div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center">
-                                <p className="text-sm font-bold text-slate-500 mb-1">مرات التسرب</p>
-                                <p className="text-3xl font-black text-purple-600">{truantCount}</p>
-                            </div>
+                        <div className="flex gap-6 mb-12 text-center text-black">
+                            <div className="flex-1 border border-slate-300 p-4 rounded"><p className="text-xs text-slate-500 font-bold">الغياب</p><p className="font-black text-rose-600 text-2xl">{absenceCount}</p></div>
+                            <div className="flex-1 border border-slate-300 p-4 rounded"><p className="text-xs text-slate-500 font-bold">التسرب</p><p className="font-black text-purple-600 text-2xl">{truantCount}</p></div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="flex justify-between items-end px-12 mt-auto">
-                            <div className="text-center">
-                                <p className="font-bold text-base mb-8">معلم المادة</p>
-                                <p className="font-bold text-lg">{teacherInfo?.name}</p>
-                            </div>
-                            <div className="text-center">
-                                {teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80 mix-blend-multiply" />}
-                            </div>
-                            <div className="text-center">
-                                <p className="font-bold text-base mb-8">مدير المدرسة</p>
-                                <p className="font-bold text-lg">........................</p>
-                            </div>
+                        <div className="flex justify-between items-end mt-auto px-8 text-black">
+                            <div className="text-center"><p className="font-bold text-sm mb-6">معلم المادة</p><p className="font-bold">{teacherInfo?.name}</p></div>
+                            <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-20 opacity-80 mix-blend-multiply" />}</div>
+                            <div className="text-center"><p className="font-bold text-sm mb-6">مدير المدرسة</p><p>................</p></div>
                         </div>
                     </div>
                 );
@@ -486,11 +449,14 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 };
 
 // --- المكون الرئيسي ---
-const Reports: React.FC = () => {
+const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const { students, setStudents, classes, teacherInfo, currentSemester, assessmentTools, certificateSettings, setCertificateSettings } = useApp();
-  const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'summon'>('student_report');
+  
+  // تفعيل التبويب القادم من الخاصية، أو الافتراضي
+  const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'summon'>(
+      initialTab || 'student_report'
+  );
 
-  // States
   const [stGrade, setStGrade] = useState<string>('all');
   const [stClass, setStClass] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -621,6 +587,7 @@ const Reports: React.FC = () => {
       </div>
 
       <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-200 min-h-[400px] shadow-xl relative animate-in slide-in-from-bottom-4 duration-300">
+        
         {/* === TAB 1: Student Report === */}
         {activeTab === 'student_report' && (
             <div className="space-y-6">
