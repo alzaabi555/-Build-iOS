@@ -4,7 +4,7 @@ import {
   BarChart3, Award, Globe, Database, Settings, ShieldCheck, 
   Menu, X, ChevronLeft, Lightbulb, MousePointerClick, FileText, 
   Download, Code, Smartphone, Monitor, Apple, CheckCircle2,
-  Zap, MessageCircle, FileSpreadsheet, Wand2
+  Zap, MessageCircle, FileSpreadsheet, Wand2, BellRing
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -22,9 +22,8 @@ const UserGuide: React.FC = () => {
     { id: 'ui', title: 'واجهة الاستخدام الجديدة', icon: LayoutDashboard },
     { id: 'students', title: 'الطلاب والسلوك', icon: Users },
     { id: 'attendance', title: 'الحضور والإنصراف', icon: CalendarCheck },
-    { id: 'grades', title: 'سجل الدرجات', icon: BarChart3 },
     { id: 'reports', title: 'مركز التقارير', icon: FileText },
-    { id: 'data', title: 'البيانات والأمان', icon: Database },
+    { id: 'data', title: 'النسخ الاحتياطي', icon: Database },
   ];
 
   const scrollToSection = (id: string) => {
@@ -330,7 +329,7 @@ const UserGuide: React.FC = () => {
                     </section>
 
                     <div className="text-center pt-8 border-t border-slate-200">
-                        <p className="text-xs font-bold text-slate-400">الزعابي </p>
+                        <p className="text-xs font-bold text-slate-400">ALZAABI555❤️</p>
                     </div>
                 </div>
             </main>
