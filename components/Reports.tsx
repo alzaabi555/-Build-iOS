@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Printer, FileSpreadsheet, User, Award, BarChart3, Check, Settings, FileWarning, ChevronDown, FileText, Loader2, ListChecks, Eye, Layers, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { Printer, FileSpreadsheet, User, Award, BarChart3, Settings, FileWarning, FileText, Loader2, Layers, ArrowRight, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
@@ -65,7 +65,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
     const finalWeight = settings.finalExamWeight;
     const continuousWeight = settings.totalScore - finalWeight;
 
-    // Filter tools for template
+    // Filter tools for template (exclude final exam from continuous columns)
     const continuousTools = tools.filter((t: any) => t.name.trim() !== finalExamName);
     
     return (
@@ -134,7 +134,6 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
     ); 
 };
 
-// ... (CertificatesTemplate, SummonTemplate, ClassReportsTemplate kept same, but logic uses helper if needed) ...
 const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => { 
     const safeSettings = settings || DEFAULT_CERT_SETTINGS; const title = safeSettings.title || 'شهادة شكر وتقدير'; const rawBody = safeSettings.bodyText || 'يسرنا تكريم الطالب...'; const hasImage = !!safeSettings.backgroundImage; 
     const containerStyle: React.CSSProperties = { width: '100%', height: '210mm', position: 'relative', backgroundColor: '#ffffff', color: '#000000', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', ...(hasImage ? { backgroundImage: `url('${safeSettings.backgroundImage}')`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' } : { border: '10px double #047857' }) }; 
@@ -147,7 +146,6 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
     return (<div className="w-full text-black bg-white p-16 font-serif text-right h-full" dir="rtl"><div className="text-center mb-12 border-b-2 border-black pb-6"><div className="flex justify-center mb-4">{teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <div className="w-20 h-20 bg-slate-100 rounded-full"></div>}</div><h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التربية والتعليم</h3><h3 className="font-bold text-lg">مدرسة {teacherInfo?.school || '................'}</h3></div><div className="bg-gray-50 border border-gray-300 p-6 rounded-2xl mb-10 flex justify-between items-center shadow-sm"><div><p className="text-gray-500 text-sm font-bold mb-1">إلى الفاضل ولي أمر الطالب:</p><h2 className="text-2xl font-black text-slate-900">{student.name}</h2></div><div className="text-left"><p className="font-bold text-base">الصف: {data.className}</p><p className="font-bold text-base text-gray-500">التاريخ: {data.issueDate}</p></div></div><h2 className="text-center text-4xl font-black underline mb-12">استدعاء ولي أمر</h2><div className="text-2xl leading-loose text-justify mb-10 px-4"><p className="mb-4">السلام عليكم ورحمة الله وبركاته،،،</p><p>نود إفادتكم بضرورة الحضور إلى المدرسة يوم <strong>{data.date}</strong> الساعة <strong>{data.time}</strong>، وذلك لمناقشة الأمر التالي:</p></div><div className="bg-white border-2 border-black p-8 text-center text-2xl font-bold rounded-2xl mb-12 shadow-sm min-h-[120px] flex items-center justify-center">{data.reason}</div>{data.procedures && data.procedures.length > 0 && (<div className="mb-12 border border-dashed border-gray-400 p-6 rounded-xl bg-slate-50"><p className="font-bold underline mb-4 text-xl">الإجراءات المتخذة مسبقاً:</p><ul className="list-disc pr-8 text-xl space-y-2">{data.procedures.map((p:any) => <li key={p}>{p}</li>)}</ul></div>)}<p className="text-xl mt-12 mb-20 text-center font-bold">شاكرين لكم حسن تعاونكم واهتمامكم بمصلحة الطالب.</p><div className="flex justify-between items-end px-10 mt-auto"><div className="text-center"><p className="font-bold text-xl mb-8">معلم المادة</p><p className="text-2xl font-black">{teacherInfo?.name}</p></div><div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-40 opacity-80 mix-blend-multiply" />}</div><div className="text-center"><p className="font-bold text-xl mb-8">مدير المدرسة</p><p className="text-2xl font-black">....................</p></div></div></div>); 
 };
 
-// Class Reports - Using Dynamic Grading too
 const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools }: any) => { 
     const settings = getGradingSettings();
     const finalExamName = settings.finalExamName.trim();
@@ -179,7 +177,9 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
         return (<div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-gray-300 page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}><div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-4"><div className="text-right w-1/3 text-sm font-bold"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p><p>مدرسة {teacherInfo?.school}</p></div><div className="text-center w-1/3">{teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-16 object-contain mx-auto" />}<h2 className="text-xl font-black underline mt-2 text-black">تقرير مستوى طالب</h2></div><div className="text-left w-1/3 text-sm font-bold"><p>العام: {teacherInfo?.academicYear}</p><p>الفصل: {semester === '1' ? 'الأول' : 'الثاني'}</p></div></div><div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 flex justify-between items-center text-black"><div><h3 className="text-2xl font-black mb-1">{student.name}</h3><p className="text-base text-slate-600 font-bold">الصف: {student.classes[0]}</p></div><div className="flex gap-4 text-xs font-bold"><span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded">إيجابي: {totalPositive}</span><span className="bg-rose-100 text-rose-800 px-3 py-1 rounded">سلبي: {totalNegative}</span></div></div><h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">التحصيل الدراسي</h3><table className="w-full border-collapse border border-black text-sm mb-8"><thead><tr className="bg-gray-100"><th className="border border-black p-3 text-right">المادة</th><th className="border border-black p-3 text-center">أداة التقويم</th><th className="border border-black p-3 text-center w-24">الدرجة</th></tr></thead><tbody>{continuousTools.map((t: any) => { const g = grades.find((r: any) => r.category.trim() === t.name.trim()); return <tr key={t.id}><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center">{t.name}</td><td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td></tr> })}{finalTool && (() => { const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim()); return <tr><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center bg-pink-50 font-bold">{finalTool.name}</td><td className="border border-black p-3 text-center font-black">{g ? g.score : '-'}</td></tr> })()}<tr className="bg-slate-200 font-bold"><td colSpan={2} className="border border-black p-3 text-right text-base">المجموع الكلي</td><td className="border border-black p-3 text-center text-lg font-black">{totalScore}</td></tr></tbody></table><div className="flex gap-6 mb-12"><div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center"><p className="text-sm font-bold text-slate-500 mb-1">أيام الغياب</p><p className="text-3xl font-black text-rose-600">{absenceCount}</p></div><div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center"><p className="text-sm font-bold text-slate-500 mb-1">مرات التسرب</p><p className="text-3xl font-black text-purple-600">{truantCount}</p></div></div><div className="flex justify-between items-end px-12 mt-auto"><div className="text-center"><p className="font-bold text-base mb-8">معلم المادة</p><p className="font-bold text-lg">{teacherInfo?.name}</p></div><div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80 mix-blend-multiply" />}</div><div className="text-center"><p className="font-bold text-base mb-8">مدير المدرسة</p><p className="font-bold text-lg">........................</p></div></div></div>); })}</div>); 
 };
 
-// ... (Rest of Reports component with activeTab logic - Kept Same) ...
+// =================================================================================
+// 3. UI (Main Component)
+// =================================================================================
 const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const { students, setStudents, classes, teacherInfo, currentSemester, assessmentTools, certificateSettings, setCertificateSettings } = useApp();
   const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'summon'>(initialTab || 'student_report');
@@ -241,10 +241,9 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const availableProceduresList = ['تنبيه شفوي', 'تعهد خطي', 'اتصال هاتفي', 'إشعار واتساب', 'تحويل أخصائي'];
   const toggleProcedure = (proc: string) => setTakenProcedures(prev => prev.includes(proc) ? prev.filter(p => p !== proc) : [...prev, proc]);
 
-  // Preview Functions
+  // Preview Functions (Corrected: No useApp inside)
   const openGradesPreview = () => {
     if (filteredStudentsForGrades.length === 0) return alert('لا يوجد طلاب');
-    const assessmentTools = useApp().assessmentTools; // Ensure we have latest tools
     setPreviewData({ isOpen: true, title: 'سجل الدرجات', landscape: true, content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? 'الكل' : gradesClass} /> });
   };
 
@@ -262,7 +261,6 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const openClassReportsPreview = () => {
       if (filteredStudentsForStudentTab.length === 0) return alert('لا يوجد طلاب في هذا الفصل');
-      const assessmentTools = useApp().assessmentTools;
       setPreviewData({ isOpen: true, title: `تقارير الصف ${stClass}`, landscape: false, content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} semester={currentSemester} assessmentTools={assessmentTools} /> });
   };
 
