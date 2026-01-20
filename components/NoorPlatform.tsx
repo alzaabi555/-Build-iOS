@@ -1,89 +1,113 @@
+import React, { useState, useRef } from 'react';
+import { Globe, RefreshCw, ExternalLink, ChevronLeft, ShieldCheck, Lock, RotateCw, AlertCircle } from 'lucide-react';
 
-import React from 'react';
-import { ExternalLink, Globe, Lock, ShieldCheck, ChevronRight, Smartphone } from 'lucide-react';
-import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
+const NoorPage: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [key, setKey] = useState(0); 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-const NoorPlatform: React.FC = () => {
-  const url = "https://lms.moe.gov.om/student/users/login";
+  const NOOR_URL = "https://lms.moe.gov.om/"; 
 
-  const handleOpenPlatform = async () => {
-    if (Capacitor.isNativePlatform()) {
-        await Browser.open({ url: url, presentationStyle: 'fullscreen' });
-    } else {
-        window.open(url, '_blank');
-    }
+  const handleReload = () => {
+    setIsLoading(true);
+    setKey(prev => prev + 1);
+  };
+
+  const handleOpenExternal = () => {
+    window.open(NOOR_URL, '_blank');
   };
 
   return (
-    <div className="flex flex-col h-full glass-heavy rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-in fade-in duration-500 border border-white/20">
-      
-      {/* Decorative Header (Transparent with Blur) */}
-      <div className="p-8 flex flex-col items-center justify-center text-center border-b border-white/10 bg-white/5 backdrop-blur-md">
-         <div className="w-24 h-24 glass-icon rounded-[2rem] flex items-center justify-center relative shadow-xl mb-4 border border-white/20">
-            <img 
-                src="noor_logo.png" 
-                className="w-full h-full object-contain drop-shadow-md opacity-90 hover:opacity-100 transition-opacity" 
-                alt="شعار نور" 
-                onError={(e) => {
-                    e.currentTarget.style.display='none'; 
-                    const icon = document.getElementById('fallback-globe');
-                    if(icon) icon.classList.remove('hidden');
-                }} 
-            />
-            <Globe id="fallback-globe" className="w-10 h-10 text-blue-400 hidden" />
-            <div className="absolute -bottom-2 -right-2 bg-emerald-500 p-1.5 rounded-xl border-2 border-white/10 shadow-lg">
-                <Lock className="w-3 h-3 text-white" />
-            </div>
-         </div>
-         
-         <h2 className="text-xl font-black text-slate-900 dark:text-white mb-1 text-glow">منصة نور التعليمية</h2>
-         <p className="text-[10px] font-bold text-slate-500 dark:text-white/60 max-w-[250px] leading-relaxed">
-            الوصول المباشر للمنصة عبر المتصفح الآمن
-         </p>
-      </div>
+    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 font-sans relative animate-in fade-in duration-500">
+        
+        {/* ================= HEADER ================= */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-8 transition-all duration-300">
+            <div className="flex justify-between items-center mt-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-sm">
+                        <Globe className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-black tracking-wide flex items-center gap-2">
+                            المنصة التعليمية
+                            {/* تعديل: لون خلفية صلب وواضح */}
+                            <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full border border-emerald-400 flex items-center gap-1 shadow-sm">
+                                <Lock className="w-3 h-3" /> آمن
+                            </span>
+                        </h1>
+                        <p className="text-[10px] text-blue-100 font-bold opacity-90">بوابة التعليم الإلكتروني (MOE)</p>
+                    </div>
+                </div>
 
-      {/* Action Section */}
-      <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6">
-         
-         {/* تم تغيير اللون هنا إلى الأسود الشفاف */}
-         <div className="glass-card p-4 rounded-2xl border border-black/20 w-full bg-black/30 shimmer-hover">
-            <div className="flex gap-3 items-start">
-               <ShieldCheck className="w-5 h-5 text-white/70 shrink-0 mt-0.5" />
-               <p className="text-[10px] font-bold text-white/80 leading-relaxed text-right">
-                  سيتم فتح المنصة في نافذة مخصصة. 
-                  <br/>
-                  للعودة للتطبيق، استخدم زر <strong>"Done"</strong> أو <strong>"إغلاق"</strong>.
-               </p>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleReload} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all active:scale-95 border border-white/10" title="تحديث الصفحة">
+                        <RotateCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={handleOpenExternal} className="bg-white text-[#1e3a8a] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg hover:bg-slate-100 transition-all active:scale-95">
+                        <ExternalLink className="w-4 h-4" />
+                        <span className="hidden sm:inline">فتح خارجي</span>
+                    </button>
+                </div>
             </div>
-         </div>
+        </div>
 
-         <button 
-            onClick={handleOpenPlatform}
-            className="group w-full bg-blue-600 hover:bg-blue-500 text-white rounded-2xl p-3 pl-4 flex items-center transition-all shadow-lg shadow-blue-500/30 active:scale-95 border border-blue-400/50 shimmer-hover"
-         >
-            <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                <ExternalLink className="w-6 h-6 text-white" />
+        {/* ================= CONTENT AREA ================= */}
+        <div className="flex-1 h-full pt-[120px] px-4 pb-24 overflow-hidden flex flex-col">
+            
+            <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-slate-200 relative overflow-hidden flex flex-col mt-4">
+                
+                {/* Browser Toolbar - تعديل: نص أغمق */}
+                <div className="bg-slate-50 border-b border-slate-200 p-3 flex items-center gap-3 px-4">
+                    <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                    </div>
+                    <div className="flex-1 bg-white border border-slate-300 rounded-lg py-1.5 px-3 flex items-center gap-2 text-xs text-slate-800 font-bold shadow-sm">
+                        <Lock className="w-3 h-3 text-emerald-600" />
+                        <span className="truncate font-mono dir-ltr select-all">{NOOR_URL}</span>
+                    </div>
+                </div>
+
+                {/* Iframe */}
+                <div className="flex-1 relative bg-slate-100 w-full h-full">
+                    {isLoading && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
+                            <div className="w-12 h-12 border-4 border-indigo-100 border-t-[#1e3a8a] rounded-full animate-spin mb-4"></div>
+                            {/* تعديل: نص التحميل أغمق */}
+                            <p className="text-sm font-black text-indigo-900">جاري الاتصال بالمنصة...</p>
+                        </div>
+                    )}
+                    
+                    <iframe 
+                        key={key}
+                        ref={iframeRef}
+                        src={NOOR_URL}
+                        className="w-full h-full border-none"
+                        onLoad={() => setIsLoading(false)}
+                        title="Oman Educational Platform"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                    />
+
+                    {/* Fallback Message - تعديل جذري للألوان */}
+                    <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none px-4">
+                        <div className="inline-flex items-center gap-2 bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xl border border-amber-700 pointer-events-auto">
+                            <AlertCircle className="w-4 h-4 fill-white text-amber-600" />
+                            <span>إذا لم تظهر الصفحة، استخدم زر "فتح خارجي" بالأعلى</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="flex-1 text-right pr-4">
-                <span className="block text-sm font-black">فتح موقع نور</span>
-                <span className="block text-[9px] font-bold text-blue-200">فتح في متصفح التطبيق</span>
+
+            {/* Footer Note - تعديل: نص أغمق */}
+            <div className="text-center mt-4">
+                <p className="text-[10px] text-slate-600 font-black flex items-center justify-center gap-1 opacity-80">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> اتصال مشفر وآمن عبر وزارة التربية والتعليم
+                </p>
             </div>
-            <ChevronRight className="w-5 h-5 text-blue-200" />
-         </button>
-
-      </div>
-      
-      {/* Footer */}
-      <div className="p-4 text-center border-t border-white/5">
-         <p className="text-[9px] font-bold text-slate-400 dark:text-white/30 flex items-center justify-center gap-2">
-            <Smartphone className="w-3 h-3" />
-            متوافق مع الوضع الأفقي والكمبيوتر اللوحي
-         </p>
-      </div>
-
+        </div>
     </div>
   );
 };
 
-export default NoorPlatform;
+export default NoorPage;
