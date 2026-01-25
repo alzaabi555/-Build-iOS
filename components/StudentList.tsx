@@ -3,7 +3,7 @@ import { Student, BehaviorType } from '../types';
 import { 
   Search, Edit2, Sparkles, Trash2, Plus, 
   UserPlus, Settings, Trophy, Frown, CloudRain, PartyPopper, 
-  Menu, FileSpreadsheet, Smile, AlertCircle, User
+  Menu, FileSpreadsheet, Smile, AlertCircle, User, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
@@ -33,23 +33,20 @@ const SOUNDS = {
 const StudentItem = React.memo(({ student, onAction, currentSemester }: { 
   student: Student, onAction: (s: Student, type: 'positive' | 'negative' | 'edit' | 'delete') => void, currentSemester: '1' | '2'
 }) => {
-  // حساب مجموع السلوك (إيجابي - سلبي) لتحديد لون البطاقة
   const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === currentSemester);
   const positivePoints = behaviors.filter(b => b.type === 'positive').reduce((acc, b) => acc + b.points, 0);
   const negativePoints = behaviors.filter(b => b.type === 'negative').reduce((acc, b) => acc + Math.abs(b.points), 0);
   const netScore = positivePoints - negativePoints;
 
-  // تحديد ستايل البطاقة بناءً على الرصيد
-  let cardStyle = "bg-white border-slate-100"; // متعادل
-  if (netScore > 0) cardStyle = "bg-emerald-50/60 border-emerald-200 ring-1 ring-emerald-100"; // إيجابي
-  if (netScore < 0) cardStyle = "bg-rose-50/60 border-rose-200 ring-1 ring-rose-100"; // سلبي
+  let cardStyle = "bg-white border-slate-100";
+  if (netScore > 0) cardStyle = "bg-emerald-50/60 border-emerald-200 ring-1 ring-emerald-100";
+  if (netScore < 0) cardStyle = "bg-rose-50/60 border-rose-200 ring-1 ring-rose-100";
 
   return (
       <motion.div 
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
           className={`group flex flex-col p-5 mb-3 rounded-[1.8rem] border transition-all duration-300 shadow-sm hover:shadow-md relative overflow-hidden ${cardStyle}`}
       >
-          {/* الجزء العلوي: المعلومات وأزرار التعديل */}
           <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-4">
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold overflow-hidden shrink-0 shadow-sm border border-black/5 ${netScore > 0 ? 'bg-emerald-100 text-emerald-600' : netScore < 0 ? 'bg-rose-100 text-rose-600' : 'bg-white text-slate-400'}`}>
@@ -59,7 +56,6 @@ const StudentItem = React.memo(({ student, onAction, currentSemester }: {
                       <h3 className="font-black text-slate-900 text-base leading-tight mb-1">{student.name}</h3>
                       <div className="flex items-center gap-2">
                           <span className="text-[10px] bg-white/60 text-slate-600 px-2 py-0.5 rounded-lg font-bold border border-black/5">{student.classes[0]}</span>
-                          {/* عرض الرصيد كنقطة ملونة */}
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${netScore > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : netScore < 0 ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                               {netScore > 0 ? `+${netScore}` : netScore} نقطة
                           </span>
@@ -67,7 +63,6 @@ const StudentItem = React.memo(({ student, onAction, currentSemester }: {
                   </div>
               </div>
 
-              {/* أزرار الإدارة (قلم وسلة) */}
               <div className="flex gap-1">
                   <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors">
                       <Edit2 className="w-4 h-4" />
@@ -78,7 +73,6 @@ const StudentItem = React.memo(({ student, onAction, currentSemester }: {
               </div>
           </div>
 
-          {/* الجزء السفلي: أزرار السلوك الكبيرة */}
           <div className="flex gap-3 mt-2">
               <button 
                   onClick={(e) => { e.stopPropagation(); onAction(student, 'positive'); }} 
@@ -102,7 +96,7 @@ const StudentItem = React.memo(({ student, onAction, currentSemester }: {
 }, (prev, next) => prev.student === next.student && prev.currentSemester === next.currentSemester);
 
 const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, currentSemester, onDeleteClass }) => {
-  const { teacherInfo } = useApp();
+  const { teacherInfo, periodTimes } = useApp(); // ✅ استدعاء إعدادات الحصص
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -120,15 +114,43 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [editClass, setEditClass] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
 
-  // حالات النوافذ المنبثقة للسلوك
   const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
   const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
   const [customBehaviorReason, setCustomBehaviorReason] = useState('');
   const [customBehaviorPoints, setCustomBehaviorPoints] = useState<string>('1');
+  
+  // ✅ الحالة التي ستحمل رقم الحصة الحالية تلقائياً
+  const [currentAutoPeriod, setCurrentAutoPeriod] = useState<string | null>(null);
 
   const [feedbackAnimation, setFeedbackAnimation] = useState<{ type: BehaviorType, text: string } | null>(null);
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
+
+  // ✅ دالة ذكية لحساب الحصة الحالية بناءً على الوقت
+  useEffect(() => {
+      const calculatePeriod = () => {
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          
+          const activePeriod = periodTimes.find(pt => {
+              const [sh, sm] = pt.startTime.split(':').map(Number);
+              const [eh, em] = pt.endTime.split(':').map(Number);
+              const start = sh * 60 + sm;
+              const end = eh * 60 + em;
+              return currentMinutes >= start && currentMinutes <= end;
+          });
+
+          if (activePeriod) {
+              setCurrentAutoPeriod(activePeriod.periodNumber.toString());
+          } else {
+              setCurrentAutoPeriod(null); // خارج وقت الحصص
+          }
+      };
+
+      calculatePeriod(); // حساب فوري
+      const timer = setInterval(calculatePeriod, 60000); // تحديث كل دقيقة
+      return () => clearInterval(timer);
+  }, [periodTimes]);
 
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
@@ -194,10 +216,22 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const handleAddBehavior = (student: Student, type: BehaviorType, reason: string, points: number) => {
       playBehaviorSound(type);
       setFeedbackAnimation({ type, text: type === 'positive' ? 'أحسنت!' : 'انتبه!' });
-      const newBehavior = { id: Math.random().toString(36).substr(2, 9), date: new Date().toISOString(), type, description: reason, points: Math.abs(points), semester: currentSemester };
+      
+      const newBehavior = { 
+          id: Math.random().toString(36).substr(2, 9), 
+          date: new Date().toISOString(), 
+          type, 
+          description: reason, 
+          points: Math.abs(points), 
+          semester: currentSemester,
+          // ✅ يتم حفظ الحصة تلقائياً هنا
+          period: currentAutoPeriod || undefined 
+      };
+      
       const updatedStudent = { ...student, behaviors: [newBehavior, ...(student.behaviors || [])] };
       onUpdateStudent(updatedStudent);
-      setShowPositiveReasons(null); setShowNegativeReasons(null);
+      setShowPositiveReasons(null); 
+      setShowNegativeReasons(null);
   };
 
   const handleManualBehaviorSubmit = (type: BehaviorType, student: Student) => {
@@ -214,6 +248,20 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       const relatedClasses = classes.filter(c => c.startsWith(grade));
       if (confirm(`هل أنت متأكد من حذف الصف "${grade}" بالكامل؟\nسيتم حذف الفصول التالية: ${relatedClasses.join(', ')}`)) { relatedClasses.forEach(c => onDeleteClass(c)); if (selectedGrade === grade) { setSelectedGrade('all'); setSelectedClass('all'); } }
   };
+
+  // ✅ مكون عرض الحصة الحالية (للمعلومات فقط)
+  const CurrentPeriodInfo = () => (
+      <div className={`mb-4 p-2 rounded-xl text-center text-xs font-bold border ${currentAutoPeriod ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+          {currentAutoPeriod ? (
+              <span className="flex items-center justify-center gap-2">
+                  <Clock size={14} className="animate-pulse"/>
+                  يتم التسجيل في الحصة: {currentAutoPeriod}
+              </span>
+          ) : (
+              <span>خارج أوقات الحصص (لن يتم تحديد حصة)</span>
+          )}
+      </div>
+  );
 
   return (
     <div className="flex flex-col h-full text-slate-800 relative bg-[#f8fafc] animate-in fade-in duration-500">
@@ -311,6 +359,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 <h3 className="font-black text-lg mb-4 text-emerald-600 flex items-center justify-center gap-2">
                     <Smile className="w-6 h-6" /> سلوك إيجابي
                 </h3>
+                
+                {/* ✅ عرض معلومات الحصة الحالية */}
+                <CurrentPeriodInfo />
+
                 <div className="grid grid-cols-2 gap-2 mb-4">
                     {['مشاركة مميزة', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
                         <button 
@@ -346,6 +398,10 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 <h3 className="font-black text-lg mb-4 text-rose-600 flex items-center justify-center gap-2">
                     <AlertCircle className="w-6 h-6" /> سلوك سلبي
                 </h3>
+
+                {/* ✅ عرض معلومات الحصة الحالية */}
+                <CurrentPeriodInfo />
+
                 <div className="grid grid-cols-2 gap-2 mb-4">
                     {['إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
                         <button 
