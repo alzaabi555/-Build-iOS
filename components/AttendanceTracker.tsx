@@ -69,14 +69,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       
       const newStudent = {
         ...s,
-        attendance: currentStatus === status ? filtered : [...filtered, { date: selectedDate, status }]
+        attendance: currentStatus === status ? filtered : [...filtered, { 
+            date: selectedDate, 
+            status,
+            // ✅ حفظ الحصة الحالية عند الغياب أو التسرب
+            period: (status === 'truant' || status === 'absent') ? currentSessionInfo.period : undefined
+        }]
       };
 
-      // إذا كانت الحالة سلبية، اعرض خيار المراسلة تلقائياً بعد لحظة قصيرة
       if ((status === 'absent' || status === 'late' || status === 'truant') && currentStatus !== status) {
-          // لا نجبره، لكن الزر سيظهر في البطاقة. 
-          // إذا أردت فتح النافذة تلقائياً يمكنك إلغاء تعليق السطر التالي:
-          // setTimeout(() => setNotificationTarget({ student: newStudent, type: status }), 300);
+          // يمكن تفعيل التنبيه التلقائي هنا إذا أردت
       }
 
       return newStudent;
@@ -103,7 +105,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           }
           return {
               ...s,
-              attendance: [...filtered, { date: selectedDate, status }]
+              attendance: [...filtered, { 
+                  date: selectedDate, 
+                  status,
+                  period: (status === 'truant' || status === 'absent') ? currentSessionInfo.period : undefined
+              }]
           };
       }));
   };
@@ -144,21 +150,18 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       return { present, absent, late, truant, total: filteredStudents.length };
   }, [filteredStudents, selectedDate]);
 
-  // --- Notification Logic Fix ---
   const performNotification = async (method: 'whatsapp' | 'sms') => {
       if(!notificationTarget || !notificationTarget.student.parentPhone) { alert('لا يوجد رقم هاتف مسجل'); return; }
       const { student, type } = notificationTarget;
       
-      // 1. Clean the phone number
       let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
       
-      // 2. Add Country Code (Oman 968) if missing
       if (cleanPhone.length === 8) {
-          cleanPhone = '968' + cleanPhone; // Local mobile (e.g. 99xxxxxx)
+          cleanPhone = '968' + cleanPhone;
       } else if (cleanPhone.startsWith('00')) {
-          cleanPhone = cleanPhone.substring(2); // Remove leading 00
+          cleanPhone = cleanPhone.substring(2);
       } else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) {
-          cleanPhone = '968' + cleanPhone.substring(1); // Handle 099xxxxxx case
+          cleanPhone = '968' + cleanPhone.substring(1);
       }
 
       if (cleanPhone.length < 8) {
@@ -194,7 +197,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   };
 
   const handleExportDailyExcel = async () => {
-      // (نفس كود التصدير السابق)
       if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
       setIsExportingExcel(true);
       try {
@@ -300,7 +302,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                         {filteredStudents.map((student) => {
                             const status = getStatus(student);
                             
-                            // 2. تلوين البطاقة بالكامل حسب الحالة
                             let cardClasses = "bg-white border-slate-200";
                             if (status === 'present') cardClasses = "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300 shadow-emerald-100";
                             else if (status === 'absent') cardClasses = "bg-rose-50 border-rose-300 ring-1 ring-rose-300 shadow-rose-100";
