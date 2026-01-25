@@ -1,7 +1,6 @@
-
 export interface Student {
   id: string;
-  ministryId?: string; // معرف الوزارة للمزامنة
+  ministryId?: string;
   name: string;
   grade: string;
   classes: string[];
@@ -11,19 +10,20 @@ export interface Student {
   parentPhone?: string;
   avatar?: string;
   spentCoins?: number; 
-  groupId?: string | null; // معرف الفريق (ديناميكي)
+  groupId?: string | null;
   examPapers?: ExamPaper[];
 }
 
 export interface Group {
   id: string;
   name: string;
-  color: string; // Tailwind color
+  color: string;
 }
 
 export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
+  period?: string; // 👈 تمت الإضافة: رقم الحصة
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'truant';
@@ -35,6 +35,7 @@ export interface BehaviorRecord {
   description: string;
   points: number;
   semester?: '1' | '2';
+  period?: string; // 👈 تمت الإضافة: رقم الحصة
 }
 
 export type BehaviorType = 'positive' | 'negative';
@@ -42,7 +43,7 @@ export type BehaviorType = 'positive' | 'negative';
 export interface GradeRecord {
   id: string;
   subject: string;
-  category: string; // "short_test_1", "project", etc.
+  category: string;
   score: number;
   maxScore: number;
   date: string;
@@ -51,13 +52,13 @@ export interface GradeRecord {
 
 export interface ScheduleDay {
   dayName: string;
-  periods: string[]; // Array of class names or subjects for 8 periods
+  periods: string[];
 }
 
 export interface PeriodTime {
   periodNumber: number;
-  startTime: string; // "07:30"
-  endTime: string;   // "08:10"
+  startTime: string;
+  endTime: string;
 }
 
 export interface AssessmentTool {
@@ -69,11 +70,11 @@ export interface AssessmentTool {
 export interface CertificateSettings {
   title: string;
   bodyText: string;
-  backgroundImage?: string; // Base64 string for custom background
-  showDefaultDesign: boolean; // Toggle built-in CSS shapes
+  backgroundImage?: string;
+  showDefaultDesign: boolean;
 }
 
-// --- أنواع بيانات الوزارة (Ministry Sync) ---
+// --- Ministry Sync ---
 export interface MinistrySession {
   userId: string;
   auth: string;
@@ -95,7 +96,7 @@ export interface StdsGradeDetail {
   Notes: string;
 }
 
-// --- Exam Grading Types ---
+// --- Exam Grading ---
 export interface GradingData {
   mcq: (number | null)[];
   essay: { [key: string]: { [part: string]: number } };
@@ -104,15 +105,13 @@ export interface GradingData {
 export interface ExamPaper {
   id: string;
   title: string;
-  fileData: string; // Base64 string
+  fileData: string;
   date: string;
   gradingData?: GradingData;
   totalScore?: number;
   maxScore?: number;
 }
 
-// --- تعريف الجسر الإلكتروني (Electron Bridge) ---
-// هذا يسمح لـ TypeScript بمعرفة أن window.electron موجود وآمن للاستخدام
 declare global {
   interface Window {
     electron?: {
