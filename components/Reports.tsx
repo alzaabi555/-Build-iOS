@@ -20,7 +20,6 @@ const DEFAULT_CERT_SETTINGS = {
     backgroundImage: ''
 };
 
-// --- Helper: Read grading settings globally ---
 const getGradingSettings = () => {
     const saved = localStorage.getItem('rased_grading_settings');
     return saved ? JSON.parse(saved) : { totalScore: 100, finalExamWeight: 40, finalExamName: 'الامتحان النهائي' };
@@ -144,7 +143,7 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
         <div className="w-full text-black bg-white p-16 font-serif text-right h-full" dir="rtl">
             <div className="text-center mb-12 border-b-2 border-black pb-6">
                 <div className="flex justify-center mb-4">{teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <div className="w-20 h-20 bg-slate-100 rounded-full border"></div>}</div>
-                <h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التربية والتعليم</h3>
+                <h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التعليم</h3>
                 <h3 className="font-bold text-lg">مدرسة {teacherInfo?.school || '................'}</h3>
             </div>
             <div className="bg-gray-50 border border-gray-300 p-6 rounded-2xl mb-10 flex justify-between items-center shadow-sm">
@@ -233,22 +232,46 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const [previewData, setPreviewData] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; landscape?: boolean }>({ isOpen: false, title: '', content: null });
 
-  // Helpers
+  // ✅ تحديث المنطق: استخراج المراحل بدقة (نفس المنطق المستخدم في StudentList)
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
-      students.forEach(s => { if (s.grade) grades.add(s.grade); else if (s.classes[0]) { const match = s.classes[0].match(/^(\d+)/); if (match) grades.add(match[1]); } });
-      if (grades.size === 0 && classes.length > 0) return ['عام']; return Array.from(grades).sort();
+      classes.forEach(c => {
+          if (c.includes('/')) {
+              grades.add(c.split('/')[0].trim());
+          } else {
+              const numMatch = c.match(/^(\d+)/);
+              if (numMatch) grades.add(numMatch[1]);
+              else grades.add(c.split(' ')[0]);
+          }
+      });
+      students.forEach(s => { if (s.grade) grades.add(s.grade); });
+      if (grades.size === 0 && classes.length > 0) return ['عام'];
+      
+      return Array.from(grades).sort((a, b) => {
+          const numA = parseInt(a);
+          const numB = parseInt(b);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.localeCompare(b);
+      });
   }, [students, classes]);
 
-  const getClassesForGrade = (grade: string) => grade === 'all' ? classes : classes.filter(c => c.startsWith(grade));
+  // ✅ تحديث: جلب الفصول بناءً على المرحلة (مع دعم الصيغة الجديدة)
+  const getClassesForGrade = (grade: string) => {
+      if (grade === 'all') return classes;
+      return classes.filter(c => {
+          if (c.includes('/')) return c.split('/')[0].trim() === grade;
+          return c.startsWith(grade);
+      });
+  };
+
   const filteredStudentsForStudentTab = useMemo(() => students.filter(s => s.classes.includes(stClass)), [students, stClass]);
   const filteredStudentsForGrades = useMemo(() => students.filter(s => gradesClass === 'all' || s.classes.includes(gradesClass)), [students, gradesClass]);
   const filteredStudentsForCert = useMemo(() => students.filter(s => s.classes.includes(certClass)), [students, certClass]);
   const availableStudentsForSummon = useMemo(() => students.filter(s => s.classes.includes(summonClass)), [summonClass, students]);
 
-  useEffect(() => { if(getClassesForGrade(stGrade).length > 0) setStClass(getClassesForGrade(stGrade)[0]); }, [stGrade]);
-  useEffect(() => { if(getClassesForGrade(certGrade).length > 0) setCertClass(getClassesForGrade(certGrade)[0]); }, [certGrade]);
-  useEffect(() => { if(getClassesForGrade(summonGrade).length > 0) setSummonClass(getClassesForGrade(summonGrade)[0]); }, [summonGrade]);
+  useEffect(() => { const cls = getClassesForGrade(stGrade); if(cls.length > 0) setStClass(cls[0]); }, [stGrade, classes]);
+  useEffect(() => { const cls = getClassesForGrade(certGrade); if(cls.length > 0) setCertClass(cls[0]); }, [certGrade, classes]);
+  useEffect(() => { const cls = getClassesForGrade(summonGrade); if(cls.length > 0) setSummonClass(cls[0]); }, [summonGrade, classes]);
   useEffect(() => { if (certificateSettings) setTempCertSettings(certificateSettings); }, [certificateSettings]);
 
   const handleUpdateStudent = (updatedStudent: Student) => { setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s)); setViewingStudent(updatedStudent); };
