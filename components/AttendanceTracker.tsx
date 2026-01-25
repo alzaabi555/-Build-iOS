@@ -72,15 +72,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         attendance: currentStatus === status ? filtered : [...filtered, { 
             date: selectedDate, 
             status,
-            // ✅ حفظ الحصة الحالية عند الغياب أو التسرب
             period: (status === 'truant' || status === 'absent') ? currentSessionInfo.period : undefined
         }]
       };
-
-      if ((status === 'absent' || status === 'late' || status === 'truant') && currentStatus !== status) {
-          // يمكن تفعيل التنبيه التلقائي هنا إذا أردت
-      }
-
       return newStudent;
     }));
   };
@@ -94,7 +88,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
           let matchesGrade = true;
           if (selectedGrade !== 'all') {
-              matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
+             // منطق التطابق المحدث
+             if (s.grade === selectedGrade) matchesGrade = true;
+             else if (s.classes[0]) {
+                 if (s.classes[0].includes('/')) matchesGrade = s.classes[0].split('/')[0].trim() === selectedGrade;
+                 else matchesGrade = s.classes[0].startsWith(selectedGrade);
+             }
           }
 
           if (!matchesClass || !matchesGrade) return s;
@@ -114,29 +113,48 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       }));
   };
 
+  // ✅ تحديث: منطق استخراج المراحل الموحد
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
-      students.forEach(s => {
-          if (s.grade) grades.add(s.grade);
-          else if (s.classes[0]) {
-              const match = s.classes[0].match(/^(\d+)/);
-              if (match) grades.add(match[1]);
+      classes.forEach(c => {
+          if (c.includes('/')) {
+              grades.add(c.split('/')[0].trim());
+          } else {
+              const numMatch = c.match(/^(\d+)/);
+              if (numMatch) grades.add(numMatch[1]);
+              else grades.add(c.split(' ')[0]);
           }
       });
-      return Array.from(grades).sort();
+      students.forEach(s => { if (s.grade) grades.add(s.grade); });
+      
+      return Array.from(grades).sort((a, b) => {
+          const numA = parseInt(a);
+          const numB = parseInt(b);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.localeCompare(b);
+      });
   }, [students, classes]);
 
+  // ✅ تحديث: منطق تصفية الفصول بناءً على المرحلة المختارة
   const visibleClasses = useMemo(() => {
       if (selectedGrade === 'all') return classes;
-      return classes.filter(c => c.startsWith(selectedGrade));
+      return classes.filter(c => {
+          if (c.includes('/')) return c.split('/')[0].trim() === selectedGrade;
+          return c.startsWith(selectedGrade);
+      });
   }, [classes, selectedGrade]);
 
+  // ✅ تحديث: منطق تصفية الطلاب
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
       const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
       let matchesGrade = true;
       if (selectedGrade !== 'all') {
-          matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
+          if (s.grade === selectedGrade) matchesGrade = true;
+          else if (s.classes[0]) {
+              if (s.classes[0].includes('/')) matchesGrade = s.classes[0].split('/')[0].trim() === selectedGrade;
+              else matchesGrade = s.classes[0].startsWith(selectedGrade);
+          } else matchesGrade = false;
       }
       return matchesClass && matchesGrade;
     });
