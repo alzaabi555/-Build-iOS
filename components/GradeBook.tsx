@@ -18,11 +18,10 @@ interface GradeBookProps {
   teacherInfo?: { name: string; school: string; subject: string; governorate: string };
 }
 
-// الإعدادات الافتراضية (يمكن للمعلم تغييرها)
 const DEFAULT_GRADING_SETTINGS = {
     totalScore: 100,
-    finalExamWeight: 40, // 40 للأساسي (5-9)، يمكن تغييره لـ 60 أو 70 أو 0
-    finalExamName: 'الامتحان النهائي' // يمكن تغييره لـ "المشروع" أو غيره
+    finalExamWeight: 40,
+    finalExamName: 'الامتحان النهائي'
 };
 
 const GradeBook: React.FC<GradeBookProps> = ({ 
@@ -37,7 +36,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const { assessmentTools, setAssessmentTools } = useApp();
   const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
   
-  // --- Grading Settings State (Local Persistence) ---
   const [gradingSettings, setGradingSettings] = useState(() => {
       const saved = localStorage.getItem('rased_grading_settings');
       return saved ? JSON.parse(saved) : DEFAULT_GRADING_SETTINGS;
@@ -63,7 +61,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [score, setScore] = useState('');
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
-  // Save settings whenever they change
   useEffect(() => {
       localStorage.setItem('rased_grading_settings', JSON.stringify(gradingSettings));
   }, [gradingSettings]);
@@ -77,22 +74,47 @@ const GradeBook: React.FC<GradeBookProps> = ({
      if (showAddGrade && !editingGrade) { setSelectedToolId(''); setScore(''); }
   }, [showAddGrade, editingGrade]);
 
+  // ✅ 1. تحديث منطق استخراج المراحل (نفس المنطق الموحد الجديد)
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
-      students.forEach(s => { if (s.grade) grades.add(s.grade); else if (s.classes[0]) { const match = s.classes[0].match(/^(\d+)/); if (match) grades.add(match[1]); } });
-      return Array.from(grades).sort();
+      
+      classes.forEach(c => {
+          if (c.includes('/')) {
+              grades.add(c.split('/')[0].trim());
+          } else {
+              const numMatch = c.match(/^(\d+)/);
+              if (numMatch) grades.add(numMatch[1]);
+              else grades.add(c.split(' ')[0]);
+          }
+      });
+
+      students.forEach(s => {
+          if (s.grade) grades.add(s.grade);
+      });
+
+      return Array.from(grades).sort((a, b) => {
+          const numA = parseInt(a);
+          const numB = parseInt(b);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.localeCompare(b);
+      });
   }, [students, classes]);
 
-  const visibleClasses = useMemo(() => { if (selectedGrade === 'all') return classes; return classes.filter(c => c.startsWith(selectedGrade)); }, [classes, selectedGrade]);
+  // ✅ 2. تحديث فلترة الفصول بناءً على المرحلة
+  const visibleClasses = useMemo(() => {
+      if (selectedGrade === 'all') return classes;
+      return classes.filter(c => {
+          if (c.includes('/')) return c.split('/')[0].trim() === selectedGrade;
+          return c.startsWith(selectedGrade);
+      });
+  }, [classes, selectedGrade]);
+
   const cleanText = (text: string) => { if (!text) return ''; return String(text).trim(); };
   const normalizeText = (text: string) => { if (!text) return ''; return String(text).trim().toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ـ]/g, ''); };
   const extractNumericScore = (val: any): number | null => { if (val === undefined || val === null || val === '') return null; const strVal = String(val).trim(); const cleanNum = strVal.replace(/[^0-9.]/g, ''); const num = Number(cleanNum); return isNaN(num) || cleanNum === '' ? null : num; };
 
-  // --- نظام الرموز (ثابت لجميع المراحل) ---
   const getGradeSymbol = (score: number) => {
-      // التأكد من النسبة المئوية إذا كانت الدرجة الكلية ليست 100
       const percentage = (score / gradingSettings.totalScore) * 100;
-      
       if (percentage >= 90) return 'أ';
       if (percentage >= 80) return 'ب';
       if (percentage >= 65) return 'ج';
@@ -109,13 +131,24 @@ const GradeBook: React.FC<GradeBookProps> = ({
       return 'text-rose-600 bg-rose-50';
   };
 
+  // ✅ 3. تحديث فلترة الطلاب
   const filteredStudents = useMemo(() => {
     if (!Array.isArray(students)) return [];
     return students.filter(s => {
       if (!s || typeof s !== 'object') return false;
       const matchesClass = selectedClass === 'all' || (s.classes && s.classes.includes(selectedClass));
+      
       let matchesGrade = true;
-      if (selectedGrade !== 'all') { matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade)); }
+      if (selectedGrade !== 'all') {
+          // التحقق من المرحلة في بداية اسم الفصل أو حقل grade
+          if (s.grade === selectedGrade) matchesGrade = true;
+          else if (s.classes[0]) {
+              if (s.classes[0].includes('/')) matchesGrade = s.classes[0].split('/')[0].trim() === selectedGrade;
+              else matchesGrade = s.classes[0].startsWith(selectedGrade);
+          } else {
+              matchesGrade = false;
+          }
+      }
       return matchesClass && matchesGrade;
     });
   }, [students, selectedClass, selectedGrade]);
@@ -125,14 +158,13 @@ const GradeBook: React.FC<GradeBookProps> = ({
       return student.grades.filter(g => { if (!g.semester) return sem === '1'; return g.semester === sem; }); 
   };
 
-  // ... (Tool Management Functions: handleAddTool, handleDeleteTool, etc. - Kept Same) ...
+  // ... (Rest of functions: handleAddTool, handleDeleteTool, etc. - Kept Same) ...
   const handleAddTool = () => { if (newToolName.trim()) { const finalName = cleanText(newToolName); if (tools.some(t => t.name === finalName)) { alert('هذه الأداة موجودة بالفعل'); return; } const newTool: AssessmentTool = { id: Math.random().toString(36).substr(2, 9), name: finalName, maxScore: 0 }; setAssessmentTools([...tools, newTool]); setNewToolName(''); setIsAddingTool(false); } };
   const handleDeleteTool = (id: string) => { if (confirm('هل أنت متأكد من حذف هذه الأداة؟')) { setAssessmentTools(tools.filter(t => t.id !== id)); } };
   const startEditingTool = (tool: AssessmentTool) => { setEditingToolId(tool.id); setEditToolName(tool.name); };
   const saveEditedTool = () => { if (editingToolId && editToolName.trim()) { const updatedTools = tools.map(t => t.id === editingToolId ? { ...t, name: cleanText(editToolName) } : t ); setAssessmentTools(updatedTools); setEditingToolId(null); setEditToolName(''); } };
   const cancelEditingTool = () => { setEditingToolId(null); setEditToolName(''); };
 
-  // ... (Grade CRUD: handleDeleteGrade, handleEditGrade, handleSaveGrade, handleBulkFill, handleClearGrades - Kept Same) ...
   const handleDeleteGrade = (gradeId: string) => { if(!showAddGrade) return; if(confirm('حذف الدرجة؟')) { const updatedGrades = showAddGrade.student.grades.filter(g => g.id !== gradeId); const updatedStudent = { ...showAddGrade.student, grades: updatedGrades }; onUpdateStudent(updatedStudent); setShowAddGrade({ student: updatedStudent }); } };
   const handleEditGrade = (grade: GradeRecord) => { setEditingGrade(grade); setScore(grade.score.toString()); const tool = tools.find(t => t.name.trim() === grade.category.trim()); setSelectedToolId(tool ? tool.id : ''); };
   const handleSaveGrade = () => { if (!showAddGrade || score === '') return; const student = showAddGrade.student; let categoryName = 'درجة عامة'; if (selectedToolId) { const tool = tools.find(t => t.id === selectedToolId); if (tool) categoryName = tool.name; } else if (editingGrade) { categoryName = editingGrade.category; } const newGrade: GradeRecord = { id: editingGrade ? editingGrade.id : Math.random().toString(36).substr(2, 9), subject: teacherInfo?.subject || 'المادة', category: categoryName.trim(), score: Number(score), maxScore: 0, date: new Date().toISOString(), semester: currentSemester }; let updatedGrades; if (editingGrade) { updatedGrades = (student.grades || []).map(g => g.id === editingGrade.id ? newGrade : g); } else { const filtered = (student.grades || []).filter(g => !(g.category.trim() === categoryName.trim() && (g.semester || '1') === currentSemester)); updatedGrades = [newGrade, ...filtered]; } const updatedStudent = { ...student, grades: updatedGrades }; onUpdateStudent(updatedStudent); setShowAddGrade({ student: updatedStudent }); setScore(''); setEditingGrade(null); };
@@ -145,7 +177,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
       if (filteredStudents.length === 0) { alert('لا يوجد طلاب'); return; }
       setIsExporting(true);
       try {
-          // استخدام الإعدادات الديناميكية
           const finalExamName = gradingSettings.finalExamName.trim();
           const finalWeight = gradingSettings.finalExamWeight;
           const continuousWeight = gradingSettings.totalScore - finalWeight;
@@ -165,16 +196,12 @@ const GradeBook: React.FC<GradeBookProps> = ({
                   continuousSum += val;
               });
 
-              // عمود المجموع المستمر الديناميكي
               row[`المجموع (${continuousWeight})`] = continuousSum;
 
               let finalScore = 0;
               if (finalWeight > 0) {
-                  // إذا كان هناك امتحان نهائي بوزن أكبر من 0
                   const grade = semGrades.find(g => g.category.trim() === finalExamName);
                   finalScore = grade ? Number(grade.score) : 0;
-                  
-                  // إذا لم يجد الأداة (لأن المعلم لم يضفها بعد)، نضع عموداً فارغاً
                   row[`${finalExamName} (${finalWeight})`] = grade ? grade.score : '';
               }
 
@@ -217,7 +244,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
                     <button onClick={() => setShowMenuDropdown(!showMenuDropdown)} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10">
                         <Menu className="w-6 h-6" />
                     </button>
-                    {/* القائمة المنسدلة (كما هي) */}
+                    {/* القائمة المنسدلة */}
                     {showMenuDropdown && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)}></div>
@@ -321,7 +348,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             </div>
         </div>
 
-        {/* --- Grading Settings Modal (New Feature) --- */}
+        {/* --- Grading Settings Modal --- */}
         <Modal isOpen={showGradingSettingsModal} onClose={() => setShowGradingSettingsModal(false)} className="max-w-md rounded-[2rem]">
             <div className="text-center p-2">
                 <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-sm"><Calculator className="w-8 h-8" /></div>
@@ -359,7 +386,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
             </div>
         </Modal>
 
-        {/* ... Other Modals (Add Grade, Tools, Bulk Fill) are kept same ... */}
         <Modal isOpen={!!showAddGrade} onClose={() => { setShowAddGrade(null); setEditingGrade(null); setScore(''); }} className="max-w-sm rounded-[2rem]">
             {showAddGrade && (
                 <div className="text-center text-slate-900">
