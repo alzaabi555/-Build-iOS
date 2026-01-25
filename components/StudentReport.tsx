@@ -6,6 +6,7 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 import html2pdf from 'html2pdf.js';
+import StudentDetailedHistoryModal from './StudentDetailedHistoryModal';
 
 interface StudentReportProps {
   student: Student;
@@ -18,7 +19,8 @@ interface StudentReportProps {
 const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent, currentSemester, teacherInfo, onBack }) => {
   const { assessmentTools } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+   
   // --- Data Calculations ---
   const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === (currentSemester || '1'));
   const allGrades = student.grades || [];
@@ -68,20 +70,19 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
       setIsGeneratingPdf(true);
       
-      // التمرير للأعلى لضمان التقاط الهيدر
       const scrollContainer = document.getElementById('report-scroll-container');
       if(scrollContainer) scrollContainer.scrollTop = 0;
 
       const opt = {
-          margin: [10, 10, 10, 10], // هوامش للصفحة
+          margin: [10, 10, 10, 10], 
           filename: `Report_${student.name}_${new Date().getTime()}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { 
-              scale: 2, // دقة عالية للنص
+              scale: 2, 
               useCORS: true, 
               logging: false,
               backgroundColor: '#ffffff',
-              windowWidth: 800 // عرض ثابت لضمان التنسيق
+              windowWidth: 800 
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -113,6 +114,13 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 animate-in fade-in slide-in-from-bottom-8 duration-500">
         
+        <StudentDetailedHistoryModal 
+            isOpen={showHistoryModal}
+            onClose={() => setShowHistoryModal(false)}
+            student={student}
+            teacherInfo={teacherInfo}
+        />
+
         {/* ================= HEADER (Blue & Curved) ================= */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-8 transition-all duration-300">
             <div className="flex items-center justify-between mt-4">
@@ -129,14 +137,24 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                     </div>
                 </div>
                 
-                <button 
-                    onClick={handlePrintReport} 
-                    disabled={isGeneratingPdf}
-                    className="bg-white text-[#1e3a8a] px-5 py-3 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all flex items-center gap-2"
-                >
-                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                    طباعة
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowHistoryModal(true)}
+                        className="bg-white/20 text-white px-4 py-3 rounded-xl font-bold text-xs shadow-lg active:scale-95 transition-all flex items-center gap-2 hover:bg-white/30"
+                    >
+                        <LayoutList className="w-4 h-4" />
+                        السجل التفصيلي
+                    </button>
+
+                    <button 
+                        onClick={handlePrintReport} 
+                        disabled={isGeneratingPdf}
+                        className="bg-white text-[#1e3a8a] px-5 py-3 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all flex items-center gap-2"
+                    >
+                        {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                        طباعة
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -292,7 +310,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                                              </div>
                                              <div>
                                                  <p className="text-sm font-bold text-black">{b.description}</p>
-                                                 <p className="text-[10px] text-slate-500">{new Date(b.date).toLocaleDateString('en-GB')}</p>
+                                                 <p className="text-[10px] text-slate-500">
+                                                     {new Date(b.date).toLocaleDateString('en-GB')}
+                                                     {b.period && <span className="mx-2 bg-white px-1 rounded border">الحصة {b.period}</span>}
+                                                 </p>
                                              </div>
                                          </div>
                                          <div className="flex items-center gap-2">
