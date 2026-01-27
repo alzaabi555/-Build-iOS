@@ -21,14 +21,12 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
         documentTitle: `سجل_متابعة_${student.name}`,
         pageStyle: `
             @page {
-                size: portrait; /* 👈 هنا التعديل: عمودي */
+                size: portrait; /* 👈 تم التعديل إلى عمودي */
                 margin: 10mm;
             }
             @media print {
                 body { -webkit-print-color-adjust: exact; }
                 .print-hidden { display: none !important; }
-                /* إزالة الظلال والحواف عند الطباعة لتكون نظيفة */
-                .print-content { box-shadow: none !important; border: none !important; }
             }
         `
     });
@@ -49,13 +47,13 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
     ].sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
     return (
-        // ✅ z-[2000] لضمان أن النافذة فوق كل شيء (بما في ذلك القوائم الجانبية)
-        <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 animate-in fade-in duration-200 font-sans" dir="rtl">
+        // ✅ z-[99999] لضمان الظهور فوق القائمة الجانبية (Windows & Mobile)
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 animate-in fade-in duration-200 font-sans" dir="rtl">
             
             <div className="bg-white w-full h-full md:h-auto md:max-h-[90vh] md:max-w-3xl rounded-xl md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative">
                 
                 {/* Header */}
-                <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+                <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0 relative z-50">
                     <h2 className="font-black text-lg flex items-center gap-2">
                         <FileText className="text-emerald-400"/>
                         سجل الطالب التفصيلي
@@ -72,9 +70,8 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                 </div>
 
                 {/* Printable Content Wrapper */}
-                <div className="overflow-y-auto custom-scrollbar flex-1 bg-slate-100 p-4 md:p-6">
-                    {/* هذا هو الجزء الذي سيتم طباعته */}
-                    <div ref={printRef} className="bg-white p-8 rounded-none md:rounded-2xl shadow-sm border border-slate-200 min-h-full print-content print:p-0 print:w-full">
+                <div className="overflow-y-auto custom-scrollbar flex-1 bg-slate-100 p-4 md:p-6 relative z-40">
+                    <div ref={printRef} className="bg-white p-8 rounded-none md:rounded-2xl shadow-sm border border-slate-200 min-h-full print:shadow-none print:border-none print:w-full">
                         
                         {/* Report Header for Print */}
                         <div className="border-b-2 border-black pb-4 mb-6 text-center hidden print:block">
@@ -151,7 +148,6 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                                                 {record.recordType === 'attendance' ? 'سجل الحضور' : record.description}
                                             </td>
                                             <td className="p-2 border border-slate-300 text-center">
-                                                {/* أيقونات للشاشة ورموز نصية للطباعة */}
                                                 <span className="print:hidden">
                                                     {record.type === 'positive' ? <CheckCircle2 size={16} className="text-emerald-500 mx-auto"/> :
                                                      record.type === 'negative' ? <AlertTriangle size={16} className="text-orange-500 mx-auto"/> :
@@ -160,9 +156,9 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                                                      <CheckCircle2 size={16} className="text-slate-300 mx-auto"/>}
                                                 </span>
                                                 <span className="hidden print:inline font-black text-lg">
-                                                     {record.type === 'positive' ? '✓' :
-                                                     record.type === 'negative' ? '!' :
-                                                     record.status === 'absent' ? 'x' :
+                                                     {record.type === 'positive' ? '✅' :
+                                                     record.type === 'negative' ? '❌' :
+                                                     record.status === 'absent' ? 'غ' :
                                                      record.status === 'truant' ? 'س' : '•'}
                                                 </span>
                                             </td>
