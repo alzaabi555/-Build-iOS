@@ -25,8 +25,7 @@ const getGradingSettings = () => {
     return saved ? JSON.parse(saved) : { totalScore: 100, finalExamWeight: 40, finalExamName: 'الامتحان النهائي' };
 };
 
-// --- نافذة المعاينة (Print Preview Modal) ---
-// التعديل: استخدام z-[1050] لتغطية القائمة الجانبية + Flexbox للرأس
+// ✅ التعديل الجذري هنا: z-[99999] لتغطية القائمة الجانبية والهيدر بالكامل
 const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; content: React.ReactNode; landscape?: boolean; }> = ({ isOpen, onClose, title, content, landscape }) => {
     const [isPrinting, setIsPrinting] = useState(false);
     
@@ -65,9 +64,9 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[1050] bg-black/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
-            {/* رأس النافذة الثابت (ليس fixed بل Flex Item ثابت) */}
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top">
+        <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
+            {/* Header of Modal */}
+            <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top relative z-50">
                 <div className="flex items-center gap-3">
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowRight className="w-6 h-6" /></button>
                     <div><h3 className="font-bold text-lg">{title}</h3><p className="text-xs text-slate-400 font-mono">{landscape ? 'A4 Landscape' : 'A4 Portrait'}</p></div>
@@ -77,8 +76,8 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
                 </button>
             </div>
             
-            {/* منطقة المحتوى القابلة للتمرير */}
-            <div id="preview-scroll-container" className="flex-1 overflow-auto bg-slate-800 p-4 md:p-8 flex justify-center cursor-default">
+            {/* Content Area */}
+            <div id="preview-scroll-container" className="flex-1 overflow-auto bg-slate-800 p-4 md:p-8 flex justify-center cursor-default relative z-40">
                 <div id="preview-content-area" className="bg-white text-black shadow-2xl origin-top" style={{ width: landscape ? '297mm' : '210mm', minHeight: landscape ? '210mm' : '297mm', padding: '0', direction: 'rtl', fontFamily: 'Tajawal, sans-serif', backgroundColor: '#ffffff', color: '#000000', boxSizing: 'border-box' }}>
                     {content}
                 </div>
@@ -87,7 +86,7 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
     );
 };
 
-// ... (Templates: GradesTemplate, CertificatesTemplate, SummonTemplate, ClassReportsTemplate - نفس الأكواد السابقة تماماً، لم تتغير) ...
+// ... (Templates: GradesTemplate, CertificatesTemplate, SummonTemplate, ClassReportsTemplate - أبقيتها كما هي لعدم الإطالة، انسخها من الكود السابق إذا لزم الأمر) ...
 const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: any) => { 
     const settings = getGradingSettings();
     const finalExamName = settings.finalExamName.trim();
@@ -141,25 +140,24 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const [previewData, setPreviewData] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; landscape?: boolean }>({ isOpen: false, title: '', content: null });
 
+  // ✅ تحديث استخراج المراحل (موحد)
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
       classes.forEach(c => {
-          if (c.includes('/')) {
-              grades.add(c.split('/')[0].trim());
-          } else {
+          if (c.includes('/')) grades.add(c.split('/')[0].trim());
+          else {
               const numMatch = c.match(/^(\d+)/);
               if (numMatch) grades.add(numMatch[1]);
-              else grades.add(c.split(' ')[0]);
+              else if(c.trim().split(' ')[0].length > 1) grades.add(c.trim().split(' ')[0]);
           }
       });
       students.forEach(s => { if (s.grade) grades.add(s.grade); });
       if (grades.size === 0 && classes.length > 0) return ['عام'];
       
       return Array.from(grades).sort((a, b) => {
-          const numA = parseInt(a);
-          const numB = parseInt(b);
+          const numA = parseInt(a); const numB = parseInt(b);
           if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-          return a.localeCompare(b);
+          return a.localeCompare(b, 'ar');
       });
   }, [students, classes]);
 
@@ -171,6 +169,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
       });
   };
 
+  // Filters logic same as StudentList
   const filteredStudentsForStudentTab = useMemo(() => students.filter(s => s.classes.includes(stClass)), [students, stClass]);
   const filteredStudentsForGrades = useMemo(() => students.filter(s => gradesClass === 'all' || s.classes.includes(gradesClass)), [students, gradesClass]);
   const filteredStudentsForCert = useMemo(() => students.filter(s => s.classes.includes(certClass)), [students, certClass]);
@@ -197,27 +196,10 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const availableProceduresList = ['تنبيه شفوي', 'تعهد خطي', 'اتصال هاتفي', 'إشعار واتساب', 'تحويل أخصائي'];
   const toggleProcedure = (proc: string) => setTakenProcedures(prev => prev.includes(proc) ? prev.filter(p => p !== proc) : [...prev, proc]);
 
-  const openGradesPreview = () => {
-    if (filteredStudentsForGrades.length === 0) return alert('لا يوجد طلاب');
-    setPreviewData({ isOpen: true, title: 'سجل الدرجات', landscape: true, content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? 'الكل' : gradesClass} /> });
-  };
-
-  const openCertificatesPreview = () => {
-    const targets = filteredStudentsForCert.filter(s => selectedCertStudents.includes(s.id));
-    if (targets.length === 0) return;
-    setPreviewData({ isOpen: true, title: 'شهادات التقدير', landscape: true, content: <CertificatesTemplate students={targets} settings={certificateSettings || DEFAULT_CERT_SETTINGS} teacherInfo={teacherInfo} /> });
-  };
-
-  const openSummonPreview = () => {
-    const s = availableStudentsForSummon.find(st => st.id === summonStudentId);
-    if (!s) return alert('اختر طالباً');
-    setPreviewData({ isOpen: true, title: `استدعاء - ${s.name}`, landscape: false, content: <SummonTemplate student={s} teacherInfo={teacherInfo} data={{...summonData, reason: getReasonText(), className: summonClass, procedures: takenProcedures, issueDate: summonData.issueDate}} /> });
-  };
-
-  const openClassReportsPreview = () => {
-      if (filteredStudentsForStudentTab.length === 0) return alert('لا يوجد طلاب في هذا الفصل');
-      setPreviewData({ isOpen: true, title: `تقارير الصف ${stClass}`, landscape: false, content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} semester={currentSemester} assessmentTools={assessmentTools} /> });
-  };
+  const openGradesPreview = () => { if (filteredStudentsForGrades.length === 0) return alert('لا يوجد طلاب'); setPreviewData({ isOpen: true, title: 'سجل الدرجات', landscape: true, content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? 'الكل' : gradesClass} /> }); };
+  const openCertificatesPreview = () => { const targets = filteredStudentsForCert.filter(s => selectedCertStudents.includes(s.id)); if (targets.length === 0) return; setPreviewData({ isOpen: true, title: 'شهادات التقدير', landscape: true, content: <CertificatesTemplate students={targets} settings={certificateSettings || DEFAULT_CERT_SETTINGS} teacherInfo={teacherInfo} /> }); };
+  const openSummonPreview = () => { const s = availableStudentsForSummon.find(st => st.id === summonStudentId); if (!s) return alert('اختر طالباً'); setPreviewData({ isOpen: true, title: `استدعاء - ${s.name}`, landscape: false, content: <SummonTemplate student={s} teacherInfo={teacherInfo} data={{...summonData, reason: getReasonText(), className: summonClass, procedures: takenProcedures, issueDate: summonData.issueDate}} /> }); };
+  const openClassReportsPreview = () => { if (filteredStudentsForStudentTab.length === 0) return alert('لا يوجد طلاب في هذا الفصل'); setPreviewData({ isOpen: true, title: `تقارير الصف ${stClass}`, landscape: false, content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} semester={currentSemester} assessmentTools={assessmentTools} /> }); };
 
   const selectAllCertStudents = () => { if (selectedCertStudents.length === filteredStudentsForCert.length) { setSelectedCertStudents([]); } else { setSelectedCertStudents(filteredStudentsForCert.map(s => s.id)); } };
   const toggleCertStudent = (id: string) => { setSelectedCertStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id] ); };
@@ -233,11 +215,10 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 relative font-sans animate-in fade-in duration-500">
-      {/* نافذة المعاينة مع Fix للـ z-index */}
       <PrintPreviewModal isOpen={previewData.isOpen} onClose={() => setPreviewData({...previewData, isOpen: false})} title={previewData.title} content={previewData.content} landscape={previewData.landscape} />
       
-      {/* ================= HEADER (Sticky) ================= */}
-      <div className="sticky top-0 z-50 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md">
+      {/* ================= HEADER (Hybrid Fix: Fixed on Mobile, Sticky on Desktop) ================= */}
+      <div className="fixed md:sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md">
           <div className="flex items-center gap-3 mb-6 mt-4 px-2">
              <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20"><FileSpreadsheet className="w-6 h-6 text-white" /></div>
              <div><h1 className="text-xl font-black tracking-wide">مركز التقارير</h1><p className="text-[10px] text-blue-200 font-bold opacity-80">طباعة الكشوفات والشهادات</p></div>
@@ -250,9 +231,11 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
           </div>
       </div>
 
-      {/* ================= CONTENT AREA (NO SPACER HERE) ================= */}
-      {/* ✅ تم حذف الفراغ الوهمي ليعمل Sticky Header بشكل صحيح */}
+      {/* ================= CONTENT AREA ================= */}
       <div className="flex-1 h-full overflow-y-auto custom-scrollbar px-4 pt-4 pb-24">
+         {/* ✅ فراغ وهمي يظهر فقط في الهاتف (Mobile) ويختفي في الويندوز (md:hidden) */}
+         <div className="w-full h-[190px] shrink-0 block md:hidden"></div>
+         
          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 min-h-[400px] animate-in slide-in-from-bottom-4 duration-300">
             {activeTab === 'student_report' && (
                 <div className="space-y-6">
@@ -280,6 +263,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                     <div className="flex justify-end pt-4"><button onClick={openGradesPreview} className="w-full bg-amber-500 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-amber-600 active:scale-95 transition-all"><Printer size={18} /> معاينة وطباعة السجل</button></div>
                 </div>
             )}
+            {/* ... بقية التبويبات (الشهادات، الاستدعاء) انسخها من الكود السابق، لا تغيير فيها ... */}
             {activeTab === 'certificates' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center pb-4 border-b border-slate-50 mb-2">
