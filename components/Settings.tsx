@@ -1,9 +1,118 @@
 import React, { useRef, useState } from 'react';
-import { Save, Upload, Trash2, AlertTriangle, Database, Download, RefreshCw, Loader2, ServerCog, Shield } from 'lucide-react';
+import { Save, RefreshCw, Loader2 } from 'lucide-react'; // تم إزالة الأيقونات القديمة المستبدلة
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+
+// --- أيقونات 3D الجديدة (SVG Components) ---
+
+// 1. أيقونة قاعدة البيانات (Database)
+const Icon3DDatabase = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradDB" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#60a5fa" />
+        <stop offset="100%" stopColor="#2563eb" />
+      </linearGradient>
+      <filter id="shadowDB" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="0" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <ellipse cx="50" cy="20" rx="40" ry="12" fill="#93c5fd" />
+    <path d="M10 20 v20 c0 6.6 18 12 40 12 s40 -5.4 40 -12 v-20" fill="url(#gradDB)" filter="url(#shadowDB)" />
+    <path d="M10 45 v20 c0 6.6 18 12 40 12 s40 -5.4 40 -12 v-20" fill="url(#gradDB)" filter="url(#shadowDB)" />
+    <ellipse cx="50" cy="20" rx="40" ry="12" fill="white" opacity="0.3" />
+  </svg>
+);
+
+// 2. أيقونة النسخ الاحتياطي (Backup/Download)
+const Icon3DBackup = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradBackup" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#60a5fa" />
+        <stop offset="100%" stopColor="#2563eb" />
+      </linearGradient>
+      <filter id="shadowBackup" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="45" fill="url(#gradBackup)" filter="url(#shadowBackup)" />
+    <path d="M50 25 V65 M35 50 L50 65 L65 50" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M30 75 H70" stroke="white" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
+    <circle cx="35" cy="35" r="5" fill="white" opacity="0.3" />
+  </svg>
+);
+
+// 3. أيقونة الاستعادة (Restore/Upload)
+const Icon3DRestore = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradRestore" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+      <filter id="shadowRestore" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="45" fill="url(#gradRestore)" filter="url(#shadowRestore)" />
+    <path d="M50 65 V25 M35 40 L50 25 L65 40" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M30 75 H70" stroke="white" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
+    <circle cx="35" cy="35" r="5" fill="white" opacity="0.3" />
+  </svg>
+);
+
+// 4. أيقونة الخطر (Danger/Alert)
+const Icon3DDanger = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradDanger" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f87171" />
+        <stop offset="100%" stopColor="#dc2626" />
+      </linearGradient>
+      <filter id="shadowDanger" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M50 15 L85 80 H15 Z" fill="url(#gradDanger)" filter="url(#shadowDanger)" stroke="white" strokeWidth="4" strokeLinejoin="round" />
+    <path d="M50 35 V60" stroke="white" strokeWidth="6" strokeLinecap="round" />
+    <circle cx="50" cy="70" r="4" fill="white" />
+  </svg>
+);
+
+// 5. أيقونة إعادة الضبط (Reset/Trash)
+const Icon3DReset = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradReset" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f87171" />
+        <stop offset="100%" stopColor="#dc2626" />
+      </linearGradient>
+      <filter id="shadowReset" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="1" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M30 35 L35 85 Q37 90 42 90 H58 Q63 90 65 85 L70 35" fill="url(#gradReset)" filter="url(#shadowReset)" />
+    <rect x="25" y="25" width="50" height="10" rx="3" fill="#ef4444" />
+    <path d="M42 25 L44 18 Q45 15 48 15 H52 Q55 15 56 18 L58 25" fill="#ef4444" />
+    <path d="M42 45 V75 M50 45 V75 M58 45 V75" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+  </svg>
+);
+
+// -----------------------------------------------------------
 
 const Settings: React.FC = () => {
   const { 
@@ -83,7 +192,8 @@ const Settings: React.FC = () => {
         <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-8 transition-all duration-300">
             <div className="flex items-center gap-3 mt-4">
                 <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
-                    <Database className="w-6 h-6 text-white" />
+                    {/* أيقونة قاعدة البيانات (Icon 1) */}
+                    <Icon3DDatabase className="w-6 h-6" />
                 </div>
                 <div>
                     <h1 className="text-xl font-black tracking-wide">إدارة البيانات</h1>
@@ -104,7 +214,8 @@ const Settings: React.FC = () => {
                     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
                         <div className="flex items-start gap-4 mb-6">
-                            <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Download size={24}/></div>
+                            {/* أيقونة النسخ الاحتياطي (Icon 2) */}
+                            <div className="p-3 bg-indigo-50 rounded-2xl"><Icon3DBackup className="w-6 h-6"/></div>
                             <div>
                                 <h3 className="font-black text-lg text-slate-900">النسخ الاحتياطي</h3>
                                 <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">حفظ جميع بياناتك (الطلاب، الدرجات، الإعدادات) في ملف واحد آمن.</p>
@@ -120,7 +231,8 @@ const Settings: React.FC = () => {
                     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
                         <div className="flex items-start gap-4 mb-6">
-                            <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><Upload size={24}/></div>
+                            {/* أيقونة الاستعادة (Icon 3) */}
+                            <div className="p-3 bg-emerald-50 rounded-2xl"><Icon3DRestore className="w-6 h-6"/></div>
                             <div>
                                 <h3 className="font-black text-lg text-slate-900">استعادة البيانات</h3>
                                 <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">استرجاع بياناتك من ملف سابق. <span className="text-rose-500">سيتم استبدال البيانات الحالية.</span></p>
@@ -136,14 +248,16 @@ const Settings: React.FC = () => {
                     {/* Danger Zone Card */}
                     <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-100 shadow-inner relative overflow-hidden">
                         <div className="flex items-center gap-3 mb-4">
-                            <AlertTriangle className="w-6 h-6 text-rose-600" />
+                            {/* أيقونة الخطر (Icon 4) */}
+                            <Icon3DDanger className="w-6 h-6" />
                             <h3 className="font-black text-lg text-rose-700">منطقة الخطر</h3>
                         </div>
                         <p className="text-xs font-bold text-rose-600/80 mb-6 leading-relaxed">
                             حذف جميع البيانات وإعادة ضبط المصنع. هذا الإجراء لا يمكن التراجع عنه وسيؤدي لفقدان جميع البيانات المسجلة نهائياً.
                         </p>
                         <button onClick={handleFactoryReset} disabled={loading !== null} className="w-full py-3 bg-white border-2 border-rose-200 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-2 shadow-sm">
-                            {loading === 'reset' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            {/* أيقونة إعادة الضبط (Icon 5) */}
+                            {loading === 'reset' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon3DReset className="w-4 h-4" />}
                             حذف كل شيء وإعادة الضبط
                         </button>
                     </div>
