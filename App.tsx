@@ -272,9 +272,6 @@ const AppContent: React.FC = () => {
             <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4">
                 {desktopNavItems.map(item => {
                     const isActive = activeTab === item.id;
-                    // For main items, we can use the 3D icons on desktop too if desired, but sticking to lucide for consistency in sidebar list
-                    // or we can map them. Let's stick to Lucide for the list view to keep it clean, or update if user wants 3D everywhere.
-                    // The prompt implied main menu, which usually means the mobile bottom nav for apps, but let's keep the sidebar clean.
                     return (
                         <button
                             key={item.id}
@@ -314,8 +311,8 @@ const AppContent: React.FC = () => {
                         style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
                         <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-                            ${isActive ? '-translate-y-8 scale-110' : 'translate-y-1 scale-90'}`}>
-                           <div className={`w-14 h-14 ${isActive ? 'drop-shadow-2xl' : ''}`}>
+                            ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
+                           <div className={`w-11 h-11 ${isActive ? 'drop-shadow-2xl' : ''}`}>
                                 <item.IconComponent active={isActive} />
                            </div>
                         </div>
@@ -336,8 +333,8 @@ const AppContent: React.FC = () => {
                 style={{ WebkitTapHighlightColor: 'transparent' }}
             >
                 <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-                    ${isMoreActive ? '-translate-y-8 scale-110' : 'translate-y-1 scale-90'}`}>
-                   <div className={`w-14 h-14 ${isMoreActive ? 'drop-shadow-2xl' : ''}`}>
+                    ${isMoreActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
+                   <div className={`w-11 h-11 ${isMoreActive ? 'drop-shadow-2xl' : ''}`}>
                         <More3D active={isMoreActive} />
                    </div>
                 </div>
