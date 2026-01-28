@@ -15,7 +15,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
 }) => {
     const printRef = useRef<HTMLDivElement>(null);
 
-    // إعدادات الطباعة (عمودي Portrait)
+    // ✅ إعدادات الطباعة: عمودي (Portrait) + استدعاء مباشر آمن
     const handlePrint = useReactToPrint({
         content: () => printRef.current,
         documentTitle: `سجل_متابعة_${student.name}`,
@@ -40,7 +40,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
     ].sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
     return (
-        // ✅ z-[99999] + pt-20 (للهاتف لتفادي النوتش الكبير)
+        // ✅ z-[99999] للتأكد من أنها فوق كل شيء في الويندوز والهاتف
         <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-start md:justify-center pt-20 md:pt-4 pb-4 px-4 animate-in fade-in duration-200 font-sans" dir="rtl">
             
             {/* زر إغلاق سريع في الخلفية للهاتف */}
@@ -62,6 +62,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                     <div className="flex gap-2">
                         <button 
                             onClick={handlePrint} 
+                            // ✅ pointer-events-auto لضمان استجابة الزر حتى لو كانت هناك طبقات شفافة
                             className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-emerald-600 shadow-lg active:scale-95 transition-all pointer-events-auto"
                         >
                             <Printer size={16}/> طباعة
@@ -130,8 +131,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                                                     {record.type === 'positive' ? <CheckCircle2 size={16} className="text-emerald-500 mx-auto"/> :
                                                      record.type === 'negative' ? <AlertTriangle size={16} className="text-orange-500 mx-auto"/> :
                                                      record.status === 'absent' ? <XCircle size={16} className="text-rose-500 mx-auto"/> :
-                                                     record.status === 'truant' ? <AlertTriangle size={16} className="text-purple-500 mx-auto"/> : 
-                                                     <CheckCircle2 size={16} className="text-slate-300 mx-auto"/>}
+                                                     record.status === 'truant' ? <AlertTriangle size={16} className="text-purple-500 mx-auto"/> : <CheckCircle2 size={16} className="text-slate-300 mx-auto"/>}
                                                 </span>
                                                 <span className="hidden print:inline font-bold">
                                                      {record.type === 'positive' ? '✓' : record.type === 'negative' ? 'X' : record.status === 'absent' ? 'غ' : record.status === 'truant' ? 'س' : '•'}
