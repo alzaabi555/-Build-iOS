@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
 import { Search, ThumbsUp, ThumbsDown, Edit2, Sparkles, Trash2, Plus, Loader2, MessageCircle, DoorOpen, LayoutGrid, FileSpreadsheet, X, UserPlus, Upload, MoreHorizontal, Settings, PartyPopper, Trophy, Frown, CloudRain, PenTool } from 'lucide-react';
@@ -6,6 +5,126 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
+
+// --- تعريفات الشخصيات الكرتونية العمانية (3D Style SVG) ---
+const OmaniBoyAvatarSVG = () => (
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="boySkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
+      <linearGradient id="dishdasha3D" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="20%" stopColor="#f1f5f9" />
+        <stop offset="50%" stopColor="#ffffff" />
+        <stop offset="80%" stopColor="#e2e8f0" />
+        <stop offset="100%" stopColor="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="kummahBase" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="100%" stopColor="#e2e8f0" />
+      </linearGradient>
+      <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="2" dy="4" result="offsetblur" />
+        <feComponentTransfer>
+          <feFuncA type="linear" slope="0.3" />
+        </feComponentTransfer>
+        <feMerge>
+          <feMergeNode />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#softShadow)">
+      <path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" />
+      <path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="100" cy="183" r="3" fill="#cbd5e1" />
+    </g>
+    <rect x="85" y="115" width="30" height="20" fill="#d49066" />
+    <g filter="url(#softShadow)">
+      <circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
+      <path d="M54 75 Q100 25 146 75 L146 65 Q100 15 54 65 Z" fill="url(#kummahBase)" />
+      <path d="M54 75 Q100 25 146 75" fill="none" stroke="#e2e8f0" strokeWidth="1" />
+      <path d="M60 70 Q100 35 140 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" />
+      <path d="M65 60 Q100 28 135 60" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
+      <circle cx="52" cy="95" r="9" fill="#ebb082" />
+      <circle cx="148" cy="95" r="9" fill="#ebb082" />
+    </g>
+    <g>
+      <ellipse cx="82" cy="95" rx="6" ry="8" fill="#1e293b" />
+      <circle cx="84" cy="93" r="2.5" fill="white" opacity="0.9" />
+      <ellipse cx="118" cy="95" rx="6" ry="8" fill="#1e293b" />
+      <circle cx="120" cy="93" r="2.5" fill="white" opacity="0.9" />
+      <path d="M75 82 Q82 78 89 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M111 82 Q118 78 125 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M90 115 Q100 122 110 115" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" />
+      <ellipse cx="75" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
+      <ellipse cx="125" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
+    </g>
+  </svg>
+);
+
+const OmaniGirlAvatarSVG = () => (
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="girlSkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
+      <linearGradient id="hijab3D" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="50%" stopColor="#f8fafc" />
+        <stop offset="100%" stopColor="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="uniform3D" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#3b82f6" />
+        <stop offset="100%" stopColor="#1e3a8a" />
+      </linearGradient>
+      <filter id="girlShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="0" dy="4" result="offsetblur" />
+        <feComponentTransfer>
+           <feFuncA type="linear" slope="0.25"/> 
+        </feComponentTransfer>
+        <feMerge> 
+          <feMergeNode/>
+          <feMergeNode in="SourceGraphic"/> 
+        </feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#girlShadow)">
+      <path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" />
+      <path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" />
+    </g>
+    <rect x="90" y="120" width="20" height="20" fill="#d49066" />
+    <g filter="url(#girlShadow)">
+      <path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" />
+      <circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
+      <path d="M62 95 C62 60 138 60 138 95" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" />
+    </g>
+    <g>
+      <ellipse cx="86" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
+      <circle cx="88" cy="93" r="2.5" fill="white" opacity="0.9" />
+      <ellipse cx="114" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
+      <circle cx="116" cy="93" r="2.5" fill="white" opacity="0.9" />
+      <path d="M80 92 L78 90 M120 92 L122 90" stroke="#1e293b" strokeWidth="1.5" />
+      <path d="M94 112 Q100 116 106 112" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="80" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
+      <circle cx="120" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
+    </g>
+  </svg>
+);
+
+// دالة مساعدة لاختيار الصورة المناسبة
+const getStudentAvatar = (student: Student) => {
+    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
+    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
+};
+// ----------------------------------------------------------
 
 interface StudentListProps {
     students: Student[];
@@ -52,17 +171,13 @@ const StudentItem = React.memo(({ student, onAction, currentSemester, onToggleGe
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${totalScore >= 90 ? 'bg-emerald-500' : totalScore >= 50 ? 'bg-indigo-500' : 'bg-rose-500'}`}></div>
 
             <div className="flex items-center gap-4 flex-1 min-w-0 relative z-10 pl-3">
-                {/* Avatar with Click-to-Toggle Gender */}
+                {/* Avatar with Click-to-Toggle Gender (تم تغيير الإيموجي هنا فقط) */}
                 <div 
                     onClick={(e) => { e.stopPropagation(); onToggleGender(student); }}
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold overflow-hidden shrink-0 shadow-inner border cursor-pointer active:scale-90 transition-transform select-none ${student.gender === 'female' ? 'bg-pink-50 border-pink-100' : 'bg-blue-50 border-blue-100'}`}
                     title="اضغط لتبديل النوع (ذكر/أنثى)"
                 >
-                    {student.avatar ? (
-                        <img src={student.avatar} className="w-full h-full object-cover" />
-                    ) : (
-                        student.gender === 'female' ? '👩‍🎓' : '👨‍🎓'
-                    )}
+                    {getStudentAvatar(student)}
                 </div>
                 
                 <div className="min-w-0">
@@ -196,7 +311,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
       }
       else if (type === 'truant') {
           if(confirm('تسجيل هروب (تسرب) لهذا الطالب؟')) {
-             handleAddBehavior(student, 'negative', 'تسرب من الحصة', 3);
+              handleAddBehavior(student, 'negative', 'تسرب من الحصة', 3);
           }
       }
   };
@@ -409,7 +524,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                     <input className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="الصف (مثال: 5/1)" value={editClass} onChange={e => setEditClass(e.target.value)} />
                     <input className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="رقم ولي الأمر (اختياري)" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" />
                     
-                    {/* Gender Selection */}
+                    {/* Gender Selection (لم يتم تغيير الإيموجي هنا لأنه ليس الصورة الرئيسية) */}
                     <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
                         <button onClick={() => setEditGender('male')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>ذكر 👨‍🎓</button>
                         <button onClick={() => setEditGender('female')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-500'}`}>أنثى 👩‍🎓</button>
@@ -421,7 +536,6 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
         </Modal>
 
         {/* ... Other Modals ... */}
-        {/* Same as before: Manage Classes, Import, Add Class, Random, Feedback */}
         <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
             <div className="text-center text-slate-900">
                 <h3 className="font-black text-xl mb-4">إعدادات الفصول والصفوف</h3>
@@ -474,7 +588,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             <div className="text-center py-6">
                 <div className="w-24 h-24 mx-auto mb-4 rounded-full glass-icon border-4 border-indigo-100 shadow-xl overflow-hidden relative bg-white">
                     {randomStudent ? (
-                        randomStudent.avatar ? <img src={randomStudent.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-black text-indigo-600">{randomStudent.gender === 'female' ? '👩‍🎓' : '👨‍🎓'}</div>
+                        // تم تغيير الإيموجي هنا فقط في نافذة الاختيار العشوائي
+                        getStudentAvatar(randomStudent)
                     ) : (
                         <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
                     )}
@@ -496,7 +611,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             <div className="text-center">
                 <h3 className="font-black text-lg mb-4 text-emerald-600">سلوك إيجابي</h3>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                    {['مشاركة مميزة', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
+                    {[,'مشاركة فعالة ', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
                         <button key={r} onClick={() => { if(showPositiveReasons) handleAddBehavior(showPositiveReasons.student, 'positive', r, 1); }} className="p-3 glass-card bg-white text-xs font-bold hover:bg-emerald-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
                     ))}
                 </div>
@@ -511,7 +626,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             <div className="text-center">
                 <h3 className="font-black text-lg mb-4 text-rose-600">سلوك سلبي</h3>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                    {['إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
+                    {[, 'كثرة الكلام وعدم الانتباه ', 'نسيان الدفتر','إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
                         <button key={r} onClick={() => { if(showNegativeReasons) handleAddBehavior(showNegativeReasons.student, 'negative', r, -1); }} className="p-3 glass-card bg-white text-xs font-bold hover:bg-rose-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
                     ))}
                 </div>
