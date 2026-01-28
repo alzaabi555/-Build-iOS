@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Printer, FileSpreadsheet, User, Award, BarChart3, Settings, FileWarning, FileText, Loader2, Layers, ArrowRight, Check, Eye } from 'lucide-react';
+import { ArrowRight, Check, Loader2 } from 'lucide-react'; // تم إبقاء الأيقونات الوظيفية الصغيرة فقط
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
@@ -8,6 +8,203 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
+
+// =================================================================================
+// ✅ أيقونات 3D الجديدة (New 3D SVG Icons)
+// =================================================================================
+
+const Icon3DReportCenter = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradRep" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#60a5fa" />
+        <stop offset="100%" stopColor="#2563eb" />
+      </linearGradient>
+      <filter id="shadowRep" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="15" width="60" height="70" rx="8" fill="url(#gradRep)" filter="url(#shadowRep)" />
+    <rect x="30" y="30" width="40" height="5" rx="2" fill="white" opacity="0.8" />
+    <rect x="30" y="45" width="40" height="5" rx="2" fill="white" opacity="0.8" />
+    <rect x="30" y="60" width="25" height="5" rx="2" fill="white" opacity="0.8" />
+    <circle cx="70" cy="70" r="8" fill="#fbbf24" />
+  </svg>
+);
+
+const Icon3DStudent = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradUser" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#818cf8" />
+        <stop offset="100%" stopColor="#4f46e5" />
+      </linearGradient>
+      <filter id="shadowUser" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="35" r="18" fill="url(#gradUser)" filter="url(#shadowUser)" />
+    <path d="M20 85 Q50 55 80 85" fill="url(#gradUser)" filter="url(#shadowUser)" />
+  </svg>
+);
+
+const Icon3DGrades = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradChart" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fbbf24" />
+        <stop offset="100%" stopColor="#d97706" />
+      </linearGradient>
+      <filter id="shadowChart" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="1" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="50" width="15" height="30" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
+    <rect x="42" y="30" width="15" height="50" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
+    <rect x="64" y="15" width="15" height="65" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
+    <path d="M10 85 H90" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
+  </svg>
+);
+
+const Icon3DCertificate = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradCert" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+      <filter id="shadowCert" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="40" r="25" fill="url(#gradCert)" filter="url(#shadowCert)" />
+    <circle cx="50" cy="40" r="18" fill="none" stroke="white" strokeWidth="3" strokeDasharray="4 2" />
+    <path d="M35 60 L25 85 L40 75 L55 85 L45 60" fill="#f59e0b" stroke="white" strokeWidth="1" />
+    <path d="M65 60 L75 85 L60 75 L45 85 L55 60" fill="#f59e0b" stroke="white" strokeWidth="1" />
+  </svg>
+);
+
+const Icon3DSummon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradWarn" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f87171" />
+        <stop offset="100%" stopColor="#dc2626" />
+      </linearGradient>
+      <filter id="shadowWarn" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M50 15 L85 80 H15 Z" fill="url(#gradWarn)" filter="url(#shadowWarn)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M50 35 V60" stroke="white" strokeWidth="6" strokeLinecap="round" />
+    <circle cx="50" cy="70" r="4" fill="white" />
+  </svg>
+);
+
+const Icon3DPrint = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradPrint" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#94a3b8" />
+        <stop offset="100%" stopColor="#475569" />
+      </linearGradient>
+      <filter id="shadowPrint" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="25" y="40" width="50" height="30" rx="4" fill="url(#gradPrint)" filter="url(#shadowPrint)" />
+    <path d="M35 40 V25 H65 V40" fill="white" opacity="0.9" />
+    <path d="M35 60 V75 H65 V60" fill="white" />
+    <rect x="60" y="48" width="5" height="5" rx="1" fill="#4ade80" />
+  </svg>
+);
+
+const Icon3DSettings = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradSet" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#e2e8f0" />
+        <stop offset="100%" stopColor="#94a3b8" />
+      </linearGradient>
+      <filter id="shadowSet" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="1" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="25" fill="none" stroke="url(#gradSet)" strokeWidth="15" strokeDasharray="12 8" filter="url(#shadowSet)" />
+    <circle cx="50" cy="50" r="12" fill="#64748b" />
+  </svg>
+);
+
+const Icon3DLayers = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradLay" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#a78bfa" />
+        <stop offset="100%" stopColor="#7c3aed" />
+      </linearGradient>
+      <filter id="shadowLay" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M15 40 L50 20 L85 40 L50 60 Z" fill="url(#gradLay)" filter="url(#shadowLay)" />
+    <path d="M15 55 L50 75 L85 55" fill="none" stroke="url(#gradLay)" strokeWidth="5" strokeLinecap="round" />
+  </svg>
+);
+
+const Icon3DDocument = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradDoc" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f472b6" />
+        <stop offset="100%" stopColor="#db2777" />
+      </linearGradient>
+      <filter id="shadowDoc" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="25" y="20" width="50" height="60" rx="5" fill="url(#gradDoc)" filter="url(#shadowDoc)" />
+    <path d="M35 35 H65 M35 45 H65 M35 55 H50" stroke="white" strokeWidth="4" strokeLinecap="round" />
+  </svg>
+);
+
+const Icon3DEye = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradEye" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#38bdf8" />
+        <stop offset="100%" stopColor="#0284c7" />
+      </linearGradient>
+      <filter id="shadowEye" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M15 50 Q50 15 85 50 Q50 85 15 50" fill="white" filter="url(#shadowEye)" />
+    <circle cx="50" cy="50" r="18" fill="url(#gradEye)" />
+    <circle cx="55" cy="45" r="5" fill="white" opacity="0.6" />
+  </svg>
+);
+
+// =================================================================================
 
 interface ReportsProps {
     initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'summon';
@@ -66,7 +263,8 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
                     <div><h3 className="font-bold text-lg">{title}</h3><p className="text-xs text-slate-400 font-mono">{landscape ? 'A4 Landscape' : 'A4 Portrait'}</p></div>
                 </div>
                 <button onClick={handlePrint} disabled={isPrinting} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all active:scale-95 pointer-events-auto">
-                    {isPrinting ? <Loader2 className="animate-spin w-5 h-5" /> : <Printer className="w-5 h-5" />} {isPrinting ? 'جاري المعالجة...' : 'تصدير ومشاركة'}
+                    {/* استبدال Printer بـ Icon3DPrint */}
+                    {isPrinting ? <Loader2 className="animate-spin w-5 h-5" /> : <Icon3DPrint className="w-5 h-5" />} {isPrinting ? 'جاري المعالجة...' : 'تصدير ومشاركة'}
                 </button>
             </div>
             
@@ -302,10 +500,10 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   if (viewingStudent) return <StudentReport student={viewingStudent} onUpdateStudent={handleUpdateStudent} currentSemester={currentSemester} teacherInfo={teacherInfo} onBack={() => setViewingStudent(null)} />;
 
   const tabs = [
-      { id: 'student_report', label: 'تقرير طالب', icon: User },
-      { id: 'grades_record', label: 'سجل الدرجات', icon: BarChart3 },
-      { id: 'certificates', label: 'الشهادات', icon: Award },
-      { id: 'summon', label: 'استدعاء', icon: FileWarning },
+      { id: 'student_report', label: 'تقرير طالب', icon: Icon3DStudent },
+      { id: 'grades_record', label: 'سجل الدرجات', icon: Icon3DGrades },
+      { id: 'certificates', label: 'الشهادات', icon: Icon3DCertificate },
+      { id: 'summon', label: 'استدعاء', icon: Icon3DSummon },
   ];
 
   return (
@@ -316,7 +514,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
       {/* ✅ تعديل الهيدر ليكون sticky بدون تمدد غريب */}
       <div className="sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full">
           <div className="flex items-center gap-3 mb-6 mt-4 px-2">
-             <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20"><FileSpreadsheet className="w-6 h-6 text-white" /></div>
+             <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20"><Icon3DReportCenter className="w-6 h-6" /></div>
              <div><h1 className="text-xl font-black tracking-wide">مركز التقارير</h1><p className="text-[10px] text-blue-200 font-bold opacity-80">طباعة الكشوفات والشهادات</p></div>
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-1">
@@ -335,7 +533,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 min-h-[400px] animate-in slide-in-from-bottom-4 duration-300">
             {activeTab === 'student_report' && (
                 <div className="space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-indigo-50 rounded-xl text-indigo-600"><User size={20}/></div><h3 className="font-black text-lg text-slate-800">تقرير الطالب الشامل</h3></div>
+                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-indigo-50 rounded-xl text-indigo-600"><Icon3DStudent className="w-5 h-5"/></div><h3 className="font-black text-lg text-slate-800">تقرير الطالب الشامل</h3></div>
                     <div className="space-y-4">
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{availableGrades.map(g => <button key={g} onClick={() => setStGrade(g)} className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${stGrade === g ? 'bg-indigo-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>صف {g}</button>)}</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,26 +542,26 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                         </div>
                     </div>
                     <div className="flex gap-3 justify-end pt-4 mt-4 flex-wrap">
-                        <button onClick={openClassReportsPreview} disabled={!stClass || filteredStudentsForStudentTab.length === 0} className="bg-slate-800 disabled:opacity-50 text-white px-5 py-3.5 rounded-xl font-black text-xs shadow-lg hover:bg-slate-700 flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center"><Layers size={16} /> طباعة الفصل كاملاً</button>
-                        <button onClick={() => { if(selectedStudentId) { const s = students.find(st=>st.id===selectedStudentId); if(s) setViewingStudent(s); }}} disabled={!selectedStudentId} className="bg-indigo-600 disabled:opacity-50 text-white px-6 py-3.5 rounded-xl font-black text-xs shadow-lg hover:bg-indigo-700 flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center"><FileText size={16} /> معاينة فردية</button>
+                        <button onClick={openClassReportsPreview} disabled={!stClass || filteredStudentsForStudentTab.length === 0} className="bg-slate-800 disabled:opacity-50 text-white px-5 py-3.5 rounded-xl font-black text-xs shadow-lg hover:bg-slate-700 flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center"><Icon3DLayers className="w-4 h-4" /> طباعة الفصل كاملاً</button>
+                        <button onClick={() => { if(selectedStudentId) { const s = students.find(st=>st.id===selectedStudentId); if(s) setViewingStudent(s); }}} disabled={!selectedStudentId} className="bg-indigo-600 disabled:opacity-50 text-white px-6 py-3.5 rounded-xl font-black text-xs shadow-lg hover:bg-indigo-700 flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center"><Icon3DDocument className="w-4 h-4" /> معاينة فردية</button>
                     </div>
                 </div>
             )}
             {activeTab === 'grades_record' && (
                 <div className="space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-amber-50 rounded-xl text-amber-600"><BarChart3 size={20}/></div><h3 className="font-black text-lg text-slate-800">سجل الدرجات</h3></div>
+                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-amber-50 rounded-xl text-amber-600"><Icon3DGrades className="w-5 h-5"/></div><h3 className="font-black text-lg text-slate-800">سجل الدرجات</h3></div>
                     <div className="space-y-4">
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{availableGrades.map(g => <button key={g} onClick={() => { setGradesGrade(g); setGradesClass('all'); }} className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${gradesGrade === g ? 'bg-amber-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>صف {g}</button>)}</div>
                         <select value={gradesClass} onChange={(e) => setGradesClass(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-500 transition-colors text-sm"><option value="all">الكل</option>{getClassesForGrade(gradesGrade).map(c => <option key={c} value={c}>{c}</option>)}</select>
                     </div>
-                    <div className="flex justify-end pt-4"><button onClick={openGradesPreview} className="w-full bg-amber-500 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-amber-600 active:scale-95 transition-all"><Printer size={18} /> معاينة وطباعة السجل</button></div>
+                    <div className="flex justify-end pt-4"><button onClick={openGradesPreview} className="w-full bg-amber-500 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-amber-600 active:scale-95 transition-all"><Icon3DPrint className="w-5 h-5" /> معاينة وطباعة السجل</button></div>
                 </div>
             )}
             {activeTab === 'certificates' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center pb-4 border-b border-slate-50 mb-2">
-                        <div className="flex items-center gap-3"><div className="p-2 bg-emerald-50 rounded-xl text-emerald-600"><Award size={20}/></div><h3 className="font-black text-lg text-slate-800">شهادات التقدير</h3></div>
-                        <button onClick={() => setShowCertSettingsModal(true)} className="p-2 bg-slate-50 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"><Settings size={20}/></button>
+                        <div className="flex items-center gap-3"><div className="p-2 bg-emerald-50 rounded-xl text-emerald-600"><Icon3DCertificate className="w-5 h-5"/></div><h3 className="font-black text-lg text-slate-800">شهادات التقدير</h3></div>
+                        <button onClick={() => setShowCertSettingsModal(true)} className="p-2 bg-slate-50 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"><Icon3DSettings className="w-5 h-5"/></button>
                     </div>
                     <div className="space-y-4">
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{availableGrades.map(g => <button key={g} onClick={() => setCertGrade(g)} className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${certGrade === g ? 'bg-emerald-600 text-white border-transparent' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>صف {g}</button>)}</div>
@@ -375,12 +573,12 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                             {filteredStudentsForCert.map(s => (<button key={s.id} onClick={() => toggleCertStudent(s.id)} className={`p-3 rounded-xl border text-xs font-bold flex justify-between transition-all ${selectedCertStudents.includes(s.id) ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{s.name} {selectedCertStudents.includes(s.id) && <Check size={14}/>}</button>))}
                         </div>
                     </div>
-                    <div className="flex justify-end pt-4"><button onClick={openCertificatesPreview} disabled={selectedCertStudents.length === 0} className="w-full bg-emerald-600 disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-700 active:scale-95 transition-all"><Printer size={18} /> معاينة وطباعة الشهادات</button></div>
+                    <div className="flex justify-end pt-4"><button onClick={openCertificatesPreview} disabled={selectedCertStudents.length === 0} className="w-full bg-emerald-600 disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-700 active:scale-95 transition-all"><Icon3DPrint className="w-5 h-5" /> معاينة وطباعة الشهادات</button></div>
                 </div>
             )}
             {activeTab === 'summon' && (
                 <div className="space-y-6">
-                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-rose-50 rounded-xl text-rose-600"><FileWarning size={20}/></div><h3 className="font-black text-lg text-slate-800">استدعاء ولي أمر</h3></div>
+                    <div className="flex items-center gap-3 border-b border-slate-50 pb-4 mb-2"><div className="p-2 bg-rose-50 rounded-xl text-rose-600"><Icon3DSummon className="w-5 h-5"/></div><h3 className="font-black text-lg text-slate-800">استدعاء ولي أمر</h3></div>
                     <div className="grid grid-cols-2 gap-4">
                          <select value={summonClass} onChange={(e) => setSummonClass(e.target.value)} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:border-rose-500 transition-colors text-sm">{getClassesForGrade(summonGrade).map(c => <option key={c} value={c}>{c}</option>)}</select>
                          <select value={summonStudentId} onChange={(e) => setSummonStudentId(e.target.value)} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:border-rose-500 transition-colors text-sm"><option value="">الطالب...</option>{availableStudentsForSummon.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -395,7 +593,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                          <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">تاريخ الحضور</label><input type="date" value={summonData.date} onChange={(e) => setSummonData({...summonData, date: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-rose-500" /></div>
                          <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500">الوقت</label><input type="time" value={summonData.time} onChange={(e) => setSummonData({...summonData, time: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-rose-500" /></div>
                     </div>
-                    <div className="flex justify-end pt-4"><button onClick={openSummonPreview} disabled={!summonStudentId} className="w-full bg-rose-600 disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-rose-700 active:scale-95 transition-all"><Eye size={18} /> معاينة الخطاب</button></div>
+                    <div className="flex justify-end pt-4"><button onClick={openSummonPreview} disabled={!summonStudentId} className="w-full bg-rose-600 disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:bg-rose-700 active:scale-95 transition-all"><Icon3DEye className="w-5 h-5" /> معاينة الخطاب</button></div>
                 </div>
             )}
          </div>
