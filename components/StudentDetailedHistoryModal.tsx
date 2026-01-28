@@ -40,11 +40,11 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
     ].sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
     return (
-        // ✅ z-[99999] للتأكد من أنها فوق كل شيء
-        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-start md:justify-center pt-16 md:pt-4 pb-4 px-4 animate-in fade-in duration-200 font-sans" dir="rtl">
+        // ✅ z-[99999] + pt-20 (للهاتف لتفادي النوتش الكبير)
+        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-start md:justify-center pt-20 md:pt-4 pb-4 px-4 animate-in fade-in duration-200 font-sans" dir="rtl">
             
             {/* زر إغلاق سريع في الخلفية للهاتف */}
-            <div className="absolute top-6 right-6 md:hidden z-[100000]">
+            <div className="absolute top-8 right-6 md:hidden z-[100000]">
                 <button onClick={onClose} className="bg-white/20 p-2 rounded-full text-white backdrop-blur-md border border-white/10">
                     <X size={24}/>
                 </button>
@@ -62,7 +62,6 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                     <div className="flex gap-2">
                         <button 
                             onClick={handlePrint} 
-                            // ✅ pointer-events-auto لضمان استجابة الزر
                             className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-emerald-600 shadow-lg active:scale-95 transition-all pointer-events-auto"
                         >
                             <Printer size={16}/> طباعة
@@ -103,7 +102,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                         </div>
 
                         {/* Table */}
-                        <table className="w-full text-xs border-collapse border border-slate-300">
+                        <table className="w-full text-xs md:text-sm border-collapse border border-slate-300">
                             <thead>
                                 <tr className="bg-slate-800 text-white text-right print:bg-gray-200 print:text-black">
                                     <th className="p-2 border border-slate-300 w-24">التاريخ</th>
@@ -121,7 +120,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                                             <td className="p-2 border text-center font-bold">{record.period || '-'}</td>
                                             <td className="p-2 border">
                                                 {record.recordType === 'attendance' ? 
-                                                    <span className={`font-bold ${record.status === 'absent' ? 'text-rose-600' : 'text-slate-600'}`}>{record.status === 'absent' ? 'غياب' : 'حضور/تأخر'}</span> 
+                                                    <span className={`font-bold ${record.status === 'absent' ? 'text-rose-600' : 'text-slate-600'}`}>{record.status === 'absent' ? 'غياب' : record.status === 'truant' ? 'تسرب' : record.status === 'late' ? 'تأخر' : 'حضور'}</span> 
                                                     : <span className={`font-bold ${record.type === 'positive' ? 'text-emerald-600' : 'text-orange-600'}`}>{record.type === 'positive' ? 'إيجابي' : 'سلبي'}</span>
                                                 }
                                             </td>
@@ -131,10 +130,11 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                                                     {record.type === 'positive' ? <CheckCircle2 size={16} className="text-emerald-500 mx-auto"/> :
                                                      record.type === 'negative' ? <AlertTriangle size={16} className="text-orange-500 mx-auto"/> :
                                                      record.status === 'absent' ? <XCircle size={16} className="text-rose-500 mx-auto"/> :
-                                                     record.status === 'truant' ? <AlertTriangle size={16} className="text-purple-500 mx-auto"/> : <CheckCircle2 size={16} className="text-slate-300 mx-auto"/>}
+                                                     record.status === 'truant' ? <AlertTriangle size={16} className="text-purple-500 mx-auto"/> : 
+                                                     <CheckCircle2 size={16} className="text-slate-300 mx-auto"/>}
                                                 </span>
                                                 <span className="hidden print:inline font-bold">
-                                                     {record.type === 'positive' ? '✓' : record.type === 'negative' ? 'X' : record.status === 'absent' ? 'غ' : '•'}
+                                                     {record.type === 'positive' ? '✓' : record.type === 'negative' ? 'X' : record.status === 'absent' ? 'غ' : record.status === 'truant' ? 'س' : '•'}
                                                 </span>
                                             </td>
                                         </tr>
