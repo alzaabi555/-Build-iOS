@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Student } from '../types';
 import { Trophy, Crown, Sparkles, Star } from 'lucide-react';
@@ -8,74 +7,182 @@ interface LeaderboardProps {
     classes: string[];
 }
 
-// --- مكونات الشخصيات الكرتونية العمانية (SVG) ---
+// --- مكونات الشخصيات الكرتونية العمانية (3D Style - مفرغة بدون خلفية) ---
 
 const OmaniBoyAvatar = () => (
-  <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="skin" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#fde6d3" />
-        <stop offset="100%" stopColor="#f5d0b0" />
+      {/* تدرجات البشرة لإعطاء عمق */}
+      <radialGradient id="boySkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
+      
+      {/* تدرج الدشداشة (أبيض رمادي للظلال) */}
+      <linearGradient id="dishdasha3D" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="20%" stopColor="#f1f5f9" />
+        <stop offset="50%" stopColor="#ffffff" />
+        <stop offset="80%" stopColor="#e2e8f0" />
+        <stop offset="100%" stopColor="#cbd5e1" />
       </linearGradient>
+
+      {/* تدرج الكمة (القبعة) */}
+      <linearGradient id="kummahBase" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="100%" stopColor="#e2e8f0" />
+      </linearGradient>
+
+      {/* ظل خفيف */}
+      <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="2" dy="4" result="offsetblur" />
+        <feComponentTransfer>
+          <feFuncA type="linear" slope="0.3" />
+        </feComponentTransfer>
+        <feMerge>
+          <feMergeNode />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
     </defs>
-    {/* الخلفية للدشداشة */}
-    <path d="M50 160 C50 120 150 120 150 160 L150 200 L50 200 Z" fill="#FFFFFF" />
-    <path d="M100 130 L100 200" stroke="#e2e8f0" strokeWidth="2" />
-    
+
+    {/* تم حذف الخلفية الدائرية الزرقاء من هنا */}
+
+    {/* الجسم (الدشداشة) */}
+    <g filter="url(#softShadow)">
+      <path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" />
+      {/* الفراخة (الخيوط المتدلية) */}
+      <path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="100" cy="183" r="3" fill="#cbd5e1" />
+    </g>
+
     {/* الرقبة */}
-    <rect x="85" y="110" width="30" height="20" fill="url(#skin)" />
-    
-    {/* الوجه */}
-    <circle cx="100" cy="90" r="45" fill="url(#skin)" />
-    
-    {/* الكمة العمانية */}
-    <path d="M55 75 Q100 35 145 75 L145 65 Q100 25 55 65 Z" fill="#FFFFFF" filter="drop-shadow(0 2px 2px rgba(0,0,0,0.1))" />
-    <path d="M55 75 Q100 35 145 75" fill="none" stroke="#6366f1" strokeWidth="4" strokeDasharray="3 3" />
-    <path d="M60 65 Q100 30 140 65" fill="none" stroke="#6366f1" strokeWidth="2" strokeDasharray="2 2" />
-    
-    {/* الملامح */}
-    <circle cx="85" cy="90" r="5" fill="#1e293b" />
-    <circle cx="115" cy="90" r="5" fill="#1e293b" />
-    <path d="M82 82 Q95 78 108 82" fill="none" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
-    <path d="M92 110 Q100 115 108 110" fill="none" stroke="#c2410c" strokeWidth="2" strokeLinecap="round" />
-    
-    {/* الياقة */}
-    <path d="M85 135 L100 150 L115 135" fill="none" stroke="#e2e8f0" strokeWidth="2" />
+    <rect x="85" y="115" width="30" height="20" fill="#d49066" />
+
+    {/* الرأس */}
+    <g filter="url(#softShadow)">
+       {/* الوجه */}
+      <circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
+      
+      {/* الكمة (القبعة) بتفاصيل هندسية */}
+      <path d="M54 75 Q100 25 146 75 L146 65 Q100 15 54 65 Z" fill="url(#kummahBase)" />
+      <path d="M54 75 Q100 25 146 75" fill="none" stroke="#e2e8f0" strokeWidth="1" />
+      {/* تطريز الكمة */}
+      <path d="M60 70 Q100 35 140 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" />
+      <path d="M65 60 Q100 28 135 60" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
+      
+      {/* الأذن */}
+      <circle cx="52" cy="95" r="9" fill="#ebb082" />
+      <circle cx="148" cy="95" r="9" fill="#ebb082" />
+    </g>
+
+    {/* الملامح - عيون لامعة للـ 3D */}
+    <g>
+      {/* العين اليسرى */}
+      <ellipse cx="82" cy="95" rx="6" ry="8" fill="#1e293b" />
+      <circle cx="84" cy="93" r="2.5" fill="white" opacity="0.9" /> {/* لمعة العين */}
+      
+      {/* العين اليمنى */}
+      <ellipse cx="118" cy="95" rx="6" ry="8" fill="#1e293b" />
+      <circle cx="120" cy="93" r="2.5" fill="white" opacity="0.9" /> {/* لمعة العين */}
+      
+      {/* الحواجب */}
+      <path d="M75 82 Q82 78 89 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M111 82 Q118 78 125 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+
+      {/* الفم مبتسم */}
+      <path d="M90 115 Q100 122 110 115" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" />
+      
+      {/* خدود وردية */}
+      <ellipse cx="75" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
+      <ellipse cx="125" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
+    </g>
   </svg>
 );
 
 const OmaniGirlAvatar = () => (
-  <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="skin_g" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#fde6d3" />
-        <stop offset="100%" stopColor="#f5d0b0" />
-      </linearGradient>
-    </defs>
-    
-    {/* الجسم (المريول المدرسي) */}
-    <path d="M40 180 C40 140 160 140 160 180 L160 200 L40 200 Z" fill="#3b82f6" />
-    <path d="M70 160 L70 200 M130 160 L130 200" stroke="#2563eb" strokeWidth="15" opacity="0.2" />
-    
-    {/* الرقبة */}
-    <rect x="90" y="110" width="20" height="20" fill="url(#skin_g)" />
+      {/* تدرجات البشرة */}
+      <radialGradient id="girlSkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
 
-    {/* الحجاب الأبيض */}
-    <path d="M50 85 Q100 30 150 85 L150 120 Q150 150 100 160 Q50 150 50 120 Z" fill="#FFFFFF" />
-    <path d="M55 85 Q100 40 145 85" fill="none" stroke="#e2e8f0" strokeWidth="1" />
-    
-    {/* الوجه */}
-    <circle cx="100" cy="90" r="34" fill="url(#skin_g)" />
-    
-    {/* الملامح */}
-    <circle cx="88" cy="90" r="4.5" fill="#1e293b" />
-    <circle cx="112" cy="90" r="4.5" fill="#1e293b" />
-    <path d="M85 82 Q100 80 115 82" fill="none" stroke="#1e293b" strokeWidth="1" opacity="0.2" />
-    <path d="M94 105 Q100 108 106 105" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" />
-    
-    {/* خدود */}
-    <circle cx="82" cy="98" r="4" fill="#fbcfe8" opacity="0.6" />
-    <circle cx="118" cy="98" r="4" fill="#fbcfe8" opacity="0.6" />
+      {/* تدرج الحجاب (أبيض مع ظلال رمادية للثنيات) */}
+      <linearGradient id="hijab3D" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="50%" stopColor="#f8fafc" />
+        <stop offset="100%" stopColor="#cbd5e1" />
+      </linearGradient>
+
+      {/* تدرج المريول (أزرق غني) */}
+      <linearGradient id="uniform3D" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#3b82f6" /> {/* أزرق فاتح من الأعلى */}
+        <stop offset="100%" stopColor="#1e3a8a" /> {/* أزرق داكن من الأسفل */}
+      </linearGradient>
+      
+      {/* فلتر الظل */}
+      <filter id="girlShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="0" dy="4" result="offsetblur" />
+        <feComponentTransfer>
+           <feFuncA type="linear" slope="0.25"/> 
+        </feComponentTransfer>
+        <feMerge> 
+          <feMergeNode/>
+          <feMergeNode in="SourceGraphic"/> 
+        </feMerge>
+      </filter>
+    </defs>
+
+    {/* تم حذف الخلفية الدائرية الزرقاء من هنا */}
+
+    {/* الجسم (المريول) */}
+    <g filter="url(#girlShadow)">
+      <path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" />
+      {/* تفاصيل المريول (الحمالات) */}
+      <path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" />
+    </g>
+
+    {/* الرقبة (مغطاة جزئياً) */}
+    <rect x="90" y="120" width="20" height="20" fill="#d49066" />
+
+    {/* الرأس والحجاب */}
+    <g filter="url(#girlShadow)">
+       {/* الحجاب الخلفي */}
+      <path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" />
+      
+      {/* الوجه */}
+      <circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
+      
+      {/* طيات الحجاب حول الوجه */}
+      <path d="M62 95 C62 60 138 60 138 95" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" />
+    </g>
+
+    {/* الملامح - نمط لطيف */}
+    <g>
+      {/* العين اليسرى */}
+      <ellipse cx="86" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
+      <circle cx="88" cy="93" r="2.5" fill="white" opacity="0.9" /> {/* لمعة */}
+
+      {/* العين اليمنى */}
+      <ellipse cx="114" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
+      <circle cx="116" cy="93" r="2.5" fill="white" opacity="0.9" /> {/* لمعة */}
+
+      {/* رموش */}
+      <path d="M80 92 L78 90 M120 92 L122 90" stroke="#1e293b" strokeWidth="1.5" />
+
+      {/* الفم */}
+      <path d="M94 112 Q100 116 106 112" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" />
+      
+      {/* خدود وردية */}
+      <circle cx="80" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
+      <circle cx="120" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
+    </g>
   </svg>
 );
 
