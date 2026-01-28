@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowRight, Check, Loader2 } from 'lucide-react'; // تم إبقاء الأيقونات الوظيفية الصغيرة فقط
+import { ArrowRight, Check, Loader2 } from 'lucide-react'; 
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
@@ -375,7 +375,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                             <div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center"><p className="text-sm font-bold text-slate-500 mb-1">مرات التسرب</p><p className="text-3xl font-black text-purple-600">{truantCount}</p></div>
                         </div>
                         <div className="flex justify-between items-end px-12 mt-auto">
-                            <div className="text-center"><p className="font-bold text-base mb-8">معلم المادة</p><p className="font-bold text-lg">{teacherInfo?.name}</p></div>
+                            <div className="text-center"><p className="font-bold text-base mb-8">معلم المادة</p><p className="text-2xl font-bold">{teacherInfo?.name}</p></div>
                             <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80 mix-blend-multiply" />}</div>
                             <div className="text-center"><p className="font-bold text-base mb-8">مدير المدرسة</p><p className="font-bold text-lg">........................</p></div>
                         </div>
