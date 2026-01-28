@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  Bell, Clock, Settings, Edit3, 
-  School, Loader2, 
-  BookOpen, ChevronLeft, Download, BellRing, 
-  // استيراد الأيقونات المعبرة
-  Calculator, FlaskConical, Languages, Globe, 
-  Moon, Monitor, Music, Palette, Trophy, 
-  Briefcase, Leaf, Scroll, FileSpreadsheet
+  School, Loader2, BookOpen, ChevronLeft 
 } from 'lucide-react';
 import Modal from './Modal';
 import * as XLSX from 'xlsx';
@@ -47,10 +41,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const scheduleFileInputRef = useRef<HTMLInputElement>(null);
-    const periodTimesInputRef = useRef<HTMLInputElement>(null); // مرجع جديد لملف التوقيت
+    const periodTimesInputRef = useRef<HTMLInputElement>(null);
 
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
-    const [isImportingPeriods, setIsImportingPeriods] = useState(false); // حالة تحميل التوقيت
+    const [isImportingPeriods, setIsImportingPeriods] = useState(false); 
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
     
     // Modals State
@@ -107,21 +101,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         return new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     };
 
-    // Helper to convert Excel time (fraction of day) or string to HH:mm
     const parseExcelTime = (value: any): string => {
         if (!value) return '';
-        
-        // إذا كان رقم (Excel Time Serial)
         if (typeof value === 'number') {
             const totalSeconds = Math.round(value * 86400);
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
-        
-        // إذا كان نص (String)
         const str = String(value).trim();
-        // محاولة استخراج صيغة HH:mm
         const match = str.match(/(\d{1,2}):(\d{2})/);
         if (match) {
             return `${String(match[1]).padStart(2, '0')}:${match[2]}`;
@@ -129,22 +117,37 @@ const Dashboard: React.FC<DashboardProps> = ({
         return '';
     };
 
-    // --- دالة اختيار الأيقونة (تم تحسين الكلمات المفتاحية) ---
+    // أيقونات المواد (3D Style - Medium Size)
     const getSubjectIcon = (subjectName: string) => {
-        if (!subjectName) return <BookOpen className="w-6 h-6" />; 
+        if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
         const name = subjectName.trim().toLowerCase();
-        if (name.includes('اسلام') || name.includes('إسلام') || name.includes('دين') || name.includes('قرآن') || name.includes('تجويد')) return <Moon className="w-6 h-6" />;
-        if (name.includes('عربي') || name.includes('لغتي') || name.includes('نحو') || name.includes('أدب')) return <Scroll className="w-6 h-6" />;
-        if (name.includes('رياضيات') || name.includes('حساب') || name.includes('جبر') || name.includes('هندسة') || name.includes('math')) return <Calculator className="w-6 h-6" />;
-        if (name.includes('علوم') || name.includes('فيزياء') || name.includes('كيمياء') || name.includes('أحياء') || name.includes('مختبر') || name.includes('science')) return <FlaskConical className="w-6 h-6" />;
-        if (name.includes('دراسات') || name.includes('اجتماعيات') || name.includes('تاريخ') || name.includes('جغرافيا') || name.includes('وطنية')) return <Globe className="w-6 h-6" />;
-        if (name.includes('حاسوب') || name.includes('تقنية') || name.includes('رقمية') || name.includes('computer') || name.includes('it')) return <Monitor className="w-6 h-6" />;
-        if (name.includes('رياضة') || name.includes('بدنية') || name.includes('sport') || name.includes('pe')) return <Trophy className="w-6 h-6" />;
-        if (name.includes('موسيقى') || name.includes('عزف') || name.includes('music')) return <Music className="w-6 h-6" />;
-        if (name.includes('فنون') || name.includes('رسم') || name.includes('تشكيلية') || name.includes('art')) return <Palette className="w-6 h-6" />;
-        if (name.includes('نجليزي') || name.includes('english') || name.includes('لغات')) return <Languages className="w-6 h-6" />;
-        if (name.includes('حياتية') || name.includes('بيئة') || name.includes('زراعة')) return <Leaf className="w-6 h-6" />;
-        return <BookOpen className="w-6 h-6" />;
+        
+        const iconStyle = "text-xl drop-shadow-sm filter transform transition-transform hover:scale-110 cursor-default";
+
+        if (name.includes('اسلام') || name.includes('إسلام') || name.includes('دين') || name.includes('قرآن') || name.includes('تجويد')) 
+            return <span className={iconStyle}>🕌</span>;
+        if (name.includes('عربي') || name.includes('لغتي') || name.includes('نحو') || name.includes('أدب')) 
+            return <span className={iconStyle}>📜</span>;
+        if (name.includes('رياضيات') || name.includes('حساب') || name.includes('جبر') || name.includes('هندسة') || name.includes('math')) 
+            return <span className={iconStyle}>📐</span>;
+        if (name.includes('علوم') || name.includes('فيزياء') || name.includes('كيمياء') || name.includes('أحياء') || name.includes('مختبر') || name.includes('science')) 
+            return <span className={iconStyle}>🧪</span>;
+        if (name.includes('دراسات') || name.includes('اجتماعيات') || name.includes('تاريخ') || name.includes('جغرافيا') || name.includes('وطنية')) 
+            return <span className={iconStyle}>🌍</span>;
+        if (name.includes('حاسوب') || name.includes('تقنية') || name.includes('رقمية') || name.includes('computer') || name.includes('it')) 
+            return <span className={iconStyle}>💻</span>;
+        if (name.includes('رياضة') || name.includes('بدنية') || name.includes('sport') || name.includes('pe')) 
+            return <span className={iconStyle}>⚽</span>;
+        if (name.includes('موسيقى') || name.includes('عزف') || name.includes('music')) 
+            return <span className={iconStyle}>🎵</span>;
+        if (name.includes('فنون') || name.includes('رسم') || name.includes('تشكيلية') || name.includes('art')) 
+            return <span className={iconStyle}>🎨</span>;
+        if (name.includes('نجليزي') || name.includes('english') || name.includes('لغات')) 
+            return <span className={iconStyle}>🅰️</span>;
+        if (name.includes('حياتية') || name.includes('بيئة') || name.includes('زراعة')) 
+            return <span className={iconStyle}>🌱</span>;
+            
+        return <span className={iconStyle}>📚</span>;
     };
 
     // Handlers
@@ -228,7 +231,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    // --- دالة استيراد توقيت الحصص الجديدة ---
     const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -239,29 +241,19 @@ const Dashboard: React.FC<DashboardProps> = ({
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
             
-            // نسخة من التوقيت الحالي للتعديل عليها
             const newPeriodTimes = [...tempPeriodTimes];
-            
-            // نبدأ من الصف الثاني (بافتراض الصف الأول عناوين)
-            // نتوقع: العمود 0 (اسم الحصة)، العمود 1 (بداية)، العمود 2 (نهاية)
-            // أو نبحث بذكاء
-            
             let updatesCount = 0;
 
             jsonData.forEach((row) => {
                 if (row.length < 2) return;
-                
-                // نحاول إيجاد رقم الحصة من العمود الأول
                 const firstCol = String(row[0] || '');
-                // استخراج أي رقم موجود في النص (مثال: "الحصة 1" -> 1)
                 const periodNumMatch = firstCol.match(/\d+/);
                 
                 if (periodNumMatch) {
-                    const pIndex = parseInt(periodNumMatch[0]) - 1; // 0-indexed
+                    const pIndex = parseInt(periodNumMatch[0]) - 1; 
                     if (pIndex >= 0 && pIndex < 8) {
                         const startVal = row[1];
                         const endVal = row[2];
-                        
                         const parsedStart = parseExcelTime(startVal);
                         const parsedEnd = parseExcelTime(endVal);
 
@@ -313,11 +305,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setShowEditModal(true)} className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all active:scale-95" title="تعديل بيانات المعلم">
-                            <Edit3 className="w-6 h-6 text-white" />
+                        {/* زر تعديل بيانات المعلم (3D Icon) */}
+                        <button onClick={() => setShowEditModal(true)} className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all active:scale-95 group" title="تعديل بيانات المعلم">
+                            <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">✏️</span>
                         </button>
-                        <button onClick={onToggleNotifications} className="p-2 rounded-full hover:bg-white/10 transition-colors relative">
-                            <Bell className={`w-6 h-6 ${notificationsEnabled ? 'fill-white' : ''}`} />
+                        
+                        {/* زر التنبيهات (3D Icon) */}
+                        <button onClick={onToggleNotifications} className="p-2 rounded-full hover:bg-white/10 transition-colors relative group">
+                            <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">🔔</span>
                             {notificationsEnabled && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1e3a8a]"></span>}
                         </button>
                     </div>
@@ -345,25 +340,32 @@ const Dashboard: React.FC<DashboardProps> = ({
                     
                     <div className="flex items-center gap-2">
                         <div className="relative z-50">
-                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`flex items-center justify-center w-9 h-9 rounded-xl border border-white/20 hover:bg-white/20 hover:text-white transition-all ${showSettingsDropdown ? 'bg-white text-[#1e3a8a]' : 'bg-white/10 text-blue-100'}`}>
-                                <Settings className="w-5 h-5" />
+                            {/* زر الترس (الإعدادات) (3D Icon) */}
+                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`flex items-center justify-center w-9 h-9 rounded-xl border border-white/20 hover:bg-white/20 transition-all group ${showSettingsDropdown ? 'bg-white' : 'bg-white/10'}`}>
+                                <span className="text-lg drop-shadow-md group-hover:scale-110 transition-transform block">⚙️</span>
                             </button>
+                            
                             {showSettingsDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
                                     <div className="absolute left-0 bottom-full mb-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-bottom-left z-50 animate-in zoom-in-95 duration-200">
                                         <div className="flex flex-col py-1">
+                                            {/* زر استيراد الجدول (3D Icon) */}
                                             <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group">
-                                                <Download className="w-4 h-4 text-[#1e3a8a] group-hover:scale-110 transition-transform" />
+                                                <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">📥</span>
                                                 <span className="text-xs font-bold text-slate-700">استيراد الجدول</span>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto"/>}
                                             </button>
+                                            
+                                            {/* زر ضبط التوقيت (3D Icon) */}
                                             <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
-                                                <Clock className="w-4 h-4 text-[#1e3a8a] group-hover:scale-110 transition-transform" />
+                                                <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏱️</span>
                                                 <span className="text-xs font-bold text-slate-700">ضبط توقيت الجدول</span>
                                             </button>
+                                            
+                                            {/* زر منبه الحصص (3D Icon) */}
                                             <button onClick={() => { onToggleNotifications(); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
-                                                <BellRing className={`w-4 h-4 group-hover:scale-110 transition-transform ${notificationsEnabled ? 'text-amber-500 fill-amber-500' : 'text-[#1e3a8a]'}`} />
+                                                <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏰</span>
                                                 <span className="text-xs font-bold text-slate-700">منبه الحصص</span>
                                                 <span className={`mr-auto text-[10px] px-2 py-0.5 rounded-full ${notificationsEnabled ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}>{notificationsEnabled ? 'مفعل' : 'معطل'}</span>
                                             </button>
@@ -391,7 +393,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                             {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>}
 
                             <div className="flex items-center gap-4">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-[#1e3a8a]'}`}>
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
+                                    {/* أيقونات الـ 3D بحجم متوسط */}
                                     {getSubjectIcon(teacherInfo.subject)}
                                 </div>
                                 <div>
@@ -428,7 +431,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </section>
 
             {/* ================= MODALS ================= */}
-            {/* Edit Modal (Teacher Info) - Same as before */}
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
                  <div className="text-center">
                     <h3 className="font-black text-2xl mb-6 text-slate-800">إعدادات الهوية</h3>
@@ -490,7 +492,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                  </div>
             </Modal>
 
-            {/* Schedule Settings Modal with Import Feature */}
             <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">إعدادات الجدول</h3>
@@ -507,7 +508,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     disabled={isImportingPeriods}
                                     className="w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-emerald-100 active:scale-95 transition-all"
                                 >
-                                    {isImportingPeriods ? <Loader2 className="w-4 h-4 animate-spin"/> : <FileSpreadsheet className="w-4 h-4" />}
+                                    {isImportingPeriods ? <Loader2 className="w-4 h-4 animate-spin"/> : <span className="text-lg drop-shadow-sm">📂</span>}
                                     استيراد التوقيت من Excel
                                 </button>
                                 <p className="text-[9px] text-gray-400 mt-1 font-bold">الملف يجب أن يحتوي على: رقم الحصة، بداية الوقت، نهاية الوقت</p>
@@ -541,7 +542,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                      </div>
                                  ))}
                              </div>
-                         </div>
+                          </div>
                     )}
                     <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
                         <button onClick={() => setShowScheduleModal(false)} className="flex-1 py-3.5 text-slate-500 font-bold text-xs hover:bg-gray-100 rounded-xl transition-colors">إلغاء</button>
