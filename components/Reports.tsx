@@ -255,7 +255,7 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
 
     return (
         // ✅ z-[99999] لتغطية القائمة الجانبية تماماً، و pt-16 للهاتف لتفادي النوتش
-        <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200 pt-16 md:pt-0">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             {/* Header */}
             <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top relative z-50 rounded-t-2xl md:rounded-none">
                 <div className="flex items-center gap-3">
@@ -292,7 +292,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
         <div className="w-full text-black bg-white p-10 print-content">
             <div className="text-center mb-6 border-b-2 border-black pb-4">
                 <div className="flex justify-between items-center mb-4">
-                    <div className="text-right text-sm font-bold leading-relaxed"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p></div>
+                    <div className="text-right text-sm font-bold leading-relaxed"><p>سلطنة عمان</p><p>وزارة التعليم</p></div>
                     <div><h1 className="text-2xl font-black underline">سجل درجات الطلاب</h1></div>
                     <div className="text-left text-sm font-bold leading-relaxed"><p>المادة: {teacherInfo?.subject || '........'}</p><p>الصف: {gradeClass}</p></div>
                 </div>
@@ -347,7 +347,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                 return (
                     <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-gray-300 page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
                         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-4">
-                            <div className="text-right w-1/3 text-sm font-bold"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p><p>مدرسة {teacherInfo?.school}</p></div>
+                            <div className="text-right w-1/3 text-sm font-bold"><p>سلطنة عمان</p><p>وزارةالتعليم</p><p>مدرسة {teacherInfo?.school}</p></div>
                             <div className="text-center w-1/3">{teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-16 object-contain mx-auto" />}<h2 className="text-xl font-black underline mt-2 text-black">تقرير مستوى طالب</h2></div>
                             <div className="text-left w-1/3 text-sm font-bold"><p>العام: {teacherInfo?.academicYear}</p><p>الفصل: {semester === '1' ? 'الأول' : 'الثاني'}</p></div>
                         </div>
@@ -512,7 +512,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
       
       {/* ================= HEADER (Sticky Fix: No Overlay) ================= */}
       {/* ✅ تعديل الهيدر ليكون sticky بدون تمدد غريب */}
-      <div className="sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full">
+      <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
           <div className="flex items-center gap-3 mb-6 mt-4 px-2">
              <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20"><Icon3DReportCenter className="w-6 h-6" /></div>
              <div><h1 className="text-xl font-black tracking-wide">مركز التقارير</h1><p className="text-[10px] text-blue-200 font-bold opacity-80">طباعة الكشوفات والشهادات</p></div>

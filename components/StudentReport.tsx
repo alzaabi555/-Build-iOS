@@ -64,7 +64,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
         {/* HEADER */}
         {/* ✅ Sticky بدلاً من Fixed لحل مشكلة الانزياح في الويندوز، و without left-0 */}
-        <div className="sticky top-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] md:rounded-none shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 w-full">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-4">
                     <button onClick={onBack} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10"><ArrowRight className="w-6 h-6" /></button>

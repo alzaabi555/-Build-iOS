@@ -41,7 +41,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
 
     return (
         // ✅ z-[99999] للتأكد من أنها فوق كل شيء في الويندوز والهاتف
-        <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-start md:justify-center pt-20 md:pt-4 pb-4 px-4 animate-in fade-in duration-200 font-sans" dir="rtl">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             
             {/* زر إغلاق سريع في الخلفية للهاتف */}
             <div className="absolute top-8 right-6 md:hidden z-[100000]">
@@ -82,7 +82,7 @@ const StudentDetailedHistoryModal: React.FC<StudentDetailedHistoryModalProps> = 
                             <div className="flex justify-between items-start mb-4">
                                 <div className="text-right">
                                     <p className="font-bold text-xs">سلطنة عمان</p>
-                                    <p className="font-bold text-xs">وزارة التربية والتعليم</p>
+                                    <p className="font-bold text-xs">وزارة التعليم</p>
                                 </div>
                                 <div><h1 className="text-xl font-black text-black">سجل متابعة يومي</h1></div>
                                 <div className="text-left"><p className="font-mono text-xs">{new Date().toLocaleDateString('ar-EG')}</p></div>

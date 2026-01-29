@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Student, BehaviorType } from '../types';
-import { 
-  Search, Edit2, Sparkles, Trash2, Plus, 
-  UserPlus, Settings, Trophy, Frown, CloudRain, PartyPopper, 
-  Menu, FileSpreadsheet, Smile, AlertCircle, User, Clock, Volume2, VolumeX, Layers
-} from 'lucide-react';
+import { Search, Edit2, Trash2, Plus, LayoutGrid, Settings, UserPlus, Upload, Sparkles, X, Trophy, Frown, CloudRain, PartyPopper, Check, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 
-// --- تعريفات الشخصيات الكرتونية العمانية (3D Style SVG) ---
+// ============================================================================
+// ✅ 1. الأيقونات (3D Style Icons) 
+// ============================================================================
+
 const OmaniBoyAvatarSVG = () => (
   <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -33,41 +32,16 @@ const OmaniBoyAvatarSVG = () => (
       <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
         <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
         <feOffset dx="2" dy="4" result="offsetblur" />
-        <feComponentTransfer>
-          <feFuncA type="linear" slope="0.3" />
-        </feComponentTransfer>
-        <feMerge>
-          <feMergeNode />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
+        <feComponentTransfer><feFuncA type="linear" slope="0.3" /></feComponentTransfer>
+        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
-    <g filter="url(#softShadow)">
-      <path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" />
-      <path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="100" cy="183" r="3" fill="#cbd5e1" />
-    </g>
+    <g filter="url(#softShadow)"><path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" /><path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" /><circle cx="100" cy="183" r="3" fill="#cbd5e1" /></g>
     <rect x="85" y="115" width="30" height="20" fill="#d49066" />
-    <g filter="url(#softShadow)">
-      <circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
-      <path d="M54 75 Q100 25 146 75 L146 65 Q100 15 54 65 Z" fill="url(#kummahBase)" />
-      <path d="M54 75 Q100 25 146 75" fill="none" stroke="#e2e8f0" strokeWidth="1" />
-      <path d="M60 70 Q100 35 140 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" />
-      <path d="M65 60 Q100 28 135 60" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
-      <circle cx="52" cy="95" r="9" fill="#ebb082" />
-      <circle cx="148" cy="95" r="9" fill="#ebb082" />
-    </g>
-    <g>
-      <ellipse cx="82" cy="95" rx="6" ry="8" fill="#1e293b" />
-      <circle cx="84" cy="93" r="2.5" fill="white" opacity="0.9" />
-      <ellipse cx="118" cy="95" rx="6" ry="8" fill="#1e293b" />
-      <circle cx="120" cy="93" r="2.5" fill="white" opacity="0.9" />
-      <path d="M75 82 Q82 78 89 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M111 82 Q118 78 125 82" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M90 115 Q100 122 110 115" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" />
-      <ellipse cx="75" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
-      <ellipse cx="125" cy="108" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" />
-    </g>
+    <g filter="url(#softShadow)"><circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
+    <path d="M53 85 Q100 95 147 85 L147 65 Q100 15 53 65 Z" fill="url(#kummahBase)" /><path d="M53 85 Q100 95 147 85" fill="none" stroke="#e2e8f0" strokeWidth="1" /><path d="M60 80 Q100 90 140 80" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" /><path d="M65 70 Q100 40 135 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
+    <circle cx="52" cy="95" r="9" fill="#ebb082" /><circle cx="148" cy="95" r="9" fill="#ebb082" /></g>
+    <g><ellipse cx="82" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="84" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="118" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="120" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M75 90 Q82 88 89 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M111 90 Q118 88 125 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M90 120 Q100 128 110 120" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" /><ellipse cx="75" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /><ellipse cx="125" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /></g>
   </svg>
 );
 
@@ -91,231 +65,118 @@ const OmaniGirlAvatarSVG = () => (
       <filter id="girlShadow" x="-20%" y="-20%" width="140%" height="140%">
         <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
         <feOffset dx="0" dy="4" result="offsetblur" />
-        <feComponentTransfer>
-           <feFuncA type="linear" slope="0.25"/> 
-        </feComponentTransfer>
-        <feMerge> 
-          <feMergeNode/>
-          <feMergeNode in="SourceGraphic"/> 
-        </feMerge>
+        <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
-    <g filter="url(#girlShadow)">
-      <path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" />
-      <path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" />
-    </g>
+    <g filter="url(#girlShadow)"><path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" /><path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" /></g>
     <rect x="90" y="120" width="20" height="20" fill="#d49066" />
-    <g filter="url(#girlShadow)">
-      <path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" />
-      <circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
-      <path d="M62 95 C62 60 138 60 138 95" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" />
-    </g>
-    <g>
-      <ellipse cx="86" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
-      <circle cx="88" cy="93" r="2.5" fill="white" opacity="0.9" />
-      <ellipse cx="114" cy="95" rx="5.5" ry="7.5" fill="#1e293b" />
-      <circle cx="116" cy="93" r="2.5" fill="white" opacity="0.9" />
-      <path d="M80 92 L78 90 M120 92 L122 90" stroke="#1e293b" strokeWidth="1.5" />
-      <path d="M94 112 Q100 116 106 112" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="80" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
-      <circle cx="120" cy="105" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" />
-    </g>
+    <g filter="url(#girlShadow)"><path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" /><circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
+    <path d="M62 90 Q100 100 138 90 L138 50 Q100 40 62 50 Z" fill="url(#hijab3D)" /><path d="M62 90 Q100 100 138 90" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" /></g>
+    <g><ellipse cx="86" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="88" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="114" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="116" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M80 96 L78 94 M120 96 L122 94" stroke="#1e293b" strokeWidth="1.5" /><path d="M94 118 Q100 122 106 118" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" /><circle cx="80" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /><circle cx="120" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /></g>
   </svg>
 );
 
-// دالة مساعدة لاختيار الصورة المناسبة
 const getStudentAvatar = (student: Student) => {
     if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
     return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
 };
 
-interface StudentListProps {
-  students: Student[];
-  classes: string[];
-  onAddClass: (name: string) => void;
-  // ✅ دمج: إضافة خاصية gender
-  onAddStudentManually: (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => void;
-  onBatchAddStudents: (students: Student[]) => void;
-  onUpdateStudent: (student: Student) => void;
-  onDeleteStudent: (id: string) => void;
-  onViewReport: (student: Student) => void;
-  currentSemester: '1' | '2';
-  onDeleteClass?: (className: string) => void; 
-  onSemesterChange?: (sem: '1' | '2') => void;
-  onEditClass?: (oldName: string, newName: string) => void;
-}
+// ----------------------------------------------------------
+
+const Icon3DMenu = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="menuGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#f1f5f9" /></linearGradient><filter id="menuShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="1.5" floodOpacity="0.2" /></filter></defs><rect x="20" y="25" width="60" height="10" rx="5" fill="url(#menuGrad)" filter="url(#menuShadow)" /><rect x="20" y="45" width="60" height="10" rx="5" fill="url(#menuGrad)" filter="url(#menuShadow)" /><rect x="20" y="65" width="60" height="10" rx="5" fill="url(#menuGrad)" filter="url(#menuShadow)" /></svg>);
+const Icon3DPositive = () => (<svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="posGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#4ade80" /><stop offset="100%" stopColor="#16a34a" /></linearGradient><filter id="posShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="2" floodOpacity="0.3" /></filter></defs><circle cx="50" cy="50" r="45" fill="url(#posGrad)" filter="url(#posShadow)" /><circle cx="35" cy="40" r="5" fill="white" /><circle cx="65" cy="40" r="5" fill="white" /><path d="M30 65 Q50 80 70 65" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" /></svg>);
+const Icon3DNegative = () => (<svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="negGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" /></linearGradient><filter id="negShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="2" floodOpacity="0.3" /></filter></defs><circle cx="50" cy="50" r="45" fill="white" filter="url(#negShadow)" /><circle cx="50" cy="50" r="40" fill="none" stroke="url(#negGrad)" strokeWidth="6" /><path d="M50 25 V55" stroke="url(#negGrad)" strokeWidth="6" strokeLinecap="round" /><circle cx="50" cy="70" r="4" fill="url(#negGrad)" /></svg>);
+const Icon3DAdd = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-5 h-5"}><defs><linearGradient id="gradAdd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><circle cx="50" cy="50" r="45" fill="url(#gradAdd)" /><path d="M50 25 V75 M25 50 H75" stroke="white" strokeWidth="8" strokeLinecap="round" /></svg>);
+const Icon3DExcel = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-5 h-5"}><defs><linearGradient id="gradEx" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient></defs><rect x="25" y="20" width="50" height="60" rx="5" fill="url(#gradEx)" /><path d="M35 35 H65 M35 45 H65 M35 55 H50" stroke="white" strokeWidth="4" strokeLinecap="round" /></svg>);
+const Icon3DRandom = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-5 h-5"}><defs><linearGradient id="gradRand" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient></defs><rect x="20" y="20" width="60" height="60" rx="10" fill="url(#gradRand)" /><circle cx="35" cy="35" r="5" fill="white"/><circle cx="65" cy="65" r="5" fill="white"/><circle cx="50" cy="50" r="5" fill="white"/></svg>);
+const Icon3DSettings = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-5 h-5"}><defs><linearGradient id="gradSet" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#94a3b8" /><stop offset="100%" stopColor="#475569" /></linearGradient></defs><circle cx="50" cy="50" r="25" fill="none" stroke="url(#gradSet)" strokeWidth="15" strokeDasharray="10 5" /><circle cx="50" cy="50" r="10" fill="#cbd5e1" /></svg>);
+const Icon3DDelete = () => (<svg viewBox="0 0 100 100" className="w-5 h-5"><rect x="25" y="25" width="50" height="60" rx="5" fill="#fee2e2" /><path d="M35 15 H65 V25 H35 Z" fill="#ef4444" /><path d="M40 40 V70 M50 40 V70 M60 40 V70" stroke="#ef4444" strokeWidth="3" /></svg>);
+const Icon3DEdit = () => (<svg viewBox="0 0 100 100" className="w-5 h-5"><path d="M20 80 L25 55 L75 5 L95 25 L45 75 Z" fill="#dbeafe" stroke="#3b82f6" strokeWidth="2" /><path d="M20 80 L35 80 L20 65 Z" fill="#3b82f6" /></svg>);
+const Icon3DTruant = () => (<svg viewBox="0 0 100 100" className="w-5 h-5"><rect x="20" y="15" width="60" height="70" rx="2" fill="#f3e8ff" /><path d="M20 15 H50 V85 H20 Z" fill="#a855f7" /><circle cx="45" cy="50" r="3" fill="white" /></svg>);
+
+// ============================================================================
 
 const SOUNDS = {
-  positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-  negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
+    positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+    negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
 };
 
-const StudentItem = React.memo(({ student, onAction, currentSemester, onToggleGender }: { 
-  student: Student, 
-  onAction: (s: Student, type: 'positive' | 'negative' | 'edit' | 'delete') => void, 
-  currentSemester: '1' | '2',
-  // ✅ دمج: دالة تبديل الجنس
-  onToggleGender: (s: Student) => void
-}) => {
-  const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === currentSemester);
-  const positivePoints = behaviors.filter(b => b.type === 'positive').reduce((acc, b) => acc + b.points, 0);
-  const negativePoints = behaviors.filter(b => b.type === 'negative').reduce((acc, b) => acc + Math.abs(b.points), 0);
-  const netScore = positivePoints - negativePoints;
+// --- بطاقة الطالب (Grid Item) ---
+const StudentItem = React.memo(({ student, onClick }: { student: Student, onClick: (s: Student) => void }) => {
+    const points = useMemo(() => (student.behaviors || []).reduce((acc, b) => acc + (b.type === 'positive' ? b.points : -b.points), 0), [student.behaviors]);
 
-  let cardStyle = "bg-white border-slate-100";
-  if (netScore > 0) cardStyle = "bg-emerald-50/60 border-emerald-200 ring-1 ring-emerald-100";
-  if (netScore < 0) cardStyle = "bg-rose-50/60 border-rose-200 ring-1 ring-rose-100";
+    return (
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}
+            onClick={() => onClick(student)}
+            className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer flex flex-col items-center relative overflow-hidden group h-full justify-between"
+        >
+            {/* النقاط (شارة في الزاوية) */}
+            <div className={`absolute top-2 right-2 text-[9px] font-black px-1.5 py-0.5 rounded-lg ${points >= 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                {points}
+            </div>
 
-  return (
-      <motion.div 
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-          className={`group flex flex-col p-5 mb-3 rounded-[1.8rem] border transition-all duration-300 shadow-sm hover:shadow-md relative overflow-hidden ${cardStyle}`}
-      >
-          <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-4">
-                  {/* ✅ دمج: الصورة مع خاصية الضغط للتبديل */}
-                  <div 
-                      onClick={(e) => { e.stopPropagation(); onToggleGender(student); }}
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold overflow-hidden shrink-0 shadow-sm border border-black/5 cursor-pointer active:scale-90 transition-transform select-none ${student.gender === 'female' ? 'bg-pink-50 border-pink-100' : 'bg-blue-50 border-blue-100'}`}
-                      title="اضغط لتبديل النوع (ذكر/أنثى)"
-                  >
-                      {getStudentAvatar(student)}
-                  </div>
-                  <div>
-                      <h3 className="font-black text-slate-900 text-base leading-tight mb-1">{student.name}</h3>
-                      <div className="flex items-center gap-2">
-                          <span className="text-[10px] bg-white/60 text-slate-600 px-2 py-0.5 rounded-lg font-bold border border-black/5">{student.classes[0]}</span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${netScore > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : netScore < 0 ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                              {netScore > 0 ? `+${netScore}` : netScore} نقطة
-                          </span>
-                      </div>
-                  </div>
-              </div>
+            {/* الأفاتار - متمركز في المنتصف */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mb-2 mt-2 rounded-full border-4 border-indigo-50 shadow-inner overflow-hidden bg-slate-50 transform group-hover:scale-105 transition-transform flex-shrink-0">
+                {getStudentAvatar(student)}
+            </div>
 
-              <div className="flex gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'edit'); }} className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-white transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); onAction(student, 'delete'); }} className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-white transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                  </button>
-              </div>
-          </div>
+            {/* الاسم - واضح وغير مقصوص (يلتف) */}
+            <h3 className="font-black text-slate-900 text-[10px] sm:text-xs text-center w-full mb-1 leading-snug line-clamp-3 min-h-[2.5em] flex items-center justify-center break-words px-1">
+                {student.name}
+            </h3>
+            
+            {/* الصف */}
+            <p className="text-[9px] text-slate-400 font-bold bg-slate-50 px-3 py-0.5 rounded-full mt-auto">
+                {student.classes[0]}
+            </p>
+        </motion.div>
+    );
+}, (prev, next) => prev.student === next.student);
 
-          <div className="flex gap-3 mt-2">
-              <button 
-                  onClick={(e) => { e.stopPropagation(); onAction(student, 'positive'); }} 
-                  className="flex-1 bg-white border-2 border-emerald-100 hover:border-emerald-500 hover:bg-emerald-50 text-emerald-600 py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
-              >
-                  <Smile className="w-5 h-5" strokeWidth={2.5} />
-                  سلوك إيجابي
-              </button>
-              
-              <button 
-                  onClick={(e) => { e.stopPropagation(); onAction(student, 'negative'); }} 
-                  className="flex-1 bg-white border-2 border-rose-100 hover:border-rose-500 hover:bg-rose-50 text-rose-600 py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
-              >
-                  <AlertCircle className="w-5 h-5" strokeWidth={2.5} />
-                  سلوك سلبي
-              </button>
-          </div>
-
-      </motion.div>
-  );
-}, (prev, next) => prev.student === next.student && prev.currentSemester === next.currentSemester);
-
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, currentSemester, onDeleteClass }) => {
-  const { teacherInfo, periodTimes } = useApp();
+const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, currentSemester, onDeleteClass }) => {
+  const { teacherInfo } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
-
+  
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [showManageClasses, setShowManageClasses] = useState(false); 
-  const [showMenuDropdown, setShowMenuDropdown] = useState(false);
-
-  const [newGradeInput, setNewGradeInput] = useState('');
-  const [newSectionInput, setNewSectionInput] = useState('');
-
-  const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editGrade, setEditGrade] = useState('');
-  const [editSection, setEditSection] = useState('');
-  // ✅ دمج: حالة الجنس
-  const [editGender, setEditGender] = useState<'male' | 'female'>('male');
+  const [showMenu, setShowMenu] = useState(false);
+  
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [newClassInput, setNewClassInput] = useState('');
   
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editClass, setEditClass] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
-
+  const [editGender, setEditGender] = useState<'male' | 'female'>('male');
+  
   const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
   const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
   const [customBehaviorReason, setCustomBehaviorReason] = useState('');
   const [customBehaviorPoints, setCustomBehaviorPoints] = useState<string>('1');
-  
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('1');
-  
-  const [enableAnimations, setEnableAnimations] = useState(() => {
-      const saved = localStorage.getItem('rased_animations');
-      return saved !== 'false';
-  });
-
-  const [currentAutoPeriod, setCurrentAutoPeriod] = useState<string | null>(null);
 
   const [feedbackAnimation, setFeedbackAnimation] = useState<{ type: BehaviorType, text: string } | null>(null);
+
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
-
-  useEffect(() => {
-      localStorage.setItem('rased_animations', enableAnimations.toString());
-  }, [enableAnimations]);
-
-  useEffect(() => {
-      const calculatePeriod = () => {
-          const now = new Date();
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
-          const activePeriod = periodTimes.find(pt => {
-              const [sh, sm] = pt.startTime.split(':').map(Number);
-              const [eh, em] = pt.endTime.split(':').map(Number);
-              const start = sh * 60 + sm;
-              const end = eh * 60 + em;
-              return currentMinutes >= start && currentMinutes <= end;
-          });
-          if (activePeriod) {
-              setCurrentAutoPeriod(activePeriod.periodNumber.toString());
-          } else {
-              setCurrentAutoPeriod(null);
-          }
-      };
-      calculatePeriod();
-      const timer = setInterval(calculatePeriod, 60000);
-      return () => clearInterval(timer);
-  }, [periodTimes]);
-
+  
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
-      
-      classes.forEach(c => {
-          if (c.includes('/')) {
-              grades.add(c.split('/')[0].trim());
-          } else {
-              const numMatch = c.match(/^(\d+)/);
-              if (numMatch) grades.add(numMatch[1]);
-              else if(c.trim().split(' ')[0].length > 1) grades.add(c.trim().split(' ')[0]);
-          }
-      });
-
       students.forEach(s => {
           if (s.grade) grades.add(s.grade);
+          else if (s.classes[0]) {
+              const match = s.classes[0].match(/^(\d+)/);
+              if (match) grades.add(match[1]);
+          }
       });
-
-      return Array.from(grades).sort((a, b) => {
-          const numA = parseInt(a);
-          const numB = parseInt(b);
-          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-          return a.localeCompare(b, 'ar');
-      });
+      return Array.from(grades).sort();
   }, [students, classes]);
 
   const visibleClasses = useMemo(() => {
@@ -326,106 +187,86 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const filteredStudents = useMemo(() => students.filter(s => {
       const matchName = s.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchClass = selectedClass === 'all' || s.classes?.includes(selectedClass);
-      
       let matchGrade = true;
-      if (selectedGrade !== 'all') { 
-          if (s.grade === selectedGrade) {
-              matchGrade = true;
-          } else if (s.classes[0]) {
-              const cls = s.classes[0];
-              if (cls.includes('/')) matchGrade = cls.split('/')[0].trim() === selectedGrade;
-              else matchGrade = cls.startsWith(selectedGrade);
-          } else {
-              matchGrade = false;
-          }
+      if (selectedGrade !== 'all') {
+          matchGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
       }
       return matchName && matchClass && matchGrade;
   }), [students, searchTerm, selectedClass, selectedGrade]);
 
-  useEffect(() => { if (feedbackAnimation) { const timer = setTimeout(() => setFeedbackAnimation(null), 1800); return () => clearTimeout(timer); } }, [feedbackAnimation]);
+  useEffect(() => {
+      if (feedbackAnimation) {
+          const timer = setTimeout(() => setFeedbackAnimation(null), 1800);
+          return () => clearTimeout(timer);
+      }
+  }, [feedbackAnimation]);
 
-  const playBehaviorSound = (type: BehaviorType) => { 
-      if (!enableAnimations) return;
-      try { const audio = new Audio(type === 'positive' ? SOUNDS.positive : SOUNDS.negative); audio.volume = 0.6; audio.play().catch(e => console.warn('Audio play blocked', e)); } catch (e) { console.error('Failed to play sound', e); } 
+  const playBehaviorSound = (type: BehaviorType) => {
+      try {
+          const audio = new Audio(type === 'positive' ? SOUNDS.positive : SOUNDS.negative);
+          audio.volume = 0.6; 
+          audio.play().catch(e => console.warn('Audio play blocked', e));
+      } catch (e) {
+          console.error('Failed to play sound', e);
+      }
   };
 
-  const handleAction = (student: Student, type: 'positive' | 'negative' | 'edit' | 'delete') => {
-      if (type === 'positive') setShowPositiveReasons({ student });
-      else if (type === 'negative') setShowNegativeReasons({ student });
+  const handleStudentClick = (student: Student) => {
+      setSelectedStudent(student);
+  };
+
+  const handleAction = (type: 'positive' | 'negative' | 'edit' | 'delete' | 'truant', student: Student) => {
+      if (type === 'positive') { setShowPositiveReasons({ student }); setSelectedStudent(null); }
+      else if (type === 'negative') { setShowNegativeReasons({ student }); setSelectedStudent(null); }
       else if (type === 'edit') {
-          setEditingStudent(student); 
+          setEditingStudent(student);
           setEditName(student.name);
-          
-          const currentClass = student.classes[0] || '';
-          if (currentClass.includes('/')) {
-              const parts = currentClass.split('/');
-              setEditGrade(parts[0]);
-              setEditSection(parts[1]);
-          } else {
-              const numMatch = currentClass.match(/^(\d+)/);
-              if (numMatch) {
-                  setEditGrade(numMatch[1]);
-                  setEditSection(currentClass.replace(numMatch[1], '').replace(/[\/\-\(\)]/g, '').trim());
-              } else {
-                  const parts = currentClass.split(' ');
-                  setEditGrade(parts[0]);
-                  setEditSection(parts.slice(1).join(' ').replace(/[\(\)]/g, ''));
-              }
-          }
-          
-          setEditPhone(student.parentPhone || ''); 
-          setEditAvatar(student.avatar || ''); 
-          // ✅ دمج: تحميل الجنس الحالي
+          setEditClass(student.classes[0]);
+          setEditPhone(student.parentPhone || '');
+          setEditAvatar(student.avatar || '');
           setEditGender(student.gender || 'male');
           setShowManualAddModal(true);
+          setSelectedStudent(null);
       }
       else if (type === 'delete') {
-          if(confirm(`حذف الطالب ${student.name}؟`)) onDeleteStudent(student.id);
+          if(confirm(`حذف الطالب ${student.name}؟`)) { onDeleteStudent(student.id); setSelectedStudent(null); }
+      }
+      else if (type === 'truant') {
+          if(confirm('تسجيل هروب (تسرب) لهذا الطالب؟')) {
+              handleAddBehavior(student, 'negative', 'تسرب من الحصة', 3);
+              setSelectedStudent(null);
+          }
       }
   };
 
-  // ✅ دمج: دالة تبديل الجنس السريع
   const handleToggleGender = (student: Student) => {
       const newGender = student.gender === 'female' ? 'male' : 'female';
       onUpdateStudent({ ...student, gender: newGender });
   };
 
-  const handleSaveStudent = () => {
-      if (editName.trim() && editGrade.trim() && editSection.trim()) {
-          const combinedClassName = `${editGrade.trim()}/${editSection.trim()}`;
-          
-          if (editingStudent) {
-              onUpdateStudent({ 
-                  ...editingStudent, 
-                  name: editName, 
-                  classes: [combinedClassName], 
-                  parentPhone: editPhone, 
-                  avatar: editAvatar, 
-                  grade: editGrade.trim(),
-                  // ✅ دمج: حفظ الجنس
-                  gender: editGender
-              });
-          } else {
-              // ✅ دمج: حفظ الجنس
-              onAddStudentManually(editName, combinedClassName, editPhone, editAvatar, editGender);
-          }
-          setShowManualAddModal(false); setEditingStudent(null); 
-          setEditName(''); setEditPhone(''); setEditGrade(''); setEditSection(''); setEditAvatar('');
-          setEditGender('male'); // Reset
-      } else {
-          alert('يرجى تعبئة اسم الطالب، المرحلة، والشعبة');
+  // ✅ دالة التحديث الجماعي للجنس
+  const handleBulkGenderUpdate = (gender: 'male' | 'female') => {
+      if (confirm(`هل أنت متأكد من تغيير أيقونات جميع الطلاب إلى (${gender === 'male' ? 'بنين 👦' : 'بنات 👧'})؟`)) {
+          students.forEach(student => {
+              if (student.gender !== gender) {
+                  onUpdateStudent({ ...student, gender });
+              }
+          });
+          alert('تم تحديث جميع الأيقونات بنجاح! 🎉');
       }
   };
 
-  const handleAddNewClass = () => {
-      if (newGradeInput.trim() && newSectionInput.trim()) {
-          const formattedName = `${newGradeInput.trim()}/${newSectionInput.trim()}`;
-          onAddClass(formattedName);
-          setNewGradeInput('');
-          setNewSectionInput('');
-          setShowAddClassModal(false);
-      } else {
-          alert('يرجى إدخال اسم المرحلة والشعبة');
+  const handleSaveStudent = () => {
+      if (editName.trim() && editClass.trim()) {
+          const inferredGrade = editClass.trim().match(/^(\d+)/)?.[1] || '';
+          if (editingStudent) {
+              onUpdateStudent({ ...editingStudent, name: editName, classes: [editClass], parentPhone: editPhone, avatar: editAvatar, grade: inferredGrade, gender: editGender });
+          } else {
+              onAddStudentManually(editName, editClass, editPhone, editAvatar, editGender);
+          }
+          setShowManualAddModal(false);
+          setEditingStudent(null);
+          setEditName(''); setEditPhone(''); setEditClass(''); setEditAvatar(''); setEditGender('male');
       }
   };
 
@@ -437,73 +278,72 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
           const random = filteredStudents[Math.floor(Math.random() * filteredStudents.length)];
           setRandomStudent(random);
           count++;
-          if (count > 10) { clearInterval(interval); setIsRandomPicking(false); }
+          if (count > 10) {
+              clearInterval(interval);
+              setIsRandomPicking(false);
+          }
       }, 100);
   };
 
   const handleAddBehavior = (student: Student, type: BehaviorType, reason: string, points: number) => {
-      if (enableAnimations) {
-          playBehaviorSound(type);
-          setFeedbackAnimation({ type, text: type === 'positive' ? 'أحسنت!' : 'انتبه!' });
-      }
-      
-      const newBehavior = { 
-          id: Math.random().toString(36).substr(2, 9), 
-          date: new Date().toISOString(), 
-          type, 
-          description: reason, 
-          points: Math.abs(points), 
-          semester: currentSemester,
-          period: currentAutoPeriod || undefined 
+      playBehaviorSound(type);
+      setFeedbackAnimation({ type, text: type === 'positive' ? 'أحسنت!' : 'انتبه!' });
+      const newBehavior = {
+          id: Math.random().toString(36).substr(2, 9),
+          date: new Date().toISOString(),
+          type,
+          description: reason,
+          points: Math.abs(points),
+          semester: currentSemester
       };
-      
       const updatedStudent = { ...student, behaviors: [newBehavior, ...(student.behaviors || [])] };
       onUpdateStudent(updatedStudent);
-      setShowPositiveReasons(null); 
+      setShowPositiveReasons(null);
       setShowNegativeReasons(null);
   };
 
   const handleManualBehaviorSubmit = (type: BehaviorType, student: Student) => {
-      if (customBehaviorReason.trim()) { handleAddBehavior(student, type, customBehaviorReason, parseInt(customBehaviorPoints) || 1); setCustomBehaviorReason(''); }
+      if (customBehaviorReason.trim()) {
+          handleAddBehavior(student, type, customBehaviorReason, parseInt(customBehaviorPoints) || 1);
+          setCustomBehaviorReason('');
+      }
   };
 
   const executeDeleteClass = (className: string) => {
       if (!onDeleteClass) return;
-      if (confirm(`هل أنت متأكد من حذف الفصل "${className}"؟\nسيتم حذفه من سجلات جميع الطلاب.`)) { onDeleteClass(className); if (selectedClass === className) setSelectedClass('all'); }
+      if (confirm(`هل أنت متأكد من حذف الفصل "${className}"؟\nسيتم حذفه من سجلات جميع الطلاب.`)) {
+          onDeleteClass(className);
+          if (selectedClass === className) setSelectedClass('all');
+      }
   };
 
   const executeDeleteGrade = (grade: string) => {
       if (!onDeleteClass) return;
-      const relatedClasses = classes.filter(c => c.startsWith(grade) || (c.includes('/') && c.split('/')[0].trim() === grade));
-      if (confirm(`هل أنت متأكد من حذف المرحلة "${grade}" بالكامل؟\nسيتم حذف الفصول التالية: ${relatedClasses.join(', ')}`)) { 
-          relatedClasses.forEach(c => onDeleteClass(c)); 
-          if (selectedGrade === grade) { setSelectedGrade('all'); setSelectedClass('all'); } 
+      const relatedClasses = classes.filter(c => c.startsWith(grade));
+      if (confirm(`هل أنت متأكد من حذف الصف "${grade}" بالكامل؟\nسيتم حذف الفصول التالية: ${relatedClasses.join(', ')}`)) {
+          relatedClasses.forEach(c => onDeleteClass(c));
+          if (selectedGrade === grade) {
+              setSelectedGrade('all');
+              setSelectedClass('all');
+          }
       }
   };
 
-  const CurrentPeriodInfo = () => (
-      <div className={`mb-4 p-2 rounded-xl text-center text-xs font-bold border ${currentAutoPeriod ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
-          {currentAutoPeriod ? (
-              <span className="flex items-center justify-center gap-2">
-                  <Clock size={14} className="animate-pulse"/>
-                  يتم التسجيل في الحصة: {currentAutoPeriod}
-              </span>
-          ) : (
-              <span>خارج أوقات الحصص (لن يتم تحديد حصة)</span>
-          )}
-      </div>
-  );
-
   return (
-    <div className="flex flex-col h-full text-slate-800 relative bg-[#f8fafc] animate-in fade-in duration-500">
+    <div className="flex flex-col h-full text-slate-800 relative bg-[#f3f4f6]">
         
-        {/* Feedback Animation Overlay */}
         <AnimatePresence>
-            {feedbackAnimation && enableAnimations && (
-                <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} transition={{ type: 'spring', damping: 15 }} className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none">
-                    <div className={`p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4 border-4 backdrop-blur-xl ${feedbackAnimation.type === 'positive' ? 'bg-emerald-500/90 border-emerald-600 text-white shadow-emerald-500/50' : 'bg-rose-500/90 border-rose-600 text-white shadow-rose-500/50'}`}>
+            {feedbackAnimation && (
+                <motion.div 
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 15 }}
+                    className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none"
+                >
+                    <div className={`p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-4 border-4 backdrop-blur-xl ${feedbackAnimation.type === 'positive' ? 'bg-emerald-500/90 border-emerald-600 text-white' : 'bg-rose-500/90 border-rose-600 text-white'}`}>
                         <div className="bg-white/20 p-6 rounded-full shadow-inner">
-                            {feedbackAnimation.type === 'positive' ? (<div className="relative"><Trophy className="w-20 h-20 text-yellow-300 drop-shadow-md" /><PartyPopper className="w-12 h-12 text-white absolute -top-4 -right-4 animate-bounce" /></div>) : (<div className="relative"><Frown className="w-20 h-20 text-white drop-shadow-md" /><CloudRain className="w-12 h-12 text-slate-200 absolute -top-4 -right-4 animate-pulse" /></div>)}
+                            {feedbackAnimation.type === 'positive' ? <Trophy className="w-20 h-20 text-yellow-300 drop-shadow-md" /> : <Frown className="w-20 h-20 text-white drop-shadow-md" />}
                         </div>
                         <h2 className="text-4xl font-black tracking-tight drop-shadow-sm">{feedbackAnimation.text}</h2>
                     </div>
@@ -511,23 +351,37 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
             )}
         </AnimatePresence>
 
-        {/* ================= HEADER (Hybrid Fix: Fixed on Mobile, Sticky on Desktop) ================= */}
-        {/* ✅ هذا هو الهيدر "الهجين" الذي يحافظ على شكل الموبايل ويحل مشكلة الويندوز */}
+        {/* ================= HEADER (Blue, Fixed/Sticky) ================= */}
         <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-            <div className="flex justify-between items-center mb-6 mt-2">
-                <h1 className="text-2xl font-black tracking-tight">قائمة الطلاب</h1>
-                {/* ... (Menu & Search - Same as before) ... */}
+            
+            <div className="flex justify-between items-center mb-6 mt-2 relative">
+                
+                <div className="w-10"></div>
+
+                <h1 className="text-2xl font-black tracking-tight absolute left-1/2 transform -translate-x-1/2 text-white">قائمة الطلاب</h1>
+                
+                {/* Menu Button (Left in RTL) */}
                 <div className="relative">
-                    <button onClick={() => setShowMenuDropdown(!showMenuDropdown)} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10"><Menu className="w-6 h-6" /></button>
-                    {showMenuDropdown && (
+                    <button onClick={() => setShowMenu(!showMenu)} className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10">
+                        <Icon3DMenu className="w-6 h-6" />
+                    </button>
+                    {showMenu && (
                         <>
-                            <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)}></div>
-                            <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-top-left z-50 animate-in zoom-in-95 duration-200 text-right text-slate-800">
+                            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-left text-slate-800">
                                 <div className="flex flex-col py-1">
-                                    <button onClick={() => { setShowManualAddModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full"><UserPlus className="w-4 h-4 text-[#1e3a8a]" /><span className="text-xs font-bold">إضافة طالب</span></button>
-                                    <button onClick={() => { setShowImportModal(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 w-full"><FileSpreadsheet className="w-4 h-4 text-[#1e3a8a]" /><span className="text-xs font-bold">استيراد من Excel</span></button>
-                                    <button onClick={() => { pickRandomStudent(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 w-full"><Sparkles className="w-4 h-4 text-[#1e3a8a]" /><span className="text-xs font-bold">القرعة العشوائية</span></button>
-                                    <button onClick={() => { setShowManageClasses(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 w-full"><Settings className="w-4 h-4 text-[#1e3a8a]" /><span className="text-xs font-bold">إعدادات عامة</span></button>
+                                    <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-right w-full font-bold text-sm text-slate-700">
+                                        <Icon3DAdd /> إضافة طالب
+                                    </button>
+                                    <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-right w-full font-bold text-sm border-t border-slate-50 text-slate-700">
+                                        <Icon3DExcel /> استيراد من Excel
+                                    </button>
+                                    <button onClick={() => { pickRandomStudent(); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-right w-full font-bold text-sm border-t border-slate-50 text-slate-700">
+                                        <Icon3DRandom /> القرعة العشوائية
+                                    </button>
+                                    <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-right w-full font-bold text-sm border-t border-slate-50 text-slate-700">
+                                        <Icon3DSettings /> إعدادات عامة
+                                    </button>
                                 </div>
                             </div>
                         </>
@@ -535,13 +389,21 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                 </div>
             </div>
 
-            <div className="relative mb-4">
-                <Search className="absolute right-3 top-3.5 w-4 h-4 text-blue-200" />
-                <input type="text" placeholder="بحث عن طالب..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/10 backdrop-blur-md rounded-xl py-3 pr-10 pl-3 text-xs font-bold text-white placeholder-blue-200/70 outline-none border border-white/10 focus:bg-white/20 transition-all" />
-            </div>
+            {/* Hierarchy Filters & Search */}
+            <div className="space-y-3 mb-2 px-1">
+                {/* Search Bar */}
+                <div className="relative">
+                    <Search className="absolute right-3 top-3 w-4 h-4 text-white/50" />
+                    <input 
+                        type="text" 
+                        placeholder="بحث عن طالب..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full bg-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs font-bold outline-none border border-white/10 focus:border-white/30 text-white placeholder-white/50" 
+                    />
+                </div>
 
-            {/* Hierarchy Filters */}
-            <div className="space-y-2">
+                {/* Grade Filter */}
                 {availableGrades.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-full transition-all border ${selectedGrade === 'all' ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30 hover:bg-white/10'}`}>كل المراحل</button>
@@ -550,144 +412,222 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                         ))}
                     </div>
                 )}
-                <div className="flex items-center gap-3">
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
-                        {visibleClasses.map(c => (
-                            <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${selectedClass === c ? 'bg-[#3b82f6] text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>{c}</button>
-                        ))}
-                        <button onClick={() => setShowAddClassModal(true)} className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 active:scale-95 transition-all"><Plus className="w-4 h-4"/></button>
-                    </div>
+
+                {/* Class Filter */}
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {visibleClasses.map(c => (
+                        <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-xl transition-all ${selectedClass === c ? 'bg-[#3b82f6] text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>{c}</button>
+                    ))}
+                    <button onClick={() => setShowAddClassModal(true)} className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 active:scale-95 text-white shadow-sm flex items-center justify-center"><Plus className="w-4 h-4"/></button>
                 </div>
             </div>
         </div>
 
-        {/* List Content */}
-        <div className="h-full overflow-y-auto custom-scrollbar">
-            {/* ✅ الفراغ الوهمي: يظهر فقط في الهاتف (block) ويختفي في الويندوز (md:hidden) */}
-            <div className="w-full h-[280px] shrink-0 block md:hidden"></div>
-            
-            <div className="px-4 pb-24 pt-2 md:pt-4">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#1e3a8a]"></span>الطلاب ({filteredStudents.length})</h3>
-                </div>
+        {/* Student List Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+             <div className="w-full h-[280px] shrink-0 md:h-0"></div>
+
+             <div className="px-4 pb-24 pt-2 -mt-4 relative z-10">
                 {filteredStudents.length > 0 ? (
-                    <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                         {filteredStudents.map(student => (
                             <StudentItem 
                                 key={student.id} 
                                 student={student} 
-                                onAction={handleAction} 
-                                currentSemester={currentSemester}
-                                // ✅ تمرير دالة الجنس
-                                onToggleGender={handleToggleGender}
+                                onClick={handleStudentClick} 
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 opacity-50"><User className="w-16 h-16 text-gray-400 mb-4" /><p className="text-sm font-bold text-gray-500">لا يوجد طلاب مطابقين</p></div>
+                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                        <LayoutGrid className="w-16 h-16 text-gray-400 mb-4" />
+                        <p className="text-sm font-bold text-gray-500">لا يوجد طلاب مطابقين</p>
+                    </div>
                 )}
             </div>
         </div>
 
-        {/* MODALS */}
+        {/* --- STUDENT ACTION MODAL --- */}
+        <Modal isOpen={!!selectedStudent} onClose={() => setSelectedStudent(null)} className="max-w-xs rounded-[2.5rem]">
+            {selectedStudent && (
+                <div className="text-center pt-2">
+                    <div className="flex flex-col items-center mb-6">
+                        <div 
+                            onClick={() => handleToggleGender(selectedStudent)} 
+                            className="w-24 h-24 rounded-full border-4 border-slate-100 shadow-lg overflow-hidden bg-slate-50 mb-3 cursor-pointer active:scale-95 transition-transform"
+                            title="اضغط لتبديل النوع"
+                        >
+                            {getStudentAvatar(selectedStudent)}
+                        </div>
+                        <h2 className="text-xl font-black text-slate-900 leading-tight mb-1">{selectedStudent.name}</h2>
+                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{selectedStudent.classes[0]}</span>
+                    </div>
 
-        {/* ✅ دمج: مودال إضافة طالب (محدث مع خيار الجنس) */}
-        <Modal isOpen={showManualAddModal} onClose={() => { setShowManualAddModal(false); setEditingStudent(null); setEditName(''); setEditPhone(''); setEditGrade(''); setEditSection(''); setEditGender('male'); }}>
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <button onClick={() => handleAction('positive', selectedStudent)} className="flex flex-col items-center justify-center gap-2 bg-emerald-50 border-2 border-emerald-100 p-4 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all group">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                <Icon3DPositive />
+                            </div>
+                            <span className="font-black text-xs text-emerald-700">سلوك إيجابي</span>
+                        </button>
+                        <button onClick={() => handleAction('negative', selectedStudent)} className="flex flex-col items-center justify-center gap-2 bg-rose-50 border-2 border-rose-100 p-4 rounded-2xl hover:bg-rose-100 active:scale-95 transition-all group">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                <Icon3DNegative />
+                            </div>
+                            <span className="font-black text-xs text-rose-700">سلوك سلبي</span>
+                        </button>
+                    </div>
+
+                    <div className="flex gap-2 justify-center border-t border-slate-100 pt-4">
+                        <button onClick={() => handleAction('edit', selectedStudent)} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-100"><Icon3DEdit /> تعديل</button>
+                        <button onClick={() => handleAction('truant', selectedStudent)} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-purple-100"><Icon3DTruant /> تسرب</button>
+                        <button onClick={() => handleAction('delete', selectedStudent)} className="flex-1 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-rose-100"><Icon3DDelete /> حذف</button>
+                    </div>
+                </div>
+            )}
+        </Modal>
+
+        {/* ... Other Existing Modals (Add, Import, Settings, Random, Reasons) ... */}
+        {/* (يتم نسخ باقي المودالات كما هي من الكود السابق) */}
+        <Modal isOpen={showManualAddModal} onClose={() => { setShowManualAddModal(false); setEditingStudent(null); setEditName(''); setEditPhone(''); setEditClass(''); setEditGender('male'); }}>
             <div className="text-center">
                 <h3 className="font-black text-xl mb-4 text-slate-800">{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</h3>
                 <div className="space-y-3">
-                    <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الطالب" value={editName} onChange={e => setEditName(e.target.value)} />
-                    
-                    <div className="flex gap-2">
-                        <input className="w-1/2 p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="المرحلة (مثال: 5)" value={editGrade} onChange={e => setEditGrade(e.target.value)} />
-                        <input className="w-1/2 p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="الشعبة (مثال: 1)" value={editSection} onChange={e => setEditSection(e.target.value)} />
-                    </div>
-
-                    <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="رقم ولي الأمر (اختياري)" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" />
-                    
-                    {/* ✅ دمج: أزرار اختيار الجنس */}
+                    <input className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الطالب" value={editName} onChange={e => setEditName(e.target.value)} />
+                    <input className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="الصف (مثال: 5/1)" value={editClass} onChange={e => setEditClass(e.target.value)} />
+                    <input className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="رقم ولي الأمر (اختياري)" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" />
                     <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
                         <button onClick={() => setEditGender('male')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>ذكر 👨‍🎓</button>
                         <button onClick={() => setEditGender('female')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-500'}`}>أنثى 👩‍🎓</button>
                     </div>
-
                     <button onClick={handleSaveStudent} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm shadow-lg mt-2">حفظ</button>
                 </div>
             </div>
         </Modal>
 
-        <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-xs rounded-[2rem] z-[50]">
-            <div className="text-center">
-                <h3 className="font-black text-lg mb-4 text-emerald-600 flex items-center justify-center gap-2">
-                    <Smile className="w-6 h-6" /> سلوك إيجابي
-                </h3>
-                <CurrentPeriodInfo />
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                    {['مشاركة فعالة ', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
-                        <button key={r} onClick={() => { if(showPositiveReasons) handleAddBehavior(showPositiveReasons.student, 'positive', r, 1); }} className="p-3 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors rounded-xl border border-emerald-100 active:scale-95">{r}</button>
-                    ))}
-                </div>
-                <div className="flex gap-2 bg-emerald-50/50 p-1.5 rounded-xl border border-emerald-100">
-                    <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-emerald-100 focus:border-emerald-500 outline-none text-slate-800" />
-                    <button onClick={() => { if(showPositiveReasons) handleManualBehaviorSubmit('positive', showPositiveReasons.student); }} className="p-2 bg-emerald-600 text-white rounded-lg active:scale-95 transition-transform shadow-lg shadow-emerald-200"><Plus className="w-4 h-4"/></button>
-                </div>
-            </div>
-        </Modal>
-
-        <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)} className="max-w-xs rounded-[2rem] z-[50]">
-            <div className="text-center">
-                <h3 className="font-black text-lg mb-4 text-rose-600 flex items-center justify-center gap-2"><AlertCircle className="w-6 h-6" /> سلوك سلبي</h3>
-                <CurrentPeriodInfo />
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                    {['كثرة الكلام وعدم الانتباه','نسيان الدفتر','إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
-                        <button key={r} onClick={() => { if(showNegativeReasons) handleAddBehavior(showNegativeReasons.student, 'negative', r, -1); }} className="p-3 bg-rose-50 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors rounded-xl border border-rose-100 active:scale-95">{r}</button>
-                    ))}
-                </div>
-                <div className="flex gap-2 bg-rose-50/50 p-1.5 rounded-xl border border-rose-100"><input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 bg-white rounded-lg text-xs font-bold border border-rose-100 focus:border-rose-500 outline-none text-slate-800" /><button onClick={() => { if(showNegativeReasons) handleManualBehaviorSubmit('negative', showNegativeReasons.student); }} className="p-2 bg-rose-600 text-white rounded-lg active:scale-95 transition-transform shadow-lg shadow-rose-200"><Plus className="w-4 h-4"/></button></div>
-            </div>
-        </Modal>
-
+        {/* ✅ نافذة الإعدادات العامة (تم إضافة خيار تغيير النوع الجماعي هنا) */}
         <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
             <div className="text-center text-slate-900">
-                <h3 className="font-black text-xl mb-6 flex items-center justify-center gap-2"><Settings className="w-6 h-6 text-indigo-600"/> الإعدادات العامة</h3>
-                <div className="mb-8 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center justify-between">
-                    <div className="text-right"><h4 className="font-bold text-sm text-slate-800 flex items-center gap-2">{enableAnimations ? <Volume2 size={16} className="text-emerald-500"/> : <VolumeX size={16} className="text-slate-400"/>} المؤثرات الصوتية والبصرية</h4><p className="text-[10px] text-slate-500 mt-1">تشغيل الأصوات والرسوم المتحركة عند رصد السلوك</p></div>
-                    <button onClick={() => setEnableAnimations(!enableAnimations)} className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 ${enableAnimations ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${enableAnimations ? 'translate-x-0' : '-translate-x-5'}`}></div></button>
+                <h3 className="font-black text-xl mb-4">إعدادات الفصول والصفوف</h3>
+                
+                {/* 🌟 قسم نوع المدرسة الجديد */}
+                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mb-6 shadow-sm">
+                    <h4 className="text-xs font-black text-indigo-700 mb-3 text-right flex items-center gap-2">
+                        <Users className="w-4 h-4"/> نوع المدرسة (تغيير جماعي)
+                    </h4>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => handleBulkGenderUpdate('male')} 
+                            className="flex-1 bg-white py-3 rounded-xl border border-indigo-100 shadow-sm text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <span className="text-lg">👦</span> بنين
+                        </button>
+                        <button 
+                            onClick={() => handleBulkGenderUpdate('female')} 
+                            className="flex-1 bg-white py-3 rounded-xl border border-indigo-100 shadow-sm text-sm font-bold text-slate-700 hover:bg-pink-50 hover:text-pink-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <span className="text-lg">👧</span> بنات
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-indigo-400 mt-2 text-right font-bold opacity-70">
+                        * سيتم توحيد أيقونات جميع الطلاب حسب اختيارك.
+                    </p>
                 </div>
-                <div className="space-y-6 text-right border-t border-slate-100 pt-6">
-                    <div><h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">إدارة المراحل (Grades)</h4>{availableGrades.length > 0 ? (<div className="grid grid-cols-2 gap-2">{availableGrades.map(g => (<div key={g} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"><span className="text-sm font-bold">الصف {g}</span><button onClick={() => executeDeleteGrade(g)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></div>))}</div>) : <p className="text-[10px] text-gray-400">لا توجد مراحل مضافة.</p>}</div>
-                    <div><h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">إدارة الفصول (Classes)</h4>{classes.length > 0 ? (<div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar">{classes.map(c => (<div key={c} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"><span className="text-sm font-bold">{c}</span><button onClick={() => executeDeleteClass(c)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></div>))}</div>) : <p className="text-[10px] text-gray-400">لا توجد فصول مضافة.</p>}</div>
+
+                <p className="text-xs text-gray-500 mb-6 font-bold">يمكنك هنا حذف الفصول أو الصفوف الدراسية بالكامل. <br/> <span className="text-rose-500">تنبيه: الحذف سيؤثر على جميع الصفحات.</span></p>
+                <div className="space-y-6 text-right">
+                    <div>
+                        <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">المراحل الدراسية (Grades)</h4>
+                        {availableGrades.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {availableGrades.map(g => (
+                                    <div key={g} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                        <span className="text-sm font-bold">الصف {g}</span>
+                                        <button onClick={() => executeDeleteGrade(g)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الصف بالكامل"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : <p className="text-[10px] text-gray-400">لا توجد مراحل مضافة.</p>}
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-black text-indigo-600 mb-2 border-b border-gray-200 pb-1">الفصول (Classes)</h4>
+                        {classes.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                {classes.map(c => (
+                                    <div key={c} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                        <span className="text-sm font-bold">{c}</span>
+                                        <button onClick={() => executeDeleteClass(c)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="حذف الفصل"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : <p className="text-[10px] text-gray-400">لا توجد فصول مضافة.</p>}
+                    </div>
                 </div>
-                <button onClick={() => setShowManageClasses(false)} className="mt-6 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200">حفظ وإغلاق</button>
+                <button onClick={() => setShowManageClasses(false)} className="mt-6 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200">إغلاق</button>
             </div>
         </Modal>
 
-        <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-md rounded-[2rem]"><ExcelImport existingClasses={classes} onImport={(s) => { onBatchAddStudents(s); setShowImportModal(false); }} onAddClass={onAddClass} /></Modal>
-        
+        <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-md rounded-[2rem]">
+            <ExcelImport existingClasses={classes} onImport={(s) => { onBatchAddStudents(s); setShowImportModal(false); }} onAddClass={onAddClass} />
+        </Modal>
+
         <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-xs rounded-[2rem]">
             <div className="text-center">
-                <h3 className="font-black text-lg mb-4 text-slate-800 flex items-center justify-center gap-2"><Layers size={20}/> إضافة فصل جديد</h3>
-                <div className="space-y-3">
-                    <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800 text-center" placeholder="المرحلة (مثال: 6)" value={newGradeInput} onChange={e => setNewGradeInput(e.target.value)} />
-                    <input className="w-full p-3 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-indigo-500 text-slate-800 text-center" placeholder="الشعبة (مثال: 1)" value={newSectionInput} onChange={e => setNewSectionInput(e.target.value)} />
-                    <button onClick={handleAddNewClass} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">إضافة</button>
-                </div>
+                <h3 className="font-black text-lg mb-4 text-slate-800">إضافة فصل جديد</h3>
+                <input autoFocus className="w-full p-3 glass-input bg-white rounded-xl font-bold text-sm mb-4 outline-none border-gray-200 focus:border-indigo-500 text-slate-800" placeholder="اسم الفصل" value={newClassInput} onChange={e => setNewClassInput(e.target.value)} />
+                <button onClick={() => { if(newClassInput.trim()) { onAddClass(newClassInput.trim()); setNewClassInput(''); setShowAddClassModal(false); } }} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm">إضافة</button>
             </div>
         </Modal>
-        
-        {/* ✅ دمج: مودال القرعة العشوائية مع دعم صورة الأفاتار الجديدة */}
+
         <Modal isOpen={isRandomPicking || !!randomStudent} onClose={() => { setRandomStudent(null); setIsRandomPicking(false); }} className="max-w-xs rounded-[2.5rem]">
             <div className="text-center py-6">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-indigo-100 shadow-xl overflow-hidden relative bg-white">
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full glass-icon border-4 border-indigo-100 shadow-xl overflow-hidden relative bg-white">
                     {randomStudent ? (
                         getStudentAvatar(randomStudent)
                     ) : (
                         <Sparkles className="w-10 h-10 text-indigo-400 animate-spin" />
                     )}
                 </div>
-                <h3 className="text-xl font-black text-slate-900 mb-2 min-h-[2rem]">{randomStudent ? randomStudent.name : 'جاري الاختيار...'}</h3>
+                <h3 className="text-xl font-black text-slate-900 mb-2 min-h-[2rem]">
+                    {randomStudent ? randomStudent.name : 'جاري الاختيار...'}
+                </h3>
                 {randomStudent && <p className="text-sm font-bold text-gray-500 mb-6">{randomStudent.classes[0]}</p>}
-                {randomStudent && (<button onClick={() => { setRandomStudent(null); pickRandomStudent(); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg w-full">اختيار آخر</button>)}
+                
+                {randomStudent && (
+                    <button onClick={() => { setRandomStudent(null); pickRandomStudent(); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg w-full">
+                        اختيار آخر
+                    </button>
+                )}
+            </div>
+        </Modal>
+
+        <Modal isOpen={!!showPositiveReasons} onClose={() => setShowPositiveReasons(null)} className="max-w-xs rounded-[2rem]">
+            <div className="text-center">
+                <h3 className="font-black text-lg mb-4 text-emerald-600">سلوك إيجابي</h3>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                    {['مشاركة مميزة', 'واجب منزلي', 'نظافة', 'تعاون', 'إجابة نموذجية', 'هدوء'].map(r => (
+                        <button key={r} onClick={() => { if(showPositiveReasons) handleAddBehavior(showPositiveReasons.student, 'positive', r, 1); }} className="p-3 glass-card bg-white text-xs font-bold hover:bg-emerald-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                    <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 glass-input bg-white rounded-lg text-xs font-bold border-gray-200 text-slate-800" />
+                    <button onClick={() => { if(showPositiveReasons) handleManualBehaviorSubmit('positive', showPositiveReasons.student); }} className="p-2 bg-emerald-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal isOpen={!!showNegativeReasons} onClose={() => setShowNegativeReasons(null)} className="max-w-xs rounded-[2rem]">
+            <div className="text-center">
+                <h3 className="font-black text-lg mb-4 text-rose-600">سلوك سلبي</h3>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                    {['إزعاج', 'نسيان كتاب', 'نوم', 'تأخر', 'ألفاظ', 'شجار'].map(r => (
+                        <button key={r} onClick={() => { if(showNegativeReasons) handleAddBehavior(showNegativeReasons.student, 'negative', r, -1); }} className="p-3 glass-card bg-white text-xs font-bold hover:bg-rose-50 text-slate-600 transition-colors border border-gray-200 shadow-sm">{r}</button>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                    <input placeholder="سبب آخر..." value={customBehaviorReason} onChange={e => setCustomBehaviorReason(e.target.value)} className="flex-1 p-2 glass-input bg-white rounded-lg text-xs font-bold border-gray-200 text-slate-800" />
+                    <button onClick={() => { if(showNegativeReasons) handleManualBehaviorSubmit('negative', showNegativeReasons.student); }} className="p-2 bg-rose-600 text-white rounded-lg"><Plus className="w-4 h-4"/></button>
+                </div>
             </div>
         </Modal>
 
