@@ -1,8 +1,7 @@
-
 {
   "appId": "com.madrasati.app",
   "appName": "راصد",
-  "webDir": "www",
+  "webDir": "dist", 
   "server": {
     "androidScheme": "https",
     "cleartext": true,
@@ -13,6 +12,11 @@
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "iosClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     }
   },
   "android": {
