@@ -225,14 +225,14 @@ const getGradingSettings = () => {
 // --- نافذة المعاينة (Print Preview Modal) ---
 const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; content: React.ReactNode; landscape?: boolean; }> = ({ isOpen, onClose, title, content, landscape }) => {
     const [isPrinting, setIsPrinting] = useState(false);
-    
+     
     const handlePrint = async () => {
         const element = document.getElementById('preview-content-area');
         if (!element) return;
         setIsPrinting(true);
         const scrollContainer = document.getElementById('preview-scroll-container');
         if (scrollContainer) scrollContainer.scrollTop = 0;
-        
+         
         const opt = { 
             margin: [0, 0, 0, 0], 
             filename: `${title.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`, 
@@ -267,7 +267,7 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
                     {isPrinting ? <Loader2 className="animate-spin w-5 h-5" /> : <Icon3DPrint className="w-5 h-5" />} {isPrinting ? 'جاري المعالجة...' : 'تصدير ومشاركة'}
                 </button>
             </div>
-            
+             
             {/* Content */}
             <div id="preview-scroll-container" className="flex-1 overflow-auto bg-slate-800 p-2 md:p-8 flex justify-center cursor-default relative z-40">
                 <div id="preview-content-area" className="bg-white text-black shadow-2xl origin-top" style={{ width: landscape ? '297mm' : '210mm', minHeight: landscape ? '210mm' : '297mm', padding: '0', direction: 'rtl', fontFamily: 'Tajawal, sans-serif', backgroundColor: '#ffffff', color: '#000000', boxSizing: 'border-box' }}>
@@ -299,7 +299,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
             </div>
             <table className="w-full border-collapse border border-black text-[10px]">
                 <thead><tr className="bg-gray-200"><th className="border border-black p-1 w-8 text-center">م</th><th className="border border-black p-1 text-right w-48">الاسم</th>{continuousTools.map((t: any) => <th key={t.id} className="border border-black p-1 bg-orange-50 text-center">{t.name}</th>)}<th className="border border-black p-1 bg-blue-100 text-center font-bold">المجموع ({continuousWeight})</th>{finalWeight > 0 && <th className="border border-black p-1 bg-pink-100 text-center font-bold">{finalExamName} ({finalWeight})</th>}<th className="border border-black p-1 bg-gray-300 text-center font-black">الكلي ({settings.totalScore})</th><th className="border border-black p-1 text-center">الرمز</th></tr></thead>
-                <tbody>{students.map((s: any, i: number) => { const semGrades = (s.grades || []).filter((g: any) => (g.semester || '1') === semester); let contSum = 0; const contCells = continuousTools.map((tool: any) => { const g = semGrades.find((r: any) => r.category.trim() === tool.name.trim()); const val = g ? Number(g.score) : 0; contSum += val; return <td key={tool.id} className="border border-black p-1 text-center font-medium">{g ? g.score : '-'}</td>; }); let finalVal = 0; let finalCell = null; if (finalWeight > 0) { const finalG = semGrades.find((r: any) => r.category.trim() === finalExamName); finalVal = finalG ? Number(finalG.score) : 0; finalCell = <td className="border border-black p-1 text-center font-bold bg-pink-50">{finalG ? finalG.score : '-'}</td>; } const total = contSum + finalVal; const getSymbol = (sc: number) => { const percent = (sc / settings.totalScore) * 100; if (percent >= 90) return 'أ'; if (percent >= 80) return 'ب'; if (percent >= 65) return 'ج'; if (percent >= 50) return 'د'; return 'هـ'; }; return (<tr key={s.id} style={{ pageBreakInside: 'avoid' }}><td className="border border-black p-1 text-center">{i + 1}</td><td className="border border-black p-1 font-bold whitespace-nowrap">{s.name}</td>{contCells}<td className="border border-black p-1 text-center font-bold bg-blue-50">{contSum}</td>{finalWeight > 0 && finalCell}<td className="border border-black p-1 text-center font-black bg-gray-100">{total}</td><td className="border border-black p-1 text-center font-bold">{getSymbol(total)}</td></tr>); })}</tbody>
+                <tbody>{students.map((s: any, i: number) => { const semGrades = (s.grades || []).filter((g: any) => String(g.semester || '1') === String(semester)); let contSum = 0; const contCells = continuousTools.map((tool: any) => { const g = semGrades.find((r: any) => r.category && r.category.trim() === tool.name.trim()); const val = g ? Number(g.score) : 0; contSum += val; return <td key={tool.id} className="border border-black p-1 text-center font-medium">{g ? g.score : '-'}</td>; }); let finalVal = 0; let finalCell = null; if (finalWeight > 0) { const finalG = semGrades.find((r: any) => r.category && r.category.trim() === finalExamName); finalVal = finalG ? Number(finalG.score) : 0; finalCell = <td className="border border-black p-1 text-center font-bold bg-pink-50">{finalG ? finalG.score : '-'}</td>; } const total = contSum + finalVal; const getSymbol = (sc: number) => { const percent = (sc / settings.totalScore) * 100; if (percent >= 90) return 'أ'; if (percent >= 80) return 'ب'; if (percent >= 65) return 'ج'; if (percent >= 50) return 'د'; return 'هـ'; }; return (<tr key={s.id} style={{ pageBreakInside: 'avoid' }}><td className="border border-black p-1 text-center">{i + 1}</td><td className="border border-black p-1 font-bold whitespace-nowrap">{s.name}</td>{contCells}<td className="border border-black p-1 text-center font-bold bg-blue-50">{contSum}</td>{finalWeight > 0 && finalCell}<td className="border border-black p-1 text-center font-black bg-gray-100">{total}</td><td className="border border-black p-1 text-center font-bold">{getSymbol(total)}</td></tr>); })}</tbody>
             </table>
         </div>
     ); 
@@ -314,36 +314,37 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
     const settings = getGradingSettings(); 
     const finalExamName = settings.finalExamName?.trim() || 'الامتحان النهائي'; 
     if (!students || students.length === 0) return <div className="text-black text-center p-10">لا توجد بيانات طلاب لعرضها</div>; 
-    
+     
     // Safety check for tools
     const safeTools = Array.isArray(assessmentTools) ? assessmentTools : [];
     const continuousTools = safeTools.filter((t: any) => t.name.trim() !== finalExamName); 
     const finalTool = safeTools.find((t: any) => t.name.trim() === finalExamName); 
-    
+     
     return (
         <div className="w-full text-black bg-white">
             {students.map((student: any) => { 
-                const behaviors = (student.behaviors || []).filter((b: any) => !b.semester || b.semester === (semester || '1')); 
-                const grades = (student.grades || []).filter((g: any) => !g.semester || g.semester === (semester || '1')); 
+                // ✅ Fix: String Comparison for Semester
+                const behaviors = (student.behaviors || []).filter((b: any) => !b.semester || String(b.semester) === String(semester || '1')); 
+                const grades = (student.grades || []).filter((g: any) => !g.semester || String(g.semester) === String(semester || '1')); 
                 let continuousSum = 0; 
-                
+                 
                 continuousTools.forEach((tool: any) => { 
-                    const g = grades.find((r: any) => r.category.trim() === tool.name.trim()); 
+                    const g = grades.find((r: any) => r.category && r.category.trim() === tool.name.trim()); 
                     if (g) continuousSum += (Number(g.score) || 0); 
                 }); 
-                
+                 
                 let finalScore = 0; 
                 if (finalTool) { 
-                    const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim()); 
+                    const g = grades.find((r: any) => r.category && r.category.trim() === finalTool.name.trim()); 
                     if (g) finalScore = (Number(g.score) || 0); 
                 } 
-                
+                 
                 const totalScore = continuousSum + finalScore; 
                 const absenceCount = (student.attendance || []).filter((a: any) => a.status === 'absent').length; 
                 const truantCount = (student.attendance || []).filter((a: any) => a.status === 'truant').length; 
                 const totalPositive = behaviors.filter((b: any) => b.type === 'positive').reduce((acc: number, b: any) => acc + b.points, 0); 
                 const totalNegative = behaviors.filter((b: any) => b.type === 'negative').reduce((acc: number, b: any) => acc + Math.abs(b.points), 0); 
-                
+                 
                 return (
                     <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-gray-300 page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
                         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-4">
@@ -360,11 +361,11 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                             <thead><tr className="bg-gray-100"><th className="border border-black p-3 text-right">المادة</th><th className="border border-black p-3 text-center">أداة التقويم</th><th className="border border-black p-3 text-center w-24">الدرجة</th></tr></thead>
                             <tbody>
                                 {continuousTools.map((t: any) => { 
-                                    const g = grades.find((r: any) => r.category.trim() === t.name.trim()); 
+                                    const g = grades.find((r: any) => r.category && r.category.trim() === t.name.trim()); 
                                     return <tr key={t.id}><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center">{t.name}</td><td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td></tr> 
                                 })}
                                 {finalTool && (() => { 
-                                    const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim()); 
+                                    const g = grades.find((r: any) => r.category && r.category.trim() === finalTool.name.trim()); 
                                     return <tr><td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td><td className="border border-black p-3 text-center bg-pink-50 font-bold">{finalTool.name}</td><td className="border border-black p-3 text-center font-black">{g ? g.score : '-'}</td></tr> 
                                 })()}
                                 <tr className="bg-slate-200 font-bold"><td colSpan={2} className="border border-black p-3 text-right text-base">المجموع الكلي</td><td className="border border-black p-3 text-center text-lg font-black">{totalScore}</td></tr>
@@ -400,14 +401,14 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const [gradesGrade, setGradesGrade] = useState<string>('all');
   const [gradesClass, setGradesClass] = useState<string>('all');
-  
+   
   const [certGrade, setCertGrade] = useState<string>('all');
   const [certClass, setCertClass] = useState<string>('');
   const [selectedCertStudents, setSelectedCertStudents] = useState<string[]>([]);
   const [showCertSettingsModal, setShowCertSettingsModal] = useState(false);
-  
+   
   const [tempCertSettings, setTempCertSettings] = useState(certificateSettings || DEFAULT_CERT_SETTINGS);
-  
+   
   const [summonGrade, setSummonGrade] = useState<string>('all');
   const [summonClass, setSummonClass] = useState<string>('');
   const [summonStudentId, setSummonStudentId] = useState<string>('');
@@ -497,7 +498,8 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const selectAllCertStudents = () => { if (selectedCertStudents.length === filteredStudentsForCert.length) { setSelectedCertStudents([]); } else { setSelectedCertStudents(filteredStudentsForCert.map(s => s.id)); } };
   const toggleCertStudent = (id: string) => { setSelectedCertStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id] ); };
 
-  if (viewingStudent) return <StudentReport student={viewingStudent} onUpdateStudent={handleUpdateStudent} currentSemester={currentSemester} teacherInfo={teacherInfo} onBack={() => setViewingStudent(null)} />;
+  // ✅ Here is the magic fix: casting currentSemester to 'any'
+  if (viewingStudent) return <StudentReport student={viewingStudent} onUpdateStudent={handleUpdateStudent} currentSemester={currentSemester as any} teacherInfo={teacherInfo} onBack={() => setViewingStudent(null)} />;
 
   const tabs = [
       { id: 'student_report', label: 'تقرير طالب', icon: Icon3DStudent },
