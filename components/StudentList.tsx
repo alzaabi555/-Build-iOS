@@ -5,7 +5,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
-
+// 👇 أضف هذا التعريف هنا
+export interface StudentListProps {
+  students: Student[];
+  classes: string[];
+  onAddClass: (name: string) => void;
+  onAddStudentManually: (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => void;
+  onBatchAddStudents: (students: Student[]) => void;
+  onUpdateStudent: (student: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewReport: (student: Student) => void;
+  currentSemester: 1 | 2;
+  onSemesterChange: (sem: 1 | 2) => void;
+  onDeleteClass: (className: string) => void;
+}
 // ============================================================================
 // ✅ 1. الأيقونات (3D Style Icons) 
 // ============================================================================
