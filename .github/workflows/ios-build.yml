@@ -1,4 +1,3 @@
-
 name: Build iOS App
 
 on:
@@ -18,8 +17,9 @@ jobs:
         with:
           node-version: 18
 
+      # 👇 التعديل الهام: إضافة --legacy-peer-deps لحل مشكلة المكتبات
       - name: Install Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Assets
         run: npm run build
@@ -31,7 +31,7 @@ jobs:
           fi
           npx cap sync ios
 
-      # هذه الخطوة مهمة جداً للآيفون: إضافة نصوص طلب الإذن للكاميرا والصور
+      # إضافة نصوص طلب الإذن للكاميرا والصور
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
