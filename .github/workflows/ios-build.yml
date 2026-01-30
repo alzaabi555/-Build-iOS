@@ -23,23 +23,38 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      # 1. إنشاء مجلد الآيفون (الذي كان مفقوداً)
+      # 1. إنشاء مجلد الآيفون
       - name: Add and Sync iOS Platform
         run: |
           npx cap add ios
           npx cap sync ios
 
-      # 2. 👇 هذا هو السطر السحري: نسخ الملف من الخارج إلى الداخل
+      # 2. نسخ ملف جوجل (تأكد أنك رفعته بجانب package.json)
       - name: Copy Google Service File
         run: |
           if [ -f "GoogleService-Info.plist" ]; then
             echo "✅ Found GoogleService-Info.plist, moving it to ios/App/App/..."
             cp GoogleService-Info.plist ios/App/App/
           else
-            echo "⚠️ Warning: GoogleService-Info.plist not found in root! Login might fail."
+            echo "⚠️ Warning: GoogleService-Info.plist not found in root! Login WILL fail."
           fi
 
-      # 3. حقن الأذونات (كاميرا وصور)
+      # 3. 👇 (هام جداً) حقن رابط العودة ليفتح التطبيق بعد جوجل
+      - name: Configure iOS URL Scheme for Google Auth
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          # هذا هو المعرف المعكوس من حسابك
+          REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
+          
+          # التحقق والإضافة
+          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST
+          
+          echo "✅ Injected Google URL Scheme: $REVERSED_CLIENT_ID"
+
+      # 4. أذونات الكاميرا والصور
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
