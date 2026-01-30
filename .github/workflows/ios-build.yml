@@ -17,31 +17,34 @@ jobs:
         with:
           node-version: 18
 
-      # 👇 التعديل الهام: إضافة --legacy-peer-deps لحل مشكلة المكتبات
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
       - name: Build Web Assets
         run: npm run build
 
+      # 1. إنشاء مجلد الآيفون (الذي كان مفقوداً)
       - name: Add and Sync iOS Platform
         run: |
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
+          npx cap add ios
           npx cap sync ios
 
-      # إضافة نصوص طلب الإذن للكاميرا والصور
+      # 2. 👇 هذا هو السطر السحري: نسخ الملف من الخارج إلى الداخل
+      - name: Copy Google Service File
+        run: |
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "✅ Found GoogleService-Info.plist, moving it to ios/App/App/..."
+            cp GoogleService-Info.plist ios/App/App/
+          else
+            echo "⚠️ Warning: GoogleService-Info.plist not found in root! Login might fail."
+          fi
+
+      # 3. حقن الأذونات (كاميرا وصور)
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
-          # إضافة وصف لاستخدام الكاميرا
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST
-          
-          # إضافة وصف لمكتبة الصور (قراءة)
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST
-          
-          # إضافة وصف لمكتبة الصور (إضافة/حفظ)
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST
 
       - name: Generate App Icons
