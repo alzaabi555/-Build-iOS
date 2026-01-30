@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// 👇 تصحيح 1: استيراد الخدمات المحلية (بدون GoogleAuthProvider)
-import { auth, googleProvider, signInWithCredential } from '../services/firebase';
+// 👇 تصحيح 1: استيراد الخدمات المحلية (auth, googleProvider فقط)
+import { auth, googleProvider } from '../services/firebase';
 
-// 👇 تصحيح 2: استيراد GoogleAuthProvider من المكتبة الأصلية
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+// 👇 تصحيح 2: استيراد الدالة المفقودة (signInWithCredential) من المكتبة الأصلية
+import { signInWithPopup, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
@@ -18,7 +18,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ تهيئة الإضافة عند فتح الشاشة (لحل مشكلة التوقف)
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       GoogleAuth.initialize();
@@ -31,12 +30,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        // --- كود الموبايل (آيفون) ---
+        // --- كود الموبايل ---
         const googleUser = await GoogleAuth.signIn();
-        
-        // هنا نستخدم GoogleAuthProvider التي استوردناها بشكل صحيح الآن
         const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-        
         const result = await signInWithCredential(auth, credential);
         onLoginSuccess(result.user);
       } else {
@@ -58,12 +54,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="flex flex-col h-full bg-white relative">
-      {/* الخلفية العلوية */}
       <div className="absolute top-0 left-0 right-0 h-[35%] bg-[#1e3a8a] rounded-b-[50%] z-0 shadow-lg scale-x-125" />
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
         
-        {/* الشعار */}
         <div className="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-xl mb-6 mt-10">
            <span className="text-5xl font-black text-[#1e3a8a]">R</span>
         </div>
@@ -71,7 +65,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <h2 className="text-2xl font-black text-slate-800 mb-2">تسجيل الدخول</h2>
         <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد - الإصدار التعليمي</p>
 
-        {/* زر الدخول */}
         <button 
           onClick={handleGoogleLogin} 
           disabled={isLoading}
