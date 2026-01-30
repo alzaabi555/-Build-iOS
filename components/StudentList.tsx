@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
-// 👇 أضف هذا التعريف هنا
+
+// ✅ تعريف الواجهة لتجنب الأخطاء
 export interface StudentListProps {
   students: Student[];
   classes: string[];
@@ -19,6 +20,7 @@ export interface StudentListProps {
   onSemesterChange: (sem: 1 | 2) => void;
   onDeleteClass: (className: string) => void;
 }
+
 // ============================================================================
 // ✅ 1. الأيقونات (3D Style Icons) 
 // ============================================================================
@@ -153,23 +155,23 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
-  
+   
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [showManageClasses, setShowManageClasses] = useState(false); 
   const [showMenu, setShowMenu] = useState(false);
-  
+   
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newClassInput, setNewClassInput] = useState('');
-  
+   
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editClass, setEditClass] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
   const [editGender, setEditGender] = useState<'male' | 'female'>('male');
-  
+   
   const [showNegativeReasons, setShowNegativeReasons] = useState<{student: Student} | null>(null);
   const [showPositiveReasons, setShowPositiveReasons] = useState<{student: Student} | null>(null);
   const [customBehaviorReason, setCustomBehaviorReason] = useState('');
@@ -179,7 +181,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
 
   const [randomStudent, setRandomStudent] = useState<Student | null>(null);
   const [isRandomPicking, setIsRandomPicking] = useState(false);
-  
+   
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
       students.forEach(s => {
