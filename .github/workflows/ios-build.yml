@@ -23,44 +23,40 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      # 1. إنشاء مجلد الآيفون
       - name: Add and Sync iOS Platform
         run: |
           npx cap add ios
           npx cap sync ios
 
-      # 2. نسخ ملف Google Service (من الجذر إلى داخل مجلد الآيفون)
+      # 👇 نقل ملف جوجل (تأكد أنه بجانب package.json في الريبو)
       - name: Copy Google Service File
         run: |
           if [ -f "GoogleService-Info.plist" ]; then
-            echo "✅ Found GoogleService-Info.plist in root, copying to iOS project..."
+            echo "✅ Found GoogleService-Info.plist, moving it..."
             cp GoogleService-Info.plist ios/App/App/
           else
-            echo "⚠️ Warning: GoogleService-Info.plist NOT found in root! Google Login will fail."
+            echo "⚠️ Warning: GoogleService-Info.plist not found! Login will fail."
           fi
 
-      # 3. 👇 هذا هو السطر الحاسم: إضافة معرف العودة (URL Scheme)
+      # 👇 حقن كود العودة (URL Scheme) - هذا يحل مشكلة التوقف بعد الدخول
       - name: Configure iOS URL Scheme for Google Auth
         run: |
           PLIST="ios/App/App/Info.plist"
-          # هذا هو المعرف المعكوس من حسابك (مهم جداً)
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          # التأكد من وجود المصفوفة وإضافتها
           /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST
           
-          echo "✅ Successfully injected URL Scheme: $REVERSED_CLIENT_ID"
+          echo "✅ Injected Google URL Scheme: $REVERSED_CLIENT_ID"
 
-      # 4. أذونات الكاميرا والصور
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الكاميرا للصورة الشخصية'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'نحتاج الكاميرا للصورة الشخصية'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الصور لاختيار الملفات'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'نحتاج الصور لاختيار الملفات'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'لحفظ التقارير'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'لحفظ التقارير'" $PLIST
 
       - name: Generate App Icons
         run: npx capacitor-assets generate --ios
