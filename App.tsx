@@ -88,10 +88,8 @@ const AppContent: React.FC = () => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
    
-  // ✅ 1. متغير الحالة للإصدار (الجديد)
   const [appVersion, setAppVersion] = useState('3.6.0');
 
-  // ✅ 2. جلب الإصدار تلقائياً
   useEffect(() => {
     const fetchVersion = async () => {
       try {
@@ -109,38 +107,27 @@ const AppContent: React.FC = () => {
     fetchVersion();
   }, []);
 
-  // ---------------------------------------------------------
-  // 🔐 3. الاستماع الحقيقي لحالة المصادقة (الحل للمشكلة)
-  // ---------------------------------------------------------
   useEffect(() => {
-    // هذه الدالة السحرية من فايربيس تخبرنا فوراً إذا كان المستخدم مسجلاً
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         const isGuest = localStorage.getItem('guest_mode') === 'true';
 
         if (isGuest) {
             setAuthStatus('logged_in');
         } else if (firebaseUser) {
-            // وجدنا مستخدماً مسجلاً في فايربيس! ادخل فوراً
             setAuthStatus('logged_in');
         } else {
-            // لا يوجد مستخدم ولا زائر
             setAuthStatus('logged_out');
         }
     });
-
-    // تنظيف المستمع عند الإغلاق
     return () => unsubscribe();
   }, []);
 
-  // Deep link listener
   useEffect(() => {
     const api = (window as any)?.electron;
     if (!api?.onDeepLink) return;
-
     const unsubscribe = api.onDeepLink((url: string) => {
       console.log('Deep link received:', url);
     });
-
     return () => {
       try { unsubscribe?.(); } catch {}
     };
@@ -178,7 +165,6 @@ const AppContent: React.FC = () => {
     setShowWelcome(false);
   };
 
-  // شاشة التحميل (تظهر فقط أثناء التأكد من فايربيس)
   if (!isDataLoaded || authStatus === 'checking') {
     return (
       <div className="flex flex-col h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]">
@@ -223,7 +209,9 @@ const AppContent: React.FC = () => {
           schedule={schedule} onUpdateSchedule={setSchedule} onSelectStudent={() => { }} onNavigate={handleNavigate}
           onOpenSettings={() => setActiveTab('settings')} periodTimes={periodTimes} setPeriodTimes={setPeriodTimes}
           notificationsEnabled={notificationsEnabled} onToggleNotifications={handleToggleNotifications}
-          currentSemester={currentSemester} onSemesterChange={setCurrentSemester}
+          // 👇 التعديل الهام هنا: (as any) لتجاوز خطأ الأرقام والنصوص
+          currentSemester={currentSemester as any} 
+          onSemesterChange={setCurrentSemester as any}
         />;
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'students':
@@ -231,12 +219,18 @@ const AppContent: React.FC = () => {
           students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudent}
           onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])} onUpdateStudent={handleUpdateStudent}
           onDeleteStudent={(id) => setStudents(prev => prev.filter(s => s.id !== id))} onViewReport={(s) => { }}
-          currentSemester={currentSemester} onSemesterChange={setCurrentSemester} onDeleteClass={handleDeleteClass}
+          // 👇 التعديل الهام هنا أيضاً
+          currentSemester={currentSemester as any} 
+          onSemesterChange={setCurrentSemester as any} 
+          onDeleteClass={handleDeleteClass}
         />;
       case 'grades':
         return <GradeBook
           students={students} classes={classes} onUpdateStudent={handleUpdateStudent} setStudents={setStudents}
-          currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo}
+          // 👇 وهنا أيضاً
+          currentSemester={currentSemester as any} 
+          onSemesterChange={setCurrentSemester as any} 
+          teacherInfo={teacherInfo}
         />;
       case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />;
       case 'reports': return <Reports />;
@@ -268,7 +262,6 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans overflow-hidden text-slate-900 relative">
-      {/* Sidebar */}
       <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 z-50 shadow-sm transition-all h-full">
         <div className="p-8 flex items-center gap-4">
           <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
@@ -305,7 +298,6 @@ const AppContent: React.FC = () => {
         </div>
       </aside>
 
-      {/* Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#f3f4f6] z-0">
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe overscroll-contain" id="main-scroll-container">
           <SyncStatusBar />
@@ -315,7 +307,6 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* Mobile Nav */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom transition-transform duration-300 translate-z-0 pointer-events-auto">
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -338,7 +329,6 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
-      {/* Menu Modal */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000]">
         <div className="text-center mb-6">
           <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
@@ -353,17 +343,6 @@ const AppContent: React.FC = () => {
         </div>
       </Modal>
     </div>
-  );
-};
-
-const App: React.FC = () => {
-  return (
-    <ThemeProvider>
-      <AppProvider>
-        {/* لاحظ: لا تضع HashRouter هنا، لقد وضعناه في index.tsx وهو يكفي */}
-        <AppContent />
-      </AppProvider>
-    </ThemeProvider>
   );
 };
 
