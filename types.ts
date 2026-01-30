@@ -1,5 +1,9 @@
 // src/types.ts
 
+// الحالة تشمل الآن 'truant' (هروب)
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'truant';
+export type BehaviorType = 'positive' | 'negative';
+
 export interface PeriodTime {
   periodNumber: number;
   startTime: string;
@@ -14,31 +18,57 @@ export interface ScheduleDay {
 export interface AttendanceRecord {
   id: string;
   date: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
-  period?: string; // 👈 تمت الإضافة
+  status: AttendanceStatus;
+  period?: string; 
   note?: string;
 }
 
 export interface BehaviorRecord {
   id: string;
   date: string;
-  type: 'positive' | 'negative';
+  type: BehaviorType;
   description: string;
-  period?: string; // 👈 تمت الإضافة
+  period?: string;
   points: number;
+  semester?: number | string; // ✅ إصلاح
 }
 
 export interface AssessmentTool {
   id: string;
   name: string;
   maxScore: number;
-  weight: number; 
+  weight: number; // ✅ إصلاح
 }
 
 export interface GradeRecord {
+  id?: string; // ✅ إصلاح
   toolId: string;
   score: number;
   date: string;
+  category?: string; // ✅ إصلاح
+  semester?: number | string; // ✅ إصلاح
+}
+
+// تعريفات الوزارة المفقودة
+export interface MinistrySession {
+  url: string;
+  token: string;
+  expiry: number;
+}
+export interface StdsAbsDetail {
+  studentId: string;
+  date: string;
+  status: string;
+}
+export interface StdsGradeDetail {
+  studentId: string;
+  subject: string;
+  grade: number;
+}
+export interface ExamPaper {
+  id: string;
+  title: string;
+  totalScore: number;
 }
 
 export interface Student {
@@ -52,6 +82,12 @@ export interface Student {
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
   grades: GradeRecord[];
+  
+  // ✅ الحقول الجديدة المفقودة
+  groupId?: string;
+  ministryId?: string;
+  spentCoins?: number;
+  examPapers?: ExamPaper[];
 }
 
 export interface Group {
