@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// ✅ تصحيح 1: استيراد الخدمات المحلية (auth, googleProvider فقط)
+// ✅ استيراد auth و provider من ملفك المحلي
 import { auth, googleProvider } from '../services/firebase';
 
-// ✅ تصحيح 2: استيراد الدوال المفقودة من مكتبة فايربيس الأصلية
+// ✅ استيراد الدوال الناقصة من مكتبة فايربيس الأصلية (لتجنب أخطاء البناء)
 import { signInWithPopup, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
