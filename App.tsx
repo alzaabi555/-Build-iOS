@@ -6,11 +6,8 @@ import {
   Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2
 } from 'lucide-react';
 
-// ✅ استيراد المصادقة من فايربيس
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-
-// ✅ استدعاء مكتبات الموبايل (للإصدار)
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
@@ -344,7 +341,18 @@ const AppContent: React.FC = () => {
       </Modal>
     </div>
   );
-);
-}; // 👈 تأكد من وجود هذه القفلة
+};
 
-export default App; // 👈 وتأكد من وجود التصدير
+// 👇 هذا هو الجزء الذي كان ناقصاً!
+const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <AppProvider>
+        {/* لاحظ: لا تضع HashRouter هنا، لقد وضعناه في index.tsx وهو يكفي */}
+        <AppContent />
+      </AppProvider>
+    </ThemeProvider>
+  );
+};
+
+export default App;
