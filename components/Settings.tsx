@@ -1,130 +1,44 @@
 import React, { useRef, useState } from 'react';
-import { Save, RefreshCw, Loader2 } from 'lucide-react'; // تم إزالة الأيقونات القديمة المستبدلة
+import {
+  Save,
+  Upload,
+  Trash2,
+  AlertTriangle,
+  Database,
+  Download,
+  RefreshCw,
+  Loader2,
+  Cloud,
+  CloudOff,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
-// --- أيقونات 3D الجديدة (SVG Components) ---
-
-// 1. أيقونة قاعدة البيانات (Database)
-const Icon3DDatabase = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gradDB" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#60a5fa" />
-        <stop offset="100%" stopColor="#2563eb" />
-      </linearGradient>
-      <filter id="shadowDB" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="0" dy="2" result="offsetblur" />
-        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <ellipse cx="50" cy="20" rx="40" ry="12" fill="#93c5fd" />
-    <path d="M10 20 v20 c0 6.6 18 12 40 12 s40 -5.4 40 -12 v-20" fill="url(#gradDB)" filter="url(#shadowDB)" />
-    <path d="M10 45 v20 c0 6.6 18 12 40 12 s40 -5.4 40 -12 v-20" fill="url(#gradDB)" filter="url(#shadowDB)" />
-    <ellipse cx="50" cy="20" rx="40" ry="12" fill="white" opacity="0.3" />
-  </svg>
-);
-
-// 2. أيقونة النسخ الاحتياطي (Backup/Download)
-const Icon3DBackup = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gradBackup" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#60a5fa" />
-        <stop offset="100%" stopColor="#2563eb" />
-      </linearGradient>
-      <filter id="shadowBackup" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <circle cx="50" cy="50" r="45" fill="url(#gradBackup)" filter="url(#shadowBackup)" />
-    <path d="M50 25 V65 M35 50 L50 65 L65 50" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M30 75 H70" stroke="white" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
-    <circle cx="35" cy="35" r="5" fill="white" opacity="0.3" />
-  </svg>
-);
-
-// 3. أيقونة الاستعادة (Restore/Upload)
-const Icon3DRestore = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gradRestore" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#34d399" />
-        <stop offset="100%" stopColor="#059669" />
-      </linearGradient>
-      <filter id="shadowRestore" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <circle cx="50" cy="50" r="45" fill="url(#gradRestore)" filter="url(#shadowRestore)" />
-    <path d="M50 65 V25 M35 40 L50 25 L65 40" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M30 75 H70" stroke="white" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
-    <circle cx="35" cy="35" r="5" fill="white" opacity="0.3" />
-  </svg>
-);
-
-// 4. أيقونة الخطر (Danger/Alert)
-const Icon3DDanger = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gradDanger" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f87171" />
-        <stop offset="100%" stopColor="#dc2626" />
-      </linearGradient>
-      <filter id="shadowDanger" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <path d="M50 15 L85 80 H15 Z" fill="url(#gradDanger)" filter="url(#shadowDanger)" stroke="white" strokeWidth="4" strokeLinejoin="round" />
-    <path d="M50 35 V60" stroke="white" strokeWidth="6" strokeLinecap="round" />
-    <circle cx="50" cy="70" r="4" fill="white" />
-  </svg>
-);
-
-// 5. أيقونة إعادة الضبط (Reset/Trash)
-const Icon3DReset = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gradReset" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f87171" />
-        <stop offset="100%" stopColor="#dc2626" />
-      </linearGradient>
-      <filter id="shadowReset" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="1" result="offsetblur" />
-        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <path d="M30 35 L35 85 Q37 90 42 90 H58 Q63 90 65 85 L70 35" fill="url(#gradReset)" filter="url(#shadowReset)" />
-    <rect x="25" y="25" width="50" height="10" rx="3" fill="#ef4444" />
-    <path d="M42 25 L44 18 Q45 15 48 15 H52 Q55 15 56 18 L58 25" fill="#ef4444" />
-    <path d="M42 45 V75 M50 45 V75 M58 45 V75" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
-  </svg>
-);
-
-// -----------------------------------------------------------
-
 const Settings: React.FC = () => {
-  const { 
-    students, setStudents,
-    classes, setClasses,
-    groups, setGroups,
-    schedule, setSchedule,
-    periodTimes, setPeriodTimes,
-    teacherInfo, setTeacherInfo,
-    assessmentTools, setAssessmentTools,
-    certificateSettings, setCertificateSettings,
-    hiddenClasses, setHiddenClasses
+  const {
+    students,
+    setStudents,
+    classes,
+    setClasses,
+    groups,
+    setGroups,
+    schedule,
+    setSchedule,
+    periodTimes,
+    setPeriodTimes,
+    teacherInfo,
+    setTeacherInfo,
+    assessmentTools,
+    setAssessmentTools,
+    certificateSettings,
+    setCertificateSettings,
+    hiddenClasses,
+    setHiddenClasses,
+
+    syncMode,
+    setSyncMode,
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,135 +50,314 @@ const Settings: React.FC = () => {
       const dataToSave = {
         version: '3.6.0',
         timestamp: new Date().toISOString(),
-        students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, assessmentTools, certificateSettings
+        students,
+        classes,
+        hiddenClasses,
+        groups,
+        schedule,
+        periodTimes,
+        teacherInfo,
+        assessmentTools,
+        certificateSettings,
+        syncMode, // NEW
       };
+
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
       const jsonString = JSON.stringify(dataToSave, null, 2);
 
       if (Capacitor.isNativePlatform()) {
-        const result = await Filesystem.writeFile({ path: fileName, data: jsonString, directory: Directory.Cache, encoding: Encoding.UTF8 });
-        await Share.share({ title: 'نسخة احتياطية - راصد', url: result.uri });
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: jsonString,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+        await Share.share({
+          title: 'نسخة احتياطية - راصد',
+          url: result.uri,
+          dialogTitle: 'حفظ ملف البيانات',
+        });
       } else {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a'); link.href = url; link.download = fileName; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
+
       alert('تم إنشاء النسخة الاحتياطية بنجاح ✅');
-    } catch (error) { console.error(error); alert('حدث خطأ أثناء النسخ الاحتياطي'); } finally { setLoading(null); }
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء إنشاء النسخة الاحتياطية');
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    if (!confirm('سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في الملف. هل أنت متأكد؟')) { if(fileInputRef.current) fileInputRef.current.value = ''; return; }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (
+      !confirm(
+        'سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في ملف النسخة الاحتياطية. هل أنت متأكد؟'
+      )
+    ) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setLoading('restore');
     try {
-      const text = await file.text(); const data = JSON.parse(text);
+      const text = await file.text();
+      const data = JSON.parse(text);
+
       if (data.students && Array.isArray(data.students)) {
-          setStudents(data.students); setClasses(data.classes || []); if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses); if(data.groups) setGroups(data.groups); if(data.schedule) setSchedule(data.schedule); if(data.periodTimes) setPeriodTimes(data.periodTimes); if(data.teacherInfo) setTeacherInfo(data.teacherInfo); if(data.assessmentTools) setAssessmentTools(data.assessmentTools); if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
-          alert('تم استعادة البيانات بنجاح ✅\nيرجى إعادة تشغيل التطبيق لضمان عمل كل شيء بشكل صحيح.');
-      } else { throw new Error('الملف غير صالح'); }
-    } catch (error) { console.error(error); alert('ملف النسخة الاحتياطية غير صالح أو تالف.'); } finally { setLoading(null); if (fileInputRef.current) fileInputRef.current.value = ''; }
+        setStudents(data.students);
+        setClasses(data.classes || []);
+        if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
+        if (data.groups) setGroups(data.groups);
+        if (data.schedule) setSchedule(data.schedule);
+        if (data.periodTimes) setPeriodTimes(data.periodTimes);
+        if (data.teacherInfo) setTeacherInfo(data.teacherInfo);
+        if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
+        if (data.certificateSettings) setCertificateSettings(data.certificateSettings);
+
+        // NEW
+        if (data.syncMode === 'local' || data.syncMode === 'cloud') setSyncMode(data.syncMode);
+
+        alert('تم استعادة البيانات بنجاح ✅\nيرجى إعادة تشغيل التطبيق لضمان عمل كل شيء بشكل صحيح.');
+      } else {
+        throw new Error('الملف غير صالح');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء استعادة البيانات. تأكد من اختيار ملف صحيح.');
+    } finally {
+      setLoading(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleFactoryReset = async () => {
-      if (confirm('⚠️ تحذير شديد ⚠️\n\nهل أنت متأكد تماماً من حذف جميع البيانات؟\nهذا الإجراء لا يمكن التراجع عنه!')) {
-          if (confirm('تأكيد نهائي: هل تريد حذف كل شيء والبدء من جديد؟')) {
-              setLoading('reset');
-              try {
-                  setStudents([]); setClasses([]); setHiddenClasses([]);
-                  setGroups([{ id: 'g1', name: 'الصقور', color: 'emerald' }, { id: 'g2', name: 'النمور', color: 'orange' }]);
-                  setSchedule([{ dayName: 'الأحد', periods: Array(8).fill('') }, { dayName: 'الاثنين', periods: Array(8).fill('') }, { dayName: 'الثلاثاء', periods: Array(8).fill('') }, { dayName: 'الأربعاء', periods: Array(8).fill('') }, { dayName: 'الخميس', periods: Array(8).fill('') }]);
-                  setPeriodTimes(Array(8).fill(null).map((_, i) => ({ periodNumber: i + 1, startTime: '', endTime: '' })));
-                  setTeacherInfo({ name: '', school: '', subject: '', governorate: '', avatar: '', stamp: '', ministryLogo: '', academicYear: '' });
-                  setAssessmentTools([]);
-                  localStorage.clear();
-                  if (Capacitor.isNativePlatform()) { await Filesystem.deleteFile({ path: 'rased_database_v2.json', directory: Directory.Data }).catch(() => {}); }
-                  alert('تم حذف جميع البيانات وإعادة تعيين التطبيق.'); window.location.reload();
-              } catch (e) { console.error(e); alert('حدث خطأ أثناء الحذف'); } finally { setLoading(null); }
+    if (
+      confirm(
+        '⚠️ تحذير شديد ⚠️\n\nهل أنت متأكد تماماً من حذف جميع البيانات؟\nسيتم حذف الطلاب، الدرجات، الجدول، وكل شيء.\nلا يمكن التراجع عن هذه الخطوة!'
+      )
+    ) {
+      if (confirm('تأكيد نهائي: هل تريد حذف كل شيء والبدء من جديد؟')) {
+        setLoading('reset');
+        try {
+          setStudents([]);
+          setClasses([]);
+          setHiddenClasses([]);
+
+          setGroups([
+            { id: 'g1', name: 'الصقور', color: 'emerald' },
+            { id: 'g2', name: 'النمور', color: 'orange' },
+            { id: 'g3', name: 'النجوم', color: 'purple' },
+            { id: 'g4', name: 'الرواد', color: 'blue' },
+          ]);
+
+          setSchedule([
+            { dayName: 'الأحد', periods: Array(8).fill('') },
+            { dayName: 'الاثنين', periods: Array(8).fill('') },
+            { dayName: 'الثلاثاء', periods: Array(8).fill('') },
+            { dayName: 'الأربعاء', periods: Array(8).fill('') },
+            { dayName: 'الخميس', periods: Array(8).fill('') },
+          ]);
+
+          setPeriodTimes(
+            Array(8)
+              .fill(null)
+              .map((_, i) => ({ periodNumber: i + 1, startTime: '', endTime: '' }))
+          );
+
+          setTeacherInfo({
+            name: '',
+            school: '',
+            subject: '',
+            governorate: '',
+            avatar: '',
+            stamp: '',
+            ministryLogo: '',
+            academicYear: '',
+          });
+
+          setAssessmentTools([]);
+
+          // NEW: رجّعها افتراضياً cloud
+          setSyncMode('cloud');
+
+          localStorage.clear();
+
+          if (Capacitor.isNativePlatform()) {
+            await Filesystem.deleteFile({
+              path: 'rased_database_v2.json',
+              directory: Directory.Data,
+            }).catch(() => {});
           }
+
+          alert('تم حذف جميع البيانات وإعادة تعيين التطبيق.');
+          window.location.reload();
+        } catch (e) {
+          console.error(e);
+          alert('حدث خطأ أثناء الحذف');
+        } finally {
+          setLoading(null);
+        }
       }
+    }
   };
 
+  const isCloud = syncMode === 'cloud';
+
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
-        
-        {/* ================= HEADER (Blue & Curved) ================= */}
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-            <div className="flex items-center gap-3 mt-4">
-                <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
-                    {/* أيقونة قاعدة البيانات (Icon 1) */}
-                    <Icon3DDatabase className="w-6 h-6" />
-                </div>
-                <div>
-                    <h1 className="text-xl font-black tracking-wide">إدارة البيانات</h1>
-                    <p className="text-[10px] text-blue-200 font-bold opacity-80">النسخ الاحتياطي والاستعادة</p>
-                </div>
-            </div>
+    <div className="flex flex-col h-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Sync Section */}
+      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5">
+        <div className="flex items-center gap-4 px-2">
+          <div className="w-14 h-14 bg-white border border-gray-200 rounded-2xl flex items-center justify-center text-slate-600 shadow-sm">
+            {isCloud ? <Cloud size={30} /> : <CloudOff size={30} />}
+          </div>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
+              المزامنة مع الموقع
+            </h2>
+            <p className="text-gray-500 text-xs font-bold mt-1">
+              التحكم في وضع العمل: سحابي أو محلي
+            </p>
+          </div>
         </div>
 
-        {/* ================= CONTENT AREA ================= */}
-        <div className="flex-1 h-full overflow-y-auto custom-scrollbar">
-            
-            <div className="w-full h-[140px] shrink-0"></div>
-
-            <div className="px-4 pb-24">
-                <div className="space-y-6">
-                    
-                    {/* Backup Card */}
-                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
-                        <div className="flex items-start gap-4 mb-6">
-                            {/* أيقونة النسخ الاحتياطي (Icon 2) */}
-                            <div className="p-3 bg-indigo-50 rounded-2xl"><Icon3DBackup className="w-6 h-6"/></div>
-                            <div>
-                                <h3 className="font-black text-lg text-slate-900">النسخ الاحتياطي</h3>
-                                <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">حفظ جميع بياناتك (الطلاب، الدرجات، الإعدادات) في ملف واحد آمن.</p>
-                            </div>
-                        </div>
-                        <button onClick={handleBackup} disabled={loading !== null} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                            {loading === 'backup' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                            إنشاء نسخة احتياطية الآن
-                        </button>
-                    </div>
-
-                    {/* Restore Card */}
-                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
-                        <div className="flex items-start gap-4 mb-6">
-                            {/* أيقونة الاستعادة (Icon 3) */}
-                            <div className="p-3 bg-emerald-50 rounded-2xl"><Icon3DRestore className="w-6 h-6"/></div>
-                            <div>
-                                <h3 className="font-black text-lg text-slate-900">استعادة البيانات</h3>
-                                <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">استرجاع بياناتك من ملف سابق. <span className="text-rose-500">سيتم استبدال البيانات الحالية.</span></p>
-                            </div>
-                        </div>
-                        <button onClick={() => fileInputRef.current?.click()} disabled={loading !== null} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                            {loading === 'restore' ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-                            اختيار ملف للاستعادة
-                        </button>
-                        <input type="file" ref={fileInputRef} onChange={handleRestore} accept=".json" className="hidden" />
-                    </div>
-
-                    {/* Danger Zone Card */}
-                    <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-100 shadow-inner relative overflow-hidden">
-                        <div className="flex items-center gap-3 mb-4">
-                            {/* أيقونة الخطر (Icon 4) */}
-                            <Icon3DDanger className="w-6 h-6" />
-                            <h3 className="font-black text-lg text-rose-700">منطقة الخطر</h3>
-                        </div>
-                        <p className="text-xs font-bold text-rose-600/80 mb-6 leading-relaxed">
-                            حذف جميع البيانات وإعادة ضبط المصنع. هذا الإجراء لا يمكن التراجع عنه وسيؤدي لفقدان جميع البيانات المسجلة نهائياً.
-                        </p>
-                        <button onClick={handleFactoryReset} disabled={loading !== null} className="w-full py-3 bg-white border-2 border-rose-200 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all flex items-center justify-center gap-2 shadow-sm">
-                            {/* أيقونة إعادة الضبط (Icon 5) */}
-                            {loading === 'reset' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon3DReset className="w-4 h-4" />}
-                            حذف كل شيء وإعادة الضبط
-                        </button>
-                    </div>
-
-                </div>
-            </div>
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+          <p className="text-xs font-bold text-slate-600 leading-relaxed">
+            عند إيقاف المزامنة يعمل التطبيق محلياً فقط، وسيظهر في الشريط العلوي أنه غير متزامن.
+          </p>
         </div>
+
+        <button
+          disabled={loading !== null}
+          onClick={() => {
+            const next = isCloud ? 'local' : 'cloud';
+            setSyncMode(next);
+            alert(next === 'cloud' ? 'تم تفعيل المزامنة ✅' : 'تم إيقاف المزامنة (محلي فقط) ⚠️');
+          }}
+          className={`w-full py-4 rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2
+            ${
+              isCloud
+                ? 'bg-sky-600 text-white shadow-sky-200 hover:bg-sky-700'
+                : 'bg-amber-500 text-white shadow-amber-200 hover:bg-amber-600'
+            }`}
+        >
+          {isCloud ? <Cloud className="w-5 h-5" /> : <CloudOff className="w-5 h-5" />}
+          {isCloud ? 'المزامنة مفعّلة' : 'غير متزامن (محلي فقط)'}
+        </button>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center gap-4 pt-2 px-2 mb-2">
+        <div className="w-14 h-14 bg-white border border-gray-200 rounded-2xl flex items-center justify-center text-slate-600 shadow-sm">
+          <Database size={30} />
+        </div>
+        <div>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">إدارة البيانات</h2>
+          <p className="text-gray-500 text-xs font-bold mt-1">النسخ الاحتياطي والاستعادة</p>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+        {/* Backup Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+              <Download size={20} />
+            </div>
+            <h3 className="font-black text-lg text-slate-800">النسخ الاحتياطي</h3>
+          </div>
+          <p className="text-sm text-gray-500 font-medium leading-relaxed">
+            قم بإنشاء نسخة احتياطية من جميع بياناتك (الطلاب، الدرجات، الجدول، الإعدادات) وحفظها كملف آمن.
+          </p>
+          <button
+            onClick={handleBackup}
+            disabled={loading !== null}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {loading === 'backup' ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            إنشاء نسخة احتياطية الآن
+          </button>
+        </div>
+
+        <div className="h-px bg-gray-100"></div>
+
+        {/* Restore Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+              <Upload size={20} />
+            </div>
+            <h3 className="font-black text-lg text-slate-800">استعادة البيانات</h3>
+          </div>
+          <p className="text-sm text-gray-500 font-medium leading-relaxed">
+            استرجاع البيانات من ملف نسخة احتياطية سابق. سيتم استبدال البيانات الحالية بالبيانات الموجودة في الملف.
+          </p>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading !== null}
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {loading === 'restore' ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-5 h-5" />
+            )}
+            استعادة من ملف
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleRestore}
+            accept=".json"
+            className="hidden"
+          />
+        </div>
+
+        <div className="h-px bg-gray-100"></div>
+
+        {/* Reset Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-rose-50 rounded-xl text-rose-600">
+              <AlertTriangle size={20} />
+            </div>
+            <h3 className="font-black text-lg text-slate-800">منطقة الخطر</h3>
+          </div>
+          <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl">
+            <p className="text-xs font-bold text-rose-700 leading-relaxed mb-4">
+              حذف جميع البيانات وإعادة ضبط المصنع. هذا الإجراء لا يمكن التراجع عنه وسيؤدي لفقدان جميع البيانات المسجلة.
+            </p>
+            <button
+              onClick={handleFactoryReset}
+              disabled={loading !== null}
+              className="w-full py-3 bg-white border border-rose-200 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2"
+            >
+              {loading === 'reset' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              حذف كل شيء وإعادة الضبط
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
