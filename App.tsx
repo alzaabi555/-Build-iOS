@@ -344,6 +344,7 @@ const AppContent: React.FC = () => {
       </Modal>
     </div>
   );
-};
+);
+}; // 👈 تأكد من وجود هذه القفلة
 
-export default App;
+export default App; // 👈 وتأكد من وجود التصدير
