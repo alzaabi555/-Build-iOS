@@ -29,30 +29,30 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
-      # 2. نسخ ملف جوجل (تأكد أنك رفعته بجانب package.json)
+      # 2. نسخ ملف Google Service (من الجذر إلى داخل مجلد الآيفون)
       - name: Copy Google Service File
         run: |
           if [ -f "GoogleService-Info.plist" ]; then
-            echo "✅ Found GoogleService-Info.plist, moving it to ios/App/App/..."
+            echo "✅ Found GoogleService-Info.plist in root, copying to iOS project..."
             cp GoogleService-Info.plist ios/App/App/
           else
-            echo "⚠️ Warning: GoogleService-Info.plist not found in root! Login WILL fail."
+            echo "⚠️ Warning: GoogleService-Info.plist NOT found in root! Google Login will fail."
           fi
 
-      # 3. 👇 (هام جداً) حقن رابط العودة ليفتح التطبيق بعد جوجل
+      # 3. 👇 هذا هو السطر الحاسم: إضافة معرف العودة (URL Scheme)
       - name: Configure iOS URL Scheme for Google Auth
         run: |
           PLIST="ios/App/App/Info.plist"
-          # هذا هو المعرف المعكوس من حسابك
+          # هذا هو المعرف المعكوس من حسابك (مهم جداً)
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          # التحقق والإضافة
+          # التأكد من وجود المصفوفة وإضافتها
           /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST
           
-          echo "✅ Injected Google URL Scheme: $REVERSED_CLIENT_ID"
+          echo "✅ Successfully injected URL Scheme: $REVERSED_CLIENT_ID"
 
       # 4. أذونات الكاميرا والصور
       - name: Inject iOS Permissions
