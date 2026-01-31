@@ -23,24 +23,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setError(null);
 
+    // 🛑 مؤقت أمان: إذا تأخر الدخول أكثر من 8 ثواني، نوقف التحميل
+    const timeout = setTimeout(() => {
+        setIsLoading(false);
+        setError("استغرق الدخول وقتاً طويلاً. يرجى التحقق من الإنترنت والمحاولة مجدداً.");
+    }, 8000);
+
     try {
       if (Capacitor.isNativePlatform()) {
         const googleUser = await GoogleAuth.signIn();
         const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
         const result = await signInWithCredential(auth, credential);
+        clearTimeout(timeout); // إلغاء المؤقت إذا نجح الدخول
         onLoginSuccess(result.user);
       } else {
         const result = await signInWithPopup(auth, googleProvider);
+        clearTimeout(timeout);
         onLoginSuccess(result.user);
       }
     } catch (err: any) {
+      clearTimeout(timeout);
       console.error("Login Error:", err);
       if (err?.message && !err.message.includes('cancelled')) {
-        setError(`خطأ: ${err.message}`);
-        // alert(`Debug Error: ${err.message}`); // فعل هذا السطر إذا أردت رؤية الخطأ
+        setError("تعذر تسجيل الدخول. حاول مرة أخرى.");
       }
     } finally {
-      setIsLoading(false);
+      // لا نوقف التحميل هنا فوراً لأن onLoginSuccess قد تحتاج وقتاً للانتقال، نتركه للمؤقت أو النجاح
+      if (!isLoading) setIsLoading(false); 
     }
   };
 
