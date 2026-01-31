@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// ✅ استيراد المتغيرات من ملفك
+// ✅ انتبه للنقطتين (..) لأننا داخل مجلد components ونريد الخروج للجذر للوصول لـ services
 import { auth, googleProvider } from '../services/firebase';
 
-// ✅ استيراد الدوال من المكتبة الأصلية (لتصحيح خطأ البناء)
+// ✅ استيراد صحيح من المكتبة
 import { signInWithPopup, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
@@ -41,7 +41,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     } catch (err: any) {
       console.error("Login Error:", err);
       if (err?.message && !err.message.includes('cancelled')) {
-        setError("تعذر تسجيل الدخول. حاول مرة أخرى.");
+        setError("تعذر تسجيل الدخول. يرجى المحاولة مجدداً.");
       }
     } finally {
       setIsLoading(false);
@@ -56,7 +56,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
            <span className="text-5xl font-black text-[#1e3a8a]">R</span>
         </div>
         <h2 className="text-2xl font-black text-slate-800 mb-2">تسجيل الدخول</h2>
-        <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد</p>
+        <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد - الإصدار التعليمي</p>
         <button 
           onClick={handleGoogleLogin} 
           disabled={isLoading}
