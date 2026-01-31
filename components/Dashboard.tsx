@@ -281,11 +281,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    const today = new Date();
-    const dayIndex = today.getDay();
-    const todaySchedule = schedule[dayIndex] || { dayName: 'اليوم', periods: [] };
-    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-    const isToday = todaySchedule.dayName === days[dayIndex];
+    // ✅ إصلاح مشكلة اختفاء الجدول: تحديد اليوم الصحيح (الجمعة/السبت -> الأحد)
+    const rawDayIndex = new Date().getDay(); // 0 is Sunday, 6 is Saturday
+    const dayIndex = (rawDayIndex === 5 || rawDayIndex === 6) ? 0 : rawDayIndex;
+    
+    // تأمين ضد المصفوفات الفارغة
+    const todaySchedule = (schedule && schedule[dayIndex]) ? schedule[dayIndex] : { dayName: 'اليوم', periods: Array(8).fill('') };
+    
+    // للتأكد من حالة "اليوم الحالي" في التظليل
+    const isToday = rawDayIndex === dayIndex; 
 
     return (
         <div className="bg-[#f8fafc] text-slate-900 min-h-screen pb-24 font-sans animate-in fade-in duration-500">
@@ -320,14 +324,14 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {teacherInfo.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : <span className="text-2xl font-black">{teacherInfo.name ? teacherInfo.name.charAt(0) : 'T'}</span>}
+                        {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : <span className="text-2xl font-black">{teacherInfo?.name ? teacherInfo.name.charAt(0) : 'T'}</span>}
                     </div>
                     <div className="flex flex-col">
-                        <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo.name || 'مرحباً يا معلم'}</h2>
+                        <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo?.name || 'مرحباً يا معلم'}</h2>
                         <div className="flex flex-col gap-0.5 text-blue-100 text-xs font-medium opacity-90">
-                            {teacherInfo.school && <span className="flex items-center gap-1"><School className="w-3 h-3"/> {teacherInfo.school}</span>}
-                            {teacherInfo.subject && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3"/> معلم {teacherInfo.subject}</span>}
-                            {!teacherInfo.school && !teacherInfo.subject && <span>اضغط لتحديث بياناتك</span>}
+                            {teacherInfo?.school && <span className="flex items-center gap-1"><School className="w-3 h-3"/> {teacherInfo.school}</span>}
+                            {teacherInfo?.subject && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3"/> معلم {teacherInfo.subject}</span>}
+                            {!teacherInfo?.school && !teacherInfo?.subject && <span>اضغط لتحديث بياناتك</span>}
                         </div>
                     </div>
                 </div>
@@ -350,20 +354,20 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
                                     <div className="absolute left-0 bottom-full mb-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-bottom-left z-50 animate-in zoom-in-95 duration-200">
                                         <div className="flex flex-col py-1">
-                                            {/* زر استيراد الجدول (3D Icon) */}
+                                            {/* زر استيراد الجدول */}
                                             <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">📥</span>
                                                 <span className="text-xs font-bold text-slate-700">استيراد الجدول</span>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto"/>}
                                             </button>
                                             
-                                            {/* زر ضبط التوقيت (3D Icon) */}
+                                            {/* زر ضبط التوقيت */}
                                             <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏱️</span>
                                                 <span className="text-xs font-bold text-slate-700">ضبط توقيت الجدول</span>
                                             </button>
                                             
-                                            {/* زر منبه الحصص (3D Icon) */}
+                                            {/* زر منبه الحصص */}
                                             <button onClick={() => { onToggleNotifications(); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏰</span>
                                                 <span className="text-xs font-bold text-slate-700">منبه الحصص</span>
@@ -382,9 +386,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             {/* ================= SCHEDULE CONTENT ================= */}
             <section className="px-6 -mt-6 relative z-20 mb-8 space-y-4">
-                {todaySchedule.periods.map((cls, idx) => {
+                {todaySchedule.periods && todaySchedule.periods.map((cls, idx) => {
                     if (!cls) return null;
                     const pt = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
+                    // تظليل الحصة الحالية فقط إذا كان اليوم هو نفس يوم الجهاز
                     const isActive = isToday && checkActivePeriod(pt.startTime, pt.endTime);
 
                     return (
@@ -395,14 +400,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div className="flex items-center gap-4">
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
                                     {/* أيقونات الـ 3D بحجم متوسط */}
-                                    {getSubjectIcon(teacherInfo.subject)}
+                                    {getSubjectIcon(teacherInfo?.subject || '')}
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h4 className="text-lg font-black text-slate-900">{cls}</h4>
                                         {isActive && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold animate-pulse">الآن</span>}
                                     </div>
-                                    <p className="text-xs text-slate-500 font-bold mt-0.5">الحصة {idx + 1} {teacherInfo.school ? `• ${teacherInfo.school}` : ''}</p>
+                                    <p className="text-xs text-slate-500 font-bold mt-0.5">الحصة {idx + 1} {teacherInfo?.school ? `• ${teacherInfo.school}` : ''}</p>
                                 </div>
                             </div>
                             
@@ -419,7 +424,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     );
                 })}
 
-                {todaySchedule.periods.every(p => !p) && (
+                {/* إذا لم تكن هناك حصص أو كان الجدول فارغاً */}
+                {(!todaySchedule.periods || todaySchedule.periods.every(p => !p)) && (
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center opacity-75 mt-8">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                             <School className="w-8 h-8" />
