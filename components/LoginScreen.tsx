@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-
-// ✅ انتبه للنقطتين (..) لأننا داخل مجلد components ونريد الخروج للجذر للوصول لـ services
 import { auth, googleProvider } from '../services/firebase';
-
-// ✅ استيراد صحيح من المكتبة
 import { signInWithPopup, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
@@ -41,7 +36,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     } catch (err: any) {
       console.error("Login Error:", err);
       if (err?.message && !err.message.includes('cancelled')) {
-        setError("تعذر تسجيل الدخول. يرجى المحاولة مجدداً.");
+        setError(`خطأ: ${err.message}`);
+        // alert(`Debug Error: ${err.message}`); // فعل هذا السطر إذا أردت رؤية الخطأ
       }
     } finally {
       setIsLoading(false);
@@ -57,11 +53,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
         <h2 className="text-2xl font-black text-slate-800 mb-2">تسجيل الدخول</h2>
         <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد - الإصدار التعليمي</p>
-        <button 
-          onClick={handleGoogleLogin} 
-          disabled={isLoading}
-          className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-4 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 mb-4"
-        >
+        <button onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-4 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 mb-4">
           {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-indigo-600" /> : <span className="font-bold text-sm">متابعة باستخدام Google</span>}
         </button>
         <button onClick={() => onLoginSuccess(null)} className="text-slate-400 font-bold text-xs hover:text-indigo-600 transition-colors">الدخول كزائر</button>
