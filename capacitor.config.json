@@ -16,22 +16,7 @@
       "scopes": ["profile", "email"],
       "serverClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
       "iosClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
-      "androidClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
-    },
-    "Keyboard": {
-      "resize": "body",
-      "style": "dark",
-      "resizeOnFullScreen": true
-    },
-    "SplashScreen": {
-      "launchShowDuration": 2000,
-      "launchAutoHide": true,
-      "backgroundColor": "#ffffffff",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": true,
-      "spinnerColor": "#4f46e5"
     }
   }
 }
