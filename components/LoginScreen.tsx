@@ -23,33 +23,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setError(null);
 
-    // 🛑 مؤقت أمان: إذا تأخر الدخول أكثر من 8 ثواني، نوقف التحميل
-    const timeout = setTimeout(() => {
-        setIsLoading(false);
-        setError("استغرق الدخول وقتاً طويلاً. يرجى التحقق من الإنترنت والمحاولة مجدداً.");
-    }, 8000);
-
     try {
       if (Capacitor.isNativePlatform()) {
         const googleUser = await GoogleAuth.signIn();
-        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+        
+        // ✅ التحسين: إرسال الـ Token والـ AccessToken معاً لضمان القبول
+        const credential = GoogleAuthProvider.credential(
+            googleUser.authentication.idToken,
+            googleUser.authentication.accessToken
+        );
+        
         const result = await signInWithCredential(auth, credential);
-        clearTimeout(timeout); // إلغاء المؤقت إذا نجح الدخول
         onLoginSuccess(result.user);
       } else {
         const result = await signInWithPopup(auth, googleProvider);
-        clearTimeout(timeout);
         onLoginSuccess(result.user);
       }
     } catch (err: any) {
-      clearTimeout(timeout);
       console.error("Login Error:", err);
-      if (err?.message && !err.message.includes('cancelled')) {
-        setError("تعذر تسجيل الدخول. حاول مرة أخرى.");
-      }
-    } finally {
-      // لا نوقف التحميل هنا فوراً لأن onLoginSuccess قد تحتاج وقتاً للانتقال، نتركه للمؤقت أو النجاح
-      if (!isLoading) setIsLoading(false); 
+      // ✅ إظهار رسالة الخطأ الحقيقية من فايربيس (ستساعدنا جداً لو حدث خطأ)
+      alert(`Firebase Error: ${err.message}`); 
+      setError(err.message);
+      setIsLoading(false);
     }
   };
 
@@ -61,7 +56,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
            <span className="text-5xl font-black text-[#1e3a8a]">R</span>
         </div>
         <h2 className="text-2xl font-black text-slate-800 mb-2">تسجيل الدخول</h2>
-        <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد - الإصدار التعليمي</p>
+        <p className="text-slate-400 text-xs font-bold mb-12">تطبيق راصد</p>
         <button onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-4 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 mb-4">
           {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-indigo-600" /> : <span className="font-bold text-sm">متابعة باستخدام Google</span>}
         </button>
