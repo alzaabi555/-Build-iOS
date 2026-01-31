@@ -9,7 +9,6 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
-// استيراد المكونات
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -25,7 +24,6 @@ import LoginScreen from './components/LoginScreen';
 import { useSchoolBell } from './hooks/useSchoolBell';
 import SyncStatusBar from './components/SyncStatusBar';
 
-// أيقونات القائمة
 const Dashboard3D = ({ active }: { active: boolean }) => <LayoutDashboard className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Attendance3D = ({ active }: { active: boolean }) => <CalendarCheck className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Students3D = ({ active }: { active: boolean }) => <Users className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
@@ -33,14 +31,13 @@ const Grades3D = ({ active }: { active: boolean }) => <BarChart3 className={`w-7
 const More3D = ({ active }: { active: boolean }) => <SettingsIcon className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 
 const AppContent: React.FC = () => {
+  // نستدعي البيانات لكن لن ننتظرها لفتح التطبيق
   const { isDataLoaded, teacherInfo, setTeacherInfo, schedule, setSchedule, periodTimes, setPeriodTimes, currentSemester, setCurrentSemester, students, setStudents, classes, setClasses } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
   
-  // ✅ متغير جديد لفرض الدخول حتى لو البيانات تأخرت
-  const [forceEntry, setForceEntry] = useState(false); 
-
+  // ✅ الحالة الافتراضية: التطبيق يظن أنه مسجل دخول حتى يثبت العكس (للتسريع)
+  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
   const [appVersion, setAppVersion] = useState('3.6.0');
 
   useEffect(() => {
@@ -59,22 +56,22 @@ const AppContent: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (!isMounted) return;
         const isGuest = localStorage.getItem('guest_mode') === 'true';
+        
         if (isGuest || user) {
-             setAuthStatus('logged_in');
-             
-             // ⏳ ✅ مؤقت ذكي: إذا تم تسجيل الدخول، انتظر 4 ثواني فقط للبيانات
-             // إذا لم تأتِ، ادخل بالقوة!
-             setTimeout(() => {
-                 if (isMounted) setForceEntry(true);
-             }, 4000);
-
+             setAuthStatus('logged_in'); 
         } else {
              setAuthStatus('logged_out');
         }
     });
 
-    // مؤقت أمان للشيك الأولي
-    const timeout = setTimeout(() => { if (authStatus === 'checking' && isMounted) setAuthStatus('logged_out'); }, 3000);
+    // 🛑 مؤقت صارم جداً: 3 ثواني فقط للفحص، ثم افتح صفحة الدخول إذا لم نكن متأكدين
+    const timeout = setTimeout(() => { 
+        if (authStatus === 'checking' && isMounted) {
+            console.log("Auth check timeout - forcing logout state");
+            setAuthStatus('logged_out');
+        }
+    }, 3000);
+
     return () => { isMounted = false; unsubscribe(); clearTimeout(timeout); };
   }, [authStatus]);
 
@@ -86,7 +83,6 @@ const AppContent: React.FC = () => {
   const handleNavigate = (path: string) => navigate(path);
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
-  // دوال مساعدة مختصرة
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
@@ -112,26 +108,17 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول', icon: Info },
   ];
 
-  // 1. شاشة الفحص الأولي
+  // 1. شاشة التحميل (فقط في البداية القصوى)
   if (authStatus === 'checking') return <div className="flex h-full items-center justify-center bg-gray-50"><Loader2 className="w-12 h-12 text-indigo-500 animate-spin" /></div>;
-  
-  // 2. شاشة تسجيل الدخول
+
+  // 2. شاشة الدخول
   if (authStatus === 'logged_out') {
       if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
       return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // 3. ✅ اللحظة الحاسمة: انتظار البيانات
-  // نظهر شاشة التحميل فقط إذا لم يتم تحميل البيانات AND لم نفرض الدخول بعد
-  if (authStatus === 'logged_in' && !isDataLoaded && !forceEntry) {
-      return (
-        <div className="flex flex-col h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]">
-            <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
-            <p className="text-slate-500 font-medium">جاري استعادة بياناتك...</p>
-            <p className="text-xs text-slate-400 mt-2">لحظات وسيفتح التطبيق</p>
-        </div>
-      );
-  }
+  // 3. 🛑 هنا كان يقع الفخ: لقد حذفت شرط (!isDataLoaded)
+  // الآن، إذا كنت logged_in، ستدخل فوراً للشاشة الرئيسية، والبيانات ستظهر عندما تجهز.
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans text-slate-900 overflow-hidden relative">
@@ -149,6 +136,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 pt-8 safe-area-top pb-24 md:pb-8" id="main-scroll-container">
           <SyncStatusBar />
+          {/* هنا محتوى التطبيق سيظهر فوراً */}
           <div className="max-w-7xl mx-auto min-h-full">
             <Routes>
                 <Route path="/" element={<Dashboard students={students} teacherInfo={teacherInfo} onUpdateTeacherInfo={(i) => setTeacherInfo(prev => ({ ...prev, ...i }))} schedule={schedule} onUpdateSchedule={setSchedule} onSelectStudent={() => {}} onNavigate={handleNavigate} onOpenSettings={() => handleNavigate('/settings')} periodTimes={periodTimes} setPeriodTimes={setPeriodTimes} notificationsEnabled={true} onToggleNotifications={() => {}} currentSemester={currentSemester as any} onSemesterChange={setCurrentSemester as any} />} />
