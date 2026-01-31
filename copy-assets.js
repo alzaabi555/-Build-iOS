@@ -1,51 +1,27 @@
-
 const fs = require('fs');
 const path = require('path');
 
-const dest = 'www';
-
-// Ensure destination exists
-if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest, { recursive: true });
+// التأكد من أن مجلد www موجود (لأننا وحدنا المسار عليه)
+if (!fs.existsSync('www')) {
+    fs.mkdirSync('www', { recursive: true });
 }
 
-// Files to copy from root to www
-const filesToCopy = [
-    'index.html',
-    'manifest.json',
-    'icon.png',
-    'noor_logo.png',
-    'oman_logo.png'
-];
+// إنشاء ملف التشغيل الرئيسي
+const htmlContent = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>راصد</title>
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="stylesheet" href="index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>`;
 
-console.log('Starting asset copy...');
-
-filesToCopy.forEach(file => {
-    if (fs.existsSync(file)) {
-        try {
-            fs.copyFileSync(file, path.join(dest, file));
-            console.log(`Copied ${file} to ${dest}`);
-        } catch (err) {
-            console.error(`Error copying ${file}:`, err);
-        }
-    } else {
-        console.warn(`Warning: ${file} not found, skipping.`);
-    }
-});
-
-// Copy PDF Worker
-const pdfWorkerSrc = path.join('node_modules', 'pdfjs-dist', 'build', 'pdf.worker.min.js');
-const pdfWorkerDest = path.join(dest, 'pdf.worker.js');
-
-if (fs.existsSync(pdfWorkerSrc)) {
-    try {
-        fs.copyFileSync(pdfWorkerSrc, pdfWorkerDest);
-        console.log(`Copied pdf.worker.min.js to ${pdfWorkerDest}`);
-    } catch (err) {
-        console.error('Error copying PDF worker:', err);
-    }
-} else {
-    console.warn('Warning: PDF worker file not found in node_modules.');
-}
-
-console.log('Asset copy complete.');
+// الكتابة داخل www حصراً
+fs.writeFileSync('www/index.html', htmlContent);
+console.log('✅ Success: index.html generated in www folder.');
