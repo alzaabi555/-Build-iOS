@@ -1,54 +1,37 @@
-import { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  // ⚠️ هام: هذا المعرف يجب أن يطابق ما هو موجود في Xcode (Bundle ID)
-  // غالباً يكون com.example.app أو شيء مشابه. إذا لم تكن متأكداً اتركه كما هو الآن.
-  appId: 'com.rased.app', 
-  
-  appName: 'Rased',
-  webDir: 'dist',
-  bundledWebRuntime: false,
-  
-  // ✅ إعدادات السيرفر (مهمة لمنع الشاشة البيضاء والتوجيه)
-  server: {
-    androidScheme: 'https',
-    iosScheme: 'ionic', // يحسن الأداء على الآيفون
-    cleartext: true,
-    allowNavigation: [
-      "*" // يسمح للتطبيق بالاتصال بأي رابط (مهم لفايربيس وجوجل)
+{
+  "appId": "com.rased.app",
+  "appName": "Rased",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "ionic",
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
     ]
   },
-
-  // ✅ إعدادات الإضافات (Plugins)
-  plugins: {
-    GoogleAuth: {
-      scopes: ['profile', 'email'],
-      
-      // 👇 هذا هو الرقم السحري (Client ID) الذي استخرجناه من كودك السابق
-      // يجب وضعه في كل الخانات لضمان أن جوجل يتعرف عليك من أي مكان
-      serverClientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
-      iosClientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
-      androidClientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
-      
-      forceCodeForRefreshToken: true,
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
+      "iosClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
+      "androidClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     },
-    // إعدادات لوحة المفاتيح (تحسين تجربة المستخدم عند الكتابة)
-    Keyboard: {
-      resize: 'body',
-      style: 'dark',
-      resizeOnFullScreen: true,
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true
     },
-    // إعدادات شاشة البداية (Splash Screen)
-    SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
-      backgroundColor: "#ffffffff",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
-      showSpinner: true,
-      spinnerColor: "#4f46e5",
-    },
-  },
-};
-
-export default config;
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#ffffffff",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": true,
+      "spinnerColor": "#4f46e5"
+    }
+  }
+}
