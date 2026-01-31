@@ -29,20 +29,18 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
-      # ✅ 1. إصلاح الأيقونة (أزلنا علامة التعليق)
-      # تأكد أن لديك مجلد assets أو resources فيه الأيقونات، وإلا سيفشل هذا السطر
-      # إذا لم تكن متأكداً، يمكنك حذفه ليعود للأيقونة الافتراضية بدلاً من فشل البناء
+      # ✅ 1. إصلاح الأيقونة (تم تفعيل الأمر)
       - name: Generate App Icons
-        run: npx capacitor-assets generate --ios || echo "⚠️ Warning: Could not generate icons, using default."
+        run: npx capacitor-assets generate --ios || echo "⚠️ Warning: Could not generate icons"
 
-      # ✅ 2. إصلاح "عنوان العودة" (لحل مشكلة Offline والعودة من جوجل)
+      # ✅ 2. الحل الجذري لمشكلة Offline (حقن كود العودة في ملف النظام)
       - name: Inject Google URL Scheme
         run: |
           PLIST="ios/App/App/Info.plist"
-          # الرقم المعكوس الخاص بك
+          # الرقم المعكوس الخاص بك (تأكدنا منه)
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          # إضافة الإعدادات في ملف النظام
+          # إضافة الإعدادات في ملف النظام باستخدام PlistBuddy
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST || true
@@ -50,7 +48,6 @@ jobs:
           
           echo "✅ URL Scheme Injected Successfully!"
 
-      # 3. أذونات الصور (لمنع الانهيار)
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
