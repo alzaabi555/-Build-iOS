@@ -21,13 +21,19 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
+      # تنظيف شامل للكاش القديم
+      - name: Clean Old Builds
+        run: |
+          rm -rf www
+          rm -rf dist
+          rm -rf ios
+
       - name: Build Web Assets
         run: npm run build
 
-      # 🔥 الخطوة المصححة: حذف القديم وإنشاء الجديد لضمان تطبيق الإعدادات
-      - name: Re-create iOS Platform
+      # إنشاء منصة iOS من الصفر (لضمان أخذ إعدادات www الجديدة)
+      - name: Create iOS Platform
         run: |
-          rm -rf ios
           npx cap add ios
           npx cap sync ios
 
