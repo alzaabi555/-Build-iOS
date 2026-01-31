@@ -1,6 +1,6 @@
 {
   "appId": "com.madrasati.app",
-  "appName": "Rased",
+  "appName": "راصد",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
