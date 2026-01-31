@@ -1,7 +1,7 @@
 {
-  "appId": "com.rased.app",
+  "appId": "com.madrasati.app",
   "appName": "Rased",
-  "webDir": "dist",
+  "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https",
