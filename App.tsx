@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ReactNode } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, X, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, X, ChevronLeft, RefreshCw, AlertTriangle } from 'lucide-react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { auth } from './services/firebase'; 
-import { onAuthStateChanged, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
@@ -23,6 +23,27 @@ import WelcomeScreen from './components/WelcomeScreen';
 import LoginScreen from './components/LoginScreen';
 import SyncStatusBar from './components/SyncStatusBar';
 
+// --- صمام الأمان لمنع الشاشة البيضاء ---
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-white p-6 text-center">
+          <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
+          <h1 className="text-xl font-bold text-slate-800">جاري تحميل التطبيق...</h1>
+          <button onClick={() => window.location.reload()} className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold">تحديث</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // تعريف الأيقونات
 const Dashboard3D = ({ active }: { active: boolean }) => <LayoutDashboard className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Attendance3D = ({ active }: { active: boolean }) => <CalendarCheck className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
@@ -35,88 +56,58 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ البداية النظيفة: الحالة دائماً "checking" في البداية
+  // ✅ الحالة الافتراضية: فحص سريع جداً
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // دالة المزامنة الصامتة
-  const trySilentSync = async () => {
-      if (!auth.currentUser && Capacitor.isNativePlatform()) {
-          try {
-              const googleUser = await GoogleAuth.refresh(); 
-              if (googleUser?.authentication?.idToken) {
-                  const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-                  await signInWithCredential(auth, credential);
-              }
-          } catch (e) { /* تجاهل الأخطاء الصامتة */ }
-      }
-  };
-
   useEffect(() => {
-    // تهيئة جوجل
     if (Capacitor.isNativePlatform()) GoogleAuth.initialize();
 
     let isMounted = true;
-    
-    // 1. استرجاع بيانات الطوارئ (Bypass) من الذاكرة
-    const savedBypass = localStorage.getItem('user_bypass_data');
-    if (savedBypass) {
-        const userData = JSON.parse(savedBypass);
-        setTeacherInfo(prev => ({ ...prev, avatar: userData.photoURL, name: userData.displayName }));
+
+    // 1. الفحص الفوري للذاكرة (Fast Boot)
+    if (localStorage.getItem('user_bypass_data') || localStorage.getItem('guest_mode')) {
         setAuthStatus('logged_in');
-        trySilentSync(); // حاول المزامنة في الخلفية
     }
 
-    // 2. مستمع فايربيس الرسمي
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (!isMounted) return;
         if (user) {
              setAuthStatus('logged_in');
-             if (user.photoURL) setTeacherInfo(prev => ({ ...prev, avatar: user.photoURL, name: user.displayName || prev.name }));
+             // حتى لو جاءت البيانات، لن نعرضها في القائمة الجانبية لتجنب المشاكل
+             if (user.photoURL) setTeacherInfo(prev => ({ ...prev, avatar: user.photoURL }));
         } else {
-             // فقط إذا لم يكن لدينا بيانات طوارئ، نعتبره خرج
-             if (!localStorage.getItem('user_bypass_data')) {
-                 // نتأكد هل هو زائر؟
-                 if (localStorage.getItem('guest_mode') === 'true') {
-                     setAuthStatus('logged_in');
-                 } else {
-                     setAuthStatus('logged_out');
-                 }
+             if (!localStorage.getItem('user_bypass_data') && !localStorage.getItem('guest_mode')) {
+                 setAuthStatus('logged_out');
              }
         }
     });
 
-    // 🛑 3. قاطع التيار (الأهم): بعد 3 ثواني، إذا لم يقرر التطبيق، اجبره على الدخول أو الخروج
-    const safetyTimeout = setTimeout(() => {
-        if (isMounted && authStatus === 'checking') {
-            console.log("⚠️ Auth check timed out. Forcing UI update.");
-            // إذا كان لدينا بيانات مخزنة، ادخل، وإلا اذهب لصفحة الدخول
-            if (localStorage.getItem('user_bypass_data') || localStorage.getItem('guest_mode') === 'true') {
-                setAuthStatus('logged_in');
-            } else {
-                setAuthStatus('logged_out');
-            }
+    // مؤقت أمان 2 ثانية فقط
+    const timer = setTimeout(() => {
+        if (authStatus === 'checking') {
+            // إذا علق الفحص، وكان هناك أي أمل، ادخل، وإلا اطلب الدخول
+            if (localStorage.getItem('user_bypass_data')) setAuthStatus('logged_in');
+            else setAuthStatus('logged_out');
         }
-    }, 3000); // 3 ثواني كحد أقصى للانتظار
+    }, 2000);
 
-    return () => { isMounted = false; unsubscribe(); clearTimeout(safetyTimeout); };
-  }, []); // تشغيل مرة واحدة فقط
+    return () => { isMounted = false; unsubscribe(); clearTimeout(timer); };
+  }, []);
 
   const handleLoginSuccess = () => {
     setAuthStatus('logged_in');
-    setTimeout(trySilentSync, 1000);
   };
 
   const handleNavigate = (path: string) => { navigate(path); setIsMobileMenuOpen(false); };
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
-  // Helpers (كما هي)
+  // Helpers
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
   const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => { setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: phone, avatar: avatar, gender: gender || 'male' }]); };
 
-  // القوائم
   const mobileNavItems = [
     { path: '/', label: 'الرئيسية', IconComponent: Dashboard3D },
     { path: '/attendance', label: 'الحضور', IconComponent: Attendance3D },
@@ -133,7 +124,18 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول التطبيق', icon: Info, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
 
-  // شاشة التحميل (تظهر بحد أقصى 3 ثواني)
+  const desktopNavItems = [
+    { path: '/', label: 'الرئيسية', icon: LayoutDashboard },
+    { path: '/attendance', label: 'الحضور', icon: CalendarCheck },
+    { path: '/students', label: 'الطلاب', icon: Users },
+    { path: '/grades', label: 'الدرجات', icon: BarChart3 },
+    { path: '/leaderboard', label: 'فرسان الشهر', icon: Medal },
+    { path: '/reports', label: 'التقارير', icon: FileText },
+    { path: '/settings', label: 'الإعدادات', icon: SettingsIcon },
+    { path: '/guide', label: 'الدليل', icon: BookOpen },
+    { path: '/about', label: 'حول', icon: Info },
+  ];
+
   if (authStatus === 'checking') return <div className="flex h-full items-center justify-center bg-gray-50"><Loader2 className="w-12 h-12 text-indigo-500 animate-spin" /></div>;
   
   if (authStatus === 'logged_out') {
@@ -144,8 +146,16 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans text-slate-900 overflow-hidden relative">
       <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 shadow-sm z-50">
-         <div className="p-8 flex items-center gap-4"><div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div><div><h1 className="text-2xl font-black text-slate-900">راصد</h1><span className="text-[10px] font-bold text-indigo-600">نسخة المعلم</span></div></div>
-         <div className="px-6 mb-4"><div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100"><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-300 shadow-sm">{teacherInfo.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover" /> : <span className="font-black text-slate-500 text-lg flex items-center justify-center h-full">{teacherInfo.name?.[0]}</span>}</div><div className="overflow-hidden"><p className="text-xs font-bold text-slate-900 truncate">{teacherInfo.name || 'مرحباً بك'}</p><p className="text-[10px] text-gray-500 truncate">{teacherInfo.school || 'المدرسة'}</p></div></div></div>
+         <div className="p-8 flex items-center gap-4">
+             <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
+             <div><h1 className="text-2xl font-black text-slate-900">راصد</h1><span className="text-[10px] font-bold text-indigo-600">نسخة المعلم</span></div>
+         </div>
+         
+         {/* ❌ تم حذف قسم البروفايل (الصورة والاسم) تماماً لمنع التعليق */}
+         <div className="px-6 mb-2">
+             <div className="h-px bg-slate-100 w-full my-2"></div>
+         </div>
+
          <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 custom-scrollbar">
             {desktopNavItems.map(item => {
                 const isActive = location.pathname === item.path;
@@ -212,5 +222,16 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => <ThemeProvider><AppProvider><HashRouter><AppContent /></HashRouter></AppProvider></ThemeProvider>;
+const App: React.FC = () => (
+    <ThemeProvider>
+        <AppProvider>
+            <ErrorBoundary>
+                <HashRouter>
+                    <AppContent />
+                </HashRouter>
+            </ErrorBoundary>
+        </AppProvider>
+    </ThemeProvider>
+);
+
 export default App;
