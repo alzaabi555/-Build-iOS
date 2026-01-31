@@ -6,7 +6,7 @@ import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-route
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+// ❌ تم حذف السطر الذي يسبب التعليق (import GoogleAuth)
 
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -33,36 +33,39 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🚀 التغيير الجذري: لا تبدأ بـ 'checking'. ابدأ بـ 'logged_in' فوراً!
-  // سنفترض أن المستخدم "زائر" حتى يثبت العكس، لكي يفتح التطبيق فوراً.
+  // 🚀 التغيير الجذري: الحالة تبدأ بـ "دخول" فوراً لتجاوز الدائرة
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('logged_in'); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ✅ تهيئة جوجل في الخلفية (لا ننتظرها)
+  // تحميل جوجل في الخلفية (لا يؤثر على فتح التطبيق)
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-        setTimeout(() => {
-            console.log("Lazy loading Google Auth...");
-            GoogleAuth.initialize().catch(e => console.error("Google Init Error (Ignored):", e));
-        }, 2000); // انتظر ثانيتين بعد فتح التطبيق ثم هيئ جوجل
-    }
+    const initGoogle = async () => {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                // استدعاء آمن: حتى لو فشل، التطبيق شغال
+                const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                await GoogleAuth.initialize();
+                console.log("Google Auth loaded silently");
+            } catch (e) {
+                console.error("Google Auth failed to load (App will continue work)", e);
+            }
+        }
+    };
+    // تأخير بسيط لضمان أن التطبيق فتح أولاً
+    setTimeout(initGoogle, 1000);
   }, []);
 
-  // ✅ مراقبة فايربيس (تحديث صامت)
+  // مراقبة فايربيس
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (user) {
-             console.log("Firebase Connected silently.");
              if (user.photoURL) setTeacherInfo(prev => ({ ...prev, avatar: user.photoURL }));
         }
     });
     return () => unsubscribe();
   }, []);
 
-  const handleLoginSuccess = () => {
-    setAuthStatus('logged_in');
-  };
-
+  const handleLoginSuccess = () => { setAuthStatus('logged_in'); };
   const handleNavigate = (path: string) => { navigate(path); setIsMobileMenuOpen(false); };
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
@@ -72,7 +75,6 @@ const AppContent: React.FC = () => {
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
   const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => { setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: phone, avatar: avatar, gender: gender || 'male' }]); };
 
-  // القوائم
   const mobileNavItems = [
     { path: '/', label: 'الرئيسية', IconComponent: Dashboard3D },
     { path: '/attendance', label: 'الحضور', IconComponent: Attendance3D },
@@ -101,8 +103,8 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول', icon: Info },
   ];
 
-  // ❌ ألغينا شاشة التحميل تماماً
-  // if (authStatus === 'checking') ... (حذفنا هذا الجزء)
+  // ⚠️ تم إزالة شرط "checking" بالكامل
+  // لن يظهر اللودر أبداً
   
   if (authStatus === 'logged_out') {
       if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
