@@ -21,32 +21,28 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # ✅ بناء الويب (مع الانتباه لإعدادات package.json التي ضبطناها)
       - name: Build Web Assets
         run: npm run build
 
-      - name: Add and Sync iOS Platform
+      # 🔥 الخطوة المصححة: حذف القديم وإنشاء الجديد لضمان تطبيق الإعدادات
+      - name: Re-create iOS Platform
         run: |
+          rm -rf ios
           npx cap add ios
           npx cap sync ios
 
-      # ✅✅✅ الخطوة الجديدة الحاسمة: نقل ملف إعدادات جوجل لمكانه الصحيح
       - name: Copy GoogleService-Info.plist to iOS
         run: |
           if [ -f "GoogleService-Info.plist" ]; then
-            echo "📄 Found GoogleService-Info.plist in root, copying to iOS project..."
+            echo "📄 Found GoogleService-Info.plist, copying..."
             cp GoogleService-Info.plist ios/App/App/
-            echo "✅ File copied successfully!"
           else
-            echo "❌ ERROR: GoogleService-Info.plist NOT found in root directory!"
-            echo "Google Auth will FAIL without this file."
-            # لن نوقف البناء لكي ترى النتيجة، لكن الاتصال سيفشل
+            echo "⚠️ GoogleService-Info.plist NOT found! Skipping..."
           fi
 
       - name: Generate App Icons
         run: npx capacitor-assets generate --ios || true
 
-      # ✅ حقن كود العودة (URL Scheme)
       - name: Inject Google URL Scheme
         run: |
           PLIST="ios/App/App/Info.plist"
@@ -56,8 +52,6 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST || true
-          
-          echo "Done: URL Scheme Injected"
 
       - name: Inject iOS Permissions
         run: |
