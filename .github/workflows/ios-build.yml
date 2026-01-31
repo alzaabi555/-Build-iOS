@@ -21,6 +21,7 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
+      # ✅ بناء الويب (مع الانتباه لإعدادات package.json التي ضبطناها)
       - name: Build Web Assets
         run: npm run build
 
@@ -29,12 +30,23 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
-      # ✅ 1. إصلاح الأيقونة (تم تبسيط الأمر لمنع خطأ Syntax)
-      # الأمر || true يعني: حاول صنع الأيقونات، وإذا فشلت لا توقف البناء
+      # ✅✅✅ الخطوة الجديدة الحاسمة: نقل ملف إعدادات جوجل لمكانه الصحيح
+      - name: Copy GoogleService-Info.plist to iOS
+        run: |
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "📄 Found GoogleService-Info.plist in root, copying to iOS project..."
+            cp GoogleService-Info.plist ios/App/App/
+            echo "✅ File copied successfully!"
+          else
+            echo "❌ ERROR: GoogleService-Info.plist NOT found in root directory!"
+            echo "Google Auth will FAIL without this file."
+            # لن نوقف البناء لكي ترى النتيجة، لكن الاتصال سيفشل
+          fi
+
       - name: Generate App Icons
         run: npx capacitor-assets generate --ios || true
 
-      # ✅ 2. الحقن الجراحي لكود العودة (لحل مشكلة Offline)
+      # ✅ حقن كود العودة (URL Scheme)
       - name: Inject Google URL Scheme
         run: |
           PLIST="ios/App/App/Info.plist"
@@ -56,12 +68,13 @@ jobs:
       - name: Build Xcode Archive
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
-                     -scheme App \
-                     -configuration Release \
-                     -destination 'generic/platform=iOS' \
-                     -archivePath App.xcarchive \
-                     archive \
-                     CODE_SIGNING_ALLOWED=NO
+                       -scheme App \
+                       -configuration Release \
+                       -destination 'generic/platform=iOS' \
+                       -archivePath App.xcarchive \
+                       -allowProvisioningUpdates \
+                       archive \
+                       CODE_SIGNING_ALLOWED=NO
 
       - name: Prepare IPA
         run: |
