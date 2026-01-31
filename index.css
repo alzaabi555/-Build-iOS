@@ -1,12 +1,12 @@
-/* ✅ 1. استيراد الخطوط (يجب أن يكون في السطر الأول دائماً قبل أي شيء) */
+/* ✅ 1. الرابط في السطر الأول حصراً */
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
 
-/* ✅ 2. توجيهات Tailwind */
+/* ✅ 2. استدعاء Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ✅ 3. الإعدادات العامة */
+/* ✅ 3. الإعدادات */
 :root {
   font-family: 'Tajawal', sans-serif;
   direction: rtl;
@@ -20,12 +20,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* تحسينات التمرير */
+/* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* إصلاحات للموبايل */
+/* Mobile Safe Area */
 .safe-area-top { padding-top: env(safe-area-inset-top); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
