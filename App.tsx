@@ -9,7 +9,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
-// استيراد المكونات (مباشرة من المجلدات بجانبك)
+// استيراد المكونات
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -37,6 +37,10 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
+  
+  // ✅ متغير جديد لفرض الدخول حتى لو البيانات تأخرت
+  const [forceEntry, setForceEntry] = useState(false); 
+
   const [appVersion, setAppVersion] = useState('3.6.0');
 
   useEffect(() => {
@@ -55,10 +59,21 @@ const AppContent: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (!isMounted) return;
         const isGuest = localStorage.getItem('guest_mode') === 'true';
-        if (isGuest || user) setAuthStatus('logged_in');
-        else setAuthStatus('logged_out');
+        if (isGuest || user) {
+             setAuthStatus('logged_in');
+             
+             // ⏳ ✅ مؤقت ذكي: إذا تم تسجيل الدخول، انتظر 4 ثواني فقط للبيانات
+             // إذا لم تأتِ، ادخل بالقوة!
+             setTimeout(() => {
+                 if (isMounted) setForceEntry(true);
+             }, 4000);
+
+        } else {
+             setAuthStatus('logged_out');
+        }
     });
-    // 🛑 مؤقت الإنقاذ: بعد 3 ثواني، افتح صفحة الدخول إجبارياً
+
+    // مؤقت أمان للشيك الأولي
     const timeout = setTimeout(() => { if (authStatus === 'checking' && isMounted) setAuthStatus('logged_out'); }, 3000);
     return () => { isMounted = false; unsubscribe(); clearTimeout(timeout); };
   }, [authStatus]);
@@ -97,10 +112,25 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول', icon: Info },
   ];
 
+  // 1. شاشة الفحص الأولي
   if (authStatus === 'checking') return <div className="flex h-full items-center justify-center bg-gray-50"><Loader2 className="w-12 h-12 text-indigo-500 animate-spin" /></div>;
+  
+  // 2. شاشة تسجيل الدخول
   if (authStatus === 'logged_out') {
       if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
       return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // 3. ✅ اللحظة الحاسمة: انتظار البيانات
+  // نظهر شاشة التحميل فقط إذا لم يتم تحميل البيانات AND لم نفرض الدخول بعد
+  if (authStatus === 'logged_in' && !isDataLoaded && !forceEntry) {
+      return (
+        <div className="flex flex-col h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]">
+            <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
+            <p className="text-slate-500 font-medium">جاري استعادة بياناتك...</p>
+            <p className="text-xs text-slate-400 mt-2">لحظات وسيفتح التطبيق</p>
+        </div>
+      );
   }
 
   return (
