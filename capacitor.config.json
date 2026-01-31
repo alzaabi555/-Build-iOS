@@ -1,32 +1,21 @@
-{
-  "appId": "com.madrasati.app",
-  "appName": "راصد",
-  "webDir": "dist", 
-  "server": {
-    "androidScheme": "https",
-    "cleartext": true,
-    "allowNavigation": [
-      "*"
-    ]
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.rased.app', // تأكد أن هذا هو معرف تطبيقك (أو اتركه كما كان لديك)
+  appName: 'Rased',
+  webDir: 'dist',
+  server: {
+    androidScheme: 'https'
   },
-  "plugins": {
-    "CapacitorHttp": {
-      "enabled": true
+  plugins: {
+    GoogleAuth: {
+      scopes: ['profile', 'email'],
+      // ✅ هذا هو الرقم السحري الذي سيحل مشكلة "خطأ الإنترنت"
+      iosClientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
+      androidClientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true,
     },
-    "GoogleAuth": {
-      "scopes": ["profile", "email"],
-      "iosClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
-      "forceCodeForRefreshToken": true
-    }
   },
-  "android": {
-    "allowMixedContent": true,
-    "captureInput": true,
-    "backgroundColor": "#111827"
-  },
-  "ios": {
-    "contentInset": "automatic",
-    "backgroundColor": "#F2F2F7",
-    "allowsBackForwardNavigationGestures": true
-  }
-}
+};
+
+export default config;
