@@ -1,362 +1,265 @@
-import React, { useRef, useState } from 'react';
-import {
-  Save,
-  Upload,
-  Trash2,
-  AlertTriangle,
-  Database,
-  Download,
-  RefreshCw,
-  Loader2,
-  Cloud,
-  CloudOff,
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
+import { 
+  Save, 
+  Bell, 
+  Moon, 
+  Cloud, 
+  DownloadCloud, 
+  UploadCloud, 
+  CheckCircle2, 
+  AlertTriangle, 
+  RefreshCw,
+  LogOut,
+  Clock
+} from 'lucide-react';
+import { auth, db } from '../services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
 const Settings: React.FC = () => {
-  const {
-    students,
-    setStudents,
-    classes,
-    setClasses,
-    groups,
-    setGroups,
-    schedule,
-    setSchedule,
-    periodTimes,
-    setPeriodTimes,
-    teacherInfo,
-    setTeacherInfo,
-    assessmentTools,
-    setAssessmentTools,
-    certificateSettings,
-    setCertificateSettings,
-    hiddenClasses,
-    setHiddenClasses,
-
-    syncMode,
-    setSyncMode,
+  const { 
+    teacherInfo, 
+    setTeacherInfo, 
+    students, 
+    setStudents, 
+    classes, 
+    schedule, 
+    periodTimes 
   } = useApp();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [lastCloudUpdate, setLastCloudUpdate] = useState<string>('غير معروف');
 
-  const handleBackup = async () => {
-    setLoading('backup');
-    try {
-      const dataToSave = {
-        version: '3.6.0',
-        timestamp: new Date().toISOString(),
-        students,
-        classes,
-        hiddenClasses,
-        groups,
-        schedule,
-        periodTimes,
-        teacherInfo,
-        assessmentTools,
-        certificateSettings,
-        syncMode, // NEW
+  // فحص آخر تحديث عند فتح الصفحة
+  useEffect(() => {
+      const checkLastUpdate = async () => {
+          if (auth.currentUser) {
+              try {
+                  const docSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                  if (docSnap.exists() && docSnap.data().lastUpdated) {
+                      const date = new Date(docSnap.data().lastUpdated);
+                      setLastCloudUpdate(date.toLocaleString('ar-EG'));
+                  }
+              } catch (e) {}
+          }
       };
+      checkLastUpdate();
+  }, []);
 
-      const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
-      const jsonString = JSON.stringify(dataToSave, null, 2);
+  // 1️⃣ دالة الرفع (حفظ شغلك الحالي في السحابة)
+  const handleUploadToCloud = async () => {
+    const user = auth.currentUser;
+    // التحقق من هوية المستخدم (سواء كان مسجل دخول أصلي أو تجاوز)
+    const bypassData = localStorage.getItem('user_bypass_data');
+    const uid = user?.uid || (bypassData ? JSON.parse(bypassData).uid : null);
 
-      if (Capacitor.isNativePlatform()) {
-        const result = await Filesystem.writeFile({
-          path: fileName,
-          data: jsonString,
-          directory: Directory.Cache,
-          encoding: Encoding.UTF8,
-        });
-        await Share.share({
-          title: 'نسخة احتياطية - راصد',
-          url: result.uri,
-          dialogTitle: 'حفظ ملف البيانات',
-        });
-      } else {
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      alert('تم إنشاء النسخة الاحتياطية بنجاح ✅');
-    } catch (error) {
-      console.error(error);
-      alert('حدث خطأ أثناء إنشاء النسخة الاحتياطية');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (
-      !confirm(
-        'سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في ملف النسخة الاحتياطية. هل أنت متأكد؟'
-      )
-    ) {
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!uid) {
+      setSyncStatus('error');
+      setSyncMessage('يجب أن تكون متصلاً لرفع البيانات.');
       return;
     }
 
-    setLoading('restore');
+    if (!window.confirm('⚠️ تنبيه هام:\nسيتم استبدال النسخة الموجودة في السحابة ببيانات هذا الجهاز الحالية.\nهل أنت متأكد؟')) return;
+
+    setIsSyncing(true);
+    setSyncMessage('جاري رفع البيانات وحفظها في السحابة...');
+    
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
+      const fullData = {
+        teacherInfo,
+        students,
+        classes,
+        schedule,
+        periodTimes,
+        lastUpdated: new Date().toISOString() // لحفظ توقيت الرفع
+      };
 
-      if (data.students && Array.isArray(data.students)) {
-        setStudents(data.students);
-        setClasses(data.classes || []);
-        if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
-        if (data.groups) setGroups(data.groups);
-        if (data.schedule) setSchedule(data.schedule);
-        if (data.periodTimes) setPeriodTimes(data.periodTimes);
-        if (data.teacherInfo) setTeacherInfo(data.teacherInfo);
-        if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
-        if (data.certificateSettings) setCertificateSettings(data.certificateSettings);
-
-        // NEW
-        if (data.syncMode === 'local' || data.syncMode === 'cloud') setSyncMode(data.syncMode);
-
-        alert('تم استعادة البيانات بنجاح ✅\nيرجى إعادة تشغيل التطبيق لضمان عمل كل شيء بشكل صحيح.');
-      } else {
-        throw new Error('الملف غير صالح');
-      }
-    } catch (error) {
+      await setDoc(doc(db, 'users', uid), fullData);
+      
+      setSyncStatus('success');
+      setSyncMessage('✅ تم الحفظ في السحابة بنجاح!');
+      setLastCloudUpdate(new Date().toLocaleString('ar-EG'));
+    } catch (error: any) {
       console.error(error);
-      alert('حدث خطأ أثناء استعادة البيانات. تأكد من اختيار ملف صحيح.');
+      setSyncStatus('error');
+      setSyncMessage(`فشل الرفع: ${error.message}`);
     } finally {
-      setLoading(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setIsSyncing(false);
     }
   };
 
-  const handleFactoryReset = async () => {
-    if (
-      confirm(
-        '⚠️ تحذير شديد ⚠️\n\nهل أنت متأكد تماماً من حذف جميع البيانات؟\nسيتم حذف الطلاب، الدرجات، الجدول، وكل شيء.\nلا يمكن التراجع عن هذه الخطوة!'
-      )
-    ) {
-      if (confirm('تأكيد نهائي: هل تريد حذف كل شيء والبدء من جديد؟')) {
-        setLoading('reset');
-        try {
-          setStudents([]);
-          setClasses([]);
-          setHiddenClasses([]);
+  // 2️⃣ دالة السحب (جلب البيانات من السحابة لهذا الجهاز)
+  const handleDownloadFromCloud = async () => {
+    const user = auth.currentUser;
+    const bypassData = localStorage.getItem('user_bypass_data');
+    const uid = user?.uid || (bypassData ? JSON.parse(bypassData).uid : null);
 
-          setGroups([
-            { id: 'g1', name: 'الصقور', color: 'emerald' },
-            { id: 'g2', name: 'النمور', color: 'orange' },
-            { id: 'g3', name: 'النجوم', color: 'purple' },
-            { id: 'g4', name: 'الرواد', color: 'blue' },
-          ]);
+    if (!uid) {
+      setSyncStatus('error');
+      setSyncMessage('يجب أن تكون متصلاً لسحب البيانات.');
+      return;
+    }
 
-          setSchedule([
-            { dayName: 'الأحد', periods: Array(8).fill('') },
-            { dayName: 'الاثنين', periods: Array(8).fill('') },
-            { dayName: 'الثلاثاء', periods: Array(8).fill('') },
-            { dayName: 'الأربعاء', periods: Array(8).fill('') },
-            { dayName: 'الخميس', periods: Array(8).fill('') },
-          ]);
+    if (!window.confirm('⚠️ تحذير:\nسيتم حذف بيانات هذا الجهاز واستبدالها بنسخة السحابة.\nهل تريد المتابعة؟')) return;
 
-          setPeriodTimes(
-            Array(8)
-              .fill(null)
-              .map((_, i) => ({ periodNumber: i + 1, startTime: '', endTime: '' }))
-          );
+    setIsSyncing(true);
+    setSyncMessage('جاري جلب البيانات من السحابة...');
 
-          setTeacherInfo({
-            name: '',
-            school: '',
-            subject: '',
-            governorate: '',
-            avatar: '',
-            stamp: '',
-            ministryLogo: '',
-            academicYear: '',
-          });
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
 
-          setAssessmentTools([]);
-
-          // NEW: رجّعها افتراضياً cloud
-          setSyncMode('cloud');
-
-          localStorage.clear();
-
-          if (Capacitor.isNativePlatform()) {
-            await Filesystem.deleteFile({
-              path: 'rased_database_v2.json',
-              directory: Directory.Data,
-            }).catch(() => {});
-          }
-
-          alert('تم حذف جميع البيانات وإعادة تعيين التطبيق.');
-          window.location.reload();
-        } catch (e) {
-          console.error(e);
-          alert('حدث خطأ أثناء الحذف');
-        } finally {
-          setLoading(null);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // تحديث البيانات في التطبيق
+        if (data.students) setStudents(data.students);
+        if (data.classes) {
+            // تحديث الفصول يتطلب تحديث الذاكرة المحلية أيضاً لضمان الاستمرارية
+            localStorage.setItem('classes', JSON.stringify(data.classes)); 
+            // ملاحظة: هنا نحتاج طريقة لتحديث الفصول في الـ Context إذا كان هناك دالة setClasses
+            // وبما أننا نستخدم localStorage في الـ Context للفصول، فإعادة التحميل ستحلها
         }
+        if (data.schedule) localStorage.setItem('schedule', JSON.stringify(data.schedule));
+        if (data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
+        
+        setSyncStatus('success');
+        setSyncMessage('✅ تم استرجاع البيانات! سيتم تحديث التطبيق الآن.');
+        
+        // حفظ إجباري للطلاب في الذاكرة المحلية
+        localStorage.setItem('rased_students', JSON.stringify(data.students || []));
+        
+        // إعادة تحميل الصفحة لتطبيق التغييرات الجوهرية
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setSyncStatus('error');
+        setSyncMessage('⚠️ لم يتم العثور على نسخة احتياطية في السحابة.');
       }
+    } catch (error: any) {
+      console.error(error);
+      setSyncStatus('error');
+      setSyncMessage(`فشل السحب: ${error.message}`);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const isCloud = syncMode === 'cloud';
+  const handleLogout = async () => {
+      if (window.confirm("هل تريد تسجيل الخروج؟")) {
+          await signOut(auth);
+          if (Capacitor.isNativePlatform()) await GoogleAuth.signOut();
+          localStorage.clear(); // تنظيف كامل
+          window.location.reload();
+      }
+  };
 
   return (
-    <div className="flex flex-col h-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Sync Section */}
-      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5">
-        <div className="flex items-center gap-4 px-2">
-          <div className="w-14 h-14 bg-white border border-gray-200 rounded-2xl flex items-center justify-center text-slate-600 shadow-sm">
-            {isCloud ? <Cloud size={30} /> : <CloudOff size={30} />}
+    <div className="space-y-6 pb-20">
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800">الإعدادات</h2>
+          <p className="text-slate-500 text-sm font-bold">التحكم في المزامنة والحساب</p>
+        </div>
+      </header>
+
+      {/* ☁️ لوحة المزامنة الموحدة */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+        
+        <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                <Cloud className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+                <h3 className="text-lg font-bold text-slate-800">المزامنة السحابية</h3>
+                <p className="text-xs text-slate-500 font-bold">
+                {auth.currentUser ? 'الحالة: متصل ✅' : 'الحالة: غير متصل  offline'}
+                </p>
+            </div>
+            </div>
+            
+            {/* عرض آخر تحديث */}
+            <div className="text-left hidden sm:block">
+                <div className="flex items-center gap-1 justify-end text-slate-400 text-[10px] font-bold">
+                    <Clock className="w-3 h-3" /> آخر نسخة في السحابة:
+                </div>
+                <div className="text-xs font-black text-indigo-600 dir-ltr">{lastCloudUpdate}</div>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* زر الرفع (متاح للجميع) */}
+          <button 
+            onClick={handleUploadToCloud}
+            disabled={isSyncing}
+            className="flex items-center justify-center gap-3 p-4 rounded-xl border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 transition-all active:scale-95 group"
+          >
+            <UploadCloud className="w-6 h-6 text-indigo-600 group-hover:scale-110 transition-transform" />
+            <div className="text-right">
+              <span className="block text-sm font-black text-indigo-900">رفع نسخة للسحابة</span>
+              <span className="block text-[10px] text-indigo-500 font-bold">احفظ تغييرات هذا الجهاز</span>
+            </div>
+          </button>
+
+          {/* زر السحب (متاح للجميع) */}
+          <button 
+            onClick={handleDownloadFromCloud}
+            disabled={isSyncing}
+            className="flex items-center justify-center gap-3 p-4 rounded-xl border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 transition-all active:scale-95 group"
+          >
+            <DownloadCloud className="w-6 h-6 text-emerald-600 group-hover:scale-110 transition-transform" />
+            <div className="text-right">
+              <span className="block text-sm font-black text-emerald-900">استعادة من السحابة</span>
+              <span className="block text-[10px] text-emerald-500 font-bold">جلب البيانات من الأجهزة الأخرى</span>
+            </div>
+          </button>
+        </div>
+
+        {/* رسائل الحالة */}
+        {syncMessage && (
+          <div className={`mt-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${syncStatus === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : syncStatus === 'error' ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-slate-100 text-slate-700'}`}>
+            {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : syncStatus === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            {syncMessage}
+          </div>
+        )}
+      </div>
+
+      {/* باقي الإعدادات */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <h3 className="font-black text-sm text-slate-800 mb-4">بيانات المعلم</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">الاسم</label>
+            <input 
+              type="text" 
+              value={teacherInfo.name} 
+              onChange={(e) => setTeacherInfo({...teacherInfo, name: e.target.value})}
+              className="w-full p-3 bg-slate-50 rounded-xl border-none text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500" 
+            />
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
-              المزامنة مع الموقع
-            </h2>
-            <p className="text-gray-500 text-xs font-bold mt-1">
-              التحكم في وضع العمل: سحابي أو محلي
-            </p>
+            <label className="block text-xs font-bold text-slate-500 mb-1">المدرسة</label>
+            <input 
+              type="text" 
+              value={teacherInfo.school} 
+              onChange={(e) => setTeacherInfo({...teacherInfo, school: e.target.value})}
+              className="w-full p-3 bg-slate-50 rounded-xl border-none text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500" 
+            />
           </div>
         </div>
+      </div>
 
-        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-          <p className="text-xs font-bold text-slate-600 leading-relaxed">
-            عند إيقاف المزامنة يعمل التطبيق محلياً فقط، وسيظهر في الشريط العلوي أنه غير متزامن.
-          </p>
-        </div>
-
-        <button
-          disabled={loading !== null}
-          onClick={() => {
-            const next = isCloud ? 'local' : 'cloud';
-            setSyncMode(next);
-            alert(next === 'cloud' ? 'تم تفعيل المزامنة ✅' : 'تم إيقاف المزامنة (محلي فقط) ⚠️');
-          }}
-          className={`w-full py-4 rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2
-            ${
-              isCloud
-                ? 'bg-sky-600 text-white shadow-sky-200 hover:bg-sky-700'
-                : 'bg-amber-500 text-white shadow-amber-200 hover:bg-amber-600'
-            }`}
-        >
-          {isCloud ? <Cloud className="w-5 h-5" /> : <CloudOff className="w-5 h-5" />}
-          {isCloud ? 'المزامنة مفعّلة' : 'غير متزامن (محلي فقط)'}
+      <div className="pt-4">
+        <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-rose-50 text-rose-600 py-4 rounded-xl font-bold border border-rose-100 hover:bg-rose-100 transition-colors">
+          <LogOut className="w-5 h-5" /> تسجيل الخروج
         </button>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center gap-4 pt-2 px-2 mb-2">
-        <div className="w-14 h-14 bg-white border border-gray-200 rounded-2xl flex items-center justify-center text-slate-600 shadow-sm">
-          <Database size={30} />
-        </div>
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">إدارة البيانات</h2>
-          <p className="text-gray-500 text-xs font-bold mt-1">النسخ الاحتياطي والاستعادة</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
-        {/* Backup Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
-              <Download size={20} />
-            </div>
-            <h3 className="font-black text-lg text-slate-800">النسخ الاحتياطي</h3>
-          </div>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed">
-            قم بإنشاء نسخة احتياطية من جميع بياناتك (الطلاب، الدرجات، الجدول، الإعدادات) وحفظها كملف آمن.
-          </p>
-          <button
-            onClick={handleBackup}
-            disabled={loading !== null}
-            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            {loading === 'backup' ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Save className="w-5 h-5" />
-            )}
-            إنشاء نسخة احتياطية الآن
-          </button>
-        </div>
-
-        <div className="h-px bg-gray-100"></div>
-
-        {/* Restore Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-              <Upload size={20} />
-            </div>
-            <h3 className="font-black text-lg text-slate-800">استعادة البيانات</h3>
-          </div>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed">
-            استرجاع البيانات من ملف نسخة احتياطية سابق. سيتم استبدال البيانات الحالية بالبيانات الموجودة في الملف.
-          </p>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loading !== null}
-            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            {loading === 'restore' ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <RefreshCw className="w-5 h-5" />
-            )}
-            استعادة من ملف
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleRestore}
-            accept=".json"
-            className="hidden"
-          />
-        </div>
-
-        <div className="h-px bg-gray-100"></div>
-
-        {/* Reset Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-rose-50 rounded-xl text-rose-600">
-              <AlertTriangle size={20} />
-            </div>
-            <h3 className="font-black text-lg text-slate-800">منطقة الخطر</h3>
-          </div>
-          <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl">
-            <p className="text-xs font-bold text-rose-700 leading-relaxed mb-4">
-              حذف جميع البيانات وإعادة ضبط المصنع. هذا الإجراء لا يمكن التراجع عنه وسيؤدي لفقدان جميع البيانات المسجلة.
-            </p>
-            <button
-              onClick={handleFactoryReset}
-              disabled={loading !== null}
-              className="w-full py-3 bg-white border border-rose-200 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center gap-2"
-            >
-              {loading === 'reset' ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4" />
-              )}
-              حذف كل شيء وإعادة الضبط
-            </button>
-          </div>
-        </div>
+        <p className="text-center text-[10px] text-slate-400 font-bold mt-4">Version 3.7.1 (Sync Edition)</p>
       </div>
     </div>
   );
