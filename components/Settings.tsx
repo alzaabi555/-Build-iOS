@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Save, Cloud, DownloadCloud, UploadCloud, 
+  Cloud, DownloadCloud, UploadCloud, 
   CheckCircle2, AlertTriangle, RefreshCw, LogOut, Clock, WifiOff, Wifi 
 } from 'lucide-react';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
-// ✅ هذا الملف للآيفون، لذا نحتاج هذه المكتبات (عكس الويندوز)
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
@@ -19,11 +18,16 @@ const Settings: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [lastCloudUpdate, setLastCloudUpdate] = useState<string>('غير معروف');
   
-  // حالة الاتصال اللحظية
   const [isConnected, setIsConnected] = useState<boolean>(!!auth.currentUser);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(auth.currentUser?.email || null);
 
-  // مراقبة حالة الاتصال وتحديث الواجهة فوراً
+  // ✅ تهيئة تلقائية (بدون باراميترات لأننا ضبطنا ملف الكونفج)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+       GoogleAuth.initialize(); 
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setIsConnected(!!user);
@@ -43,84 +47,75 @@ const Settings: React.FC = () => {
       } catch (e) {}
   };
 
-  // 🔌 وظيفة الإصلاح اليدوي (لحل مشكلة Offline في الآيفون)
+  // 🔌 وظيفة الإصلاح والاتصال
   const handleManualConnect = async () => {
     setIsSyncing(true);
-    setSyncMessage('جاري الاتصال بجوجل...');
+    setSyncMessage('جاري فتح صفحة الدخول...');
     
     try {
-      // 1. استدعاء جوجل الأصلي
+      // 1. الدخول عبر جوجل
       const googleUser = await GoogleAuth.signIn();
-      
-      // 2. تسليم التوكن لفايربيس (هذه الخطوة المفقودة)
-      const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-      await signInWithCredential(auth, credential);
-      
-      setSyncStatus('success');
-      setSyncMessage('✅ تم الاتصال بنجاح! أنت الآن أونلاين.');
+      console.log('Google User:', googleUser); // للمراقبة
+
+      // 2. الربط بفايربيس
+      if (googleUser.authentication?.idToken) {
+          const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+          await signInWithCredential(auth, credential);
+          setSyncStatus('success');
+          setSyncMessage('✅ تم الاتصال بنجاح! السحابة جاهزة.');
+      } else {
+          throw new Error("لم يتم استلام توكن من جوجل");
+      }
+
     } catch (error: any) {
       console.error(error);
       setSyncStatus('error');
-      setSyncMessage(`فشل الاتصال: ${error.message}`);
+      setSyncMessage(`فشل الاتصال: ${error.message || JSON.stringify(error)}`);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // ☁️ الرفع
   const handleUploadToCloud = async () => {
-    if (!auth.currentUser) {
-       // إذا لم يكن متصلاً، نشغل وظيفة الإصلاح بدلاً من الخطأ
-       return handleManualConnect();
-    }
-
+    if (!auth.currentUser) return handleManualConnect();
     if (!window.confirm('⚠️ هل أنت متأكد من رفع بيانات هذا الهاتف للسحابة؟')) return;
 
     setIsSyncing(true);
     setSyncMessage('جاري الرفع...');
-    
     try {
-      const fullData = {
-        teacherInfo, students, classes, schedule, periodTimes,
-        lastUpdated: new Date().toISOString()
-      };
+      const fullData = { teacherInfo, students, classes, schedule, periodTimes, lastUpdated: new Date().toISOString() };
       await setDoc(doc(db, 'users', auth.currentUser.uid), fullData);
       setSyncStatus('success');
       setSyncMessage('✅ تم الرفع بنجاح!');
       setLastCloudUpdate(new Date().toLocaleString('ar-EG'));
     } catch (error: any) {
       setSyncStatus('error');
-      setSyncMessage(`فشل الرفع: ${error.message}`);
+      setSyncMessage(`فشل: ${error.message}`);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // ☁️ السحب
   const handleDownloadFromCloud = async () => {
-    if (!auth.currentUser) {
-       return handleManualConnect();
-    }
-
+    if (!auth.currentUser) return handleManualConnect();
     if (!window.confirm('⚠️ هل تريد استبدال بيانات الهاتف ببيانات السحابة؟')) return;
 
     setIsSyncing(true);
     setSyncMessage('جاري السحب...');
-
     try {
       const docSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.students) {
-            setStudents(data.students);
-            localStorage.setItem('rased_students', JSON.stringify(data.students));
+             setStudents(data.students);
+             localStorage.setItem('rased_students', JSON.stringify(data.students));
         }
         if (data.classes) localStorage.setItem('classes', JSON.stringify(data.classes));
         if (data.schedule) localStorage.setItem('schedule', JSON.stringify(data.schedule));
         if (data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
         
         setSyncStatus('success');
-        setSyncMessage('✅ تم الاسترجاع! سيتم التحديث...');
+        setSyncMessage('✅ تم الاسترجاع! تحديث...');
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setSyncStatus('error');
@@ -146,16 +141,10 @@ const Settings: React.FC = () => {
   return (
     <div className="space-y-6 pb-20">
       <header className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-black text-slate-800">الإعدادات</h2>
-          <p className="text-slate-500 text-sm font-bold">إدارة المزامنة (آيفون)</p>
-        </div>
+        <div><h2 className="text-2xl font-black text-slate-800">الإعدادات</h2><p className="text-slate-500 text-sm font-bold">المزامنة (نسخة الآيفون)</p></div>
       </header>
 
-      {/* لوحة التحكم */}
       <div className={`rounded-2xl p-6 shadow-sm border relative overflow-hidden ${isConnected ? 'bg-white border-indigo-100' : 'bg-orange-50 border-orange-200'}`}>
-        
-        {/* شريط الحالة العلوي */}
         <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isConnected ? 'bg-indigo-50' : 'bg-orange-100'}`}>
@@ -176,19 +165,13 @@ const Settings: React.FC = () => {
             )}
         </div>
 
-        {/* 🚨 زر الطوارئ: يظهر فقط إذا كنت أوفلاين */}
         {!isConnected && (
-            <button 
-                onClick={handleManualConnect}
-                disabled={isSyncing}
-                className="w-full mb-4 flex items-center justify-center gap-2 bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 animate-pulse"
-            >
+            <button onClick={handleManualConnect} disabled={isSyncing} className="w-full mb-4 flex items-center justify-center gap-2 bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 animate-pulse">
                 {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Cloud className="w-5 h-5" />}
                 <span>اضغط هنا لتفعيل الاتصال بالسحابة</span>
             </button>
         )}
 
-        {/* أزرار المزامنة (تعمل فقط عند الاتصال) */}
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!isConnected ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <button onClick={handleUploadToCloud} className="flex items-center justify-center gap-3 p-4 rounded-xl border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 transition-all active:scale-95">
             <UploadCloud className="w-6 h-6 text-indigo-600" />
@@ -200,7 +183,6 @@ const Settings: React.FC = () => {
             <div className="text-right"><span className="block text-sm font-black text-emerald-900">سحب من السحابة</span></div>
           </button>
         </div>
-
         {syncMessage && <div className={`mt-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${syncStatus === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100'}`}>{syncMessage}</div>}
       </div>
 
