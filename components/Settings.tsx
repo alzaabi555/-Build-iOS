@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Save, RotateCcw, AlertTriangle, FileJson, UploadCloud, DownloadCloud, User, Smartphone, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, AlertTriangle, FileJson, User, Smartphone, Info, Share2, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -7,7 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import Modal from './Modal';
 
 // ============================================================================
-// ✅ أيقونات 3D للإعدادات (خاصة بهذه الصفحة)
+// ✅ أيقونات 3D للإعدادات (تم الحفاظ عليها كما هي)
 // ============================================================================
 
 const Icon3DProfile = () => (
@@ -95,18 +95,33 @@ const Icon3DInfo = () => (
 // ============================================================================
 
 const SettingsPage = () => {
-  const { teacherInfo, setTeacherInfo, students, setStudents, assessmentTools, setAssessmentTools } = useApp();
+  // ✅ تصحيح: استدعاء المتغيرات الصحيحة من الـ Context الحالي
+  const { 
+      teacherInfo, setTeacherInfo, 
+      students, setStudents, 
+      classes, setClasses, 
+      schedule, setSchedule, 
+      periodTimes, setPeriodTimes 
+  } = useApp();
   
   // Local state for editing
-  const [name, setName] = useState(teacherInfo.name);
-  const [school, setSchool] = useState(teacherInfo.school);
-  const [subject, setSubject] = useState(teacherInfo.subject);
+  const [name, setName] = useState(teacherInfo?.name || '');
+  const [school, setSchool] = useState(teacherInfo?.school || '');
+  const [subject, setSubject] = useState(teacherInfo?.subject || '');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+      setName(teacherInfo?.name || '');
+      setSchool(teacherInfo?.school || '');
+      setSubject(teacherInfo?.subject || '');
+  }, [teacherInfo]);
+
   // Save Profile
   const handleSaveProfile = () => {
+    // ✅ تصحيح: الحفاظ على البيانات القديمة (مثل الصورة والختم)
     setTeacherInfo({ ...teacherInfo, name, school, subject });
     alert('تم حفظ البيانات بنجاح! ✅');
   };
@@ -115,13 +130,17 @@ const SettingsPage = () => {
   const handleBackup = async () => {
     setIsLoading(true);
     try {
+      // ✅ تصحيح: إضافة الجدول والفصول والتواريخ للنسخة الاحتياطية
       const backupData = {
-        version: '1.0',
+        version: '3.7.3',
         date: new Date().toISOString(),
         teacherInfo,
         students,
-        assessmentTools
+        classes,
+        schedule,
+        periodTimes
       };
+      
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
       const jsonString = JSON.stringify(backupData, null, 2);
 
@@ -129,12 +148,19 @@ const SettingsPage = () => {
         const result = await Filesystem.writeFile({
           path: fileName,
           data: jsonString,
-          directory: Directory.Documents,
+          directory: Directory.Cache, // استخدام الكاش للمشاركة
           encoding: Encoding.UTF8
         });
+
+        // ✅ تصحيح: استخدام نتيجة URI للمشاركة
+        const uriResult = await Filesystem.getUri({
+            directory: Directory.Cache,
+            path: fileName
+        });
+
         await Share.share({
           title: 'نسخة احتياطية - راصد',
-          url: result.uri,
+          url: uriResult.uri,
         });
       } else {
         // Web fallback
@@ -147,7 +173,7 @@ const SettingsPage = () => {
         a.click();
         document.body.removeChild(a);
       }
-      alert('تم إنشاء النسخة الاحتياطية بنجاح 📦');
+      // alert('تم إنشاء النسخة الاحتياطية بنجاح 📦'); // المشاركة ستعطي تأكيداً ضمنياً
     } catch (error) {
       console.error('Backup error:', error);
       alert('حدث خطأ أثناء النسخ الاحتياطي');
@@ -168,10 +194,24 @@ const SettingsPage = () => {
       
       if (data.students && Array.isArray(data.students)) {
         if(confirm('هل أنت متأكد؟ سيتم استبدال البيانات الحالية بالنسخة الاحتياطية.')) {
+            // ✅ تصحيح: استعادة جميع البيانات المتاحة
             setStudents(data.students);
-            if (data.teacherInfo) setTeacherInfo(data.teacherInfo);
-            if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
-            alert('تمت استعادة البيانات بنجاح! 🔄');
+            if (data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
+            if (data.classes) {
+                setClasses(data.classes);
+                localStorage.setItem('classes', JSON.stringify(data.classes));
+            }
+            if (data.schedule) {
+                setSchedule(data.schedule);
+                localStorage.setItem('schedule', JSON.stringify(data.schedule));
+            }
+            if (data.periodTimes) setPeriodTimes(data.periodTimes);
+            
+            // حفظ الطلاب إجبارياً في الذاكرة
+            localStorage.setItem('rased_students', JSON.stringify(data.students));
+            
+            alert('تمت استعادة البيانات بنجاح! 🔄 سيتم تحديث الصفحة...');
+            setTimeout(() => window.location.reload(), 1500);
         }
       } else {
         alert('ملف غير صالح');
@@ -187,13 +227,12 @@ const SettingsPage = () => {
 
   // Reset App
   const handleResetApp = () => {
-    if (confirm('تحذير: سيتم حذف جميع الطلاب والدرجات والسجلات. هل أنت متأكد تماماً؟')) {
-        setStudents([]);
-        setAssessmentTools([]); // Optional: Keep tools or reset them
-        localStorage.clear();
-        alert('تم تصفير التطبيق بالكامل 🗑️');
-        window.location.reload();
-    }
+    // ✅ تصحيح: تفريغ شامل للبيانات
+    setStudents([]);
+    setClasses([]); 
+    localStorage.clear();
+    alert('تم تصفير التطبيق بالكامل 🗑️');
+    window.location.reload();
     setShowResetModal(false);
   };
 
@@ -206,7 +245,7 @@ const SettingsPage = () => {
           <h1 className="text-2xl font-black tracking-tight drop-shadow-md">الإعدادات</h1>
         </div>
         <div className="text-center mt-2 opacity-80 text-sm font-bold">
-            تخصيص التطبيق وإدارة البيانات
+            تخصيص التطبيق وإدارة البيانات (محلي)
         </div>
       </div>
 
@@ -298,7 +337,7 @@ const SettingsPage = () => {
                 <Icon3DInfo />
             </div>
             <h3 className="font-black text-slate-400 text-sm">راصد التعليمي</h3>
-            <p className="text-[10px] font-bold text-slate-300">الإصدار 3.6.0</p>
+            <p className="text-[10px] font-bold text-slate-300">الإصدار 3.7.3</p>
         </div>
 
       </div>
