@@ -13,14 +13,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // تهيئة النظام
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       GoogleAuth.initialize({
         clientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
         scopes: ['profile', 'email'],
         grantOfflineAccess: true,
-      }).catch(e => console.error("Init Error", e));
+      }).catch(e => console.error(e));
     }
   }, []);
 
@@ -30,51 +29,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        // 1. طلب الدخول من جوجل (هذا نجح معك سابقاً)
         const googleUser = await GoogleAuth.signIn();
         
-        console.log("Google User Received:", googleUser);
-
-        // ✅ الخدعة السحرية: نجهز "مستخدم بديل" فوراً من بيانات جوجل
-        // في حال فشل فايربيس، سنستخدم هذا المستخدم للدخول
+        // تجهيز بيانات المستخدم البديل فوراً
         const bypassUser = {
             uid: googleUser.id,
             email: googleUser.email,
             displayName: googleUser.displayName || googleUser.givenName || 'مستخدم',
             photoURL: googleUser.imageUrl,
-            emailVerified: true,
-            isAnonymous: false
         };
 
-        // 2. نحاول ربطه بفايربيس (مع مؤقت 4 ثواني فقط)
+        // حفظ البيانات فوراً في الذاكرة (هذا ما سيجعل الدخول القادم فورياً)
+        localStorage.setItem('user_bypass_data', JSON.stringify(bypassUser));
+        localStorage.setItem('guest_mode', 'false');
+
+        // محاولة ربط فايربيس (مع مهلة قصيرة)
         const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-        
-        // سباق الزمن: إما ينجح فايربيس، أو ينتهي الوقت
         const firebasePromise = signInWithCredential(auth, credential);
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 4000));
 
         try {
-            const result: any = await Promise.race([firebasePromise, timeoutPromise]);
-            // نجح فايربيس! ممتاز
-            onLoginSuccess(result.user);
-        } catch (err: any) {
-            // فشل فايربيس أو انتهى الوقت
-            console.warn("Firebase taking too long or failed, using Bypass User", err);
-            
-            // 🚀 ادخل فوراً بالمستخدم البديل! لا توقف!
-            // سنخزن البيانات يدوياً لأن فايربيس لم يستجب
-            localStorage.setItem('user_bypass_data', JSON.stringify(bypassUser));
+            await Promise.race([firebasePromise, timeoutPromise]);
+            // إذا نجح فايربيس، ممتاز
+            onLoginSuccess(bypassUser);
+        } catch (err) {
+            console.log("Entering with bypass user due to timeout");
             onLoginSuccess(bypassUser);
         }
-
       } else {
-        // للويب والويندوز
         const result = await signInWithPopup(auth, googleProvider);
         onLoginSuccess(result.user);
       }
     } catch (err: any) {
-      console.error("Critical Login Error:", err);
-      setError(`فشل الدخول: ${err.message}`);
+      console.error(err);
+      setError("فشل الدخول. حاول مرة أخرى.");
       setIsLoading(false);
     }
   };
@@ -95,10 +83,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-4 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95 mb-4"
         >
           {isLoading ? (
-            <div className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
-                <span className="text-xs font-bold text-indigo-600">جاري تأكيد البيانات...</span>
-            </div>
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
           ) : (
             <>
               <LogIn className="w-5 h-5 text-indigo-600" />
@@ -107,16 +92,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           )}
         </button>
 
-        <button onClick={() => onLoginSuccess(null)} className="text-slate-400 font-bold text-xs hover:text-indigo-600 transition-colors">
+        <button onClick={() => { localStorage.setItem('guest_mode', 'true'); onLoginSuccess(null); }} className="text-slate-400 font-bold text-xs hover:text-indigo-600 transition-colors">
           الدخول كزائر
         </button>
         
-        {error && (
-            <div className="mt-6 p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-100 flex items-center gap-2 justify-center w-full text-center">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-            </div>
-        )}
+        {error && <div className="mt-6 p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-100 flex gap-2 justify-center w-full"><AlertTriangle className="w-4 h-4" />{error}</div>}
       </div>
     </div>
   );
