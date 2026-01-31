@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2 } from 'lucide-react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
@@ -9,7 +9,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
-// المكونات
+// استيراد المكونات (مباشرة من المجلدات بجانبك)
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import AttendanceTracker from './components/AttendanceTracker';
@@ -25,6 +25,7 @@ import LoginScreen from './components/LoginScreen';
 import { useSchoolBell } from './hooks/useSchoolBell';
 import SyncStatusBar from './components/SyncStatusBar';
 
+// أيقونات القائمة
 const Dashboard3D = ({ active }: { active: boolean }) => <LayoutDashboard className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Attendance3D = ({ active }: { active: boolean }) => <CalendarCheck className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Students3D = ({ active }: { active: boolean }) => <Users className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
@@ -57,7 +58,7 @@ const AppContent: React.FC = () => {
         if (isGuest || user) setAuthStatus('logged_in');
         else setAuthStatus('logged_out');
     });
-    // 🛑 كاسر الانتظار: بعد 3 ثواني يفتح الدخول إجبارياً
+    // 🛑 مؤقت الإنقاذ: بعد 3 ثواني، افتح صفحة الدخول إجبارياً
     const timeout = setTimeout(() => { if (authStatus === 'checking' && isMounted) setAuthStatus('logged_out'); }, 3000);
     return () => { isMounted = false; unsubscribe(); clearTimeout(timeout); };
   }, [authStatus]);
@@ -70,7 +71,7 @@ const AppContent: React.FC = () => {
   const handleNavigate = (path: string) => navigate(path);
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
-  // Helpers
+  // دوال مساعدة مختصرة
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
