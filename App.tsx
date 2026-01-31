@@ -4,8 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, X, ChevronLeft } from 'lucide-react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { auth } from './services/firebase'; 
-// ✅ أضفنا setPersistence و browserLocalPersistence
-import { onAuthStateChanged, signInWithCredential, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { onAuthStateChanged, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
@@ -24,6 +23,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import LoginScreen from './components/LoginScreen';
 import SyncStatusBar from './components/SyncStatusBar';
 
+// تعريف الأيقونات
 const Dashboard3D = ({ active }: { active: boolean }) => <LayoutDashboard className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Attendance3D = ({ active }: { active: boolean }) => <CalendarCheck className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 const Students3D = ({ active }: { active: boolean }) => <Users className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
@@ -35,94 +35,82 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ التغيير الجوهري 1: الفحص الفوري للذاكرة (يمنع ظهور شاشة الدخول إذا كنت قد دخلت سابقاً)
-  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>(() => {
-      const hasBypass = localStorage.getItem('user_bypass_data');
-      const isGuest = localStorage.getItem('guest_mode') === 'true';
-      // إذا وجدنا بيانات في الذاكرة، نعتبره مسجل دخول فوراً!
-      if (hasBypass || isGuest) return 'logged_in';
-      return 'checking';
-  });
-
+  // ✅ البداية النظيفة: الحالة دائماً "checking" في البداية
+  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   // دالة المزامنة الصامتة
   const trySilentSync = async () => {
       if (!auth.currentUser && Capacitor.isNativePlatform()) {
           try {
-              console.log("🔄 Trying silent background sync...");
               const googleUser = await GoogleAuth.refresh(); 
-              if (googleUser && googleUser.authentication) {
+              if (googleUser?.authentication?.idToken) {
                   const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
                   await signInWithCredential(auth, credential);
-                  setIsOfflineMode(false);
               }
-          } catch (e) {
-              setIsOfflineMode(true);
-          }
+          } catch (e) { /* تجاهل الأخطاء الصامتة */ }
       }
   };
 
   useEffect(() => {
-    // ✅ التغيير الجوهري 2: إجبار فايربيس على حفظ الجلسة
-    setPersistence(auth, browserLocalPersistence).catch(e => console.error("Persistence Error", e));
-    
+    // تهيئة جوجل
     if (Capacitor.isNativePlatform()) GoogleAuth.initialize();
-  }, []);
 
-  useEffect(() => {
     let isMounted = true;
     
+    // 1. استرجاع بيانات الطوارئ (Bypass) من الذاكرة
+    const savedBypass = localStorage.getItem('user_bypass_data');
+    if (savedBypass) {
+        const userData = JSON.parse(savedBypass);
+        setTeacherInfo(prev => ({ ...prev, avatar: userData.photoURL, name: userData.displayName }));
+        setAuthStatus('logged_in');
+        trySilentSync(); // حاول المزامنة في الخلفية
+    }
+
+    // 2. مستمع فايربيس الرسمي
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (!isMounted) return;
-        
         if (user) {
              setAuthStatus('logged_in');
-             setIsOfflineMode(false);
              if (user.photoURL) setTeacherInfo(prev => ({ ...prev, avatar: user.photoURL, name: user.displayName || prev.name }));
         } else {
-             // حتى لو لم يتصل فايربيس، نتحقق من الذاكرة المحلية
-             const bypassData = localStorage.getItem('user_bypass_data');
-             const isGuest = localStorage.getItem('guest_mode') === 'true';
-
-             if (bypassData) {
-                 const userData = JSON.parse(bypassData);
-                 setTeacherInfo(prev => ({ ...prev, avatar: userData.photoURL, name: userData.displayName }));
-                 setAuthStatus('logged_in'); 
-                 trySilentSync(); // حاول الربط في الخلفية
-             } else if (isGuest) {
-                 setAuthStatus('logged_in');
-             } else {
-                 // فقط إذا لم نجد شيراً في الذاكرة ولا في فايربيس، نطلب التسجيل
-                 if (authStatus !== 'checking') setAuthStatus('logged_out');
-                 else setAuthStatus('logged_out');
+             // فقط إذا لم يكن لدينا بيانات طوارئ، نعتبره خرج
+             if (!localStorage.getItem('user_bypass_data')) {
+                 // نتأكد هل هو زائر؟
+                 if (localStorage.getItem('guest_mode') === 'true') {
+                     setAuthStatus('logged_in');
+                 } else {
+                     setAuthStatus('logged_out');
+                 }
              }
         }
     });
 
-    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) trySilentSync();
-    });
+    // 🛑 3. قاطع التيار (الأهم): بعد 3 ثواني، إذا لم يقرر التطبيق، اجبره على الدخول أو الخروج
+    const safetyTimeout = setTimeout(() => {
+        if (isMounted && authStatus === 'checking') {
+            console.log("⚠️ Auth check timed out. Forcing UI update.");
+            // إذا كان لدينا بيانات مخزنة، ادخل، وإلا اذهب لصفحة الدخول
+            if (localStorage.getItem('user_bypass_data') || localStorage.getItem('guest_mode') === 'true') {
+                setAuthStatus('logged_in');
+            } else {
+                setAuthStatus('logged_out');
+            }
+        }
+    }, 3000); // 3 ثواني كحد أقصى للانتظار
 
-    return () => { isMounted = false; unsubscribe(); };
-  }, []); // أزلنا authStatus من التبعيات لمنع التكرار
+    return () => { isMounted = false; unsubscribe(); clearTimeout(safetyTimeout); };
+  }, []); // تشغيل مرة واحدة فقط
 
-  const handleLoginSuccess = (user: any) => {
-    if (!user) localStorage.setItem('guest_mode', 'true');
-    // لاحظ: user_bypass_data يتم حفظه في LoginScreen.tsx الآن
+  const handleLoginSuccess = () => {
     setAuthStatus('logged_in');
     setTimeout(trySilentSync, 1000);
   };
 
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    setIsMobileMenuOpen(false);
-  };
-  
+  const handleNavigate = (path: string) => { navigate(path); setIsMobileMenuOpen(false); };
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
-  // Helpers
+  // Helpers (كما هي)
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
@@ -145,6 +133,7 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول التطبيق', icon: Info, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
 
+  // شاشة التحميل (تظهر بحد أقصى 3 ثواني)
   if (authStatus === 'checking') return <div className="flex h-full items-center justify-center bg-gray-50"><Loader2 className="w-12 h-12 text-indigo-500 animate-spin" /></div>;
   
   if (authStatus === 'logged_out') {
@@ -154,12 +143,6 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans text-slate-900 overflow-hidden relative">
-      {isOfflineMode && (
-          <div className="absolute top-0 left-0 right-0 bg-orange-500 text-white text-[10px] font-bold text-center py-1 z-[100] animate-pulse">
-              جاري محاولة ربط البيانات بالسحابة...
-          </div>
-      )}
-
       <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 shadow-sm z-50">
          <div className="p-8 flex items-center gap-4"><div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div><div><h1 className="text-2xl font-black text-slate-900">راصد</h1><span className="text-[10px] font-bold text-indigo-600">نسخة المعلم</span></div></div>
          <div className="px-6 mb-4"><div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100"><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-300 shadow-sm">{teacherInfo.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover" /> : <span className="font-black text-slate-500 text-lg flex items-center justify-center h-full">{teacherInfo.name?.[0]}</span>}</div><div className="overflow-hidden"><p className="text-xs font-bold text-slate-900 truncate">{teacherInfo.name || 'مرحباً بك'}</p><p className="text-[10px] text-gray-500 truncate">{teacherInfo.school || 'المدرسة'}</p></div></div></div>
