@@ -29,30 +29,29 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
-      # ✅ 1. إصلاح الأيقونة (تم تفعيل الأمر)
+      # ✅ 1. إصلاح الأيقونة (تم تبسيط الأمر لمنع خطأ Syntax)
+      # الأمر || true يعني: حاول صنع الأيقونات، وإذا فشلت لا توقف البناء
       - name: Generate App Icons
-        run: npx capacitor-assets generate --ios || echo "⚠️ Warning: Could not generate icons"
+        run: npx capacitor-assets generate --ios || true
 
-      # ✅ 2. الحل الجذري لمشكلة Offline (حقن كود العودة في ملف النظام)
+      # ✅ 2. الحقن الجراحي لكود العودة (لحل مشكلة Offline)
       - name: Inject Google URL Scheme
         run: |
           PLIST="ios/App/App/Info.plist"
-          # الرقم المعكوس الخاص بك (تأكدنا منه)
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          # إضافة الإعدادات في ملف النظام باستخدام PlistBuddy
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST || true
           
-          echo "✅ URL Scheme Injected Successfully!"
+          echo "Done: URL Scheme Injected"
 
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'For profile picture'" $PLIST || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'For profile picture'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Profile Picture'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Profile Picture'" $PLIST || true
 
       - name: Build Xcode Archive
         run: |
@@ -73,5 +72,5 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: StudentManager-Final-IPA
+          name: StudentManager-Fixed-IPA
           path: StudentManager.ipa
