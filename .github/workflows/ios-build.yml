@@ -14,7 +14,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. إعداد البيئة
+      # 2. إعداد نود
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -24,61 +24,45 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # 4. بناء الويب
+      # 4. بناء الويب (React)
       - name: Build Web Assets
         run: npm run build
 
-      # 5. إنشاء مجلد الآيفون وتحديثه
+      # 5. إنشاء مجلد الآيفون (هنا يتم خلق الملف المفقود!)
       - name: Add and Sync iOS Platform
         run: |
           npx cap add ios
           npx cap sync ios
 
-      # 6. نسخ ملف خدمات جوجل (إذا كنت قد رفعته لجيتهوب)
-      - name: Copy Google Service File
+      # 6. 🛠️ الحل الجذري لمشكلة Offline 🛠️
+      # هذا الأمر يقوم بتعديل ملف Info.plist المخفي ويضيف كود العودة
+      - name: Inject Google URL Scheme (Fix Offline Error)
         run: |
-          if [ -f "GoogleService-Info.plist" ]; then
-            echo "✅ Found GoogleService-Info.plist in root, copying to iOS project..."
-            cp GoogleService-Info.plist ios/App/App/
-          else
-            echo "⚠️ Warning: GoogleService-Info.plist NOT found in root! Google Login might fail if not configured internally."
-          fi
-
-      # 7. 🔥 الخطوة السحرية: حقن كود العودة لحل مشكلة Offline 🔥
-      - name: Configure iOS URL Scheme for Google Auth
-        run: |
+          # تحديد مكان الملف المخفي
           PLIST="ios/App/App/Info.plist"
-          # الكود المعكوس الخاص بك
+          
+          # هذا هو الرقم الذي ظهر في صورتك (بالمقلوب)
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          # التأكد من وجود المصفوفة الرئيسية وإضافتها إن لم توجد
-          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" $PLIST || /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST
+          echo "🔧 Injecting URL Scheme: $REVERSED_CLIENT_ID"
           
-          # إضافة قاموس جديد داخل المصفوفة
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST
-          
-          # إضافة مصفوفة الروابط
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST
-          
-          # إضافة الكود المعكوس (الحل النهائي)
+          # أوامر التعديل (PlistBuddy)
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST
           
-          echo "✅ SUCCESS: Injected Google URL Scheme: $REVERSED_CLIENT_ID"
+          echo "✅ Info.plist has been fixed successfully!"
 
-      # 8. إضافة أذونات الكاميرا والصور (للمنع من الانهيار عند تغيير الصورة)
+      # 7. إضافة أذونات الكاميرا والصور (لمنع الانهيار)
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
-          # إضافة أو تعديل الأذونات
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'نحتاج الوصول للكاميرا لتحديث صورة الملف الشخصي'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'نحتاج الوصول للصور لاختيار صورة الملف الشخصي'" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'نحتاج الصلاحية لحفظ التقارير كصور'" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الكاميرا للصورة الشخصية'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الصور للصورة الشخصية'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'لحفظ التقارير'" $PLIST || true
 
-      # 9. توليد الأيقونات (اختياري، يمنع الخطأ إذا لم تكن الأيقونات موجودة)
-      # - name: Generate App Icons
-      #   run: npx capacitor-assets generate --ios
-
-      # 10. بناء التطبيق النهائي (IPA)
+      # 8. بناء التطبيق النهائي (IPA)
       - name: Build Xcode Archive
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
@@ -89,16 +73,16 @@ jobs:
                      archive \
                      CODE_SIGNING_ALLOWED=NO
 
-      # 11. تجهيز الملف للتحميل
-      - name: Prepare App for Sideloading
+      # 9. ضغط الملف
+      - name: Prepare IPA
         run: |
           mkdir -p build/Payload
           cp -R App.xcarchive/Products/Applications/App.app build/Payload/
           cd build && zip -r ../StudentManager.ipa Payload/
 
-      # 12. رفع التطبيق لك لتقوم بتحميله
-      - name: Upload IPA (Unsigned)
+      # 10. الرفع
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: StudentManager-Unsigned-IPA
+          name: StudentManager-Fixed-IPA
           path: StudentManager.ipa
