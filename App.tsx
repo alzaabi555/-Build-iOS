@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2 } from 'lucide-react';
+// ✅ أضفنا X و Menu و ChevronRight للقائمة الجديدة
+import { LayoutDashboard, Users, CalendarCheck, BarChart3, Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, X, ChevronLeft } from 'lucide-react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
@@ -31,14 +32,14 @@ const Grades3D = ({ active }: { active: boolean }) => <BarChart3 className={`w-7
 const More3D = ({ active }: { active: boolean }) => <SettingsIcon className={`w-7 h-7 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />;
 
 const AppContent: React.FC = () => {
-  // نستدعي البيانات لكن لن ننتظرها لفتح التطبيق
   const { isDataLoaded, teacherInfo, setTeacherInfo, schedule, setSchedule, periodTimes, setPeriodTimes, currentSemester, setCurrentSemester, students, setStudents, classes, setClasses } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // ✅ الحالة الافتراضية: التطبيق يظن أنه مسجل دخول حتى يثبت العكس (للتسريع)
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
   const [appVersion, setAppVersion] = useState('3.6.0');
+  
+  // ✅ حالة جديدة للتحكم في قائمة "المزيد"
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) GoogleAuth.initialize();
@@ -56,22 +57,12 @@ const AppContent: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (!isMounted) return;
         const isGuest = localStorage.getItem('guest_mode') === 'true';
-        
-        if (isGuest || user) {
-             setAuthStatus('logged_in'); 
-        } else {
-             setAuthStatus('logged_out');
-        }
+        if (isGuest || user) setAuthStatus('logged_in');
+        else setAuthStatus('logged_out');
     });
-
-    // 🛑 مؤقت صارم جداً: 3 ثواني فقط للفحص، ثم افتح صفحة الدخول إذا لم نكن متأكدين
     const timeout = setTimeout(() => { 
-        if (authStatus === 'checking' && isMounted) {
-            console.log("Auth check timeout - forcing logout state");
-            setAuthStatus('logged_out');
-        }
+        if (authStatus === 'checking' && isMounted) setAuthStatus('logged_out');
     }, 3000);
-
     return () => { isMounted = false; unsubscribe(); clearTimeout(timeout); };
   }, [authStatus]);
 
@@ -80,7 +71,11 @@ const AppContent: React.FC = () => {
     setAuthStatus('logged_in');
   };
 
-  const handleNavigate = (path: string) => navigate(path);
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setIsMobileMenuOpen(false); // إغلاق القائمة عند الانتقال
+  };
+  
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
@@ -88,12 +83,22 @@ const AppContent: React.FC = () => {
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
   const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => { setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: phone, avatar: avatar, gender: gender || 'male' }]); };
 
+  // عناصر القائمة السفلية الأساسية
   const mobileNavItems = [
     { path: '/', label: 'الرئيسية', IconComponent: Dashboard3D },
     { path: '/attendance', label: 'الحضور', IconComponent: Attendance3D },
     { path: '/students', label: 'الطلاب', IconComponent: Students3D },
     { path: '/grades', label: 'الدرجات', IconComponent: Grades3D },
-    { path: '/settings', label: 'المزيد', IconComponent: More3D },
+    { path: 'MORE_MENU', label: 'المزيد', IconComponent: More3D }, // ✅ زر خاص لفتح القائمة
+  ];
+
+  // ✅ عناصر قائمة "المزيد" المخفية
+  const moreMenuLinks = [
+    { path: '/leaderboard', label: 'فرسان الشهر', icon: Medal, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    { path: '/reports', label: 'التقارير', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { path: '/settings', label: 'الإعدادات', icon: SettingsIcon, color: 'text-slate-600', bg: 'bg-slate-100' },
+    { path: '/guide', label: 'دليل المعلم', icon: BookOpen, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { path: '/about', label: 'حول التطبيق', icon: Info, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
 
   const desktopNavItems = [
@@ -108,17 +113,11 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول', icon: Info },
   ];
 
-  // 1. شاشة التحميل (فقط في البداية القصوى)
   if (authStatus === 'checking') return <div className="flex h-full items-center justify-center bg-gray-50"><Loader2 className="w-12 h-12 text-indigo-500 animate-spin" /></div>;
-
-  // 2. شاشة الدخول
   if (authStatus === 'logged_out') {
       if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
       return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
-
-  // 3. 🛑 هنا كان يقع الفخ: لقد حذفت شرط (!isDataLoaded)
-  // الآن، إذا كنت logged_in، ستدخل فوراً للشاشة الرئيسية، والبيانات ستظهر عندما تجهز.
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans text-slate-900 overflow-hidden relative">
@@ -136,7 +135,6 @@ const AppContent: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 pt-8 safe-area-top pb-24 md:pb-8" id="main-scroll-container">
           <SyncStatusBar />
-          {/* هنا محتوى التطبيق سيظهر فوراً */}
           <div className="max-w-7xl mx-auto min-h-full">
             <Routes>
                 <Route path="/" element={<Dashboard students={students} teacherInfo={teacherInfo} onUpdateTeacherInfo={(i) => setTeacherInfo(prev => ({ ...prev, ...i }))} schedule={schedule} onUpdateSchedule={setSchedule} onSelectStudent={() => {}} onNavigate={handleNavigate} onOpenSettings={() => handleNavigate('/settings')} periodTimes={periodTimes} setPeriodTimes={setPeriodTimes} notificationsEnabled={true} onToggleNotifications={() => {}} currentSemester={currentSemester as any} onSemesterChange={setCurrentSemester as any} />} />
@@ -154,12 +152,59 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
+      {/* ✅ قائمة "المزيد" المنبثقة (مثل الآيفون) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[150] md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
+          {/* خلفية معتمة */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+          
+          {/* القائمة نفسها */}
+          <div 
+            className="absolute bottom-24 left-4 right-4 bg-white/90 backdrop-blur-xl rounded-[2rem] p-4 shadow-2xl border border-white/50 animate-in slide-in-from-bottom-10 fade-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4 px-2">
+               <span className="text-sm font-bold text-slate-500">القائمة الكاملة</span>
+               <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 bg-slate-100 rounded-full text-slate-500"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-2">
+              {moreMenuLinks.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => handleNavigate(item.path)}
+                  className="flex items-center justify-between w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-sm active:scale-95 transition-transform"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center`}>
+                      <item.icon className={`w-5 h-5 ${item.color}`} />
+                    </div>
+                    <span className="font-bold text-slate-700 text-sm">{item.label}</span>
+                  </div>
+                  <ChevronLeft className="w-5 h-5 text-slate-300" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[2rem]">
         <div className="flex justify-around items-center h-[70px] px-2">
           {mobileNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (item.path === 'MORE_MENU' && isMobileMenuOpen);
             return (
-              <button key={item.path} onClick={() => handleNavigate(item.path)} className="relative flex flex-col items-center justify-center w-full h-full group active:scale-95 transition-transform">
+              <button 
+                key={item.path} 
+                onClick={() => {
+                  if (item.path === 'MORE_MENU') {
+                    setIsMobileMenuOpen(!isMobileMenuOpen); // ✅ فتح/إغلاق القائمة
+                  } else {
+                    handleNavigate(item.path);
+                  }
+                }} 
+                className="relative flex flex-col items-center justify-center w-full h-full group active:scale-95 transition-transform"
+              >
                 <div className={`transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}><item.IconComponent active={isActive} /></div>
                 <span className={`text-[10px] font-black mt-1 transition-colors ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>{item.label}</span>
                 {isActive && <div className="absolute bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />}
