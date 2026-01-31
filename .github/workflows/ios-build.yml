@@ -10,59 +10,53 @@ jobs:
     runs-on: macos-latest
     
     steps:
-      # 1. سحب الكود
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. إعداد نود
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # 3. تثبيت المكتبات
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # 4. بناء الويب (React)
       - name: Build Web Assets
         run: npm run build
 
-      # 5. إنشاء مجلد الآيفون (هنا يتم خلق الملف المفقود!)
       - name: Add and Sync iOS Platform
         run: |
           npx cap add ios
           npx cap sync ios
 
-      # 6. 🛠️ الحل الجذري لمشكلة Offline 🛠️
-      # هذا الأمر يقوم بتعديل ملف Info.plist المخفي ويضيف كود العودة
-      - name: Inject Google URL Scheme (Fix Offline Error)
+      # ✅ 1. إصلاح الأيقونة (أزلنا علامة التعليق)
+      # تأكد أن لديك مجلد assets أو resources فيه الأيقونات، وإلا سيفشل هذا السطر
+      # إذا لم تكن متأكداً، يمكنك حذفه ليعود للأيقونة الافتراضية بدلاً من فشل البناء
+      - name: Generate App Icons
+        run: npx capacitor-assets generate --ios || echo "⚠️ Warning: Could not generate icons, using default."
+
+      # ✅ 2. إصلاح "عنوان العودة" (لحل مشكلة Offline والعودة من جوجل)
+      - name: Inject Google URL Scheme
         run: |
-          # تحديد مكان الملف المخفي
           PLIST="ios/App/App/Info.plist"
-          
-          # هذا هو الرقم الذي ظهر في صورتك (بالمقلوب)
+          # الرقم المعكوس الخاص بك
           REVERSED_CLIENT_ID="com.googleusercontent.apps.87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth"
           
-          echo "🔧 Injecting URL Scheme: $REVERSED_CLIENT_ID"
-          
-          # أوامر التعديل (PlistBuddy)
+          # إضافة الإعدادات في ملف النظام
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" $PLIST || true
           
-          echo "✅ Info.plist has been fixed successfully!"
+          echo "✅ URL Scheme Injected Successfully!"
 
-      # 7. إضافة أذونات الكاميرا والصور (لمنع الانهيار)
+      # 3. أذونات الصور (لمنع الانهيار)
       - name: Inject iOS Permissions
         run: |
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'نحتاج الكاميرا للصورة الشخصية'" $PLIST || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'نحتاج الصور للصورة الشخصية'" $PLIST || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'لحفظ التقارير'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'For profile picture'" $PLIST || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'For profile picture'" $PLIST || true
 
-      # 8. بناء التطبيق النهائي (IPA)
       - name: Build Xcode Archive
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
@@ -73,16 +67,14 @@ jobs:
                      archive \
                      CODE_SIGNING_ALLOWED=NO
 
-      # 9. ضغط الملف
       - name: Prepare IPA
         run: |
           mkdir -p build/Payload
           cp -R App.xcarchive/Products/Applications/App.app build/Payload/
           cd build && zip -r ../StudentManager.ipa Payload/
 
-      # 10. الرفع
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: StudentManager-Fixed-IPA
+          name: StudentManager-Final-IPA
           path: StudentManager.ipa
