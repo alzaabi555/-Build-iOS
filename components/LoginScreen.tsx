@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, AlertTriangle } from 'lucide-react';
-import { auth, googleProvider } from '../services/firebase';
-import { signInWithCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { auth } from '../services/firebase';
+import { signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
@@ -12,68 +12,47 @@ interface LoginScreenProps {
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showReset, setShowReset] = useState(false);
 
-  // التأكد من تهيئة الإضافة
+  // ✅ التهيئة الإجبارية (Hardcoded Initialization)
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      GoogleAuth.initialize().catch(e => console.error("Plugin Init Failed:", e));
+      GoogleAuth.initialize({
+        clientId: '87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      }).then(() => console.log('Google Auth Initialized Manually'))
+        .catch(e => console.error('Init Failed', e));
     }
-    
-    // التقاط العائدين من الويب (Redirect)
-    getRedirectResult(auth).then((result) => {
-        if (result) onLoginSuccess(result.user);
-    }).catch(e => console.error(e));
   }, []);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
-    console.log("Starting Login Process...");
+    setShowReset(false);
+
+    // مؤقت لإظهار زر الطوارئ إذا علق
+    const timer = setTimeout(() => setShowReset(true), 5000);
 
     try {
       if (Capacitor.isNativePlatform()) {
+        // محاولة الدخول
+        const googleUser = await GoogleAuth.signIn();
         
-        // ⚡️ حيلة ذكية: نحاول استخدام الإضافة الأصلية، لكن نضع لها وقتاً محدداً
-        // إذا لم تفتح خلال 3 ثواني، ننتقل فوراً لطريقة الويب
-        const nativePromise = GoogleAuth.signIn();
+        // إذا نجح، نلغي المؤقت
+        clearTimeout(timer);
         
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("TIMEOUT")), 3000)
-        );
-
-        try {
-            // سباق بين الإضافة الأصلية والمؤقت
-            const googleUser: any = await Promise.race([nativePromise, timeoutPromise]);
-            
-            // إذا نجحت الأصلية
-            const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-            const result = await signInWithCredential(auth, credential);
-            onLoginSuccess(result.user);
-
-        } catch (raceError: any) {
-            if (raceError.message === "TIMEOUT") {
-                console.log("Native plugin stuck! Switching to Web Redirect...");
-                // 🌐 الخطة البديلة: الويب (مضمونة الفتح)
-                await signInWithRedirect(auth, googleProvider);
-            } else {
-                throw raceError;
-            }
-        }
-
+        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+        const result = await signInWithCredential(auth, credential);
+        onLoginSuccess(result.user);
       } else {
-        // للكمبيوتر
-        await signInWithRedirect(auth, googleProvider);
+         setError("هذه النسخة مخصصة للآيفون فقط");
+         setIsLoading(false);
       }
     } catch (err: any) {
+      clearTimeout(timer);
       console.error("Login Error:", err);
-      // تجربة أخيرة: إذا فشل كل شيء، جرب الويب مرة أخرى
-      if (Capacitor.isNativePlatform()) {
-          try {
-             await signInWithRedirect(auth, googleProvider);
-             return;
-          } catch(e) {}
-      }
-      setError("حدث خطأ في الدخول. حاول مرة أخرى.");
+      setError(err.message || "فشل الدخول");
       setIsLoading(false);
     }
   };
@@ -92,6 +71,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-indigo-600" /> : <span className="font-bold text-sm">متابعة باستخدام Google</span>}
         </button>
         
+        {/* زر الطوارئ: يظهر فقط إذا تأخر التحميل */}
+        {showReset && isLoading && (
+            <button onClick={() => setIsLoading(false)} className="mb-4 flex items-center gap-2 text-rose-500 text-xs font-bold animate-pulse">
+                <RefreshCw className="w-4 h-4" /> إلغاء وإعادة المحاولة
+            </button>
+        )}
+
         <button onClick={() => onLoginSuccess(null)} className="text-slate-400 font-bold text-xs hover:text-indigo-600 transition-colors">الدخول كزائر</button>
         
         {error && <div className="mt-6 p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-100 flex gap-2 justify-center w-full"><AlertTriangle className="w-4 h-4" />{error}</div>}
