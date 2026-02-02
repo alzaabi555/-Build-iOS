@@ -3,11 +3,9 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
-  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, X, ChevronLeft
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal
 } from 'lucide-react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { auth } from './services/firebase'; 
-import { onAuthStateChanged } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
 
 import Dashboard from './components/Dashboard';
@@ -22,14 +20,12 @@ import About from './components/About';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
-import LoginScreen from './components/LoginScreen';
 import SyncStatusBar from './components/SyncStatusBar';
 
 // ============================================================================
 // 💎 طقم أيقونات القائمة السفلية (Vector Icons)
 // ============================================================================
 
-// 1. الرئيسية (Dashboard)
 const NavIconDashboard = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="2" y="2" width="9" height="9" rx="3" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
@@ -39,21 +35,15 @@ const NavIconDashboard = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-// 2. الحضور (Attendance)
 const NavIconAttendance = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="3" y="4" width="18" height="18" rx="4" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.1 : 0} stroke="currentColor" strokeWidth="2"/>
     <path d="M8 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     <path d="M16 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    {active ? (
-        <path d="M8 14L11 17L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    ) : (
-        <path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>
-    )}
+    {active ? (<path d="M8 14L11 17L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>) : (<path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>)}
   </svg>
 );
 
-// 3. الطلاب (Students)
 const NavIconStudents = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="12" cy="8" r="4" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
@@ -62,7 +52,6 @@ const NavIconStudents = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-// 4. الدرجات (Grades)
 const NavIconGrades = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -72,7 +61,6 @@ const NavIconGrades = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-// 5. المزيد (More)
 const NavIconMore = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600 rotate-90' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="3" y="3" width="7" height="7" rx="2" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
@@ -86,38 +74,15 @@ const AppContent: React.FC = () => {
   const { teacherInfo, setTeacherInfo, schedule, setSchedule, periodTimes, setPeriodTimes, currentSemester, setCurrentSemester, students, setStudents, classes, setClasses } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('logged_in'); 
   const [showMoreMenu, setShowMoreMenu] = useState(false); 
-
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-        setTimeout(async () => {
-            try {
-                const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-                await GoogleAuth.initialize();
-            } catch (e) { console.error(e); }
-        }, 1000);
-    }
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (user && user.photoURL) setTeacherInfo(prev => ({ ...prev, avatar: user.photoURL }));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleLoginSuccess = () => setAuthStatus('logged_in');
-  const handleNavigate = (path: string) => { navigate(path); setShowMoreMenu(false); };
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
+  const handleNavigate = (path: string) => { navigate(path); setShowMoreMenu(false); };
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
   const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => { setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: phone, avatar: avatar, gender: gender || 'male' }]); };
 
-  // ✅ استخدام أيقونات الفيكتور الجديدة هنا
   const mobileNavItems = [
     { id: '/', label: 'الرئيسية', IconComponent: NavIconDashboard },
     { id: '/attendance', label: 'الحضور', IconComponent: NavIconAttendance },
@@ -138,10 +103,7 @@ const AppContent: React.FC = () => {
     { path: '/about', label: 'حول', icon: Info },
   ];
 
-  if (authStatus === 'logged_out') {
-      if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
-      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-  }
+  if (showWelcome) return <WelcomeScreen onFinish={() => { localStorage.setItem('rased_welcome_seen', 'true'); setShowWelcome(false); }} />;
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans text-slate-900 overflow-hidden relative">
@@ -178,7 +140,7 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* --- 📱 Mobile Bottom Nav (Vector Icons) --- */}
+      {/* --- 📱 Mobile Bottom Nav --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom">
         {mobileNavItems.map((item) => {
           const isActive = location.pathname === item.id;
@@ -187,14 +149,12 @@ const AppContent: React.FC = () => {
               <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isActive ? '-translate-y-6 scale-110' : 'translate-y-1 scale-90'}`}>
                 <div className={`w-8 h-8 ${isActive ? 'drop-shadow-lg' : ''}`}><item.IconComponent active={isActive} /></div>
               </div>
-              {/* النص يظهر فقط عند التفعيل كما طلبت */}
               <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>{item.label}</span>
               {isActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
             </button>
           );
         })}
         
-        {/* زر المزيد (Vector) */}
         <button onClick={() => setShowMoreMenu(true)} className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform">
           <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isMoreActive ? '-translate-y-6 scale-110' : 'translate-y-1 scale-90'}`}>
             <div className={`w-8 h-8 ${isMoreActive ? 'drop-shadow-lg' : ''}`}><NavIconMore active={isMoreActive} /></div>
@@ -204,7 +164,7 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
-      {/* --- 🗂️ Menu Modal --- */}
+      {/* --- Menu Modal --- */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000]">
         <div className="text-center mb-6">
           <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
