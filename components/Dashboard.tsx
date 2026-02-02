@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  School, Loader2, BookOpen, ChevronLeft 
+  School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown
 } from 'lucide-react';
 import Modal from './Modal';
 import * as XLSX from 'xlsx';
@@ -24,18 +24,73 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
+// ============================================================================
+// ✅ 1. شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
+// ============================================================================
+
+// 👨‍🏫 المعلم العماني (مصر + لحية)
+const OmaniMaleTeacherAvatar = () => (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
+        {/* الدشداشة (أكتاف أعرض قليلاً) */}
+        <path d="M20 115C20 90 100 90 100 115V120H20V115Z" fill="white" />
+        <path d="M20 115C20 85 40 80 60 80C80 80 100 85 100 115" stroke="#E2E8F0" strokeWidth="1" />
+        {/* الرقبة */}
+        <rect x="48" y="70" width="24" height="20" fill="#EBB082" />
+        {/* الوجه */}
+        <circle cx="60" cy="60" r="24" fill="#EBB082" />
+        {/* اللحية (للدلالة على العمر) */}
+        <path d="M38 60C38 75 45 84 60 84C75 84 82 75 82 60" fill="#EBB082" stroke="#1E293B" strokeWidth="0.5" strokeOpacity="0.2" />
+        <path d="M45 80Q60 88 75 80" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+        
+        {/* المصر العماني (Turban) - بدلاً من الكمة */}
+        <path d="M32 50C32 30 40 25 60 25C80 25 88 30 88 50H32Z" fill="#F8FAFC" /> {/* الطبقة الأساسية */}
+        {/* لفات المصر الملونة */}
+        <path d="M30 48C30 35 40 32 60 32C80 32 90 35 90 48" fill="none" stroke="#2563EB" strokeWidth="8" strokeLinecap="round" />
+        <path d="M32 42C32 35 45 30 60 30C75 30 88 35 88 42" fill="none" stroke="#1E40AF" strokeWidth="4" strokeDasharray="4 2" />
+        <path d="M30 50H90" stroke="#F1F5F9" strokeWidth="2" />
+
+        {/* الملامح (ناضجة) */}
+        <path d="M50 58H56" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" /> {/* حاجب */}
+        <path d="M64 58H70" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" /> {/* حاجب */}
+        <circle cx="53" cy="62" r="2" fill="#1E293B" />
+        <circle cx="67" cy="62" r="2" fill="#1E293B" />
+        <path d="M56 72Q60 74 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);
+
+// 👩‍🏫 المعلمة العمانية (شيلة سوداء/عباءة رسمية)
+const OmaniFemaleTeacherAvatar = () => (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
+        {/* العباءة السوداء (أكتاف) */}
+        <path d="M25 115C25 90 95 90 95 115V120H25V115Z" fill="#1E293B" />
+        {/* تفصيل بسيط للعباءة */}
+        <path d="M60 90V120" stroke="#334155" strokeWidth="1" /> 
+        
+        {/* الوجه */}
+        <circle cx="60" cy="58" r="20" fill="#EBB082" />
+        
+        {/* الشيلة السوداء (Headscarf) */}
+        <path d="M35 55C35 25 45 20 60 20C75 20 85 25 85 55V85C85 95 35 95 35 85V55Z" fill="#1E293B" />
+        <path d="M40 55C40 40 48 35 60 35C72 35 80 40 80 55" stroke="#334155" strokeWidth="1" /> {/* ثنية الشيلة */}
+        
+        {/* الملامح */}
+        <circle cx="54" cy="58" r="2" fill="#1E293B" />
+        <circle cx="66" cy="58" r="2" fill="#1E293B" />
+        <path d="M57 66Q60 68 63 66" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
+        
+        {/* نظارة (اختياري لتبدو معلمة) */}
+        <circle cx="54" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
+        <circle cx="66" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
+        <path d="M59 58H61" stroke="#94A3B8" strokeWidth="1" />
+    </svg>
+);
+
 const Dashboard: React.FC<DashboardProps> = ({
-    teacherInfo,
-    onUpdateTeacherInfo,
-    schedule,
-    onUpdateSchedule,
-    periodTimes,
-    setPeriodTimes,
-    notificationsEnabled,
-    onToggleNotifications,
-    currentSemester,
-    onSemesterChange,
-    onNavigate
+    teacherInfo, onUpdateTeacherInfo, schedule, onUpdateSchedule,
+    periodTimes, setPeriodTimes, notificationsEnabled,
+    onToggleNotifications, currentSemester, onSemesterChange, onNavigate
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
@@ -43,28 +98,28 @@ const Dashboard: React.FC<DashboardProps> = ({
     const scheduleFileInputRef = useRef<HTMLInputElement>(null);
     const periodTimesInputRef = useRef<HTMLInputElement>(null);
 
+    // ✅ مرجع لمنع تكرار الإشعار في نفس الدقيقة
+    const lastAlertTime = useRef<string | null>(null);
+
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
     const [isImportingPeriods, setIsImportingPeriods] = useState(false); 
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-    
-    // Modals State
     const [showEditModal, setShowEditModal] = useState(false);
-    
-    const [editName, setEditName] = useState(teacherInfo?.name || '');
-    const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
-    const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
-    const [editGovernorate, setEditGovernorate] = useState(teacherInfo?.governorate || '');
-    const [editAvatar, setEditAvatar] = useState(teacherInfo?.avatar || '');
-    const [editStamp, setEditStamp] = useState(teacherInfo?.stamp || '');
-    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo || '');
-    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
-    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
-
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [scheduleTab, setScheduleTab] = useState<'timing' | 'classes'>('timing');
     const [editingDayIndex, setEditingDayIndex] = useState(0); 
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
+
+    const [editName, setEditName] = useState('');
+    const [editSchool, setEditSchool] = useState('');
+    const [editSubject, setEditSubject] = useState('');
+    const [editGovernorate, setEditGovernorate] = useState('');
+    const [editAvatar, setEditAvatar] = useState('');
+    const [editStamp, setEditStamp] = useState('');
+    const [editMinistryLogo, setEditMinistryLogo] = useState('');
+    const [editAcademicYear, setEditAcademicYear] = useState('');
+    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
 
     useEffect(() => {
         setEditName(teacherInfo?.name || '');
@@ -85,6 +140,57 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
+    // =========================================================================
+    // 🔔 🔥 محرك الإشعارات (للآيفون)
+    // =========================================================================
+    useEffect(() => {
+        if (!notificationsEnabled) return;
+
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().catch(() => {});
+        }
+
+        const checkTime = () => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTime = `${hours}:${minutes}`;
+
+            if (currentTime === lastAlertTime.current) return;
+
+            const periodIndex = periodTimes.findIndex(pt => pt.startTime === currentTime);
+
+            if (periodIndex !== -1) {
+                lastAlertTime.current = currentTime; 
+
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(e => console.log('Audio autoplay blocked by iOS:', e));
+
+                if (Notification.permission === 'granted') {
+                    new Notification('🔔 بداية الحصة', {
+                        body: `بدأت الحصة ${periodIndex + 1} الآن`,
+                        icon: '/icon.png'
+                    });
+                }
+            }
+        };
+
+        const intervalId = setInterval(checkTime, 5000);
+        return () => clearInterval(intervalId);
+    }, [notificationsEnabled, periodTimes]);
+
+    const handleBellClick = () => {
+        const unlockAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        unlockAudio.volume = 0; 
+        unlockAudio.play().catch(() => {});
+
+        if (Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+        onToggleNotifications();
+    };
+    // =========================================================================
+
     // Helpers
     const checkActivePeriod = (start: string, end: string) => {
         if (!start || !end) return false;
@@ -92,9 +198,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const [sh, sm] = start.split(':').map(Number);
         const [eh, em] = end.split(':').map(Number);
-        const startMinutes = sh * 60 + sm;
-        const endMinutes = eh * 60 + em;
-        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        return currentMinutes >= (sh * 60 + sm) && currentMinutes < (eh * 60 + em);
     };
 
     const getFormattedDate = () => {
@@ -117,7 +221,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return '';
     };
 
-    // أيقونات المواد (3D Style - Medium Size)
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
         const name = subjectName.trim().toLowerCase();
@@ -150,20 +253,21 @@ const Dashboard: React.FC<DashboardProps> = ({
         return <span className={iconStyle}>📚</span>;
     };
 
-    // Handlers
+    // ✅ دالة تحديد جنس المعلم (تخمين بسيط بناءً على الاسم أو تعيين افتراضي ذكر)
+    // يمكن تحسينها لاحقاً إذا أضفت حقل "الجنس" لبيانات المعلم
+    const getTeacherAvatar = () => {
+        // إذا كان الاسم يحتوي على "ة" في نهاية الكلمة الأولى (غالباً أنثى) أو يبدأ بـ "أستاذة"
+        const firstName = teacherInfo?.name?.split(' ')[0] || '';
+        const isFemale = firstName.endsWith('ة') || firstName.endsWith('ه') || teacherInfo?.name?.includes('أستاذة') || teacherInfo?.name?.includes('استاذة');
+        
+        return isFemale ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
+    };
+
     const handleSaveInfo = () => {
         onUpdateTeacherInfo({
-            name: editName,
-            school: editSchool,
-            subject: editSubject,
-            governorate: editGovernorate,
-            avatar: editAvatar,
-            stamp: editStamp,
-            ministryLogo: editMinistryLogo,
-            academicYear: editAcademicYear
+            name: editName, school: editSchool, subject: editSubject, governorate: editGovernorate, avatar: editAvatar, stamp: editStamp, ministryLogo: editMinistryLogo, academicYear: editAcademicYear
         });
-        onSemesterChange(editSemester);
-        setShowEditModal(false);
+        onSemesterChange(editSemester); setShowEditModal(false);
     };
 
     const handleSaveScheduleSettings = () => {
@@ -173,130 +277,41 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     const updateTempTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
-        const newTimes = [...tempPeriodTimes];
-        newTimes[index] = { ...newTimes[index], [field]: value };
-        setTempPeriodTimes(newTimes);
+        const newTimes = [...tempPeriodTimes]; newTimes[index] = { ...newTimes[index], [field]: value }; setTempPeriodTimes(newTimes);
     };
 
     const updateTempClass = (dayIdx: number, periodIdx: number, value: string) => {
-        const newSchedule = [...tempSchedule];
-        newSchedule[dayIdx].periods[periodIdx] = value;
-        setTempSchedule(newSchedule);
+        const newSchedule = [...tempSchedule]; newSchedule[dayIdx].periods[periodIdx] = value; setTempSchedule(newSchedule);
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setter(reader.result as string);
-            reader.readAsDataURL(file);
-        }
+        const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setter(reader.result as string); reader.readAsDataURL(file); }
     };
 
     const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setIsImportingSchedule(true);
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-            const newSchedule: ScheduleDay[] = [
-                { dayName: 'الأحد', periods: Array(8).fill('') },
-                { dayName: 'الاثنين', periods: Array(8).fill('') },
-                { dayName: 'الثلاثاء', periods: Array(8).fill('') },
-                { dayName: 'الأربعاء', periods: Array(8).fill('') },
-                { dayName: 'الخميس', periods: Array(8).fill('') }
-            ];
-            jsonData.forEach(row => {
-                if (row.length < 2) return;
-                const firstCell = String(row[0]).trim();
-                const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName));
-                if (dayIndex !== -1) {
-                    for (let i = 1; i <= 8; i++) {
-                        if (row[i]) newSchedule[dayIndex].periods[i-1] = String(row[i]).trim();
-                    }
-                }
-            });
-            onUpdateSchedule(newSchedule);
-            alert('تم استيراد الجدول بنجاح');
-        } catch (error) {
-            console.error(error);
-            alert('حدث خطأ أثناء استيراد الجدول.');
-        } finally {
-            setIsImportingSchedule(false);
-            if (e.target) e.target.value = '';
-            setShowSettingsDropdown(false);
-        }
+        const file = e.target.files?.[0]; if (!file) return; setIsImportingSchedule(true);
+        try { const data = await file.arrayBuffer(); const workbook = XLSX.read(data, { type: 'array' }); const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]; 
+        const newSchedule: ScheduleDay[] = [{ dayName: 'الأحد', periods: Array(8).fill('') }, { dayName: 'الاثنين', periods: Array(8).fill('') }, { dayName: 'الثلاثاء', periods: Array(8).fill('') }, { dayName: 'الأربعاء', periods: Array(8).fill('') }, { dayName: 'الخميس', periods: Array(8).fill('') }];
+        jsonData.forEach(row => { if (row.length < 2) return; const firstCell = String(row[0]).trim(); const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName)); if (dayIndex !== -1) { for (let i = 1; i <= 8; i++) { if (row[i]) newSchedule[dayIndex].periods[i-1] = String(row[i]).trim(); } } });
+        onUpdateSchedule(newSchedule); alert('تم استيراد الجدول بنجاح'); } catch { alert('حدث خطأ أثناء استيراد الجدول.'); } finally { setIsImportingSchedule(false); if (e.target) e.target.value = ''; setShowSettingsDropdown(false); }
     };
 
     const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setIsImportingPeriods(true);
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-            
-            const newPeriodTimes = [...tempPeriodTimes];
-            let updatesCount = 0;
-
-            jsonData.forEach((row) => {
-                if (row.length < 2) return;
-                const firstCol = String(row[0] || '');
-                const periodNumMatch = firstCol.match(/\d+/);
-                
-                if (periodNumMatch) {
-                    const pIndex = parseInt(periodNumMatch[0]) - 1; 
-                    if (pIndex >= 0 && pIndex < 8) {
-                        const startVal = row[1];
-                        const endVal = row[2];
-                        const parsedStart = parseExcelTime(startVal);
-                        const parsedEnd = parseExcelTime(endVal);
-
-                        if (parsedStart) newPeriodTimes[pIndex].startTime = parsedStart;
-                        if (parsedEnd) newPeriodTimes[pIndex].endTime = parsedEnd;
-                        
-                        if(parsedStart || parsedEnd) updatesCount++;
-                    }
-                }
-            });
-
-            if (updatesCount > 0) {
-                setTempPeriodTimes(newPeriodTimes);
-                alert(`تم تحديث توقيت ${updatesCount} حصص بنجاح ✅`);
-            } else {
-                alert('لم يتم العثور على بيانات توقيت صالحة. تأكد من أن العمود الأول يحتوي على رقم الحصة.');
-            }
-
-        } catch (error) {
-            console.error(error);
-            alert('حدث خطأ أثناء قراءة الملف.');
-        } finally {
-            setIsImportingPeriods(false);
-            if (e.target) e.target.value = '';
-        }
+        const file = e.target.files?.[0]; if (!file) return; setIsImportingPeriods(true);
+        try { const data = await file.arrayBuffer(); const workbook = XLSX.read(data, { type: 'array' }); const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        const newPeriodTimes = [...tempPeriodTimes]; let cnt = 0; jsonData.forEach(row => { if(row.length<2)return; const match = String(row[0]).match(/\d+/); if(match) { const idx = parseInt(match[0])-1; if(idx>=0 && idx<8) { const s=parseExcelTime(row[1]); const e=parseExcelTime(row[2]); if(s) newPeriodTimes[idx].startTime=s; if(e) newPeriodTimes[idx].endTime=e; if(s||e) cnt++; } } });
+        if(cnt>0){ setTempPeriodTimes(newPeriodTimes); alert(`تم تحديث توقيت ${cnt} حصص بنجاح ✅`); } } catch { alert('حدث خطأ أثناء قراءة الملف.'); } finally { setIsImportingPeriods(false); if (e.target) e.target.value = ''; }
     };
 
-    // ✅ إصلاح مشكلة اختفاء الجدول: تحديد اليوم الصحيح (الجمعة/السبت -> الأحد)
-    const rawDayIndex = new Date().getDay(); // 0 is Sunday, 6 is Saturday
-    const dayIndex = (rawDayIndex === 5 || rawDayIndex === 6) ? 0 : rawDayIndex;
-    
-    // تأمين ضد المصفوفات الفارغة
+    const rawDayIndex = new Date().getDay(); const dayIndex = (rawDayIndex === 5 || rawDayIndex === 6) ? 0 : rawDayIndex;
     const todaySchedule = (schedule && schedule[dayIndex]) ? schedule[dayIndex] : { dayName: 'اليوم', periods: Array(8).fill('') };
-    
-    // للتأكد من حالة "اليوم الحالي" في التظليل
     const isToday = rawDayIndex === dayIndex; 
 
     return (
         <div className="bg-[#f8fafc] text-slate-900 min-h-screen pb-24 font-sans animate-in fade-in duration-500">
             
-            {/* ================= HEADER ================= */}
+            {/* Header */}
             <header className="bg-[#1e3a8a] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-10">
-                
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
@@ -309,22 +324,22 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* زر تعديل بيانات المعلم (3D Icon) */}
                         <button onClick={() => setShowEditModal(true)} className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all active:scale-95 group" title="تعديل بيانات المعلم">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">✏️</span>
                         </button>
                         
-                        {/* زر التنبيهات (3D Icon) */}
-                        <button onClick={onToggleNotifications} className="p-2 rounded-full hover:bg-white/10 transition-colors relative group">
+                        {/* ✅ زر التنبيهات المصلح للآيفون */}
+                        <button onClick={handleBellClick} className="p-2 rounded-full hover:bg-white/10 transition-colors relative group">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">🔔</span>
-                            {notificationsEnabled && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1e3a8a]"></span>}
+                            {notificationsEnabled && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1e3a8a] animate-pulse"></span>}
                         </button>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : <span className="text-2xl font-black">{teacherInfo?.name ? teacherInfo.name.charAt(0) : 'T'}</span>}
+                        {/* ✅ هنا تظهر الشخصيات الفيكتور الجديدة إذا لم توجد صورة */}
+                        {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
                     </div>
                     <div className="flex flex-col">
                         <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo?.name || 'مرحباً يا معلم'}</h2>
@@ -344,7 +359,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     
                     <div className="flex items-center gap-2">
                         <div className="relative z-50">
-                            {/* زر الترس (الإعدادات) (3D Icon) */}
                             <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`flex items-center justify-center w-9 h-9 rounded-xl border border-white/20 hover:bg-white/20 transition-all group ${showSettingsDropdown ? 'bg-white' : 'bg-white/10'}`}>
                                 <span className="text-lg drop-shadow-md group-hover:scale-110 transition-transform block">⚙️</span>
                             </button>
@@ -354,21 +368,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
                                     <div className="absolute left-0 bottom-full mb-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-bottom-left z-50 animate-in zoom-in-95 duration-200">
                                         <div className="flex flex-col py-1">
-                                            {/* زر استيراد الجدول */}
                                             <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">📥</span>
                                                 <span className="text-xs font-bold text-slate-700">استيراد الجدول</span>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto"/>}
                                             </button>
                                             
-                                            {/* زر ضبط التوقيت */}
                                             <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏱️</span>
                                                 <span className="text-xs font-bold text-slate-700">ضبط توقيت الجدول</span>
                                             </button>
                                             
-                                            {/* زر منبه الحصص */}
-                                            <button onClick={() => { onToggleNotifications(); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
+                                            <button onClick={() => { handleBellClick(); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏰</span>
                                                 <span className="text-xs font-bold text-slate-700">منبه الحصص</span>
                                                 <span className={`mr-auto text-[10px] px-2 py-0.5 rounded-full ${notificationsEnabled ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}>{notificationsEnabled ? 'مفعل' : 'معطل'}</span>
@@ -384,12 +395,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* ================= SCHEDULE CONTENT ================= */}
+            {/* Schedule Content (نفس التصميم الأصلي) */}
             <section className="px-6 -mt-6 relative z-20 mb-8 space-y-4">
                 {todaySchedule.periods && todaySchedule.periods.map((cls, idx) => {
                     if (!cls) return null;
                     const pt = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
-                    // تظليل الحصة الحالية فقط إذا كان اليوم هو نفس يوم الجهاز
                     const isActive = isToday && checkActivePeriod(pt.startTime, pt.endTime);
 
                     return (
@@ -399,7 +409,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                             <div className="flex items-center gap-4">
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
-                                    {/* أيقونات الـ 3D بحجم متوسط */}
                                     {getSubjectIcon(teacherInfo?.subject || '')}
                                 </div>
                                 <div>
@@ -424,7 +433,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     );
                 })}
 
-                {/* إذا لم تكن هناك حصص أو كان الجدول فارغاً */}
                 {(!todaySchedule.periods || todaySchedule.periods.every(p => !p)) && (
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center opacity-75 mt-8">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
@@ -436,7 +444,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 )}
             </section>
 
-            {/* ================= MODALS ================= */}
+            {/* Modals */}
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
                  <div className="text-center">
                     <h3 className="font-black text-2xl mb-6 text-slate-800">إعدادات الهوية</h3>
@@ -448,6 +456,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, setEditAvatar)} accept="image/*" className="hidden" />
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الصورة</p>
                         </div>
+                        {/* بقية أيقونات الختم والوزارة كما هي */}
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => stampInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
                                 {editStamp ? <img src={editStamp} className="w-full h-full object-contain p-2"/> : <span className="text-gray-300 font-bold">ختم</span>}
@@ -463,6 +472,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
+                    {/* بقية الحقول (الاسم، المدرسة، المادة...) */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
