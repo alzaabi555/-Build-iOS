@@ -4,13 +4,13 @@ import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { auth, db } from '../services/firebase'; // ✅ إضافة فايربيس
-import { doc, getDoc, setDoc } from 'firebase/firestore'; // ✅ إضافة فايربيس
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'; // ✅ إضافة فايربيس
+import { auth, db } from '../services/firebase'; 
+import { doc, getDoc, setDoc } from 'firebase/firestore'; 
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'; 
 import Modal from './Modal';
 
 // ============================================================================
-// ✅ أيقونات 3D (التصميم الجميل)
+// ✅ أيقونات 3D (نفس التصميم الجميل)
 // ============================================================================
 
 const Icon3DProfile = () => (
@@ -68,23 +68,9 @@ const Icon3DReset = () => (
   </svg>
 );
 
-const Icon3DInfo = () => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10">
-    <defs>
-      <linearGradient id="gradInfo" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#7c3aed" /></linearGradient>
-      <filter id="shadowInfo" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-    </defs>
-    <circle cx="50" cy="50" r="40" fill="white" stroke="url(#gradInfo)" strokeWidth="8" filter="url(#shadowInfo)" />
-    <path d="M50 30 V35 M50 45 V75" stroke="url(#gradInfo)" strokeWidth="8" strokeLinecap="round" />
-  </svg>
-);
-
-// ============================================================================
-
 const SettingsPage = () => {
   const { teacherInfo, setTeacherInfo, students, setStudents, classes, setClasses, schedule, setSchedule, periodTimes, setPeriodTimes } = useApp();
   
-  // Local state for editing
   const [name, setName] = useState(teacherInfo?.name || '');
   const [school, setSchool] = useState(teacherInfo?.school || '');
   const [subject, setSubject] = useState(teacherInfo?.subject || '');
@@ -93,8 +79,7 @@ const SettingsPage = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Cloud State
-  const isCloudSupported = !Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'android'; // Windows & Android support Cloud
+  const isCloudSupported = !Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'android'; 
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [cloudMessage, setCloudMessage] = useState('');
 
@@ -107,13 +92,11 @@ const SettingsPage = () => {
       return () => unsubscribe();
   }, [teacherInfo]);
 
-  // Save Profile
   const handleSaveProfile = () => {
     setTeacherInfo({ ...teacherInfo, name, school, subject });
     alert('تم حفظ البيانات بنجاح! ✅');
   };
 
-  // ☁️ Cloud Functions (Windows/Android Only)
   const handleCloudAction = async (action: 'upload' | 'download') => {
       if (!currentUser) {
           try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { console.error(e); }
@@ -148,18 +131,13 @@ const SettingsPage = () => {
       }
   };
 
-  // 💾 File Backup (Export JSON) - للجميع (الجسر)
   const handleBackup = async () => {
     setIsLoading(true);
     try {
       const backupData = {
         version: '3.7.3',
         date: new Date().toISOString(),
-        teacherInfo,
-        students,
-        classes,
-        schedule,
-        periodTimes
+        teacherInfo, students, classes, schedule, periodTimes
       };
       
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -167,10 +145,7 @@ const SettingsPage = () => {
 
       if (Capacitor.isNativePlatform()) {
         const result = await Filesystem.writeFile({
-          path: fileName,
-          data: jsonString,
-          directory: Directory.Cache,
-          encoding: Encoding.UTF8
+          path: fileName, data: jsonString, directory: Directory.Cache, encoding: Encoding.UTF8
         });
         const uriResult = await Filesystem.getUri({ directory: Directory.Cache, path: fileName });
         await Share.share({ title: 'نسخة احتياطية - راصد', url: uriResult.uri });
@@ -178,25 +153,16 @@ const SettingsPage = () => {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = url; a.download = fileName;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
       }
-    } catch (error) {
-      console.error('Backup error:', error);
-      alert('حدث خطأ أثناء النسخ الاحتياطي');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (error) { console.error('Backup error:', error); alert('حدث خطأ أثناء النسخ الاحتياطي'); } 
+    finally { setIsLoading(false); }
   };
 
-  // 📂 File Restore (Import JSON) - للجميع (الجسر)
   const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
     setIsLoading(true);
     try {
       const text = await file.text();
@@ -209,59 +175,44 @@ const SettingsPage = () => {
             if (data.classes) { setClasses(data.classes); localStorage.setItem('classes', JSON.stringify(data.classes)); }
             if (data.schedule) { setSchedule(data.schedule); localStorage.setItem('schedule', JSON.stringify(data.schedule)); }
             if (data.periodTimes) setPeriodTimes(data.periodTimes);
-            
             localStorage.setItem('rased_students', JSON.stringify(data.students));
             
-            // 🔥 نقطة مهمة: إذا كنا في الوندوز، نعرض تنبيهاً لرفع البيانات للسحابة
             if (isCloudSupported) {
-                if(confirm('تم استيراد الملف بنجاح! هل تريد رفعه للسحابة الآن لتحديث نسختك؟')) {
-                     await handleCloudAction('upload');
-                } else {
-                     alert('تم الاستيراد محلياً. تذكر أن ترفع للسحابة لاحقاً.');
-                     window.location.reload();
-                }
+                if(confirm('تم الاستيراد! هل تود الرفع للسحابة لتحديث النسخة؟')) await handleCloudAction('upload');
+                else { alert('تم الاستيراد محلياً.'); window.location.reload(); }
             } else {
-                alert('تمت استعادة البيانات بنجاح! 🔄 سيتم تحديث الصفحة...');
-                setTimeout(() => window.location.reload(), 1500);
+                alert('تمت الاستعادة بنجاح! 🔄'); setTimeout(() => window.location.reload(), 1500);
             }
         }
-      } else {
-        alert('ملف غير صالح');
-      }
-    } catch (error) {
-      console.error('Restore error:', error);
-      alert('حدث خطأ أثناء استعادة البيانات');
-    } finally {
-      setIsLoading(false);
-      if (event.target) event.target.value = '';
-    }
+      } else { alert('ملف غير صالح'); }
+    } catch (error) { console.error('Restore error:', error); alert('فشل الاستيراد'); } 
+    finally { setIsLoading(false); if (event.target) event.target.value = ''; }
   };
 
   const handleResetApp = () => {
     setStudents([]); setClasses([]); localStorage.clear();
-    alert('تم تصفير التطبيق بالكامل 🗑️');
-    window.location.reload();
-    setShowResetModal(false);
+    alert('تم تصفير التطبيق بالكامل 🗑️'); window.location.reload(); setShowResetModal(false);
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 font-sans pb-24">
+    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 font-sans pb-24 animate-in fade-in duration-500">
       
-      <div className="fixed md:sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-8 rounded-b-[2.5rem] w-full">
-        <div className="flex justify-center items-center mt-4">
+      {/* ================= HEADER (المضبوط في المنتصف) ================= */}
+      <div className="fixed md:sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg pt-[env(safe-area-inset-top)] pb-8 rounded-b-[2.5rem] w-full">
+        <div className="flex justify-center items-center mt-6">
           <h1 className="text-2xl font-black tracking-tight drop-shadow-md">الإعدادات</h1>
         </div>
-        <div className="text-center mt-2 opacity-80 text-sm font-bold">
-            {isCloudSupported ? 'إدارة السحابة والملفات (Hybrid)' : 'التخزين المحلي (Local)'}
+        <div className="text-center mt-2 opacity-80 text-xs font-bold bg-white/10 w-fit mx-auto px-4 py-1 rounded-full">
+            {isCloudSupported ? 'إدارة السحابة (Hybrid)' : 'التخزين المحلي (Local)'}
         </div>
       </div>
 
       <div className="w-full h-[140px] shrink-0"></div>
 
-      <div className="px-4 space-y-6 -mt-6 relative z-10">
+      <div className="px-6 space-y-6 -mt-6 relative z-10">
 
         {/* 1. Profile */}
-        <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 relative overflow-hidden group">
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group">
             <div className="flex items-center gap-3 mb-4">
                 <div className="bg-blue-50 p-2 rounded-2xl border border-blue-100"><Icon3DProfile /></div>
                 <h2 className="text-lg font-black text-slate-800">بيانات المعلم</h2>
@@ -276,83 +227,92 @@ const SettingsPage = () => {
                     <input value={school} onChange={e => setSchool(e.target.value)} className="bg-transparent w-full text-sm font-bold text-slate-900 outline-none" placeholder="اسم المدرسة" />
                 </div>
                 <button onClick={handleSaveProfile} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-xs shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all mt-2 flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> حفظ البيانات
+                    <Save className="w-4 h-4" /> حفظ التعديلات
                 </button>
             </div>
         </div>
 
         {/* 2. Cloud Sync (Windows Only) */}
         {isCloudSupported && (
-            <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-indigo-100 relative overflow-hidden">
+            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-indigo-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
                 <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
                     <Icon3DCloud /> المزامنة السحابية
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => handleCloudAction('upload')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-all group">
-                        <UploadCloud className="w-6 h-6 text-indigo-600 mb-2" />
+                    <button onClick={() => handleCloudAction('upload')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-all group h-24">
+                        <UploadCloud className="w-6 h-6 text-indigo-600 mb-2 group-hover:-translate-y-1 transition-transform" />
                         <span className="text-xs font-black text-indigo-700">رفع للسحابة</span>
                     </button>
-                    <button onClick={() => handleCloudAction('download')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-purple-50 border border-purple-100 hover:bg-purple-100 active:scale-95 transition-all group">
-                        <DownloadCloud className="w-6 h-6 text-purple-600 mb-2" />
+                    <button onClick={() => handleCloudAction('download')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-purple-50 border border-purple-100 hover:bg-purple-100 active:scale-95 transition-all group h-24">
+                        <DownloadCloud className="w-6 h-6 text-purple-600 mb-2 group-hover:translate-y-1 transition-transform" />
                         <span className="text-xs font-black text-purple-700">سحب من السحابة</span>
                     </button>
                 </div>
-                {cloudMessage && <p className="text-center text-xs font-bold text-indigo-600 mt-3 bg-indigo-50 py-2 rounded-lg">{cloudMessage}</p>}
+                {cloudMessage && <p className="text-center text-xs font-bold text-indigo-600 mt-3 bg-indigo-50 py-2 rounded-lg animate-pulse">{cloudMessage}</p>}
             </div>
         )}
 
-        {/* 3. File Transfer (The Bridge for Everyone) */}
-        <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+        {/* 3. File Transfer (The Bridge) - تصميم جديد للأزرار */}
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
                 <span className="text-xl">📂</span> نقل الملفات (الجسر)
             </h2>
-            <p className="text-[10px] text-slate-400 font-bold mb-4">استخدم هذا لنقل البيانات بين الوندوز والآيفون يدوياً</p>
+            <p className="text-[10px] text-slate-400 font-bold mb-4 bg-slate-50 w-fit px-2 py-1 rounded-lg">لنقل البيانات يدوياً بين الأجهزة</p>
             
-            <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleBackup} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all group">
-                    <div className="mb-2 transform group-hover:scale-110 transition-transform"><Icon3DBackup /></div>
-                    <span className="text-xs font-black text-emerald-700">تصدير ملف</span>
-                    <span className="text-[9px] font-bold text-emerald-500/70 mt-1">إرسال للواتساب/الكمبيوتر</span>
+            <div className="flex flex-col gap-3">
+                <button onClick={handleBackup} disabled={isLoading} className="w-full flex items-center justify-between p-4 rounded-2xl bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-xl shadow-sm"><Icon3DBackup /></div>
+                        <div className="text-right">
+                            <span className="block text-xs font-black text-emerald-800">تصدير نسخة (Export)</span>
+                            <span className="block text-[9px] font-bold text-emerald-600/70">حفظ ملف JSON للمشاركة</span>
+                        </div>
+                    </div>
+                    <Share2 className="w-5 h-5 text-emerald-400" />
                 </button>
 
-                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all group">
-                    <div className="mb-2 transform group-hover:scale-110 transition-transform"><Icon3DRestore /></div>
-                    <span className="text-xs font-black text-amber-700">استيراد ملف</span>
-                    <span className="text-[9px] font-bold text-amber-500/70 mt-1">فتح ملف JSON</span>
+                <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="w-full flex items-center justify-between p-4 rounded-2xl bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all group">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-xl shadow-sm"><Icon3DRestore /></div>
+                        <div className="text-right">
+                            <span className="block text-xs font-black text-amber-800">استيراد نسخة (Import)</span>
+                            <span className="block text-[9px] font-bold text-amber-600/70">فتح ملف JSON واستعادته</span>
+                        </div>
+                    </div>
+                    <FileJson className="w-5 h-5 text-amber-400" />
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleRestore} accept=".json" className="hidden" />
             </div>
         </div>
 
-        {/* 4. Danger Zone */}
-        <div className="bg-rose-50 rounded-[2rem] p-5 border border-rose-100">
+        {/* 4. Danger Zone - تصميم أنيق وجديد */}
+        <div className="bg-rose-50/50 rounded-[2rem] p-6 border border-rose-100">
             <h2 className="text-lg font-black text-rose-800 mb-4 flex items-center gap-2">
                 <span className="text-xl">⚠️</span> منطقة الخطر
             </h2>
-            <button onClick={() => setShowResetModal(true)} className="w-full py-4 bg-white border border-rose-200 rounded-2xl flex items-center justify-between px-4 hover:bg-rose-100 active:scale-95 transition-all group">
-                <div className="flex items-center gap-3">
+            <div className="bg-white rounded-2xl p-1 shadow-sm border border-rose-100">
+                <button onClick={() => setShowResetModal(true)} className="w-full py-4 flex items-center justify-center gap-3 hover:bg-rose-50 rounded-xl transition-all group">
                     <Icon3DReset />
                     <div className="text-right">
-                        <span className="block text-xs font-black text-rose-700">تصفير التطبيق</span>
-                        <span className="block text-[9px] font-bold text-rose-400">حذف الكل</span>
+                        <span className="block text-xs font-black text-rose-700 group-hover:text-rose-800">تصفير التطبيق بالكامل</span>
+                        <span className="block text-[9px] font-bold text-rose-400">حذف جميع البيانات والبدء من جديد</span>
                     </div>
-                </div>
-                <AlertTriangle className="w-5 h-5 text-rose-400 group-hover:text-rose-600 animate-pulse" />
-            </button>
+                </button>
+            </div>
         </div>
 
       </div>
 
       <Modal isOpen={showResetModal} onClose={() => setShowResetModal(false)} className="max-w-xs rounded-[2rem]">
           <div className="text-center p-4">
-              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500"><AlertTriangle className="w-8 h-8" /></div>
-              <h3 className="font-black text-xl text-slate-900 mb-2">هل أنت متأكد؟</h3>
-              <p className="text-xs font-bold text-slate-500 mb-6 leading-relaxed">سيتم حذف جميع البيانات نهائياً.</p>
-              <div className="flex gap-2">
-                  <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs">إلغاء</button>
-                  <button onClick={handleResetApp} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs shadow-lg">حذف الكل</button>
-              </div>
+            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500 animate-pulse"><AlertTriangle className="w-8 h-8" /></div>
+            <h3 className="font-black text-xl text-slate-900 mb-2">هل أنت متأكد؟</h3>
+            <p className="text-xs font-bold text-slate-500 mb-6 leading-relaxed">سيتم حذف جميع البيانات والطلاب والدرجات نهائياً ولا يمكن التراجع.</p>
+            <div className="flex gap-2">
+                <button onClick={() => setShowResetModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs">تراجع</button>
+                <button onClick={handleResetApp} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs shadow-lg shadow-rose-200">نعم، احذف</button>
+            </div>
           </div>
       </Modal>
 
