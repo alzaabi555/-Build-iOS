@@ -8,91 +8,68 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 
-// --- أيقونات 3D الجديدة (SVG Components) ---
+// ============================================================================
+// ✅ 1. الشخصيات العمانية (تم التوحيد مع باقي التطبيق)
+// ============================================================================
 
-// 1. الأفاتار (ولد/بنت) - النسخة المحسنة
+// 👦 الولد العماني (فيكتور)
 const OmaniBoyAvatarSVG = () => (
-  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="boySkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
-        <stop offset="0%" stopColor="#ffdfc4" />
-        <stop offset="60%" stopColor="#ebb082" />
-        <stop offset="100%" stopColor="#d49066" />
-      </radialGradient>
-      <linearGradient id="dishdasha3D" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#ffffff" />
-        <stop offset="20%" stopColor="#f1f5f9" />
-        <stop offset="50%" stopColor="#ffffff" />
-        <stop offset="80%" stopColor="#e2e8f0" />
-        <stop offset="100%" stopColor="#cbd5e1" />
-      </linearGradient>
-      <linearGradient id="kummahBase" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#ffffff" />
-        <stop offset="100%" stopColor="#e2e8f0" />
-      </linearGradient>
-      <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
-        <feOffset dx="2" dy="4" result="offsetblur" />
-        <feComponentTransfer>
-          <feFuncA type="linear" slope="0.3" />
-        </feComponentTransfer>
-        <feMerge>
-          <feMergeNode />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-    </defs>
-    <g filter="url(#softShadow)"><path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" /><path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" /><circle cx="100" cy="183" r="3" fill="#cbd5e1" /></g>
-    <rect x="85" y="115" width="30" height="20" fill="#d49066" />
-    <g filter="url(#softShadow)"><circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
-    <path d="M53 85 Q100 95 147 85 L147 65 Q100 15 53 65 Z" fill="url(#kummahBase)" /><path d="M53 85 Q100 95 147 85" fill="none" stroke="#e2e8f0" strokeWidth="1" /><path d="M60 80 Q100 90 140 80" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" /><path d="M65 70 Q100 40 135 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
-    <circle cx="52" cy="95" r="9" fill="#ebb082" /><circle cx="148" cy="95" r="9" fill="#ebb082" /></g>
-    <g><ellipse cx="82" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="84" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="118" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="120" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M75 90 Q82 88 89 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M111 90 Q118 88 125 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M90 120 Q100 128 110 120" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" /><ellipse cx="75" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /><ellipse cx="125" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /></g>
-  </svg>
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
+        <path d="M25 115C25 95 95 95 95 115V120H25V115Z" fill="white" />
+        <path d="M25 115C25 90 40 85 60 85C80 85 95 90 95 115" stroke="#E2E8F0" strokeWidth="1" />
+        <path d="M60 85V100" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="60" cy="102" r="2" fill="#CBD5E1" />
+        <rect x="50" y="70" width="20" height="20" fill="#EBB082" />
+        <circle cx="60" cy="65" r="22" fill="#EBB082" />
+        <path d="M38 55C38 40 45 35 60 35C75 35 82 40 82 55H38Z" fill="white" />
+        <path d="M38 55H82V60C82 60 75 62 60 62C45 62 38 60 38 60V55Z" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1" />
+        <path d="M45 45H75" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" />
+        <path d="M42 50H78" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" />
+        <circle cx="60" cy="40" r="2" fill="#60A5FA" />
+        <circle cx="53" cy="65" r="2.5" fill="#1E293B" />
+        <circle cx="67" cy="65" r="2.5" fill="#1E293B" />
+        <path d="M56 72Q60 75 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
 );
 
-const OmaniGirlAvatarSVG = () => (
-  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="girlSkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
-        <stop offset="0%" stopColor="#ffdfc4" />
-        <stop offset="60%" stopColor="#ebb082" />
-        <stop offset="100%" stopColor="#d49066" />
-      </radialGradient>
-      <linearGradient id="hijab3D" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ffffff" />
-        <stop offset="50%" stopColor="#f8fafc" />
-        <stop offset="100%" stopColor="#cbd5e1" />
-      </linearGradient>
-      <linearGradient id="uniform3D" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#1e3a8a" />
-      </linearGradient>
-      <filter id="girlShadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
-        <feOffset dx="0" dy="4" result="offsetblur" />
-        <feComponentTransfer>
-           <feFuncA type="linear" slope="0.25"/> 
-        </feComponentTransfer>
-        <feMerge> 
-          <feMergeNode/>
-          <feMergeNode in="SourceGraphic"/> 
-        </feMerge>
-      </filter>
-    </defs>
-    <g filter="url(#girlShadow)"><path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" /><path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" /></g>
-    <rect x="90" y="120" width="20" height="20" fill="#d49066" />
-    <g filter="url(#girlShadow)"><path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" /><circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
-    <path d="M62 90 Q100 100 138 90 L138 50 Q100 40 62 50 Z" fill="url(#hijab3D)" /><path d="M62 90 Q100 100 138 90" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" /></g>
-    <g><ellipse cx="86" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="88" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="114" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="116" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M80 96 L78 94 M120 96 L122 94" stroke="#1e293b" strokeWidth="1.5" /><path d="M94 118 Q100 122 106 118" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" /><circle cx="80" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /><circle cx="120" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /></g>
-  </svg>
-);
+// 👧 البنت العمانية (تقبل لون الزي)
+const OmaniGirlAvatarSVG = ({ uniformColor }: { uniformColor: 'blue' | 'maroon' }) => {
+    const primaryColor = uniformColor === 'blue' ? '#2563EB' : '#9F1239';
+    const secondaryColor = uniformColor === 'blue' ? '#1E40AF' : '#881337';
 
-const getStudentAvatar = (student: Student) => {
-    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
-    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
+    return (
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+            <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
+            <path d="M30 115C30 95 90 95 90 115V120H30V115Z" fill={primaryColor} />
+            <path d="M30 115C30 100 45 100 45 120" fill={secondaryColor} opacity="0.2" />
+            <path d="M90 115C90 100 75 100 75 120" fill={secondaryColor} opacity="0.2" />
+            <rect x="52" y="80" width="16" height="15" fill="white" />
+            <path d="M40 60C40 30 50 25 60 25C70 25 80 30 80 60V80C80 90 40 90 40 80V60Z" fill="white" />
+            <circle cx="60" cy="62" r="16" fill="#EBB082" />
+            <path d="M44 60C44 45 50 40 60 40C70 40 76 45 76 60" stroke="#E2E8F0" strokeWidth="1" />
+            <circle cx="55" cy="62" r="2" fill="#1E293B" />
+            <circle cx="65" cy="62" r="2" fill="#1E293B" />
+            <path d="M57 69Q60 71 63 69" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <path d="M53 60L51 58" stroke="#1E293B" strokeWidth="1" />
+            <path d="M67 60L69 58" stroke="#1E293B" strokeWidth="1" />
+        </svg>
+    );
 };
 
+// دالة اختيار الأفاتار (محدثة لتقرأ لون الزي)
+const getStudentAvatar = (student: Student, girlUniform: 'blue' | 'maroon' = 'blue') => {
+    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover rounded-full" alt={student.name} />;
+    
+    if (student.gender === 'female') {
+        return <OmaniGirlAvatarSVG uniformColor={girlUniform} />;
+    }
+    return <OmaniBoyAvatarSVG />;
+};
+
+// ============================================================================
+// بقية الأيقونات (لم يتم لمسها)
+// ============================================================================
 const Icon3DGradingConfig = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradCalc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient><filter id="shadowCalc" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" /><feOffset dx="1" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="15" width="60" height="70" rx="10" fill="url(#gradCalc)" filter="url(#shadowCalc)" /><rect x="30" y="25" width="40" height="15" rx="4" fill="#dbeafe" /><circle cx="35" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="35" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="70" r="5" fill="#fbbf24" /></svg>);
 const Icon3DMenu = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradMenu" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#f1f5f9" /></linearGradient><filter id="shadowMenu" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" /><feOffset dx="0" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="25" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="45" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="65" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /></svg>);
 const Icon3DImport = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradImportSheet" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient><linearGradient id="gradArrowUp" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><rect x="25" y="30" width="50" height="55" rx="6" fill="url(#gradImportSheet)" /><path d="M35 45 H65 M35 55 H65 M35 65 H65" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.6" /><path d="M50 10 L30 30 H40 V50 H60 V30 H70 L50 10 Z" fill="url(#gradArrowUp)" stroke="white" strokeWidth="2" /></svg>);
@@ -155,6 +132,9 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [selectedToolId, setSelectedToolId] = useState<string>('');
   const [score, setScore] = useState('');
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
+
+  // ✅ قراءة لون الزي الموحد لضمان التناسق
+  const girlUniformColor = (localStorage.getItem('rased_girl_uniform') as 'blue' | 'maroon') || 'blue';
 
   useEffect(() => {
       localStorage.setItem('rased_grading_settings', JSON.stringify(gradingSettings));
@@ -397,9 +377,9 @@ const GradeBook: React.FC<GradeBookProps> = ({
                             return (
                                 <div key={student.id} onClick={() => setShowAddGrade({ student })} className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer flex flex-col items-center relative overflow-hidden group h-full justify-between">
                                     
-                                    {/* Avatar */}
+                                    {/* Avatar (Updated to accept Uniform Color) */}
                                     <div className="w-16 h-16 sm:w-20 sm:h-20 mt-2 mb-2 rounded-full border-4 border-indigo-50 shadow-inner overflow-hidden bg-slate-50 transform group-hover:scale-105 transition-transform flex-shrink-0">
-                                        {getStudentAvatar(student)}
+                                        {getStudentAvatar(student, girlUniformColor)}
                                     </div>
                                     
                                     {/* Name */}
