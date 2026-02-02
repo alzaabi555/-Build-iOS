@@ -9,7 +9,6 @@ import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-route
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
-// ⚠️ لا نستورد GoogleAuth هنا لتجنب التعليق
 
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -17,7 +16,7 @@ import AttendanceTracker from './components/AttendanceTracker';
 import GradeBook from './components/GradeBook';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
-import Modal from './components/Modal'; // تأكد أن لديك مكون Modal
+import Modal from './components/Modal'; 
 import Leaderboard from './components/Leaderboard';
 import About from './components/About';
 import UserGuide from './components/UserGuide';
@@ -26,45 +25,60 @@ import WelcomeScreen from './components/WelcomeScreen';
 import LoginScreen from './components/LoginScreen';
 import SyncStatusBar from './components/SyncStatusBar';
 
-// --- 🎨 1. استعادة الأيقونات ثلاثية الأبعاد (3D Icons) ---
-const Dashboard3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8]'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="dash_bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#4338ca" /></linearGradient></defs>
-    <rect x="10" y="10" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    <rect x="34" y="10" width="20" height="20" rx="6" fill="#a5b4fc" />
-    <rect x="10" y="34" width="20" height="20" rx="6" fill="#c7d2fe" />
-    <rect x="34" y="34" width="20" height="20" rx="6" fill="url(#dash_bg)" />
+// ============================================================================
+// 💎 طقم أيقونات القائمة السفلية (Vector Icons)
+// ============================================================================
+
+// 1. الرئيسية (Dashboard)
+const NavIconDashboard = ({ active }: { active: boolean }) => (
+  <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="2" width="9" height="9" rx="3" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
+    <rect x="13" y="2" width="9" height="9" rx="3" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" opacity={active ? 0.6 : 1}/>
+    <rect x="2" y="13" width="9" height="9" rx="3" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" opacity={active ? 0.4 : 1}/>
+    <rect x="13" y="13" width="9" height="9" rx="3" stroke="currentColor" strokeWidth="2"/>
   </svg>
 );
-const Attendance3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8]'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="cal_bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" /></linearGradient></defs>
-    <rect x="12" y="14" width="40" height="40" rx="8" fill="white" stroke="#e5e7eb" strokeWidth="2" />
-    <path d="M12 24 L52 24 L52 18 Q52 14 48 14 L16 14 Q12 14 12 18 Z" fill="url(#cal_bg)" />
-    <circle cx="20" cy="12" r="3" fill="#991b1b" /><circle cx="44" cy="12" r="3" fill="#991b1b" />
-    <path d="M22 38 L30 46 L44 30" fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+
+// 2. الحضور (Attendance)
+const NavIconAttendance = ({ active }: { active: boolean }) => (
+  <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="4" width="18" height="18" rx="4" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.1 : 0} stroke="currentColor" strokeWidth="2"/>
+    <path d="M8 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M16 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    {active ? (
+        <path d="M8 14L11 17L16 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    ) : (
+        <path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>
+    )}
   </svg>
 );
-const Students3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8]'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="user_grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1d4ed8" /></linearGradient></defs>
-    <circle cx="32" cy="24" r="12" fill="url(#user_grad)" /><path d="M14 54 C14 40 50 40 50 54 L50 58 L14 58 Z" fill="url(#user_grad)" />
+
+// 3. الطلاب (Students)
+const NavIconStudents = ({ active }: { active: boolean }) => (
+  <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="8" r="4" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
+    <path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    {active && <path d="M12 4L15 2L12 0L9 2L12 4Z" fill="currentColor" fillOpacity={0.5} />}
   </svg>
 );
-const Grades3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8]'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fbbf24" /><stop offset="1" stopColor="#d97706" /></linearGradient>
-      <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#34d399" /><stop offset="1" stopColor="#059669" /></linearGradient>
-      <linearGradient id="bar3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#818cf8" /><stop offset="1" stopColor="#4f46e5" /></linearGradient>
-    </defs>
-    <rect x="12" y="34" width="10" height="20" rx="2" fill="url(#bar1)" /><rect x="27" y="24" width="10" height="30" rx="2" fill="url(#bar2)" /><rect x="42" y="14" width="10" height="40" rx="2" fill="url(#bar3)" />
+
+// 4. الدرجات (Grades)
+const NavIconGrades = ({ active }: { active: boolean }) => (
+  <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M18 20V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M6 20V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    {active && <circle cx="18" cy="4" r="2" fill="currentColor" />}
   </svg>
 );
-const More3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8]'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="grid_grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f472b6" /><stop offset="1" stopColor="#db2777" /></linearGradient></defs>
-    <rect x="14" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="34" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="14" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="34" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
+
+// 5. المزيد (More)
+const NavIconMore = ({ active }: { active: boolean }) => (
+  <svg viewBox="0 0 24 24" className={`w-full h-full transition-all duration-300 ${active ? 'text-indigo-600 rotate-90' : 'text-slate-400'}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="7" height="7" rx="2" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
+    <rect x="14" y="3" width="7" height="7" rx="2" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
+    <rect x="3" y="14" width="7" height="7" rx="2" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
+    <rect x="14" y="14" width="7" height="7" rx="2" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"/>
   </svg>
 );
 
@@ -73,11 +87,9 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ الإصلاح التقني: البدء كـ "مسجل دخول" لمنع التعليق
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('logged_in'); 
-  const [showMoreMenu, setShowMoreMenu] = useState(false); // القائمة المنبثقة
+  const [showMoreMenu, setShowMoreMenu] = useState(false); 
 
-  // تحميل جوجل بأمان
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
         setTimeout(async () => {
@@ -100,22 +112,20 @@ const AppContent: React.FC = () => {
   const handleNavigate = (path: string) => { navigate(path); setShowMoreMenu(false); };
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
 
-  // Helpers
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   const handleDeleteClass = (className: string) => { setClasses(prev => prev.filter(c => c !== className)); setStudents(prev => prev.map(s => { if (s.classes.includes(className)) { return { ...s, classes: s.classes.filter(c => c !== className) }; } return s; })); };
   const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => { setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: phone, avatar: avatar, gender: gender || 'male' }]); };
 
-  // عناصر القائمة السفلية (مع الأيقونات 3D)
+  // ✅ استخدام أيقونات الفيكتور الجديدة هنا
   const mobileNavItems = [
-    { id: '/', label: 'الرئيسية', IconComponent: Dashboard3D },
-    { id: '/attendance', label: 'الحضور', IconComponent: Attendance3D },
-    { id: '/students', label: 'الطلاب', IconComponent: Students3D },
-    { id: '/grades', label: 'الدرجات', IconComponent: Grades3D },
+    { id: '/', label: 'الرئيسية', IconComponent: NavIconDashboard },
+    { id: '/attendance', label: 'الحضور', IconComponent: NavIconAttendance },
+    { id: '/students', label: 'الطلاب', IconComponent: NavIconStudents },
+    { id: '/grades', label: 'الدرجات', IconComponent: NavIconGrades },
   ];
   const isMoreActive = showMoreMenu;
 
-  // عناصر القائمة الجانبية (لنسخة الآيباد/الكمبيوتر)
   const desktopNavItems = [
     { path: '/', label: 'الرئيسية', icon: LayoutDashboard },
     { path: '/attendance', label: 'الحضور', icon: CalendarCheck },
@@ -168,32 +178,33 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* --- 📱 Mobile Bottom Nav (3D Icons) --- */}
+      {/* --- 📱 Mobile Bottom Nav (Vector Icons) --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom">
         {mobileNavItems.map((item) => {
           const isActive = location.pathname === item.id;
           return (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform">
-              <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-                <div className={`w-11 h-11 ${isActive ? 'drop-shadow-2xl' : ''}`}><item.IconComponent active={isActive} /></div>
+              <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isActive ? '-translate-y-6 scale-110' : 'translate-y-1 scale-90'}`}>
+                <div className={`w-8 h-8 ${isActive ? 'drop-shadow-lg' : ''}`}><item.IconComponent active={isActive} /></div>
               </div>
+              {/* النص يظهر فقط عند التفعيل كما طلبت */}
               <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>{item.label}</span>
               {isActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
             </button>
           );
         })}
         
-        {/* زر المزيد (3D) */}
+        {/* زر المزيد (Vector) */}
         <button onClick={() => setShowMoreMenu(true)} className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform">
-          <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isMoreActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-            <div className={`w-11 h-11 ${isMoreActive ? 'drop-shadow-2xl' : ''}`}><More3D active={isMoreActive} /></div>
+          <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none ${isMoreActive ? '-translate-y-6 scale-110' : 'translate-y-1 scale-90'}`}>
+            <div className={`w-8 h-8 ${isMoreActive ? 'drop-shadow-lg' : ''}`}><NavIconMore active={isMoreActive} /></div>
           </div>
           <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isMoreActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>المزيد</span>
           {isMoreActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
         </button>
       </div>
 
-      {/* --- 🗂️ Menu Modal (استعادة القائمة الشبكية) --- */}
+      {/* --- 🗂️ Menu Modal --- */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000]">
         <div className="text-center mb-6">
           <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
