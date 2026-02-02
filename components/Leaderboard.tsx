@@ -10,10 +10,9 @@ interface LeaderboardProps {
 }
 
 // ============================================================================
-// ✅ 1. الشخصيات العمانية (تم تحديثها لتطابق صفحة الطلاب)
+// ✅ 1. الشخصيات العمانية (كما هي بدون تغيير)
 // ============================================================================
 
-// مكون الولد العماني (فيكتور ثابت للمتعة البصرية في اللوحة)
 const OmaniBoyAvatar = () => (
     <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
@@ -34,7 +33,6 @@ const OmaniBoyAvatar = () => (
     </svg>
 );
 
-// مكون البنت العمانية (يقبل لون الزي)
 const OmaniGirlAvatar = ({ uniformColor }: { uniformColor: 'blue' | 'maroon' }) => {
     const primaryColor = uniformColor === 'blue' ? '#2563EB' : '#9F1239';
     const secondaryColor = uniformColor === 'blue' ? '#1E40AF' : '#881337';
@@ -68,10 +66,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const currentYear = today.getFullYear();
     const monthName = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"][currentMonth];
 
-    // ✅ قراءة لون الزي الموحد من الذاكرة لضمان التطابق مع صفحة الطلاب
     const girlUniformColor = (localStorage.getItem('rased_girl_uniform') as 'blue' | 'maroon') || 'blue';
 
-    // ترتيب الطلاب (لم يتم المساس بالمنطق نهائياً)
     const rankedStudents = useMemo(() => {
         let filtered = students;
         if (selectedClass !== 'all') {
@@ -101,7 +97,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
 
-    // ✅ دالة الأفاتار المحدثة (تستخدم الزي الموحد)
     const getAvatar = (student: any) => {
         if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" />;
         if (student.gender === 'female') {
@@ -110,7 +105,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         return <OmaniBoyAvatar />;
     };
 
-    // دالة الإضافة الفورية (لم يتم المساس بها)
     const handleQuickBonus = (studentId: string) => {
         setClickedId(studentId);
         setTimeout(() => setClickedId(null), 300);
@@ -136,169 +130,179 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     };
 
     return (
-        <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500">
+        <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 relative animate-in fade-in duration-500 font-sans">
             
-            {/* Header */}
-            <div className="glass-heavy p-6 rounded-[2.5rem] relative overflow-hidden text-center border border-white/20">
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 z-0"></div>
-                <div className="relative z-10">
-                    <h2 className="text-2xl font-black text-slate-800 mb-1 flex items-center justify-center gap-2">
-                        <Crown className="w-8 h-8 text-amber-500 fill-amber-500 animate-bounce" />
+            {/* ================= HEADER (الأزرق الموحد) ================= */}
+            <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+                
+                {/* العنوان */}
+                <div className="text-center space-y-2 mt-4 mb-6">
+                    <h2 className="text-2xl font-black tracking-tight drop-shadow-md flex items-center justify-center gap-2">
+                        <Crown className="w-6 h-6 text-amber-400 fill-amber-400 animate-bounce" />
                         فرسان شهر {monthName}
                     </h2>
-                    <p className="text-xs font-bold text-slate-500">التنافس على أشدّه! من سيعتلي القمة؟</p>
+                    <p className="text-xs font-bold text-blue-200 opacity-80">التنافس على أشدّه! من سيعتلي القمة؟</p>
                 </div>
-            </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 overflow-x-auto pb-2 px-2 custom-scrollbar no-scrollbar snap-x">
-                <button 
-                    onClick={() => setSelectedClass('all')} 
-                    className={`shrink-0 px-6 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border snap-start ${selectedClass === 'all' ? 'bg-slate-800 text-white shadow-lg border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                >
-                    الكل
-                </button>
-                {classes.map(c => (
-                    <button 
-                        key={c}
-                        onClick={() => setSelectedClass(c)} 
-                        className={`shrink-0 px-6 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border snap-start ${selectedClass === c ? 'bg-indigo-600 text-white shadow-lg border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                    >
-                        {c}
-                    </button>
-                ))}
-            </div>
-
-            {/* Podium */}
-            {topThree.length > 0 ? (
-                <div className="flex justify-center items-end gap-2 md:gap-6 py-6 min-h-[280px]">
-                    {/* المركز الثاني */}
-                    {topThree[1] && (
-                        <div 
-                            className={`flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-100 cursor-pointer transition-transform ${clickedId === topThree[1].id ? 'scale-90' : 'active:scale-95'}`}
-                            onClick={() => handleQuickBonus(topThree[1].id)}
+                {/* Filters */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar justify-center pb-2">
+                        <button 
+                            onClick={() => setSelectedClass('all')} 
+                            className={`px-5 py-2 text-xs font-bold whitespace-nowrap rounded-full transition-all border ${selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30'}`}
                         >
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 shadow-xl overflow-hidden mb-2 relative bg-white">
-                                {getAvatar(topThree[1])}
-                                <div className="absolute -bottom-1 -right-1 bg-slate-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">2</div>
-                            </div>
-                            <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl text-center border border-slate-200 w-32 md:w-36 shadow-sm relative">
-                                <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">
-                                    {topThree[1].name.split(' ').slice(0, 2).join(' ')}
-                                </h3>
-                                <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-2 py-0.5 rounded-lg">{topThree[1].monthlyPoints} نقطة</span>
-                                <div className="absolute -top-2 -right-2 bg-white rounded-full border border-emerald-100 shadow-sm p-1 animate-pulse">
-                                    <Plus className="w-3 h-3 text-emerald-500" />
-                                </div>
-                            </div>
-                            <div className="h-24 w-full bg-gradient-to-t from-slate-200 to-slate-50/0 rounded-t-lg mt-2 mx-auto opacity-50"></div>
-                        </div>
-                    )}
-
-                    {/* المركز الأول */}
-                    {topThree[0] && (
-                        <div 
-                            className={`flex flex-col items-center z-10 -mb-4 animate-in slide-in-from-bottom-12 duration-700 cursor-pointer transition-transform ${clickedId === topThree[0].id ? 'scale-90' : 'active:scale-95'}`}
-                            onClick={() => handleQuickBonus(topThree[0].id)}
-                        >
-                            <div className="relative">
-                                <Crown className="w-12 h-12 text-amber-400 fill-amber-400 absolute -top-10 left-1/2 -translate-x-1/2 animate-pulse drop-shadow-md" />
-                                <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-amber-400 shadow-2xl overflow-hidden mb-2 relative bg-white ring-4 ring-amber-100">
-                                    {getAvatar(topThree[0])}
-                                    <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-lg">1</div>
-                                </div>
-                            </div>
-                            <div className="bg-gradient-to-b from-amber-50 to-white px-5 py-4 rounded-2xl text-center border border-amber-200 w-40 md:w-44 shadow-lg transform -translate-y-2 relative">
-                                <h3 className="font-black text-sm md:text-base text-slate-900 truncate mb-1">
-                                    {topThree[0].name.split(' ').slice(0, 2).join(' ')}
-                                </h3>
-                                <div className="flex items-center justify-center gap-1">
-                                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                                    <span className="text-amber-600 font-black text-xs">{topThree[0].monthlyPoints} نقطة</span>
-                                </div>
-                                <div className="absolute -top-2 -right-2 bg-white rounded-full border border-amber-100 shadow-sm p-1 animate-pulse">
-                                    <Plus className="w-3 h-3 text-amber-500" />
-                                </div>
-                            </div>
-                            <div className="h-32 w-full bg-gradient-to-t from-amber-100 to-amber-50/0 rounded-t-lg mt-2 mx-auto opacity-60"></div>
-                        </div>
-                    )}
-
-                    {/* المركز الثالث */}
-                    {topThree[2] && (
-                        <div 
-                            className={`flex flex-col items-center animate-in slide-in-from-bottom-4 duration-700 delay-200 cursor-pointer transition-transform ${clickedId === topThree[2].id ? 'scale-90' : 'active:scale-95'}`}
-                            onClick={() => handleQuickBonus(topThree[2].id)}
-                        >
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-300 shadow-xl overflow-hidden mb-2 relative bg-white">
-                                {getAvatar(topThree[2])}
-                                <div className="absolute -bottom-1 -right-1 bg-orange-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">3</div>
-                            </div>
-                            <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl text-center border border-orange-200 w-32 md:w-36 shadow-sm relative">
-                                <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">
-                                    {topThree[2].name.split(' ').slice(0, 2).join(' ')}
-                                </h3>
-                                <span className="text-orange-600/70 font-bold text-[10px] bg-orange-50 px-2 py-0.5 rounded-lg">{topThree[2].monthlyPoints} نقطة</span>
-                                <div className="absolute -top-2 -right-2 bg-white rounded-full border border-orange-100 shadow-sm p-1 animate-pulse">
-                                    <Plus className="w-3 h-3 text-orange-500" />
-                                </div>
-                            </div>
-                            <div className="h-16 w-full bg-gradient-to-t from-orange-100 to-orange-50/0 rounded-t-lg mt-2 mx-auto opacity-50"></div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                    <Trophy className="w-20 h-20 text-slate-300 mb-4" />
-                    <p className="font-bold text-slate-400">ابدأ بجمع النقاط لتظهر هنا!</p>
-                </div>
-            )}
-
-            {/* باقي الطلاب */}
-            <div className="bg-white/50 backdrop-blur-sm rounded-[2rem] p-4 mt-4 border border-white/40 shadow-sm">
-                <h3 className="font-black text-slate-700 mb-4 text-sm flex items-center gap-2 px-2">
-                    <LayoutGrid className="w-4 h-4 text-indigo-500" />
-                    قائمة الأبطال
-                </h3>
-                
-                {restOfStudents.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {restOfStudents.map((student, idx) => (
-                            <div 
-                                key={student.id} 
-                                className={`bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm hover:shadow-md transition-all group cursor-pointer ${clickedId === student.id ? 'scale-95 ring-2 ring-indigo-200' : 'active:scale-95'}`}
-                                onClick={() => handleQuickBonus(student.id)}
+                            الكل
+                        </button>
+                        {classes.map(c => (
+                            <button 
+                                key={c}
+                                onClick={() => setSelectedClass(c)} 
+                                className={`px-5 py-2 text-xs font-bold whitespace-nowrap rounded-full transition-all border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md' : 'bg-transparent text-blue-200 border-blue-200/30'}`}
                             >
-                                <div className="relative">
-                                    <div className="w-12 h-12 rounded-full border-2 border-slate-100 shadow-inner overflow-hidden bg-slate-50">
-                                        {getAvatar(student)}
-                                    </div>
-                                    <div className="absolute -top-1 -right-1 bg-slate-700 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm">
-                                        {idx + 4}
-                                    </div>
-                                </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-black text-slate-800 text-xs leading-tight line-clamp-2" title={student.name}>
-                                        {student.name}
-                                    </h4>
-                                    <p className="text-[9px] text-slate-400 font-bold truncate mt-1">{student.classes[0]}</p>
-                                </div>
-
-                                <div className={`${student.monthlyPoints > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'} px-2 py-1 rounded-lg text-xs font-black text-center min-w-[30px] flex flex-col items-center justify-center`}>
-                                    {student.monthlyPoints}
-                                    {clickedId === student.id && <Sparkles className="w-3 h-3 text-amber-400 absolute -top-1 -right-1 animate-ping" />}
-                                </div>
-                            </div>
+                                {c}
+                            </button>
                         ))}
                     </div>
-                ) : (
-                    <p className="text-center text-slate-400 text-xs font-bold py-4">
-                        {topThree.length > 0 ? "جميع الطلاب في المراكز الأولى! 👏" : "لا يوجد طلاب لعرضهم"}
-                    </p>
-                )}
+                </div>
             </div>
 
+            {/* ================= CONTENT ================= */}
+            <div className="flex-1 h-full overflow-y-auto custom-scrollbar">
+                
+                {/* مساحة فارغة للهيدر الثابت */}
+                <div className="w-full h-[200px] shrink-0"></div>
+
+                <div className="px-4 pb-24 -mt-4 relative z-10">
+                    
+                    {/* Podium */}
+                    {topThree.length > 0 ? (
+                        <div className="flex justify-center items-end gap-2 md:gap-6 py-6 mb-6">
+                            {/* المركز الثاني */}
+                            {topThree[1] && (
+                                <div 
+                                    className={`flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-100 cursor-pointer transition-transform ${clickedId === topThree[1].id ? 'scale-90' : 'active:scale-95'}`}
+                                    onClick={() => handleQuickBonus(topThree[1].id)}
+                                >
+                                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 shadow-xl overflow-hidden mb-2 relative bg-white">
+                                        {getAvatar(topThree[1])}
+                                        <div className="absolute -bottom-1 -right-1 bg-slate-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">2</div>
+                                    </div>
+                                    <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl text-center border border-slate-200 w-28 md:w-32 shadow-sm relative">
+                                        <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">
+                                            {topThree[1].name.split(' ').slice(0, 2).join(' ')}
+                                        </h3>
+                                        <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-2 py-0.5 rounded-lg">{topThree[1].monthlyPoints} نقطة</span>
+                                        <div className="absolute -top-2 -right-2 bg-white rounded-full border border-emerald-100 shadow-sm p-1 animate-pulse">
+                                            <Plus className="w-3 h-3 text-emerald-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* المركز الأول */}
+                            {topThree[0] && (
+                                <div 
+                                    className={`flex flex-col items-center z-10 -mb-6 animate-in slide-in-from-bottom-12 duration-700 cursor-pointer transition-transform ${clickedId === topThree[0].id ? 'scale-90' : 'active:scale-95'}`}
+                                    onClick={() => handleQuickBonus(topThree[0].id)}
+                                >
+                                    <div className="relative">
+                                        <Crown className="w-12 h-12 text-amber-400 fill-amber-400 absolute -top-10 left-1/2 -translate-x-1/2 animate-pulse drop-shadow-md" />
+                                        <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-amber-400 shadow-2xl overflow-hidden mb-2 relative bg-white ring-4 ring-amber-100">
+                                            {getAvatar(topThree[0])}
+                                            <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-lg">1</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gradient-to-b from-amber-50 to-white px-4 py-3 rounded-2xl text-center border border-amber-200 w-36 md:w-40 shadow-lg transform -translate-y-2 relative">
+                                        <h3 className="font-black text-sm md:text-base text-slate-900 truncate mb-1">
+                                            {topThree[0].name.split(' ').slice(0, 2).join(' ')}
+                                        </h3>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                            <span className="text-amber-600 font-black text-xs">{topThree[0].monthlyPoints} نقطة</span>
+                                        </div>
+                                        <div className="absolute -top-2 -right-2 bg-white rounded-full border border-amber-100 shadow-sm p-1 animate-pulse">
+                                            <Plus className="w-3 h-3 text-amber-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* المركز الثالث */}
+                            {topThree[2] && (
+                                <div 
+                                    className={`flex flex-col items-center animate-in slide-in-from-bottom-4 duration-700 delay-200 cursor-pointer transition-transform ${clickedId === topThree[2].id ? 'scale-90' : 'active:scale-95'}`}
+                                    onClick={() => handleQuickBonus(topThree[2].id)}
+                                >
+                                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-300 shadow-xl overflow-hidden mb-2 relative bg-white">
+                                        {getAvatar(topThree[2])}
+                                        <div className="absolute -bottom-1 -right-1 bg-orange-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">3</div>
+                                    </div>
+                                    <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-2xl text-center border border-orange-200 w-28 md:w-32 shadow-sm relative">
+                                        <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">
+                                            {topThree[2].name.split(' ').slice(0, 2).join(' ')}
+                                        </h3>
+                                        <span className="text-orange-600/70 font-bold text-[10px] bg-orange-50 px-2 py-0.5 rounded-lg">{topThree[2].monthlyPoints} نقطة</span>
+                                        <div className="absolute -top-2 -right-2 bg-white rounded-full border border-orange-100 shadow-sm p-1 animate-pulse">
+                                            <Plus className="w-3 h-3 text-orange-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                            <Trophy className="w-20 h-20 text-slate-300 mb-4" />
+                            <p className="font-bold text-slate-400">ابدأ بجمع النقاط لتظهر هنا!</p>
+                        </div>
+                    )}
+
+                    {/* باقي الطلاب */}
+                    <div className="bg-white rounded-[2rem] p-4 mt-8 border border-slate-100 shadow-sm relative z-20">
+                        <h3 className="font-black text-slate-700 mb-4 text-sm flex items-center gap-2 px-2 border-b border-slate-100 pb-2">
+                            <LayoutGrid className="w-4 h-4 text-indigo-500" />
+                            قائمة الأبطال
+                        </h3>
+                        
+                        {restOfStudents.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {restOfStudents.map((student, idx) => (
+                                    <div 
+                                        key={student.id} 
+                                        className={`bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm hover:shadow-md transition-all group cursor-pointer ${clickedId === student.id ? 'scale-95 ring-2 ring-indigo-200' : 'active:scale-95'}`}
+                                        onClick={() => handleQuickBonus(student.id)}
+                                    >
+                                        <div className="relative">
+                                            <div className="w-12 h-12 rounded-full border-2 border-slate-100 shadow-inner overflow-hidden bg-slate-50">
+                                                {getAvatar(student)}
+                                            </div>
+                                            <div className="absolute -top-1 -right-1 bg-slate-700 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm">
+                                                {idx + 4}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-black text-slate-800 text-xs leading-tight line-clamp-2" title={student.name}>
+                                                {student.name}
+                                            </h4>
+                                            <p className="text-[9px] text-slate-400 font-bold truncate mt-1">{student.classes[0]}</p>
+                                        </div>
+
+                                        <div className={`${student.monthlyPoints > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400'} px-2 py-1 rounded-lg text-xs font-black text-center min-w-[30px] flex flex-col items-center justify-center`}>
+                                            {student.monthlyPoints}
+                                            {clickedId === student.id && <Sparkles className="w-3 h-3 text-amber-400 absolute -top-1 -right-1 animate-ping" />}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-slate-400 text-xs font-bold py-4">
+                                {topThree.length > 0 ? "جميع الطلاب في المراكز الأولى! 👏" : "لا يوجد طلاب لعرضهم"}
+                            </p>
+                        )}
+                    </div>
+
+                </div>
+            </div>
         </div>
     );
 };
