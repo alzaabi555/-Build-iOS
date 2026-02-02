@@ -20,7 +20,9 @@ import About from './components/About';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
-import SyncStatusBar from './components/SyncStatusBar';
+import LoginScreen from './components/LoginScreen';
+
+// (تم حذف SyncStatusBar لأنه يسبب المشاكل)
 
 // ============================================================================
 // 💎 طقم أيقونات القائمة السفلية (Vector Icons)
@@ -76,7 +78,9 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const [showMoreMenu, setShowMoreMenu] = useState(false); 
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
-
+  
+  // لا حاجة لحالة المصادقة المعقدة الآن
+  
   const handleNavigate = (path: string) => { navigate(path); setShowMoreMenu(false); };
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
@@ -122,7 +126,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 pt-8 safe-area-top pb-32 md:pb-8" id="main-scroll-container">
-          <SyncStatusBar />
+          {/* ❌ تم إزالة SyncStatusBar من هنا */}
           <div className="max-w-7xl mx-auto min-h-full">
             <Routes>
                 <Route path="/" element={<Dashboard students={students} teacherInfo={teacherInfo} onUpdateTeacherInfo={(i) => setTeacherInfo(prev => ({ ...prev, ...i }))} schedule={schedule} onUpdateSchedule={setSchedule} onSelectStudent={() => {}} onNavigate={handleNavigate} onOpenSettings={() => handleNavigate('/settings')} periodTimes={periodTimes} setPeriodTimes={setPeriodTimes} notificationsEnabled={true} onToggleNotifications={() => {}} currentSemester={currentSemester as any} onSemesterChange={setCurrentSemester as any} />} />
@@ -140,7 +144,7 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* --- 📱 Mobile Bottom Nav --- */}
+      {/* --- 📱 Mobile Bottom Nav (Vector Icons) --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom">
         {mobileNavItems.map((item) => {
           const isActive = location.pathname === item.id;
