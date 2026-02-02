@@ -1,72 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Save, AlertTriangle, FileJson, User, Smartphone, Info, Share2, Trash2, Cloud, UploadCloud, DownloadCloud, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Save, AlertTriangle, FileJson, User, Smartphone, Share2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { auth, db } from '../services/firebase'; 
-import { doc, getDoc, setDoc } from 'firebase/firestore'; 
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'; 
 import Modal from './Modal';
 
-// ============================================================================
-// ✅ أيقونات 3D (نفس التصميم الجميل)
-// ============================================================================
-
-const Icon3DProfile = () => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10">
-    <defs>
-      <linearGradient id="gradProfile" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient>
-      <filter id="shadowProfile" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-    </defs>
-    <circle cx="50" cy="40" r="15" fill="url(#gradProfile)" filter="url(#shadowProfile)" />
-    <path d="M25 80 Q50 90 75 80 V70 Q50 50 25 70 Z" fill="url(#gradProfile)" filter="url(#shadowProfile)" />
-  </svg>
-);
-
-const Icon3DBackup = () => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10">
-    <defs>
-      <linearGradient id="gradBackup" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient>
-      <filter id="shadowBackup" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-    </defs>
-    <path d="M30 60 L50 40 L70 60 M50 40 V80" stroke="url(#gradBackup)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M30 60 Q10 60 10 40 Q10 15 40 15 Q50 5 65 15 Q90 15 90 45 Q90 60 70 60" fill="none" stroke="url(#gradBackup)" strokeWidth="5" strokeLinecap="round" filter="url(#shadowBackup)" />
-  </svg>
-);
-
-const Icon3DRestore = () => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10">
-    <defs>
-      <linearGradient id="gradRestore" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient>
-      <filter id="shadowRestore" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-    </defs>
-    <path d="M30 40 L50 60 L70 40 M50 60 V20" stroke="url(#gradRestore)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M20 70 Q20 90 50 90 Q80 90 80 70" fill="none" stroke="url(#gradRestore)" strokeWidth="5" strokeLinecap="round" filter="url(#shadowRestore)" />
-  </svg>
-);
-
-const Icon3DCloud = () => (
-    <svg viewBox="0 0 100 100" className="w-10 h-10">
-      <defs>
-        <linearGradient id="gradCloud" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#818cf8" /><stop offset="100%" stopColor="#4f46e5" /></linearGradient>
-        <filter id="shadowCloud" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-      </defs>
-      <path d="M25 60 Q15 60 15 45 Q15 30 30 30 Q35 15 55 15 Q75 15 80 35 Q95 35 95 55 Q95 70 75 70 H25 Z" fill="url(#gradCloud)" filter="url(#shadowCloud)" />
-    </svg>
-);
-
-const Icon3DReset = () => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10">
-    <defs>
-      <linearGradient id="gradReset" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" /></linearGradient>
-      <filter id="shadowReset" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter>
-    </defs>
-    <path d="M25 30 L30 85 Q32 90 38 90 H62 Q68 90 70 85 L75 30" fill="url(#gradReset)" filter="url(#shadowReset)" />
-    <rect x="20" y="20" width="60" height="10" rx="3" fill="#ef4444" />
-    <path d="M40 45 L60 75 M60 45 L40 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
-  </svg>
-);
+// ... (أكواد الأيقونات الـ 3D - اتركها كما هي في ملفك أو انسخها من الكود السابق) ...
+const Icon3DProfile = () => ( <svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="gradProfile" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient><filter id="shadowProfile" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter></defs><circle cx="50" cy="40" r="15" fill="url(#gradProfile)" filter="url(#shadowProfile)" /><path d="M25 80 Q50 90 75 80 V70 Q50 50 25 70 Z" fill="url(#gradProfile)" filter="url(#shadowProfile)" /></svg> );
+const Icon3DBackup = () => ( <svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="gradBackup" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient><filter id="shadowBackup" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter></defs><path d="M30 60 L50 40 L70 60 M50 40 V80" stroke="url(#gradBackup)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" /><path d="M30 60 Q10 60 10 40 Q10 15 40 15 Q50 5 65 15 Q90 15 90 45 Q90 60 70 60" fill="none" stroke="url(#gradBackup)" strokeWidth="5" strokeLinecap="round" filter="url(#shadowBackup)" /></svg> );
+const Icon3DRestore = () => ( <svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="gradRestore" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient><filter id="shadowRestore" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter></defs><path d="M30 40 L50 60 L70 40 M50 60 V20" stroke="url(#gradRestore)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" /><path d="M20 70 Q20 90 50 90 Q80 90 80 70" fill="none" stroke="url(#gradRestore)" strokeWidth="5" strokeLinecap="round" filter="url(#shadowRestore)" /></svg> );
+const Icon3DReset = () => ( <svg viewBox="0 0 100 100" className="w-10 h-10"><defs><linearGradient id="gradReset" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" /></linearGradient><filter id="shadowReset" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodOpacity="0.3" /></filter></defs><path d="M25 30 L30 85 Q32 90 38 90 H62 Q68 90 70 85 L75 30" fill="url(#gradReset)" filter="url(#shadowReset)" /><rect x="20" y="20" width="60" height="10" rx="3" fill="#ef4444" /><path d="M40 45 L60 75 M60 45 L40 75" stroke="white" strokeWidth="4" strokeLinecap="round" /></svg> );
 
 const SettingsPage = () => {
   const { teacherInfo, setTeacherInfo, students, setStudents, classes, setClasses, schedule, setSchedule, periodTimes, setPeriodTimes } = useApp();
@@ -79,56 +23,15 @@ const SettingsPage = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const isCloudSupported = !Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'android'; 
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
-  const [cloudMessage, setCloudMessage] = useState('');
-
   useEffect(() => {
       setName(teacherInfo?.name || '');
       setSchool(teacherInfo?.school || '');
       setSubject(teacherInfo?.subject || '');
-      
-      const unsubscribe = auth.onAuthStateChanged(user => setCurrentUser(user));
-      return () => unsubscribe();
   }, [teacherInfo]);
 
   const handleSaveProfile = () => {
     setTeacherInfo({ ...teacherInfo, name, school, subject });
     alert('تم حفظ البيانات بنجاح! ✅');
-  };
-
-  const handleCloudAction = async (action: 'upload' | 'download') => {
-      if (!currentUser) {
-          try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) { console.error(e); }
-          return;
-      }
-      if (!window.confirm(action === 'upload' ? 'رفع البيانات للسحابة؟' : 'استبدال البيانات من السحابة؟')) return;
-
-      setIsLoading(true);
-      setCloudMessage('جاري الاتصال...');
-
-      try {
-          if (action === 'upload') {
-              const fullData = { teacherInfo, students, classes, schedule, periodTimes, lastUpdated: new Date().toISOString() };
-              await setDoc(doc(db, 'users', currentUser.uid), fullData);
-              setCloudMessage('✅ تم الرفع للسحابة!');
-          } else {
-              const docSnap = await getDoc(doc(db, 'users', currentUser.uid));
-              if (docSnap.exists()) {
-                  const data = docSnap.data();
-                  if (data.students) { setStudents(data.students); localStorage.setItem('rased_students', JSON.stringify(data.students)); }
-                  if (data.classes) { setClasses(data.classes); localStorage.setItem('classes', JSON.stringify(data.classes)); }
-                  if (data.schedule) { setSchedule(data.schedule); localStorage.setItem('schedule', JSON.stringify(data.schedule)); }
-                  if (data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
-                  setCloudMessage('✅ تم السحب من السحابة!');
-                  setTimeout(() => window.location.reload(), 1500);
-              }
-          }
-      } catch (error: any) {
-          setCloudMessage(`خطأ: ${error.message}`);
-      } finally {
-          setIsLoading(false);
-      }
   };
 
   const handleBackup = async () => {
@@ -177,12 +80,8 @@ const SettingsPage = () => {
             if (data.periodTimes) setPeriodTimes(data.periodTimes);
             localStorage.setItem('rased_students', JSON.stringify(data.students));
             
-            if (isCloudSupported) {
-                if(confirm('تم الاستيراد! هل تود الرفع للسحابة لتحديث النسخة؟')) await handleCloudAction('upload');
-                else { alert('تم الاستيراد محلياً.'); window.location.reload(); }
-            } else {
-                alert('تمت الاستعادة بنجاح! 🔄'); setTimeout(() => window.location.reload(), 1500);
-            }
+            alert('تمت الاستعادة بنجاح! 🔄'); 
+            setTimeout(() => window.location.reload(), 1000);
         }
       } else { alert('ملف غير صالح'); }
     } catch (error) { console.error('Restore error:', error); alert('فشل الاستيراد'); } 
@@ -197,13 +96,13 @@ const SettingsPage = () => {
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 font-sans pb-24 animate-in fade-in duration-500">
       
-      {/* ================= HEADER (المضبوط في المنتصف) ================= */}
+      {/* Header */}
       <div className="fixed md:sticky top-0 z-40 bg-[#1e3a8a] text-white shadow-lg pt-[env(safe-area-inset-top)] pb-8 rounded-b-[2.5rem] w-full">
         <div className="flex justify-center items-center mt-6">
           <h1 className="text-2xl font-black tracking-tight drop-shadow-md">الإعدادات</h1>
         </div>
         <div className="text-center mt-2 opacity-80 text-xs font-bold bg-white/10 w-fit mx-auto px-4 py-1 rounded-full">
-            {isCloudSupported ? 'إدارة السحابة (Hybrid)' : 'التخزين المحلي (Local)'}
+            التخزين المحلي (Local)
         </div>
       </div>
 
@@ -232,28 +131,7 @@ const SettingsPage = () => {
             </div>
         </div>
 
-        {/* 2. Cloud Sync (Windows Only) */}
-        {isCloudSupported && (
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-indigo-100 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
-                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                    <Icon3DCloud /> المزامنة السحابية
-                </h2>
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => handleCloudAction('upload')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-all group h-24">
-                        <UploadCloud className="w-6 h-6 text-indigo-600 mb-2 group-hover:-translate-y-1 transition-transform" />
-                        <span className="text-xs font-black text-indigo-700">رفع للسحابة</span>
-                    </button>
-                    <button onClick={() => handleCloudAction('download')} disabled={isLoading} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-purple-50 border border-purple-100 hover:bg-purple-100 active:scale-95 transition-all group h-24">
-                        <DownloadCloud className="w-6 h-6 text-purple-600 mb-2 group-hover:translate-y-1 transition-transform" />
-                        <span className="text-xs font-black text-purple-700">سحب من السحابة</span>
-                    </button>
-                </div>
-                {cloudMessage && <p className="text-center text-xs font-bold text-indigo-600 mt-3 bg-indigo-50 py-2 rounded-lg animate-pulse">{cloudMessage}</p>}
-            </div>
-        )}
-
-        {/* 3. File Transfer (The Bridge) - تصميم جديد للأزرار */}
+        {/* 2. File Transfer (The Bridge) */}
         <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
             <h2 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
                 <span className="text-xl">📂</span> نقل الملفات (الجسر)
@@ -286,7 +164,7 @@ const SettingsPage = () => {
             </div>
         </div>
 
-        {/* 4. Danger Zone - تصميم أنيق وجديد */}
+        {/* 3. Danger Zone */}
         <div className="bg-rose-50/50 rounded-[2rem] p-6 border border-rose-100">
             <h2 className="text-lg font-black text-rose-800 mb-4 flex items-center gap-2">
                 <span className="text-xl">⚠️</span> منطقة الخطر
