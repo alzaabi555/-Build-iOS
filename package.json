@@ -1,6 +1,6 @@
 {
   "name": "com.madrasati.app",
-  "version": "3.7.5",
+  "version": "3.7.6",
   "homepage": "./",
   "description": "تطبيق راصد",
   "author": "Mohammed Al-Zaabi",
@@ -21,8 +21,6 @@
     "@capacitor/share": "^6.0.0",
     "@capacitor/clipboard": "^6.0.0",
     "@capacitor/local-notifications": "^6.0.0",
-    "@codetrix-studio/capacitor-google-auth": "^3.3.4",
-    "firebase": "^10.8.0",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
