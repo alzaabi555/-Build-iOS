@@ -9,7 +9,18 @@ import BrandLogo from './BrandLogo';
 
 interface DashboardProps {
     students: any[];
-    teacherInfo: { name: string; school: string; subject: string; governorate: string; avatar?: string; stamp?: string; ministryLogo?: string; academicYear?: string };
+    // ✅ تمت إضافة gender للواجهة
+    teacherInfo: { 
+        name: string; 
+        school: string; 
+        subject: string; 
+        governorate: string; 
+        avatar?: string; 
+        stamp?: string; 
+        ministryLogo?: string; 
+        academicYear?: string;
+        gender?: 'male' | 'female'; // تحديد الجنس
+    };
     onUpdateTeacherInfo: (info: any) => void;
     schedule: ScheduleDay[];
     onUpdateSchedule: (schedule: ScheduleDay[]) => void;
@@ -25,34 +36,25 @@ interface DashboardProps {
 }
 
 // ============================================================================
-// ✅ 1. شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
+// ✅ شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
 // ============================================================================
 
 // 👨‍🏫 المعلم العماني (مصر + لحية)
 const OmaniMaleTeacherAvatar = () => (
     <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-        {/* الدشداشة (أكتاف أعرض قليلاً) */}
         <path d="M20 115C20 90 100 90 100 115V120H20V115Z" fill="white" />
         <path d="M20 115C20 85 40 80 60 80C80 80 100 85 100 115" stroke="#E2E8F0" strokeWidth="1" />
-        {/* الرقبة */}
         <rect x="48" y="70" width="24" height="20" fill="#EBB082" />
-        {/* الوجه */}
         <circle cx="60" cy="60" r="24" fill="#EBB082" />
-        {/* اللحية (للدلالة على العمر) */}
         <path d="M38 60C38 75 45 84 60 84C75 84 82 75 82 60" fill="#EBB082" stroke="#1E293B" strokeWidth="0.5" strokeOpacity="0.2" />
         <path d="M45 80Q60 88 75 80" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-        
-        {/* المصر العماني (Turban) - بدلاً من الكمة */}
-        <path d="M32 50C32 30 40 25 60 25C80 25 88 30 88 50H32Z" fill="#F8FAFC" /> {/* الطبقة الأساسية */}
-        {/* لفات المصر الملونة */}
+        <path d="M32 50C32 30 40 25 60 25C80 25 88 30 88 50H32Z" fill="#F8FAFC" />
         <path d="M30 48C30 35 40 32 60 32C80 32 90 35 90 48" fill="none" stroke="#2563EB" strokeWidth="8" strokeLinecap="round" />
         <path d="M32 42C32 35 45 30 60 30C75 30 88 35 88 42" fill="none" stroke="#1E40AF" strokeWidth="4" strokeDasharray="4 2" />
         <path d="M30 50H90" stroke="#F1F5F9" strokeWidth="2" />
-
-        {/* الملامح (ناضجة) */}
-        <path d="M50 58H56" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" /> {/* حاجب */}
-        <path d="M64 58H70" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" /> {/* حاجب */}
+        <path d="M50 58H56" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
+        <path d="M64 58H70" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
         <circle cx="53" cy="62" r="2" fill="#1E293B" />
         <circle cx="67" cy="62" r="2" fill="#1E293B" />
         <path d="M56 72Q60 74 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
@@ -63,24 +65,14 @@ const OmaniMaleTeacherAvatar = () => (
 const OmaniFemaleTeacherAvatar = () => (
     <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-        {/* العباءة السوداء (أكتاف) */}
         <path d="M25 115C25 90 95 90 95 115V120H25V115Z" fill="#1E293B" />
-        {/* تفصيل بسيط للعباءة */}
         <path d="M60 90V120" stroke="#334155" strokeWidth="1" /> 
-        
-        {/* الوجه */}
         <circle cx="60" cy="58" r="20" fill="#EBB082" />
-        
-        {/* الشيلة السوداء (Headscarf) */}
         <path d="M35 55C35 25 45 20 60 20C75 20 85 25 85 55V85C85 95 35 95 35 85V55Z" fill="#1E293B" />
-        <path d="M40 55C40 40 48 35 60 35C72 35 80 40 80 55" stroke="#334155" strokeWidth="1" /> {/* ثنية الشيلة */}
-        
-        {/* الملامح */}
+        <path d="M40 55C40 40 48 35 60 35C72 35 80 40 80 55" stroke="#334155" strokeWidth="1" />
         <circle cx="54" cy="58" r="2" fill="#1E293B" />
         <circle cx="66" cy="58" r="2" fill="#1E293B" />
         <path d="M57 66Q60 68 63 66" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
-        
-        {/* نظارة (اختياري لتبدو معلمة) */}
         <circle cx="54" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
         <circle cx="66" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
         <path d="M59 58H61" stroke="#94A3B8" strokeWidth="1" />
@@ -98,7 +90,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const scheduleFileInputRef = useRef<HTMLInputElement>(null);
     const periodTimesInputRef = useRef<HTMLInputElement>(null);
 
-    // ✅ مرجع لمنع تكرار الإشعار في نفس الدقيقة
     const lastAlertTime = useRef<string | null>(null);
 
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
@@ -111,15 +102,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
-    const [editName, setEditName] = useState('');
-    const [editSchool, setEditSchool] = useState('');
-    const [editSubject, setEditSubject] = useState('');
-    const [editGovernorate, setEditGovernorate] = useState('');
-    const [editAvatar, setEditAvatar] = useState('');
-    const [editStamp, setEditStamp] = useState('');
-    const [editMinistryLogo, setEditMinistryLogo] = useState('');
-    const [editAcademicYear, setEditAcademicYear] = useState('');
+    const [editName, setEditName] = useState(teacherInfo?.name || '');
+    const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
+    const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
+    const [editGovernorate, setEditGovernorate] = useState(teacherInfo?.governorate || '');
+    const [editAvatar, setEditAvatar] = useState(teacherInfo?.avatar || '');
+    const [editStamp, setEditStamp] = useState(teacherInfo?.stamp || '');
+    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo || '');
+    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
     const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
+    // ✅ حالة جديدة لاختيار الجنس في المودال
+    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
 
     useEffect(() => {
         setEditName(teacherInfo?.name || '');
@@ -131,6 +124,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         setEditMinistryLogo(teacherInfo?.ministryLogo || '');
         setEditAcademicYear(teacherInfo?.academicYear || '');
         setEditSemester(currentSemester);
+        // تحديث الجنس عند التحميل
+        setEditGender(teacherInfo?.gender || 'male');
     }, [teacherInfo, currentSemester]);
 
     useEffect(() => {
@@ -253,19 +248,16 @@ const Dashboard: React.FC<DashboardProps> = ({
         return <span className={iconStyle}>📚</span>;
     };
 
-    // ✅ دالة تحديد جنس المعلم (تخمين بسيط بناءً على الاسم أو تعيين افتراضي ذكر)
-    // يمكن تحسينها لاحقاً إذا أضفت حقل "الجنس" لبيانات المعلم
+    // ✅ دالة تحديد صورة المعلم (تعتمد على الاختيار اليدوي الآن)
     const getTeacherAvatar = () => {
-        // إذا كان الاسم يحتوي على "ة" في نهاية الكلمة الأولى (غالباً أنثى) أو يبدأ بـ "أستاذة"
-        const firstName = teacherInfo?.name?.split(' ')[0] || '';
-        const isFemale = firstName.endsWith('ة') || firstName.endsWith('ه') || teacherInfo?.name?.includes('أستاذة') || teacherInfo?.name?.includes('استاذة');
-        
-        return isFemale ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
+        // الاعتماد 100% على اختيار المستخدم
+        return teacherInfo?.gender === 'female' ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
     };
 
     const handleSaveInfo = () => {
         onUpdateTeacherInfo({
-            name: editName, school: editSchool, subject: editSubject, governorate: editGovernorate, avatar: editAvatar, stamp: editStamp, ministryLogo: editMinistryLogo, academicYear: editAcademicYear
+            name: editName, school: editSchool, subject: editSubject, governorate: editGovernorate, avatar: editAvatar, stamp: editStamp, ministryLogo: editMinistryLogo, academicYear: editAcademicYear,
+            gender: editGender // ✅ حفظ الجنس المختار
         });
         onSemesterChange(editSemester); setShowEditModal(false);
     };
@@ -328,7 +320,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">✏️</span>
                         </button>
                         
-                        {/* ✅ زر التنبيهات المصلح للآيفون */}
+                        {/* زر التنبيهات المصلح للآيفون */}
                         <button onClick={handleBellClick} className="p-2 rounded-full hover:bg-white/10 transition-colors relative group">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">🔔</span>
                             {notificationsEnabled && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1e3a8a] animate-pulse"></span>}
@@ -338,7 +330,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {/* ✅ هنا تظهر الشخصيات الفيكتور الجديدة إذا لم توجد صورة */}
+                        {/* هنا تظهر الشخصيات الجديدة حسب اختيار المستخدم */}
                         {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
                     </div>
                     <div className="flex flex-col">
@@ -395,7 +387,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* Schedule Content (نفس التصميم الأصلي) */}
+            {/* Schedule Content */}
             <section className="px-6 -mt-6 relative z-20 mb-8 space-y-4">
                 {todaySchedule.periods && todaySchedule.periods.map((cls, idx) => {
                     if (!cls) return null;
@@ -404,9 +396,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     return (
                         <div key={idx} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-shadow relative overflow-hidden ${isActive ? 'ring-2 ring-emerald-400 shadow-xl' : ''}`}>
-                            
                             {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>}
-
                             <div className="flex items-center gap-4">
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
                                     {getSubjectIcon(teacherInfo?.subject || '')}
@@ -419,7 +409,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <p className="text-xs text-slate-500 font-bold mt-0.5">الحصة {idx + 1} {teacherInfo?.school ? `• ${teacherInfo.school}` : ''}</p>
                                 </div>
                             </div>
-                            
                             {isActive ? (
                                 <button onClick={() => onNavigate('attendance')} className="bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-1">
                                     تحضير <ChevronLeft className="w-3 h-3"/>
@@ -448,6 +437,16 @@ const Dashboard: React.FC<DashboardProps> = ({
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
                  <div className="text-center">
                     <h3 className="font-black text-2xl mb-6 text-slate-800">إعدادات الهوية</h3>
+                    
+                    {/* اختيار الجنس اليدوي (حل جذري لمشكلة الأسماء) */}
+                    <div className="bg-indigo-50 p-3 rounded-2xl mb-4 border border-indigo-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-800">أنا:</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => setEditGender('male')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'male' ? 'bg-white border-blue-200 text-blue-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلم 👨‍🏫</button>
+                            <button onClick={() => setEditGender('female')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'female' ? 'bg-white border-pink-200 text-pink-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلمة 👩‍🏫</button>
+                        </div>
+                    </div>
+
                     <div className="flex gap-4 justify-center mb-6 overflow-x-auto pb-4 custom-scrollbar">
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md glass-card bg-white">
@@ -456,7 +455,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, setEditAvatar)} accept="image/*" className="hidden" />
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الصورة</p>
                         </div>
-                        {/* بقية أيقونات الختم والوزارة كما هي */}
+                        {/* بقية الأيقونات (الختم، الوزارة) كما هي */}
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => stampInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
                                 {editStamp ? <img src={editStamp} className="w-full h-full object-contain p-2"/> : <span className="text-gray-300 font-bold">ختم</span>}
@@ -472,7 +471,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
-                    {/* بقية الحقول (الاسم، المدرسة، المادة...) */}
+                    {/* الحقول النصية كما هي في الكود الأصلي */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
