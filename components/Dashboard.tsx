@@ -104,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     // استخدام مسار مطلق /assets لضمان العمل في جميع البيئات
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && avatar.length > 50) return avatar; // Base64 usually long
-        return gender === 'female' ? '/assets/assets/teacher_woman.png : '/teacher_man.png';
+        return gender === 'female' ? '/assets/assets/teacher_woman.png :'./teacher_man.png';
     };
 
     const getSubjectIcon = (subjectName: string) => {
