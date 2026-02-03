@@ -9,26 +9,37 @@
     <!-- Generated CSS (Offline) -->
     <link rel="stylesheet" href="./index.css">
     
-    <!-- No external scripts. All logic is bundled into index.js for full offline support -->
+    <!-- Global Error Handler to catch startup issues -->
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;font-family:sans-serif;direction:rtl;">' +
+            '<h3 style="margin-bottom:10px;">حدث خطأ في بدء التطبيق</h3>' +
+            '<p style="font-size:12px;opacity:0.8;">' + msg + '</p>' +
+            '<button onclick="window.location.reload()" style="margin-top:15px;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:bold;">إعادة المحاولة</button>' +
+            '</div>';
+        }
+      };
+    </script>
 <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@capacitor/core": "https://esm.sh/@capacitor/core@^8.0.0",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "framer-motion": "https://esm.sh/framer-motion@^12.24.12",
-    "pdfjs-dist": "https://esm.sh/pdfjs-dist@^5.4.530",
-    "html2pdf.js": "https://esm.sh/html2pdf.js@^0.13.0",
-    "xlsx": "https://esm.sh/xlsx@^0.18.5",
-    "@capacitor/local-notifications": "https://esm.sh/@capacitor/local-notifications@^8.0.0",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "@capacitor/core": "https://esm.sh/@capacitor/core@^8.0.2",
+    "html2pdf.js": "https://esm.sh/html2pdf.js@^0.14.0",
     "@capacitor/clipboard": "https://esm.sh/@capacitor/clipboard@^8.0.0",
-    "@capacitor/filesystem": "https://esm.sh/@capacitor/filesystem@^8.0.0",
+    "@capacitor/filesystem": "https://esm.sh/@capacitor/filesystem@^8.1.0",
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@^5.4.530",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "framer-motion": "https://esm.sh/framer-motion@^12.29.2",
     "@capacitor/share": "https://esm.sh/@capacitor/share@^8.0.0",
     "@capacitor/browser": "https://esm.sh/@capacitor/browser@^8.0.0",
-    "@capacitor/app": "https://esm.sh/@capacitor/app@^8.0.0"
+    "@capacitor/local-notifications": "https://esm.sh/@capacitor/local-notifications@^8.0.0"
   }
 }
 </script>
@@ -38,7 +49,7 @@
     <div id="root" class="h-full w-full"></div>
     
     <!-- Loader -->
-    <div id="initial-loader" style="position:fixed;inset:0;background:#F2F2F7;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.4s;">
+    <div id="initial-loader" style="position:fixed;inset:0;background:#F2F2F7;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.3s;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:15px;">
             <div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#4F46E5;border-radius:50%;animation:spin 0.8s linear infinite"></div>
             <p style="font-family:-apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;color:#6B7280;font-size:14px;">جاري التحميل...</p>
