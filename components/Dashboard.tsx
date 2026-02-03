@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
   School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown
@@ -8,12 +8,11 @@ import * as XLSX from 'xlsx';
 import BrandLogo from './BrandLogo';
 
 // ============================================================================
-// ✅ 1. شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
+// 🎨 تحسين الأداء: استخدام Memo لمنع إعادة الرسم غير الضروري
 // ============================================================================
 
-// 👨‍🏫 المعلم العماني (مصر + لحية)
-const OmaniMaleTeacherAvatar = () => (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const OmaniMaleTeacherAvatar = memo(() => (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" shapeRendering="geometricPrecision">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
         <path d="M20 115C20 90 100 90 100 115V120H20V115Z" fill="white" />
         <path d="M20 115C20 85 40 80 60 80C80 80 100 85 100 115" stroke="#E2E8F0" strokeWidth="1" />
@@ -31,11 +30,10 @@ const OmaniMaleTeacherAvatar = () => (
         <circle cx="67" cy="62" r="2" fill="#1E293B" />
         <path d="M56 72Q60 74 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
-);
+));
 
-// 👩‍🏫 المعلمة العمانية (شيلة سوداء/عباءة رسمية)
-const OmaniFemaleTeacherAvatar = () => (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const OmaniFemaleTeacherAvatar = memo(() => (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" shapeRendering="geometricPrecision">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
         <path d="M25 115C25 90 95 90 95 115V120H25V115Z" fill="#1E293B" />
         <path d="M60 90V120" stroke="#334155" strokeWidth="1" /> 
@@ -49,7 +47,7 @@ const OmaniFemaleTeacherAvatar = () => (
         <circle cx="66" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
         <path d="M59 58H61" stroke="#94A3B8" strokeWidth="1" />
     </svg>
-);
+));
 
 interface DashboardProps {
     students: any[];
@@ -83,6 +81,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     periodTimes, setPeriodTimes, notificationsEnabled,
     onToggleNotifications, currentSemester, onSemesterChange, onNavigate
 }) => {
+    // حالة لتأخير عرض العناصر الثقيلة
+    const [isHeavyUIReady, setIsHeavyUIReady] = useState(false);
+
+    useEffect(() => {
+        // تأخير بسيط للسماح للصفحة بالتحميل أولاً
+        const timer = setTimeout(() => {
+            setIsHeavyUIReady(true);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
@@ -132,56 +141,34 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // =========================================================================
-    // 🔔 🔥 محرك الإشعارات (للآيفون) - نسخة محلية
-    // =========================================================================
+    // محرك الإشعارات
     useEffect(() => {
         if (!notificationsEnabled) return;
-
-        if (Notification.permission === 'default') {
-            Notification.requestPermission().catch(() => {});
-        }
-
+        if (Notification.permission === 'default') { Notification.requestPermission().catch(() => {}); }
         const checkTime = () => {
             const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const currentTime = `${hours}:${minutes}`;
-
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             if (currentTime === lastAlertTime.current) return;
-
             const periodIndex = periodTimes.findIndex(pt => pt.startTime === currentTime);
-
             if (periodIndex !== -1) {
                 lastAlertTime.current = currentTime; 
-
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.play().catch(e => console.log('Audio autoplay blocked by iOS:', e));
-
                 if (Notification.permission === 'granted') {
-                    new Notification('🔔 بداية الحصة', {
-                        body: `بدأت الحصة ${periodIndex + 1} الآن`,
-                        icon: '/icon.png'
-                    });
+                    new Notification('🔔 بداية الحصة', { body: `بدأت الحصة ${periodIndex + 1} الآن`, icon: '/icon.png' });
                 }
             }
         };
-
         const intervalId = setInterval(checkTime, 5000);
         return () => clearInterval(intervalId);
     }, [notificationsEnabled, periodTimes]);
 
     const handleBellClick = () => {
         const unlockAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        unlockAudio.volume = 0; 
-        unlockAudio.play().catch(() => {});
-
-        if (Notification.permission !== 'granted') {
-            Notification.requestPermission();
-        }
+        unlockAudio.volume = 0; unlockAudio.play().catch(() => {});
+        if (Notification.permission !== 'granted') Notification.requestPermission();
         onToggleNotifications();
     };
-    // =========================================================================
 
     const checkActivePeriod = (start: string, end: string) => {
         if (!start || !end) return false;
@@ -206,54 +193,40 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
         const str = String(value).trim();
         const match = str.match(/(\d{1,2}):(\d{2})/);
-        if (match) {
-            return `${String(match[1]).padStart(2, '0')}:${match[2]}`;
-        }
-        return '';
+        return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
     };
 
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
         const name = subjectName.trim().toLowerCase();
-        
         const iconStyle = "text-xl drop-shadow-sm filter transform transition-transform hover:scale-110 cursor-default";
-
-        if (name.includes('اسلام') || name.includes('إسلام') || name.includes('دين') || name.includes('قرآن') || name.includes('تجويد')) 
-            return <span className={iconStyle}>🕌</span>;
-        if (name.includes('عربي') || name.includes('لغتي') || name.includes('نحو') || name.includes('أدب')) 
-            return <span className={iconStyle}>📜</span>;
-        if (name.includes('رياضيات') || name.includes('حساب') || name.includes('جبر') || name.includes('هندسة') || name.includes('math')) 
-            return <span className={iconStyle}>📐</span>;
-        if (name.includes('علوم') || name.includes('فيزياء') || name.includes('كيمياء') || name.includes('أحياء') || name.includes('مختبر') || name.includes('science')) 
-            return <span className={iconStyle}>🧪</span>;
-        if (name.includes('دراسات') || name.includes('اجتماعيات') || name.includes('تاريخ') || name.includes('جغرافيا') || name.includes('وطنية')) 
-            return <span className={iconStyle}>🌍</span>;
-        if (name.includes('حاسوب') || name.includes('تقنية') || name.includes('رقمية') || name.includes('computer') || name.includes('it')) 
-            return <span className={iconStyle}>💻</span>;
-        if (name.includes('رياضة') || name.includes('بدنية') || name.includes('sport') || name.includes('pe')) 
-            return <span className={iconStyle}>⚽</span>;
-        if (name.includes('موسيقى') || name.includes('عزف') || name.includes('music')) 
-            return <span className={iconStyle}>🎵</span>;
-        if (name.includes('فنون') || name.includes('رسم') || name.includes('تشكيلية') || name.includes('art')) 
-            return <span className={iconStyle}>🎨</span>;
-        if (name.includes('نجليزي') || name.includes('english') || name.includes('لغات')) 
-            return <span className={iconStyle}>🅰️</span>;
-        if (name.includes('حياتية') || name.includes('بيئة') || name.includes('زراعة')) 
-            return <span className={iconStyle}>🌱</span>;
-            
+        if (name.includes('اسلام') || name.includes('إسلام')) return <span className={iconStyle}>🕌</span>;
+        if (name.includes('عربي') || name.includes('لغتي')) return <span className={iconStyle}>📜</span>;
+        if (name.includes('رياضيات') || name.includes('math')) return <span className={iconStyle}>📐</span>;
+        if (name.includes('علوم') || name.includes('science')) return <span className={iconStyle}>🧪</span>;
+        if (name.includes('دراسات') || name.includes('تاريخ')) return <span className={iconStyle}>🌍</span>;
+        if (name.includes('حاسوب') || name.includes('it')) return <span className={iconStyle}>💻</span>;
+        if (name.includes('رياضة') || name.includes('pe')) return <span className={iconStyle}>⚽</span>;
+        if (name.includes('موسيقى')) return <span className={iconStyle}>🎵</span>;
+        if (name.includes('فنون')) return <span className={iconStyle}>🎨</span>;
+        if (name.includes('نجليزي') || name.includes('english')) return <span className={iconStyle}>🅰️</span>;
+        if (name.includes('حياتية')) return <span className={iconStyle}>🌱</span>;
         return <span className={iconStyle}>📚</span>;
     };
 
-    // ✅ دالة تحديد صورة المعلم (تعتمد على الاختيار اليدوي الآن)
+    // ✅ دالة الأفاتار مع التحميل المتأخر
     const getTeacherAvatar = () => {
-        // الاعتماد 100% على اختيار المستخدم
+        // إذا لم يكن جاهزاً بعد، اعرض دائرة فارغة (Skeleton)
+        if (!isHeavyUIReady) {
+            return <div className="w-full h-full bg-slate-100 rounded-full animate-pulse border-2 border-white/50" />;
+        }
         return teacherInfo?.gender === 'female' ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
     };
 
     const handleSaveInfo = () => {
         onUpdateTeacherInfo({
             name: editName, school: editSchool, subject: editSubject, governorate: editGovernorate, avatar: editAvatar, stamp: editStamp, ministryLogo: editMinistryLogo, academicYear: editAcademicYear,
-            gender: editGender // ✅ حفظ الجنس المختار
+            gender: editGender
         });
         onSemesterChange(editSemester); setShowEditModal(false);
     };
@@ -315,8 +288,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <button onClick={() => setShowEditModal(true)} className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all active:scale-95 group" title="تعديل بيانات المعلم">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">✏️</span>
                         </button>
-                        
-                        {/* زر التنبيهات المصلح للآيفون */}
                         <button onClick={handleBellClick} className="p-2 rounded-full hover:bg-white/10 transition-colors relative group">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">🔔</span>
                             {notificationsEnabled && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1e3a8a] animate-pulse"></span>}
@@ -326,7 +297,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {/* هنا تظهر الشخصيات الجديدة حسب اختيار المستخدم */}
                         {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
                     </div>
                     <div className="flex flex-col">
@@ -350,7 +320,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`flex items-center justify-center w-9 h-9 rounded-xl border border-white/20 hover:bg-white/20 transition-all group ${showSettingsDropdown ? 'bg-white' : 'bg-white/10'}`}>
                                 <span className="text-lg drop-shadow-md group-hover:scale-110 transition-transform block">⚙️</span>
                             </button>
-                            
                             {showSettingsDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
@@ -433,8 +402,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
                  <div className="text-center">
                     <h3 className="font-black text-2xl mb-6 text-slate-800">إعدادات الهوية</h3>
-                    
-                    {/* اختيار الجنس اليدوي (حل جذري لمشكلة الأسماء) */}
                     <div className="bg-indigo-50 p-3 rounded-2xl mb-4 border border-indigo-100 flex items-center justify-between">
                         <span className="text-xs font-bold text-indigo-800">أنا:</span>
                         <div className="flex gap-2">
@@ -442,7 +409,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setEditGender('female')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'female' ? 'bg-white border-pink-200 text-pink-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلمة 👩‍🏫</button>
                         </div>
                     </div>
-
                     <div className="flex gap-4 justify-center mb-6 overflow-x-auto pb-4 custom-scrollbar">
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md glass-card bg-white">
@@ -451,7 +417,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, setEditAvatar)} accept="image/*" className="hidden" />
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الصورة</p>
                         </div>
-                        {/* بقية الأيقونات (الختم، الوزارة) كما هي */}
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => stampInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
                                 {editStamp ? <img src={editStamp} className="w-full h-full object-contain p-2"/> : <span className="text-gray-300 font-bold">ختم</span>}
@@ -467,7 +432,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
-                    {/* الحقول النصية كما هي في الكود الأصلي */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
@@ -510,7 +474,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <button onClick={() => setScheduleTab('timing')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>التوقيت</button>
                         <button onClick={() => setScheduleTab('classes')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>الحصص</button>
                     </div>
-                    
                     {scheduleTab === 'timing' ? (
                         <>
                             <div className="mb-3 px-1">
@@ -561,7 +524,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             </Modal>
-
         </div>
     );
 };
