@@ -1,5 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { 
@@ -18,11 +20,13 @@ import About from './components/About';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
+import LoginScreen from './components/LoginScreen'; // New Import
 import { Loader2 } from 'lucide-react';
 import { useSchoolBell } from './hooks/useSchoolBell';
+import { auth } from './services/firebase'; // New Import
 
 // --- 3D ICONS COMPONENTS (SVG) ---
-
+// ... (Keeping all existing 3D icons code exactly as is)
 const Dashboard3D = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -36,7 +40,6 @@ const Dashboard3D = ({ active }: { active: boolean }) => (
     <rect x="34" y="10" width="20" height="20" rx="6" fill="#a5b4fc" />
     <rect x="10" y="34" width="20" height="20" rx="6" fill="#c7d2fe" />
     <rect x="34" y="34" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    {/* Highlight Overlay */}
     <path d="M10 16 Q20 10 30 16 L30 30 L10 30 Z" fill="white" opacity="0.1" />
   </svg>
 );
@@ -53,7 +56,6 @@ const Attendance3D = ({ active }: { active: boolean }) => (
     <path d="M12 24 L52 24 L52 18 Q52 14 48 14 L16 14 Q12 14 12 18 Z" fill="url(#cal_bg)" />
     <circle cx="20" cy="12" r="3" fill="#991b1b" />
     <circle cx="44" cy="12" r="3" fill="#991b1b" />
-    {/* Checkmark 3D */}
     <path d="M22 38 L30 46 L44 30" fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" style={{filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.2))'}} />
   </svg>
 );
@@ -68,7 +70,6 @@ const Students3D = ({ active }: { active: boolean }) => (
     </defs>
     <circle cx="32" cy="24" r="12" fill="url(#user_grad)" />
     <path d="M14 54 C14 40 50 40 50 54 L50 58 L14 58 Z" fill="url(#user_grad)" />
-    {/* Reflection */}
     <ellipse cx="32" cy="20" rx="6" ry="3" fill="white" opacity="0.3" />
   </svg>
 );
@@ -82,12 +83,8 @@ const Grades3D = ({ active }: { active: boolean }) => (
     </defs>
     <path d="M12 44 L22 44 L22 54 L12 54 Z" fill="url(#bar1)" transform="translate(0, -10)" />
     <rect x="12" y="34" width="10" height="20" rx="2" fill="url(#bar1)" />
-    
     <rect x="27" y="24" width="10" height="30" rx="2" fill="url(#bar2)" />
-    
     <rect x="42" y="14" width="10" height="40" rx="2" fill="url(#bar3)" />
-    
-    {/* 3D Sides */}
     <path d="M22 36 L25 33 L25 51 L22 54 Z" fill="#b45309" opacity="0.5" />
     <path d="M37 26 L40 23 L40 51 L37 54 Z" fill="#047857" opacity="0.5" />
     <path d="M52 16 L55 13 L55 51 L52 54 Z" fill="#3730a3" opacity="0.5" />
@@ -103,15 +100,12 @@ const More3D = ({ active }: { active: boolean }) => (
     <rect x="34" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" />
     <rect x="14" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
     <rect x="34" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
-    {/* Gloss */}
     <circle cx="22" cy="22" r="3" fill="white" opacity="0.2" />
     <circle cx="42" cy="22" r="3" fill="white" opacity="0.2" />
     <circle cx="22" cy="42" r="3" fill="white" opacity="0.2" />
     <circle cx="42" cy="42" r="3" fill="white" opacity="0.2" />
   </svg>
 );
-
-// -------------------------------------
 
 // Main App Container
 const AppContent: React.FC = () => {
@@ -124,6 +118,56 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   
+  // State to manage authentication status
+  const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
+
+  // Handle Android Back Button
+  useEffect(() => {
+    if (Capacitor.getPlatform() === 'android') {
+      const backListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        if (showMoreMenu) {
+          setShowMoreMenu(false);
+        } else if (activeTab !== 'dashboard') {
+          setActiveTab('dashboard');
+        } else {
+          // If on dashboard and no modal is open, exit app
+          CapacitorApp.exitApp();
+        }
+      });
+
+      return () => {
+        backListener.then(listener => listener.remove());
+      };
+    }
+  }, [showMoreMenu, activeTab]);
+
+  useEffect(() => {
+      // Check if user has already made a choice (Guest or Auth)
+      const isGuest = localStorage.getItem('guest_mode') === 'true';
+      if (isGuest) {
+          setAuthStatus('logged_in');
+          return;
+      }
+
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+              setAuthStatus('logged_in');
+          } else {
+              setAuthStatus('logged_out');
+          }
+      });
+      return unsubscribe;
+  }, []);
+
+  const handleLoginSuccess = (user: any | null) => {
+      if (user) {
+          localStorage.setItem('guest_mode', 'false');
+      } else {
+          localStorage.setItem('guest_mode', 'true');
+      }
+      setAuthStatus('logged_in');
+  };
+
   // Welcome Screen State
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
       return !localStorage.getItem('rased_welcome_seen');
@@ -134,10 +178,8 @@ const AppContent: React.FC = () => {
       return localStorage.getItem('bell_enabled') === 'true';
   });
 
-  // Activate Bell Hook
   useSchoolBell(periodTimes, schedule, notificationsEnabled);
 
-  // Toggle Handler
   const handleToggleNotifications = () => {
       setNotificationsEnabled(prev => {
           const newState = !prev;
@@ -151,8 +193,8 @@ const AppContent: React.FC = () => {
       setShowWelcome(false);
   };
   
-  // Handle Loading State
-  if (!isDataLoaded) {
+  // 1. Loading State
+  if (!isDataLoaded || authStatus === 'checking') {
       return (
           <div className="flex h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]">
               <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
@@ -160,18 +202,22 @@ const AppContent: React.FC = () => {
       );
   }
 
-  // Show Welcome Screen if first time
+  // 2. Welcome Screen (First Time Only)
   if (showWelcome) {
       return <WelcomeScreen onFinish={handleFinishWelcome} />;
   }
 
-  // Navigation Handlers
+  // 3. Login Screen (If not logged in and not guest)
+  if (authStatus === 'logged_out') {
+      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // 4. Main App
   const handleNavigate = (tab: string) => {
       setActiveTab(tab);
       setShowMoreMenu(false);
   };
 
-  // Helper Wrappers
   const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
   const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
   
@@ -215,7 +261,7 @@ const AppContent: React.FC = () => {
                   students={students} classes={classes} onUpdateStudent={handleUpdateStudent} setStudents={setStudents}
                   currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo}
               />;
-          case 'leaderboard': return <Leaderboard students={students} classes={classes} />;
+          case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />; // Passed prop
           case 'reports': return <Reports />;
           case 'guide': return <UserGuide />;
           case 'settings': return <Settings />;
