@@ -20,10 +20,9 @@ import About from './components/About';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
-import LoginScreen from './components/LoginScreen'; // New Import
+import LoginScreen from './components/LoginScreen'; 
 import { Loader2 } from 'lucide-react';
 import { useSchoolBell } from './hooks/useSchoolBell';
-import { auth } from './services/firebase'; // New Import
 
 // --- 3D ICONS COMPONENTS (SVG) ---
 // ... (Keeping all existing 3D icons code exactly as is)
@@ -118,7 +117,7 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   
-  // State to manage authentication status
+  // State to manage authentication status (Local Only)
   const [authStatus, setAuthStatus] = useState<'checking' | 'logged_in' | 'logged_out'>('checking');
 
   // Handle Android Back Button
@@ -146,25 +145,14 @@ const AppContent: React.FC = () => {
       const isGuest = localStorage.getItem('guest_mode') === 'true';
       if (isGuest) {
           setAuthStatus('logged_in');
-          return;
+      } else {
+          setAuthStatus('logged_out');
       }
-
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-              setAuthStatus('logged_in');
-          } else {
-              setAuthStatus('logged_out');
-          }
-      });
-      return unsubscribe;
   }, []);
 
   const handleLoginSuccess = (user: any | null) => {
-      if (user) {
-          localStorage.setItem('guest_mode', 'false');
-      } else {
-          localStorage.setItem('guest_mode', 'true');
-      }
+      // In local mode, we treat everything as guest
+      localStorage.setItem('guest_mode', 'true');
       setAuthStatus('logged_in');
   };
 
@@ -207,7 +195,7 @@ const AppContent: React.FC = () => {
       return <WelcomeScreen onFinish={handleFinishWelcome} />;
   }
 
-  // 3. Login Screen (If not logged in and not guest)
+  // 3. Login Screen (If not started yet)
   if (authStatus === 'logged_out') {
       return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
