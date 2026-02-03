@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Student, ExamPaper, GradingData } from '../types';
-import { ChevronRight, Save, FileText, Check, X, Calculator, Upload, Trash2, Maximize2, AlertCircle, PenTool, ExternalLink, ChevronLeft, Loader2, ZoomIn, ZoomOut, Move } from 'lucide-react';
+import { ChevronRight, Save, FileText, Check, X, Calculator, Upload, Trash2, Maximize2, AlertCircle, PenTool, ExternalLink, ChevronLeft, Loader2, ZoomIn, ZoomOut, Move, ArrowRight } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set worker locally for offline support
@@ -242,13 +242,32 @@ const ExamGrading: React.FC<ExamGradingProps> = ({ student, onUpdateStudent, onB
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] text-slate-900 dark:text-white pb-20" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
-        <div className="glass-heavy px-4 py-3 flex justify-between items-center border-b border-white/20 shrink-0 z-20">
-            <div className="flex items-center gap-3">
-                <button onClick={onBack} className="p-2 glass-icon rounded-full hover:bg-white/10"><ChevronRight className="w-5 h-5"/></button>
-                <div><h2 className="text-lg font-black">{student.name}</h2><p className="text-xs text-slate-500 dark:text-white/60 font-bold">المصحح الإلكتروني</p></div>
+        
+        {/* 2️⃣ New Royal Blue Header (Sub-Page Style) */}
+        <header className="bg-[#1e3a8a] text-white pt-12 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-20 -mx-4 -mt-4 mb-4 shrink-0">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
+                        <ArrowRight className="w-5 h-5 text-white" />
+                    </button>
+                    
+                    <div>
+                        <h1 className="text-2xl font-black tracking-wide">{student.name}</h1>
+                        <p className="text-[10px] text-blue-200 font-bold opacity-80">المصحح الإلكتروني الذكي</p>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/20 flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-blue-200" />
+                        <span className="text-xl font-black">{totalScore}</span>
+                    </div>
+                    <button onClick={saveGrading} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-xl shadow-lg active:scale-95 transition-all">
+                        <Save className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
-            <div className="flex items-center gap-4"><div className="bg-indigo-600 px-4 py-2 rounded-xl text-white font-black flex items-center gap-2 shadow-lg shadow-indigo-500/30"><Calculator className="w-4 h-4" /><span className="text-lg">{totalScore}</span><span className="text-[10px] opacity-70">درجة</span></div><button onClick={saveGrading} className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg hover:bg-emerald-600 transition-all active:scale-95" title="حفظ الدرجة"><Save className="w-5 h-5" /></button></div>
-        </div>
+        </header>
 
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative">
             <div className="w-full md:w-[320px] bg-slate-50 dark:bg-black/20 border-l border-white/10 flex flex-col shrink-0 overflow-y-auto custom-scrollbar p-4 gap-6 z-10 shadow-xl">

@@ -1,12 +1,12 @@
+
 import React, { useState } from 'react';
 import { Student } from '../types';
-import { Award, AlertCircle, Trash2, Loader2, FileText, LayoutList, ArrowRight, Printer, Check, X, Clock, DoorOpen } from 'lucide-react';
+import { Award, AlertCircle, Trash2, Loader2, FileText, LayoutList, ArrowRight, Printer } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 import html2pdf from 'html2pdf.js';
-import StudentDetailedHistoryModal from './StudentDetailedHistoryModal';
 
 interface StudentReportProps {
   student: Student;
@@ -19,76 +19,358 @@ interface StudentReportProps {
 const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent, currentSemester, teacherInfo, onBack }) => {
   const { assessmentTools } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-   
-  // ... (نفس منطق الحسابات السابق - لم يتغير) ...
+  
   const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === (currentSemester || '1'));
-  const sortedBehaviors = [...behaviors].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const allGrades = student.grades || [];
+
   const totalPositivePoints = behaviors.filter(b => b.type === 'positive').reduce((acc, b) => acc + b.points, 0);
   const totalNegativePoints = behaviors.filter(b => b.type === 'negative').reduce((acc, b) => acc + Math.abs(b.points), 0);
+
+  // Filter grades for current semester
   const currentSemesterGrades = allGrades.filter(g => !g.semester || g.semester === (currentSemester || '1'));
+
+  // --- Logic for Ordered Grade Rows (Matching GradeBook) ---
   const finalExamName = "الامتحان النهائي";
   const continuousTools = assessmentTools.filter(t => t.name.trim() !== finalExamName);
   const finalTool = assessmentTools.find(t => t.name.trim() === finalExamName);
+
   let continuousSum = 0;
-  continuousTools.forEach(tool => { const g = currentSemesterGrades.find(r => r.category.trim() === tool.name.trim()); if (g) continuousSum += (Number(g.score) || 0); });
+  
+  // Calculate continuous sum based on tools
+  continuousTools.forEach(tool => {
+      const g = currentSemesterGrades.find(r => r.category.trim() === tool.name.trim());
+      if (g) continuousSum += (Number(g.score) || 0);
+  });
+
+  // Calculate final score
   let finalScore = 0;
-  if (finalTool) { const g = currentSemesterGrades.find(r => r.category.trim() === finalTool.name.trim()); if (g) finalScore = (Number(g.score) || 0); }
-  const totalScore = continuousSum + finalScore;
+  if (finalTool) {
+      const g = currentSemesterGrades.find(r => r.category.trim() === finalTool.name.trim());
+      if (g) finalScore = (Number(g.score) || 0);
+  }
+
+  // Fallback total calculation if no tools defined
+  const fallbackTotal = currentSemesterGrades.reduce((a, b) => a + (Number(b.score) || 0), 0);
+  const totalScore = assessmentTools.length > 0 ? (continuousSum + finalScore) : fallbackTotal;
+
+  // Filter Absence and Truant records
   const absenceRecords = (student.attendance || []).filter(a => a.status === 'absent');
   const truantRecords = (student.attendance || []).filter(a => a.status === 'truant');
 
-  const handleDeleteBehavior = (behaviorId: string) => { if (confirm('هل أنت متأكد من حذف هذا السلوك؟')) { const updatedBehaviors = (student.behaviors || []).filter(b => b.id !== behaviorId); if (onUpdateStudent) { onUpdateStudent({ ...student, behaviors: updatedBehaviors }); } } };
+  const handleDeleteBehavior = (behaviorId: string) => {
+      if (confirm('هل أنت متأكد من حذف هذا السلوك؟')) {
+          const updatedBehaviors = (student.behaviors || []).filter(b => b.id !== behaviorId);
+          if (onUpdateStudent) {
+              onUpdateStudent({ ...student, behaviors: updatedBehaviors });
+          }
+      }
+  };
 
   const handlePrintReport = async () => {
       const element = document.getElementById('report-content');
       if (!element) return;
+
       setIsGeneratingPdf(true);
-      const scrollContainer = document.getElementById('report-scroll-container');
-      if(scrollContainer) scrollContainer.scrollTop = 0;
-      const opt = { margin: [5, 5, 5, 5], filename: `Report_${student.name}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 800 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } };
-      try { const worker = html2pdf().set(opt).from(element).toPdf(); if (Capacitor.isNativePlatform()) { const pdfBase64 = await worker.output('datauristring'); const result = await Filesystem.writeFile({ path: opt.filename, data: pdfBase64.split(',')[1], directory: Directory.Cache }); await Share.share({ title: `تقرير الطالب: ${student.name}`, url: result.uri }); } else { worker.save(); } } catch (err) { console.error(err); alert('حدث خطأ أثناء الطباعة'); } finally { setIsGeneratingPdf(false); }
+      window.scrollTo(0, 0); // ضمان البدء من الأعلى
+
+      const opt = {
+          margin: 10,
+          filename: `Report_${student.name}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+              scale: 2, 
+              useCORS: true, 
+              logging: false,
+              // لم نعد بحاجة لقسر الألوان لأن التطبيق أصلاً فاتح
+              windowWidth: 800
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      try {
+          // نستخدم العنصر مباشرة دون استنساخ معقد
+          const worker = html2pdf().set(opt).from(element).toPdf();
+          
+          if (Capacitor.isNativePlatform()) {
+               const pdfBase64 = await worker.output('datauristring');
+               const base64Data = pdfBase64.split(',')[1];
+               const result = await Filesystem.writeFile({ 
+                   path: `Report_${student.name}.pdf`, 
+                   data: base64Data, 
+                   directory: Directory.Cache 
+               });
+               await Share.share({ title: `Report_${student.name}`, url: result.uri });
+          } else {
+               worker.save();
+          }
+      } catch (err) { 
+          console.error('PDF Error:', err); 
+          alert('حدث خطأ أثناء الطباعة');
+      } finally { 
+          setIsGeneratingPdf(false); 
+      }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] text-slate-900 animate-in fade-in slide-in-from-bottom-8 duration-500">
+    <div className="flex flex-col h-full space-y-4 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-900">
         
-        {/* استدعاء النافذة التفصيلية */}
-        <StudentDetailedHistoryModal 
-            isOpen={showHistoryModal}
-            onClose={() => setShowHistoryModal(false)}
-            student={student}
-            teacherInfo={teacherInfo}
-        />
-
-        {/* HEADER */}
-        {/* ✅ Sticky بدلاً من Fixed لحل مشكلة الانزياح في الويندوز، و without left-0 */}
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-            <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10"><ArrowRight className="w-6 h-6" /></button>
-                    <div><h2 className="text-xl font-black">{student.name}</h2><p className="text-[10px] text-blue-200 font-bold opacity-80">{student.classes[0]} • الفصل {currentSemester === '1' ? 'الأول' : 'الثاني'}</p></div>
+        {/* Header Action Bar */}
+        <div className="flex items-center justify-between glass-heavy p-4 rounded-[2rem]">
+            <div className="flex items-center gap-3">
+                <button onClick={onBack} className="p-3 rounded-full glass-icon hover:bg-gray-100 transition-colors">
+                    <ArrowRight className="w-5 h-5 text-slate-600" />
+                </button>
+                <div>
+                    <h2 className="text-lg font-black text-slate-900">{student.name}</h2>
+                    <p className="text-xs font-bold text-gray-500">{student.classes[0]} • تقرير الفصل {currentSemester}</p>
                 </div>
-                <div className="flex gap-2">
-                    {/* ✅ الزر هنا يعمل الآن لأنه يفتح Modal بـ z-index عالي */}
-                    <button onClick={() => setShowHistoryModal(true)} className="bg-white/20 text-white px-4 py-3 rounded-xl font-bold text-xs shadow-lg active:scale-95 transition-all flex items-center gap-2 hover:bg-white/30"><LayoutList className="w-4 h-4" /> السجل التفصيلي</button>
-                    <button onClick={handlePrintReport} disabled={isGeneratingPdf} className="bg-white text-[#1e3a8a] px-5 py-3 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all flex items-center gap-2">{isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />} طباعة</button>
-                </div>
+            </div>
+            <div className="flex gap-2">
+                <button 
+                    onClick={handlePrintReport} 
+                    disabled={isGeneratingPdf}
+                    className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-black text-xs shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-2"
+                >
+                    {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                    طباعة التقرير
+                </button>
             </div>
         </div>
 
-        {/* CONTENT */}
-        <div id="report-scroll-container" className="flex-1 overflow-y-auto custom-scrollbar">
-            {/* ✅ تم حذف الفراغ الوهمي لأننا نستخدم Sticky */}
-            <div className="px-4 pt-6 pb-24">
-                <div id="report-content" className="bg-white text-slate-900 p-8 md:p-12 rounded-[2rem] max-w-4xl mx-auto shadow-xl border border-slate-100 relative overflow-hidden" dir="rtl">
-                    {/* ... (باقي محتوى التقرير كما هو - Grade Table, Attendance, etc.) ... */}
-                    <div className="flex justify-between items-start mb-8 border-b-2 border-gray-100 pb-6"><div className="text-center w-1/3 text-xs font-bold text-black"><p>سلطنة عمان</p><p>وزارة التربية والتعليم</p><p>مدرسة {teacherInfo?.school}</p></div><div className="flex flex-col items-center justify-center w-1/3">{teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-20 object-contain mix-blend-multiply" alt="Logo" /> : <FileText className="w-16 h-16 text-slate-200" />}<h1 className="text-xl font-black mt-2 text-black underline">تقرير الطالب العام</h1></div><div className="text-center w-1/3 text-xs font-bold text-black"><p>العام: {teacherInfo?.academicYear}</p><p>الفصل: {currentSemester === '1' ? 'الأول' : 'الثاني'}</p><p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p></div></div>
-                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-8 flex items-center justify-between print:bg-slate-50"><div><div className="flex items-center gap-8 mb-4"><div><span className="text-[10px] font-bold text-slate-500 block mb-1">الاسم</span><h3 className="text-xl font-black text-black">{student.name}</h3></div><div className="w-px h-10 bg-slate-300"></div><div><span className="text-[10px] font-bold text-slate-500 block mb-1">الصف</span><h3 className="text-xl font-black text-black">{student.classes[0]}</h3></div></div><div className="flex gap-4"><div className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-200">إيجابي: {totalPositivePoints}</div><div className="bg-rose-100 text-rose-800 px-3 py-1 rounded-lg text-xs font-bold border border-rose-200">سلبي: {totalNegativePoints}</div></div></div><div className="w-24 h-24 bg-white rounded-2xl border-2 border-slate-200 p-1 shadow-sm overflow-hidden">{student.avatar ? <img src={student.avatar} className="w-full h-full object-cover rounded-xl" /> : <div className="w-full h-full flex items-center justify-center bg-slate-100 text-3xl font-black text-slate-300">{student.name.charAt(0)}</div>}</div></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"><div><h3 className="font-black text-lg mb-4 flex items-center gap-2 text-black border-b-2 border-slate-100 pb-2"><FileText className="w-5 h-5 text-[#1e3a8a]" /> التحصيل الدراسي</h3><table className="w-full border-collapse text-xs"><thead><tr className="bg-slate-100 text-black"><th className="border p-2">الأداة</th><th className="border p-2">الدرجة</th></tr></thead><tbody>{assessmentTools.length > 0 ? (<>{continuousTools.map(tool => {const grade = currentSemesterGrades.find(g => g.category.trim() === tool.name.trim()); return <tr key={tool.id}><td className="border p-2">{tool.name}</td><td className="border p-2 font-bold text-center">{grade ? grade.score : '-'}</td></tr>})}{finalTool && (() => {const grade = currentSemesterGrades.find(g => g.category.trim() === finalTool.name.trim()); return <tr><td className="border p-2 bg-pink-50">{finalTool.name}</td><td className="border p-2 font-bold text-center">{grade ? grade.score : '-'}</td></tr>})()}<tr className="bg-slate-200 font-black"><td className="border p-2">المجموع</td><td className="border p-2 text-center">{totalScore}</td></tr></>) : <tr><td colSpan={2} className="p-2 text-center">لا توجد درجات</td></tr>}</tbody></table></div><div><h3 className="font-black text-lg mb-4 flex items-center gap-2 text-black border-b-2 border-slate-100 pb-2"><LayoutList className="w-5 h-5 text-[#1e3a8a]" /> الحضور والغياب</h3><div className="flex gap-2 text-center mb-4"><div className="flex-1 p-2 bg-rose-50 border border-rose-100 rounded-lg"><span className="block text-xs font-bold text-rose-500">غياب</span><span className="text-xl font-black text-rose-700">{absenceRecords.length}</span></div><div className="flex-1 p-2 bg-purple-50 border border-purple-100 rounded-lg"><span className="block text-xs font-bold text-purple-500">تسرب</span><span className="text-xl font-black text-purple-700">{truantRecords.length}</span></div></div><div className="border rounded-lg p-2 max-h-40 overflow-y-auto custom-scrollbar">{[...absenceRecords, ...truantRecords].length > 0 ? ([...absenceRecords, ...truantRecords].map((rec, i) => (<div key={i} className="flex justify-between text-xs p-1 border-b last:border-0"><span>{rec.date}</span><span className={`font-bold ${rec.status==='absent'?'text-rose-600':'text-purple-600'}`}>{rec.status==='absent'?'غياب يوم':'تسرب'} {rec.period && `(حصة ${rec.period})`}</span></div>))) : <p className="text-center text-xs text-gray-400">سجل الحضور نظيف</p>}</div></div></div>
-                    <div className="mb-8"><h3 className="font-black text-lg mb-4 flex items-center gap-2 text-black border-b-2 border-slate-100 pb-2"><Award className="w-5 h-5 text-[#1e3a8a]" /> سجل السلوك والملاحظات</h3>{sortedBehaviors.length > 0 ? (<div className="space-y-2">{sortedBehaviors.map((b, idx) => (<div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${b.type === 'positive' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${b.type === 'positive' ? 'bg-emerald-200 text-emerald-700' : 'bg-rose-200 text-rose-700'}`}>{b.type === 'positive' ? <Award className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}</div><div><p className="text-sm font-bold text-black">{b.description}</p><div className="flex items-center gap-2 mt-1"><p className="text-[10px] text-slate-500 font-mono">{new Date(b.date).toLocaleDateString('en-GB')}</p>{b.period && <span className="text-[9px] font-bold px-1.5 py-0.5 bg-white border rounded text-slate-600">حصة {b.period}</span>}</div></div></div><div className="flex items-center gap-2"><span className={`text-sm font-black ${b.type === 'positive' ? 'text-emerald-700' : 'text-rose-700'}`}>{b.type === 'positive' ? '+' : '-'}{Math.abs(b.points)}</span>{onUpdateStudent && (<button onClick={() => handleDeleteBehavior(b.id)} className="p-1 text-slate-400 hover:text-rose-500 print:hidden"><Trash2 className="w-4 h-4" /></button>)}</div></div>))}</div>) : (<p className="text-center text-sm text-slate-500 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-300">لا توجد ملاحظات سلوكية مسجلة</p>)}</div>
-                    <div className="flex justify-between items-end pt-8 border-t-2 border-gray-100 mt-auto"><div className="text-center w-1/3"><p className="font-bold text-sm mb-8 text-black">معلم المادة</p><p className="font-black text-lg text-black">{teacherInfo?.name}</p></div><div className="text-center w-1/3">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-32 opacity-80 mix-blend-multiply mx-auto" alt="Stamp" />}</div><div className="text-center w-1/3"><p className="font-bold text-sm mb-8 text-black">مدير المدرسة</p><p className="font-black text-lg text-black">....................</p></div></div>
+        {/* Report Preview (Screen) */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
+            <div id="report-content" className="bg-white text-slate-900 p-8 rounded-none md:rounded-[2rem] max-w-4xl mx-auto shadow-sm border border-gray-200 relative overflow-hidden box-border" dir="rtl">
+                
+                {/* Formal Header */}
+                <div className="flex justify-between items-start mb-8 border-b-2 border-gray-100 pb-6">
+                    <div className="text-center w-1/3">
+                        <p className="font-bold text-sm mb-1">سلطنة عمان</p>
+                        <p className="font-bold text-sm mb-1">وزارة التربية والتعليم</p>
+                        <p className="font-bold text-sm mb-1">المديرية العامة للتربية والتعليم لمحافظة {teacherInfo?.governorate || '.........'}</p>
+                        <p className="font-bold text-sm">مدرسة {teacherInfo?.school || '................'}</p>
+                    </div>
+                    <div className="flex flex-col items-center justify-center w-1/3">
+                         {teacherInfo?.ministryLogo ? (
+                             <img src={teacherInfo.ministryLogo} className="h-20 object-contain" alt="Ministry Logo" />
+                         ) : (
+                             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
+                                 <FileText className="w-10 h-10 text-slate-300" />
+                             </div>
+                         )}
+                         <h1 className="text-xl font-black mt-4 underline decoration-indigo-500 decoration-4 underline-offset-4">تقرير مستوى طالب</h1>
+                    </div>
+                    <div className="text-center w-1/3 flex flex-col items-end">
+                        <div className="text-right">
+                             <p className="font-bold text-sm mb-1">العام الدراسي: {teacherInfo?.academicYear || `${new Date().getFullYear()} / ${new Date().getFullYear() + 1}`}</p>
+                             <p className="font-bold text-sm mb-1">الفصل الدراسي: {currentSemester === '1' ? 'الأول' : 'الثاني'}</p>
+                             <p className="font-bold text-sm">تاريخ التقرير: {new Date().toLocaleDateString('en-GB')}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Student Info Card */}
+                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-8 flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-6 mb-4">
+                            <div>
+                                <span className="text-xs font-bold text-slate-500 block mb-1">اسم الطالب</span>
+                                <h3 className="text-xl font-black text-slate-900">{student.name}</h3>
+                            </div>
+                            <div className="w-px h-10 bg-slate-300"></div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-500 block mb-1">الصف</span>
+                                <h3 className="text-xl font-black text-slate-900">{student.classes[0]}</h3>
+                            </div>
+                            <div className="w-px h-10 bg-slate-300"></div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-500 block mb-1">رقم ولي الأمر</span>
+                                <h3 className="text-lg font-black text-slate-900 font-mono" dir="ltr">{student.parentPhone || '-'}</h3>
+                            </div>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold">نقاط إيجابية: {totalPositivePoints}</div>
+                            <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold">نقاط سلبية: {totalNegativePoints}</div>
+                        </div>
+                    </div>
+                    <div className="w-24 h-24 bg-white rounded-2xl border-2 border-slate-100 p-1 shadow-sm">
+                         {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover rounded-xl" /> : <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-xl text-3xl font-black text-slate-300">{student.name.charAt(0)}</div>}
+                    </div>
+                </div>
+
+                {/* Grades Section */}
+                <div className="mb-8">
+                    <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-slate-800">
+                        <FileText className="w-5 h-5 text-indigo-600" />
+                        التحصيل الدراسي
+                    </h3>
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-slate-100">
+                                <th className="border border-slate-300 p-3 text-sm font-bold text-right text-black">المادة</th>
+                                <th className="border border-slate-300 p-3 text-sm font-bold text-center text-black">أداة التقويم</th>
+                                <th className="border border-slate-300 p-3 text-sm font-bold text-center text-black">الدرجة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {assessmentTools.length > 0 ? (
+                                <>
+                                    {/* 1. Continuous Tools Rows */}
+                                    {continuousTools.map((tool) => {
+                                        const grade = currentSemesterGrades.find(g => g.category.trim() === tool.name.trim());
+                                        return (
+                                            <tr key={tool.id}>
+                                                <td className="border border-slate-300 p-3 text-sm font-bold text-right">{teacherInfo?.subject || 'المادة'}</td>
+                                                <td className="border border-slate-300 p-3 text-sm text-center bg-[#ffedd5]">{tool.name}</td>
+                                                <td className="border border-slate-300 p-3 text-sm text-center font-bold font-mono">{grade ? grade.score : '-'}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    
+                                    {/* 2. Sum 60 Row */}
+                                    <tr className="bg-blue-50 font-bold">
+                                        <td colSpan={2} className="border border-slate-300 p-3 text-sm text-center text-blue-900 border-t-2 border-slate-400">المجموع (60)</td>
+                                        <td className="border border-slate-300 p-3 text-sm text-center font-mono text-blue-900 border-t-2 border-slate-400">{continuousSum}</td>
+                                    </tr>
+
+                                    {/* 3. Final Exam Row */}
+                                    {finalTool && (() => {
+                                        const grade = currentSemesterGrades.find(g => g.category.trim() === finalTool.name.trim());
+                                        return (
+                                            <tr key={finalTool.id}>
+                                                <td className="border border-slate-300 p-3 text-sm font-bold text-right">{teacherInfo?.subject || 'المادة'}</td>
+                                                <td className="border border-slate-300 p-3 text-sm text-center bg-[#fce7f3]">{finalTool.name} (40)</td>
+                                                <td className="border border-slate-300 p-3 text-sm text-center font-bold font-mono">{grade ? grade.score : '-'}</td>
+                                            </tr>
+                                        );
+                                    })()}
+                                </>
+                            ) : (
+                                /* Fallback if no tools defined */
+                                currentSemesterGrades.length > 0 ? currentSemesterGrades.map((g, idx) => (
+                                    <tr key={idx}>
+                                        <td className="border border-slate-300 p-3 text-sm font-bold">{g.subject}</td>
+                                        <td className="border border-slate-300 p-3 text-sm text-center">{g.category}</td>
+                                        <td className="border border-slate-300 p-3 text-sm text-center font-bold font-mono">{g.score}</td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={3} className="border border-slate-300 p-4 text-center text-sm text-slate-500">لا توجد درجات مرصودة لهذا الفصل</td>
+                                    </tr>
+                                )
+                            )}
+                        </tbody>
+                        <tfoot>
+                            <tr className="bg-slate-100">
+                                <td colSpan={2} className="border border-slate-300 p-3 text-sm font-black text-right border-t-2 border-black text-black">المجموع الكلي</td>
+                                <td className="border border-slate-300 p-3 text-sm font-black text-center font-mono text-lg border-t-2 border-black text-black">
+                                    {totalScore}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                {/* Attendance Summary and Details */}
+                <div className="mb-8">
+                     <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-slate-800">
+                        <LayoutList className="w-5 h-5 text-indigo-600" />
+                        ملخص الحضور والغياب
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-xs font-bold text-slate-500 block mb-1">أيام الغياب</span>
+                            <span className="text-2xl font-black text-rose-600">{absenceRecords.length}</span>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-xs font-bold text-slate-500 block mb-1">الهروب (التسرب)</span>
+                            <span className="text-2xl font-black text-purple-600">{truantRecords.length}</span>
+                        </div>
+                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-xs font-bold text-slate-500 block mb-1">الحضور</span>
+                            <span className="text-2xl font-black text-emerald-600">{student.attendance.filter(a => a.status === 'present').length}</span>
+                        </div>
+                    </div>
+
+                    {/* Detailed Absence/Truancy Table */}
+                    {(absenceRecords.length > 0 || truantRecords.length > 0) && (
+                        <table className="w-full border-collapse mt-2">
+                            <thead>
+                                <tr className="bg-slate-100">
+                                    <th className="border border-slate-300 p-2 text-xs font-bold text-right w-1/3 text-black">التاريخ</th>
+                                    <th className="border border-slate-300 p-2 text-xs font-bold text-center text-black">الحالة</th>
+                                    <th className="border border-slate-300 p-2 text-xs font-bold text-center text-black">الملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[...absenceRecords, ...truantRecords]
+                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                    .map((rec, idx) => (
+                                    <tr key={idx}>
+                                        <td className="border border-slate-300 p-2 text-xs font-mono">{new Date(rec.date).toLocaleDateString('en-GB')}</td>
+                                        <td className={`border border-slate-300 p-2 text-xs font-bold text-center ${rec.status === 'absent' ? 'text-rose-600' : 'text-purple-600'}`}>
+                                            {rec.status === 'absent' ? 'غياب' : 'تسرب'}
+                                        </td>
+                                        <td className="border border-slate-300 p-2 text-xs text-center text-slate-500">-</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* Behavior Log */}
+                <div className="mb-12">
+                    <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-slate-800">
+                        <Award className="w-5 h-5 text-indigo-600" />
+                        سجل السلوك والملاحظات
+                    </h3>
+                     {behaviors.length > 0 ? (
+                         <div className="space-y-2">
+                             {behaviors.map((b, idx) => (
+                                 <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${b.type === 'positive' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                                     <div className="flex items-center gap-3">
+                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${b.type === 'positive' ? 'bg-emerald-200 text-emerald-700' : 'bg-rose-200 text-rose-700'}`}>
+                                             {b.type === 'positive' ? <Award className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                         </div>
+                                         <div>
+                                             <p className="text-sm font-bold text-slate-800">{b.description}</p>
+                                             <p className="text-[10px] text-slate-500">{new Date(b.date).toLocaleDateString('en-GB')}</p>
+                                         </div>
+                                     </div>
+                                     <span className={`text-sm font-black ${b.type === 'positive' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                         {b.type === 'positive' ? '+' : '-'}{Math.abs(b.points)}
+                                     </span>
+                                     {onUpdateStudent && (
+                                         <button onClick={() => handleDeleteBehavior(b.id)} className="p-1 text-slate-400 hover:text-rose-500 print:hidden">
+                                             <Trash2 className="w-4 h-4" />
+                                         </button>
+                                     )}
+                                 </div>
+                             ))}
+                         </div>
+                     ) : (
+                         <p className="text-center text-sm text-slate-500 py-4 bg-slate-50 rounded-xl border border-dashed border-slate-300">لا توجد ملاحظات سلوكية مسجلة لهذا الفصل</p>
+                     )}
+                </div>
+
+                {/* Signatures */}
+                <div className="flex justify-between items-end pt-8 border-t-2 border-gray-100 relative">
+                     <div className="text-center w-1/3">
+                        <p className="font-bold text-sm mb-8 text-slate-500">معلم المادة</p>
+                        <p className="font-black text-lg">{teacherInfo?.name || '....................'}</p>
+                     </div>
+                     
+                     {/* School Stamp */}
+                     {teacherInfo?.stamp && (
+                         <div className="absolute left-1/2 bottom-2 transform -translate-x-1/2 w-32 opacity-80 mix-blend-multiply">
+                             <img src={teacherInfo.stamp} className="w-full object-contain" alt="Stamp" />
+                         </div>
+                     )}
+
+                     <div className="text-center w-1/3">
+                        <p className="font-bold text-sm mb-8 text-slate-500">مدير المدرسة</p>
+                        <p className="font-black text-lg">....................</p>
+                     </div>
                 </div>
             </div>
         </div>

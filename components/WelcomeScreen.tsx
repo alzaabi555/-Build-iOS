@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Check, ShieldCheck, Zap, LayoutDashboard } from 'lucide-react';
+import { ChevronLeft, Check, ShieldCheck, Zap, LayoutDashboard, ArrowLeft } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 
 interface WelcomeScreenProps {
@@ -16,8 +17,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
             icon: <BrandLogo className="w-32 h-32" showText={false} />,
             title: "مرحباً بك في راصد",
             desc: "المساعد الرقمي الذكي للمعلم العماني المحترف. إدارة متكاملة للفصل الدراسي بلمسة واحدة.",
-            color: "text-[#1e3a8a]",
-            bg: "bg-[#eef2ff]"
+            color: "text-indigo-600",
+            bg: "bg-indigo-50"
         },
         {
             id: 1,
@@ -33,7 +34,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
                     </div>
                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                         <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-2"><Zap className="w-5 h-5"/></div>
-                        <h3 className="font-black text-xs text-slate-800">تقارير شاملة</h3>
+                        <h3 className="font-black text-xs text-slate-800">تحفيز وتنافس</h3>
                     </div>
                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                         <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2"><ShieldCheck className="w-5 h-5"/></div>
@@ -50,7 +51,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
             id: 2,
             icon: <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center shadow-inner"><ShieldCheck className="w-12 h-12" /></div>,
             title: "بياناتك في أمان",
-            desc: "نحن نحترم خصوصيتك. جميع بيانات طلابك وسجلاتك محفوظة محلياً على جهازك فقط ولا يتم مشاركتها سحابياً.\n\nتحياتي لكم / محمد درويش الزعابي",
+            desc: "نحن نحترم خصوصيتك. جميع بيانات طلابك وسجلاتك محفوظة محلياً على جهازك فقط ولا يتم مشاركتها سحابياً.",
             buttonText: "ابدأ التجربة الآن",
             color: "text-emerald-600",
             bg: "bg-emerald-50"
@@ -66,14 +67,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-[#f8fafc] flex flex-col items-center justify-between py-12 px-6 z-[99999] overflow-hidden font-sans">
+        <div className="fixed inset-0 bg-[#f8fafc] flex flex-col items-center justify-between py-12 px-6 z-[99999] overflow-hidden">
             
             {/* Top Indicator */}
             <div className="w-full flex justify-center gap-2 mt-4">
                 {slides.map((s, idx) => (
                     <div 
                         key={idx} 
-                        className={`h-1.5 rounded-full transition-all duration-500 ${step === idx ? 'w-8 bg-[#1e3a8a]' : 'w-2 bg-slate-300'}`}
+                        className={`h-1.5 rounded-full transition-all duration-500 ${step === idx ? 'w-8 bg-indigo-600' : 'w-2 bg-slate-300'}`}
                     />
                 ))}
             </div>
@@ -89,7 +90,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
                         transition={{ duration: 0.4, ease: "easeOut" }}
                         className="flex flex-col items-center text-center w-full"
                     >
-                        <div className="mb-10 relative w-full flex justify-center">
+                        <div className="mb-10 relative">
                             {slides[step].customContent ? slides[step].customContent : (
                                 <motion.div 
                                     initial={{ scale: 0.8, opacity: 0 }}
@@ -104,7 +105,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
                         <h1 className={`text-3xl font-black mb-4 tracking-tight ${slides[step].color}`}>
                             {slides[step].title}
                         </h1>
-                        <p className="text-slate-500 font-medium text-sm leading-relaxed max-w-[90%] whitespace-pre-line">
+                        <p className="text-slate-500 font-medium text-sm leading-relaxed max-w-[85%]">
                             {slides[step].desc}
                         </p>
                     </motion.div>
@@ -115,7 +116,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
             <div className="w-full max-w-md space-y-4">
                 <button 
                     onClick={nextStep}
-                    className="w-full py-4 bg-[#1e3a8a] text-white rounded-2xl font-black text-base shadow-lg shadow-indigo-200/50 active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-[#152c6e]"
+                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-base shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-indigo-700"
                 >
                     {step === slides.length - 1 ? (
                         <>لننطلق <span className="text-xl">🚀</span></>
@@ -129,7 +130,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onFinish }) => {
                         onClick={onFinish}
                         className="w-full py-2 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors"
                     >
-                        تخطى المقدمة
+                        تخطي المقدمة
                     </button>
                 )}
             </div>
