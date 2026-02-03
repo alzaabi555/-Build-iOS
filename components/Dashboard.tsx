@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
@@ -54,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     
+    // State for Menu
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
     // State for Teacher Info Modal
@@ -100,13 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة لجلب الصورة، إذا لم توجد صورة مخصصة تعيد المسار المحلي بناءً على الجنس
-    // استخدام مسار مطلق /assets لضمان العمل في جميع البيئات
-    const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
-        if (avatar && avatar.length > 50) return avatar; // Base64 usually long
-        return gender === 'female' ? '/assets/assets/teacher_woman.png :'./teacher_man.png';
-    };
-
+    // 🎨 دالة الأيقونات
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <span className="text-2xl filter drop-shadow-sm">📚</span>; 
         const name = subjectName.trim().toLowerCase();
@@ -210,10 +204,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (!start || !end) return false;
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        
         const [sh, sm] = start.split(':').map(Number);
         const [eh, em] = end.split(':').map(Number);
+        
         const startMinutes = sh * 60 + sm;
         const endMinutes = eh * 60 + em;
+
         return currentMinutes >= startMinutes && currentMinutes < endMinutes;
     };
 
@@ -222,12 +219,37 @@ const Dashboard: React.FC<DashboardProps> = ({
             const audio = new Audio(BELL_SOUND_URL);
             audio.volume = 1.0;
             await audio.play().catch(e => console.warn('Audio blocked', e));
+
             if (Capacitor.isNativePlatform()) {
                 await LocalNotifications.schedule({
-                    notifications: [{ id: 99999, title: '🔔 تجربة الجرس', body: 'صوت جرس الحصة', schedule: { at: new Date(Date.now() + 1000) }, sound: 'beep.wav' }]
+                    notifications: [{
+                        id: 99999,
+                        title: '🔔 تجربة الجرس',
+                        body: 'هذا مثال على صوت جرس الحصة',
+                        schedule: { at: new Date(Date.now() + 1000) },
+                        sound: 'beep.wav'
+                    }]
                 });
             }
-        } catch (e) { console.error('Test notification failed', e); }
+        } catch (e) {
+            console.error('Test notification failed', e);
+        }
+    };
+
+    // ✅ دالة جلب الصورة (مصححة لتعمل مع assets في الجذر)
+    const getTeacherImage = () => {
+        // إذا كان هناك صورة شخصية مرفوعة (Base64) استخدمها
+        if (teacherInfo.avatar && teacherInfo.avatar.length > 50) return teacherInfo.avatar;
+        
+        // وإلا استخدم الصور من مجلد assets في الجذر
+        // ملاحظة: './assets/...' تعني أن المجلد بجانب ملف index.html الناتج بعد البناء
+        return teacherInfo.gender === 'female' ? './assets/teacher_woman.png' : './assets/teacher_man.png';
+    };
+
+    // ✅ دالة معاينة الصورة داخل المودال
+    const getPreviewImage = () => {
+        if (editAvatar && editAvatar.length > 50) return editAvatar;
+        return editGender === 'female' ? './assets/teacher_woman.png' : './assets/teacher_man.png';
     };
 
     const today = new Date();
@@ -239,9 +261,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-20 text-slate-900 animate-in fade-in duration-500">
             
-            {/* Header Profile */}
+            {/* 1. Header Profile */}
             <header className="bg-[#1e3a8a] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-20 -mx-4 -mt-4 mb-2">
                 <div className="flex items-center justify-between mb-8">
+                    {/* Right: Logo & Welcome */}
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
                             <BrandLogo className="w-6 h-6" showText={false} variant="light" />
@@ -252,39 +275,76 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     </div>
 
+                    {/* Left: Menu & Notification */}
                     <div className="flex items-center gap-2">
+                        
+                        {/* Dropdown Menu */}
                         <div className="relative">
-                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`p-2.5 rounded-xl transition-all border ${showSettingsDropdown ? 'bg-white text-[#1e3a8a] border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}>
+                            <button 
+                                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} 
+                                className={`p-2.5 rounded-xl transition-all border ${showSettingsDropdown ? 'bg-white text-[#1e3a8a] border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+                            >
                                 <Settings className={`w-6 h-6 ${showSettingsDropdown ? 'animate-spin-slow' : ''}`} />
                             </button>
+
                             {showSettingsDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowSettingsDropdown(false)}></div>
+                                    
                                     <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-blue-50 overflow-hidden z-50 animate-in zoom-in-95 slide-in-from-top-2 duration-200 origin-top-left">
                                         <div className="flex flex-col py-1.5">
+                                            {/* Import Schedule */}
                                             <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
-                                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Download className="w-4 h-4 text-blue-600" /></div>
-                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">استيراد الجدول</span><span className="text-[9px] text-slate-400">ملف Excel</span></div>
+                                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                                    <Download className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-xs font-bold text-slate-800">استيراد الجدول</span>
+                                                    <span className="text-[9px] text-slate-400">ملف Excel</span>
+                                                </div>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto text-blue-600"/>}
                                             </button>
                                             <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
+
+                                            {/* Schedule Times */}
                                             <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-slate-600" /></div>
-                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">توقيت الحصص</span><span className="text-[9px] text-slate-400">بداية ونهاية الحصة</span></div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                                    <Clock className="w-4 h-4 text-slate-600" />
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-xs font-bold text-slate-800">توقيت الحصص</span>
+                                                    <span className="text-[9px] text-slate-400">بداية ونهاية الحصة</span>
+                                                </div>
                                             </button>
-                                            <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group">
-                                                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0"><AlarmClock className="w-4 h-4 text-red-500" /></div>
-                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">منبه الحصص</span><span className="text-[9px] text-slate-400">تنبيه تلقائي</span></div>
-                                                <span className={`mr-auto text-[9px] font-bold px-2 py-0.5 rounded-md ${notificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>{notificationsEnabled ? 'ON' : 'OFF'}</span>
+
+                                            {/* Notification Toggle */}
+                                            <button onClick={() => { onToggleNotifications(); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group">
+                                                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                                                    <AlarmClock className="w-4 h-4 text-red-500" />
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-xs font-bold text-slate-800">منبه الحصص</span>
+                                                    <span className="text-[9px] text-slate-400">تنبيه تلقائي</span>
+                                                </div>
+                                                <span className={`mr-auto text-[9px] font-bold px-2 py-0.5 rounded-md ${notificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                                                    {notificationsEnabled ? 'ON' : 'OFF'}
+                                                </span>
                                             </button>
+                                            
+                                            {/* Test Bell */}
                                             <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-t border-slate-50 bg-slate-50/50">
-                                                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0"><PlayCircle className="w-4 h-4 text-slate-500" /></div><span className="text-xs font-bold text-slate-600">تجربة صوت الجرس</span>
+                                                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                                                    <PlayCircle className="w-4 h-4 text-slate-500" />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-600">تجربة صوت الجرس</span>
                                             </button>
                                         </div>
                                     </div>
                                 </>
                             )}
                         </div>
+
+                        {/* Separate Bell Status Icon */}
                         <button onClick={onToggleNotifications} className={`p-2.5 rounded-full hover:bg-white/10 transition-colors relative group backdrop-blur-md border border-white/10 ${notificationsEnabled ? 'bg-white/20' : ''}`}>
                             <Bell className={`w-6 h-6 ${notificationsEnabled ? 'fill-white' : 'text-white'}`} />
                             {notificationsEnabled && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#1e3a8a]"></span>}
@@ -292,11 +352,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
 
-                {/* Teacher Info Section (New Layout) */}
-                <div className="flex items-center gap-5 mb-2 relative">
-                    <div className="w-20 h-20 rounded-[1.2rem] bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0 relative group">
+                {/* Teacher Info Section */}
+                <div className="flex items-center gap-5 mb-2 relative group cursor-pointer" onClick={() => setShowEditModal(true)}>
+                    <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0 relative">
+                        {/* ✅ استخدام الدالة المصححة للصور */}
                         <img 
-                            src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
+                            src={getTeacherImage()} 
                             className="w-full h-full object-cover" 
                             alt="Avatar" 
                             onError={(e) => {
@@ -304,34 +365,20 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
                             }}
                         />
-                        <div className="w-full h-full hidden items-center justify-center text-3xl font-black text-indigo-600 bg-indigo-50">
+                        <div className="w-full h-full hidden items-center justify-center text-2xl font-black text-indigo-600 bg-indigo-50">
                             {teacherInfo.name ? teacherInfo.name.charAt(0) : 'T'}
                         </div>
-                    </div>
-                    
-                    <div className="flex flex-col flex-1 gap-1">
-                        <div className="flex items-start justify-between w-full">
-                            <div>
-                                <h2 className="text-2xl font-bold leading-tight">{teacherInfo.name || 'مرحباً يا معلم'}</h2>
-                                <p className="text-xs text-blue-200 font-medium opacity-90 mt-1 flex items-center gap-1">
-                                    <School className="w-3 h-3"/> {teacherInfo.school || 'المدرسة'}
-                                </p>
-                            </div>
-                            
-                            {/* زر التعديل المنفصل */}
-                            <button 
-                                onClick={() => setShowEditModal(true)} 
-                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-all border border-white/10 active:scale-95 shadow-sm"
-                                title="تعديل البيانات"
-                            >
-                                <Edit3 className="w-5 h-5" />
-                            </button>
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Edit3 className="w-6 h-6 text-white" />
                         </div>
-                        
-                        <div className="flex items-center gap-2 mt-2">
-                             <span className="text-[10px] bg-blue-500/30 px-2 py-0.5 rounded-lg border border-blue-400/30 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                                {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}
+                    </div>
+                    <div className="flex flex-col">
+                        <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo.name || 'مرحباً يا معلم'}</h2>
+                        <div className="flex flex-col gap-0.5 text-blue-100 text-xs font-medium opacity-90">
+                             <span className="flex items-center gap-1"><School className="w-3 h-3"/> {teacherInfo.school || 'المدرسة'}</span>
+                             <span className="flex items-center gap-1 text-[10px] opacity-70">
+                                <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                                {currentSemester === '1' ? 'الفصل الدراسي الأول' : 'الفصل الدراسي الثاني'}
                              </span>
                         </div>
                     </div>
@@ -350,28 +397,42 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
                 
+                {/* List View Schedule with Smart Icons */}
                 <section className="space-y-3 pb-4">
                     {todaySchedule.periods && todaySchedule.periods.map((cls, idx) => {
                         if (!cls) return null;
+
                         const pt = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
                         const isActive = isToday && checkActivePeriod(pt.startTime, pt.endTime);
+
                         return (
-                            <div key={idx} className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-all relative overflow-hidden ${isActive ? 'ring-2 ring-emerald-400 shadow-xl scale-[1.02]' : ''}`}>
+                            <div 
+                                key={idx} 
+                                className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-all relative overflow-hidden ${isActive ? 'ring-2 ring-emerald-400 shadow-xl scale-[1.02]' : ''}`}
+                            >
                                 {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>}
+
                                 <div className="flex items-center gap-4">
                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-colors ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
                                         {getSubjectIcon(cls)}
                                     </div>
+
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h4 className="text-lg font-black text-slate-900 line-clamp-1">{cls}</h4>
                                             {isActive && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold animate-pulse">الآن</span>}
                                         </div>
-                                        <p className="text-xs text-slate-500 font-bold mt-0.5">الحصة {idx + 1} {teacherInfo?.school ? ` • ${teacherInfo.school}` : ''}</p>
+                                        <p className="text-xs text-slate-500 font-bold mt-0.5">
+                                            الحصة {idx + 1} 
+                                            {teacherInfo?.school ? ` • ${teacherInfo.school}` : ''}
+                                        </p>
                                     </div>
                                 </div>
+
                                 {isActive ? (
-                                    <button onClick={() => onNavigate('attendance')} className="bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-1">تحضير <ChevronLeft className="w-3 h-3"/></button>
+                                    <button onClick={() => onNavigate('attendance')} className="bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-1">
+                                        تحضير <ChevronLeft className="w-3 h-3"/>
+                                    </button>
                                 ) : (
                                     <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 min-w-[70px] text-center">
                                         <span className="text-xs font-black text-slate-600 block">{pt.startTime}</span>
@@ -381,8 +442,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         );
                     })}
+                    
                     {todaySchedule.periods.every(p => !p) && (
-                        <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-sm font-bold text-gray-400">لا توجد حصص لهذا اليوم</p></div>
+                        <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
+                            <p className="text-sm font-bold text-gray-400">لا توجد حصص لهذا اليوم</p>
+                        </div>
                     )}
                 </section>
             </div>
@@ -392,10 +456,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">تعديل البيانات</h3>
                     
-                    {/* Image Preview in Modal */}
+                    {/* ✅ معاينة الصورة داخل المودال */}
                     <div className="w-24 h-24 mx-auto mb-4 relative group">
                         <img 
-                            src={getDisplayImage(editAvatar, editGender)}
+                            src={getPreviewImage()}
                             className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md"
                             alt="Profile"
                         />
@@ -406,13 +470,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                            <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="الاسم" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
-                            <input value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="المدرسة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                            <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="الاسم" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800" />
+                            <input value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="المدرسة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800" />
                         </div>
-                        <input value={editSubject} onChange={e => setEditSubject(e.target.value)} placeholder="المادة" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                        <input value={editSubject} onChange={e => setEditSubject(e.target.value)} placeholder="المادة" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800" />
                         <div className="grid grid-cols-2 gap-3">
-                            <input value={editGovernorate} onChange={e => setEditGovernorate(e.target.value)} placeholder="المحافظة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
-                            <input value={editAcademicYear} onChange={e => setEditAcademicYear(e.target.value)} placeholder="العام الدراسي" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                            <input value={editGovernorate} onChange={e => setEditGovernorate(e.target.value)} placeholder="المحافظة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800" />
+                            <input value={editAcademicYear} onChange={e => setEditAcademicYear(e.target.value)} placeholder="العام الدراسي" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800" />
                         </div>
 
                         {/* الفصل الدراسي والجنس */}
@@ -430,13 +494,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                         {/* الصور والشعارات */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 mt-2">
                              <div className="flex gap-2">
-                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 flex items-center justify-center gap-2 border border-indigo-100 transition-colors">
-                                    <Camera className="w-4 h-4"/> صورتك
+                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 flex items-center justify-center gap-2 border border-indigo-100">
+                                    <User className="w-4 h-4"/> صورتك
                                 </button>
-                                <button onClick={() => stampInputRef.current?.click()} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs hover:bg-blue-100 flex items-center justify-center gap-2 border border-blue-100 transition-colors">
+                                <button onClick={() => stampInputRef.current?.click()} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs hover:bg-blue-100 flex items-center justify-center gap-2 border border-blue-100">
                                     <Check className="w-4 h-4"/> الختم
                                 </button>
-                                <button onClick={() => ministryLogoInputRef.current?.click()} className="flex-1 py-3 bg-amber-50 text-amber-600 rounded-xl font-bold text-xs hover:bg-amber-100 flex items-center justify-center gap-2 border border-amber-100 transition-colors">
+                                <button onClick={() => ministryLogoInputRef.current?.click()} className="flex-1 py-3 bg-amber-50 text-amber-600 rounded-xl font-bold text-xs hover:bg-amber-100 flex items-center justify-center gap-2 border border-amber-100">
                                     <School className="w-4 h-4"/> الشعار
                                 </button>
                              </div>
@@ -445,7 +509,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                              <input type="file" ref={ministryLogoInputRef} onChange={handleMinistryLogoUpload} className="hidden" accept="image/*"/>
                         </div>
 
-                        <button onClick={handleSaveInfo} className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all active:scale-95">حفظ التغييرات</button>
+                        <button onClick={handleSaveInfo} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all">حفظ التغييرات</button>
                     </div>
                 </div>
             </Modal>
