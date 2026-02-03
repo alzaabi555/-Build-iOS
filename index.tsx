@@ -1,15 +1,17 @@
-
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
+// ✅ ضروري جداً: استيراد ملف التصميم هنا لتفعيله
+import './index.css'; 
+
 const container = document.getElementById('root');
 
+// دالة إخفاء شاشة التحميل
 const hideLoader = () => {
   const loader = document.getElementById('initial-loader');
   if (loader) {
     loader.style.opacity = '0';
-    // Remove quickly to prevent blocking interaction
     setTimeout(() => loader.remove(), 300);
   }
 };
@@ -22,13 +24,13 @@ if (container) {
         <App />
       </React.StrictMode>
     );
-    // Hide loader immediately after render works
+    
+    // إخفاء اللودر بمجرد نجاح الرندر
     requestAnimationFrame(() => {
         setTimeout(hideLoader, 100);
     });
   } catch (error) {
     console.error("Failed to mount app:", error);
-    // The error will be caught by window.onerror in index.html
     throw error; 
   }
 }
