@@ -236,20 +236,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    // ✅ دالة جلب الصورة (مصححة لتعمل مع assets في الجذر)
+    // ✅ دالة جلب الصورة (مسارات مطلقة من Root)
     const getTeacherImage = () => {
-        // إذا كان هناك صورة شخصية مرفوعة (Base64) استخدمها
         if (teacherInfo.avatar && teacherInfo.avatar.length > 50) return teacherInfo.avatar;
         
-        // وإلا استخدم الصور من مجلد assets في الجذر
-        // ملاحظة: './assets/...' تعني أن المجلد بجانب ملف index.html الناتج بعد البناء
-        return teacherInfo.gender === 'female' ? './assets/teacher_woman.png' : './assets/teacher_man.png';
+        // استخدام المسار المطلق (يبدأ بـ /) للإشارة إلى مجلد public/assets
+        return teacherInfo.gender === 'female' ? '/assets/teacher_woman.png' : '/assets/teacher_man.png';
     };
 
-    // ✅ دالة معاينة الصورة داخل المودال
+    // ✅ دالة المعاينة
     const getPreviewImage = () => {
         if (editAvatar && editAvatar.length > 50) return editAvatar;
-        return editGender === 'female' ? './assets/teacher_woman.png' : './assets/teacher_man.png';
+        return editGender === 'female' ? '/assets/teacher_woman.png' : '/assets/teacher_man.png';
     };
 
     const today = new Date();
