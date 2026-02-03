@@ -1,53 +1,29 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown
+  School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown, User
 } from 'lucide-react';
 import Modal from './Modal';
 import * as XLSX from 'xlsx';
 import BrandLogo from './BrandLogo';
 
 // ============================================================================
-// 🎨 تحسين الأداء: استخدام Memo لمنع إعادة الرسم غير الضروري
+// 🧪 نسخة اختبار: تم استبدال الـ SVG الثقيل بمكونات خفيفة جداً
 // ============================================================================
 
-const OmaniMaleTeacherAvatar = memo(() => (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" shapeRendering="geometricPrecision">
-        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-        <path d="M20 115C20 90 100 90 100 115V120H20V115Z" fill="white" />
-        <path d="M20 115C20 85 40 80 60 80C80 80 100 85 100 115" stroke="#E2E8F0" strokeWidth="1" />
-        <rect x="48" y="70" width="24" height="20" fill="#EBB082" />
-        <circle cx="60" cy="60" r="24" fill="#EBB082" />
-        <path d="M38 60C38 75 45 84 60 84C75 84 82 75 82 60" fill="#EBB082" stroke="#1E293B" strokeWidth="0.5" strokeOpacity="0.2" />
-        <path d="M45 80Q60 88 75 80" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-        <path d="M32 50C32 30 40 25 60 25C80 25 88 30 88 50H32Z" fill="#F8FAFC" />
-        <path d="M30 48C30 35 40 32 60 32C80 32 90 35 90 48" fill="none" stroke="#2563EB" strokeWidth="8" strokeLinecap="round" />
-        <path d="M32 42C32 35 45 30 60 30C75 30 88 35 88 42" fill="none" stroke="#1E40AF" strokeWidth="4" strokeDasharray="4 2" />
-        <path d="M30 50H90" stroke="#F1F5F9" strokeWidth="2" />
-        <path d="M50 58H56" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
-        <path d="M64 58H70" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="53" cy="62" r="2" fill="#1E293B" />
-        <circle cx="67" cy="62" r="2" fill="#1E293B" />
-        <path d="M56 72Q60 74 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-));
+const OmaniMaleTeacherAvatar = () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-blue-50 text-blue-900">
+        <span className="text-3xl">👨‍🏫</span>
+        <span className="text-[8px] font-bold mt-1">معلم</span>
+    </div>
+);
 
-const OmaniFemaleTeacherAvatar = memo(() => (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" shapeRendering="geometricPrecision">
-        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-        <path d="M25 115C25 90 95 90 95 115V120H25V115Z" fill="#1E293B" />
-        <path d="M60 90V120" stroke="#334155" strokeWidth="1" /> 
-        <circle cx="60" cy="58" r="20" fill="#EBB082" />
-        <path d="M35 55C35 25 45 20 60 20C75 20 85 25 85 55V85C85 95 35 95 35 85V55Z" fill="#1E293B" />
-        <path d="M40 55C40 40 48 35 60 35C72 35 80 40 80 55" stroke="#334155" strokeWidth="1" />
-        <circle cx="54" cy="58" r="2" fill="#1E293B" />
-        <circle cx="66" cy="58" r="2" fill="#1E293B" />
-        <path d="M57 66Q60 68 63 66" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="54" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
-        <circle cx="66" cy="58" r="5" stroke="#94A3B8" strokeWidth="1" fill="none" />
-        <path d="M59 58H61" stroke="#94A3B8" strokeWidth="1" />
-    </svg>
-));
+const OmaniFemaleTeacherAvatar = () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-pink-50 text-pink-900">
+        <span className="text-3xl">👩‍🏫</span>
+        <span className="text-[8px] font-bold mt-1">معلمة</span>
+    </div>
+);
 
 interface DashboardProps {
     students: any[];
@@ -81,17 +57,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     periodTimes, setPeriodTimes, notificationsEnabled,
     onToggleNotifications, currentSemester, onSemesterChange, onNavigate
 }) => {
-    // حالة لتأخير عرض العناصر الثقيلة
-    const [isHeavyUIReady, setIsHeavyUIReady] = useState(false);
-
-    useEffect(() => {
-        // تأخير بسيط للسماح للصفحة بالتحميل أولاً
-        const timer = setTimeout(() => {
-            setIsHeavyUIReady(true);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, []);
-
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
@@ -199,27 +164,18 @@ const Dashboard: React.FC<DashboardProps> = ({
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
         const name = subjectName.trim().toLowerCase();
-        const iconStyle = "text-xl drop-shadow-sm filter transform transition-transform hover:scale-110 cursor-default";
-        if (name.includes('اسلام') || name.includes('إسلام')) return <span className={iconStyle}>🕌</span>;
-        if (name.includes('عربي') || name.includes('لغتي')) return <span className={iconStyle}>📜</span>;
-        if (name.includes('رياضيات') || name.includes('math')) return <span className={iconStyle}>📐</span>;
-        if (name.includes('علوم') || name.includes('science')) return <span className={iconStyle}>🧪</span>;
-        if (name.includes('دراسات') || name.includes('تاريخ')) return <span className={iconStyle}>🌍</span>;
-        if (name.includes('حاسوب') || name.includes('it')) return <span className={iconStyle}>💻</span>;
-        if (name.includes('رياضة') || name.includes('pe')) return <span className={iconStyle}>⚽</span>;
-        if (name.includes('موسيقى')) return <span className={iconStyle}>🎵</span>;
-        if (name.includes('فنون')) return <span className={iconStyle}>🎨</span>;
-        if (name.includes('نجليزي') || name.includes('english')) return <span className={iconStyle}>🅰️</span>;
-        if (name.includes('حياتية')) return <span className={iconStyle}>🌱</span>;
-        return <span className={iconStyle}>📚</span>;
+        
+        // استبدال الأيقونات الثقيلة بإيموجي بسيط للتجربة
+        if (name.includes('اسلام')) return <span>🕌</span>;
+        if (name.includes('عربي')) return <span>📜</span>;
+        if (name.includes('رياضيات')) return <span>📐</span>;
+        if (name.includes('علوم')) return <span>🧪</span>;
+        
+        return <span>📚</span>;
     };
 
-    // ✅ دالة الأفاتار مع التحميل المتأخر
+    // ✅ دالة تحديد صورة المعلم (الآن ترجع مكونات خفيفة جداً)
     const getTeacherAvatar = () => {
-        // إذا لم يكن جاهزاً بعد، اعرض دائرة فارغة (Skeleton)
-        if (!isHeavyUIReady) {
-            return <div className="w-full h-full bg-slate-100 rounded-full animate-pulse border-2 border-white/50" />;
-        }
         return teacherInfo?.gender === 'female' ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
     };
 
@@ -297,6 +253,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
+                        {/* هنا تظهر الشخصيات الجديدة الخفيفة */}
                         {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
                     </div>
                     <div className="flex flex-col">
@@ -409,6 +366,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setEditGender('female')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'female' ? 'bg-white border-pink-200 text-pink-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلمة 👩‍🏫</button>
                         </div>
                     </div>
+                    {/* ... بقية المودال كما هو ... */}
                     <div className="flex gap-4 justify-center mb-6 overflow-x-auto pb-4 custom-scrollbar">
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md glass-card bg-white">
@@ -417,6 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, setEditAvatar)} accept="image/*" className="hidden" />
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الصورة</p>
                         </div>
+                        {/* بقية الأيقونات (الختم، الوزارة) */}
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => stampInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
                                 {editStamp ? <img src={editStamp} className="w-full h-full object-contain p-2"/> : <span className="text-gray-300 font-bold">ختم</span>}
@@ -432,6 +391,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
+                    {/* الحقول النصية */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
@@ -474,6 +434,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <button onClick={() => setScheduleTab('timing')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>التوقيت</button>
                         <button onClick={() => setScheduleTab('classes')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>الحصص</button>
                     </div>
+                    {/* ... محتوى الجدول كما هو (تم اختصاره للعرض) ... */}
                     {scheduleTab === 'timing' ? (
                         <>
                             <div className="mb-3 px-1">
