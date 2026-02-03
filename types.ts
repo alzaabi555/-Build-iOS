@@ -39,25 +39,25 @@ export interface AssessmentTool {
   id: string;
   name: string;
   maxScore: number;
-  weight: number; // ✅ تمت الإضافة
+  weight: number; 
 }
 
 export interface GradeRecord {
   id?: string;
-  toolId: string;
+  toolId?: string; // جعلناها اختيارية لتوافق الكود القديم والجديد
   score: number;
   date: string;
-  category?: string;
+  category: string; // ✅ ضروري جداً لصفحة الدرجات
   semester?: number | string;
-  subject?: string; // ✅ تمت الإضافة
+  subject?: string;
+  maxScore: number; // ✅ ضروري للحسابات
 }
 
-// تعريفات الوزارة (تم توسيعها لتشمل كل الحقول المفقودة)
+// تعريفات الوزارة (كما هي)
 export interface MinistrySession {
   url: string;
   token: string;
   expiry: number;
-  // 👇 الحقول الجديدة التي يطلبها الكود
   userId?: string;
   auth?: string;
   userRoleId?: string;
@@ -67,14 +67,14 @@ export interface MinistrySession {
 
 export interface StdsAbsDetail {
   studentId?: string;
-  StudentId?: string; // ✅ أضفنا الاثنين لتجنب الخطأ
+  StudentId?: string; 
   date: string;
   status: string;
 }
 
 export interface StdsGradeDetail {
   studentId?: string;
-  StudentId?: string; // ✅ أضفنا الاثنين
+  StudentId?: string; 
   subject: string;
   grade: number;
 }
@@ -83,7 +83,6 @@ export interface ExamPaper {
   id: string;
   title: string;
   totalScore: number;
-  // 👇 الحقول الجديدة للامتحانات
   gradingData?: any;
   fileData?: string;
 }
@@ -92,10 +91,10 @@ export interface Student {
   id: string;
   name: string;
   classes: string[]; 
-  grade?: string;     
+  grade?: string;      
   parentPhone?: string; 
   avatar?: string;
-  gender: 'male' | 'female';
+  gender: 'male' | 'female'; // ✅ هذا السطر هو سر ظهور الشخصيات
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
   grades: GradeRecord[];
@@ -117,4 +116,17 @@ export interface CertificateSettings {
   bodyText: string;
   showDefaultDesign: boolean;
   backgroundImage?: string;
+}
+
+// ✅✅✅ هذا هو الجزء الذي كان ناقصاً وسبب المشكلة!
+export interface TeacherInfo {
+  name: string;
+  school: string;
+  subject: string;
+  governorate: string;
+  avatar?: string;
+  stamp?: string;
+  ministryLogo?: string;
+  academicYear?: string;
+  gender?: 'male' | 'female'; // ✅ ضروري جداً للمعلم
 }
