@@ -16,6 +16,8 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  /* منع السحب للتحديث في الموبايل لأنه يسبب مشاكل في العرض */
+  overscroll-behavior-y: none;
 }
 
 /* تحسين شريط التمرير */
@@ -27,3 +29,36 @@ body {
 /* منطقة الآيفون الآمنة */
 .safe-area-top { padding-top: env(safe-area-inset-top); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ============================================================ */
+/* 🛡️ SAFE MODE: وضع تشخيص الشاشة البيضاء (Diagnostic Mode)     */
+/* ============================================================ */
+/* هذا الكود يقوم بتخفيف الحمل على معالج الرسوميات (GPU) لأقصى درجة */
+
+* {
+  /* 1. قتل تأثير الزجاج (Backdrop Filter) - أثقل عملية على الآيفون */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+
+  /* 2. إيقاف جميع الحركات والأنيميشن */
+  animation: none !important;
+  transition: none !important;
+
+  /* 3. إزالة الظلال والشفافيات المعقدة */
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* 4. إصلاح الخلفيات الشفافة لتصبح مرئية (Flat Design) */
+/* أي عنصر كان يعتمد على الشفافية سيصبح أبيضاً بحدود رمادية */
+.bg-white\/10, .bg-white\/20, .bg-white\/30, .bg-white\/95, .backdrop-blur-md, .backdrop-blur-xl {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    opacity: 1 !important;
+}
+
+/* 5. ضمان ظهور الصور والأيقونات */
+svg, img {
+    opacity: 1 !important;
+    filter: none !important;
+}
