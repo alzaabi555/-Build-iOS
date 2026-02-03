@@ -1,46 +1,56 @@
 {
   "name": "com.madrasati.app",
   "version": "3.7.6",
-  "homepage": "./",
-  "description": "تطبيق راصد",
-  "author": "Mohammed Al-Zaabi",
-  "private": true,
+  "description": "تطبيق راصد - Teacher Assistant App",
+  "main": "index.tsx",
   "scripts": {
+    "start": "vite",
     "dev": "vite",
-    "build": "node -e \"require('fs').mkdirSync('www', {recursive: true})\" && npx tailwindcss -i ./index.css -o ./www/index.css --minify && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --target=es2020 --loader:.js=jsx --define:process.env.NODE_ENV=\\\"production\\\" && node ./copy-assets.js",
-    "sync": "npx cap sync"
+    "build": "node -e \"require('fs').mkdirSync('www', {recursive: true})\" && npx tailwindcss -i ./index.css -o ./www/index.css --minify && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --target=es2020 --loader:.js=jsx --loader:.png=file --loader:.svg=file --define:process.env.NODE_ENV=\\\"production\\\" && node ./copy-assets.js",
+    "preview": "vite preview",
+    "sync": "npx cap sync",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
-    "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.0.0",
     "@capacitor/ios": "^6.0.0",
-    "@capacitor/filesystem": "^6.0.0",
-    "@capacitor/browser": "^6.0.0",
     "@capacitor/preferences": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor/clipboard": "^6.0.0",
-    "@capacitor/local-notifications": "^6.0.0",
-    "lucide-react": "^0.469.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.0",
-    "tailwindcss": "^3.4.1",
-    "recharts": "^2.13.3",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
     "xlsx": "^0.18.5",
-    "framer-motion": "^11.15.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.2",
-    "html2pdf.js": "^0.10.1",
-    "pdfjs-dist": "^3.11.174",
-    "dompurify": "^3.0.8",
-    "canvg": "^4.0.1",
-    "react-to-print": "^3.0.0"
+    "framer-motion": "^11.0.8",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^6.0.0",
-    "esbuild": "^0.24.0",
-    "vite": "^5.1.4"
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "esbuild": "^0.20.1",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.4.2",
+    "vite": "^5.1.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
