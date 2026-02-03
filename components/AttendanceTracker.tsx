@@ -10,9 +10,10 @@ import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 
 // ============================================================================
-// ✅ 1. الشخصيات العمانية (كما هي بدون تغيير)
+// ✅ 1. الشخصيات العمانية (تم التوحيد مع باقي التطبيق)
 // ============================================================================
 
+// 👦 الولد العماني (فيكتور)
 const OmaniBoyAvatarSVG = () => (
     <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
         <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
@@ -33,6 +34,7 @@ const OmaniBoyAvatarSVG = () => (
     </svg>
 );
 
+// 👧 البنت العمانية (تقبل لون الزي)
 const OmaniGirlAvatarSVG = ({ uniformColor }: { uniformColor: 'blue' | 'maroon' }) => {
     const primaryColor = uniformColor === 'blue' ? '#2563EB' : '#9F1239';
     const secondaryColor = uniformColor === 'blue' ? '#1E40AF' : '#881337';
@@ -90,7 +92,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
   
-  // ✅ حالة البحث الجديدة
+  // ✅ حالة البحث
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -98,6 +100,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   
   const [currentSessionInfo, setCurrentSessionInfo] = useState<{period: string, time: string}>({period: '', time: ''});
 
+  // ✅ قراءة لون الزي الموحد من الذاكرة لضمان التطابق
   const girlUniformColor = (localStorage.getItem('rased_girl_uniform') as 'blue' | 'maroon') || 'blue';
 
   useEffect(() => {
@@ -416,6 +419,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
                                     {/* Avatar Center */}
                                     <div className="w-20 h-20 rounded-full border-4 border-slate-50 shadow-inner overflow-hidden bg-slate-50 mb-3 flex-shrink-0">
+                                        {/* ✅ تم تحديث الأفاتار هنا ليقبل لون الزي */}
                                         {getStudentAvatar(student, girlUniformColor)}
                                     </div>
                                     
