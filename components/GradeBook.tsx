@@ -9,7 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 
 // ============================================================================
-// ✅ 1. الشخصيات العمانية (تم التوحيد مع باقي التطبيق)
+// ✅ 1. الشخصيات العمانية (تم التوحيد)
 // ============================================================================
 
 // 👦 الولد العماني (فيكتور)
@@ -68,7 +68,7 @@ const getStudentAvatar = (student: Student, girlUniform: 'blue' | 'maroon' = 'bl
 };
 
 // ============================================================================
-// بقية الأيقونات (لم يتم لمسها)
+// بقية الأيقونات (لم يتم لمسها - كما طلبت)
 // ============================================================================
 const Icon3DGradingConfig = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradCalc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient><filter id="shadowCalc" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" /><feOffset dx="1" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="15" width="60" height="70" rx="10" fill="url(#gradCalc)" filter="url(#shadowCalc)" /><rect x="30" y="25" width="40" height="15" rx="4" fill="#dbeafe" /><circle cx="35" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="35" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="70" r="5" fill="#fbbf24" /></svg>);
 const Icon3DMenu = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradMenu" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#f1f5f9" /></linearGradient><filter id="shadowMenu" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" /><feOffset dx="0" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="25" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="45" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="65" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /></svg>);
