@@ -7,23 +7,7 @@ import Modal from './Modal';
 import * as XLSX from 'xlsx';
 import BrandLogo from './BrandLogo';
 
-// ============================================================================
-// 🧪 نسخة اختبار: تم استبدال الـ SVG الثقيل بمكونات خفيفة جداً
-// ============================================================================
-
-const OmaniMaleTeacherAvatar = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-blue-50 text-blue-900">
-        <span className="text-3xl">👨‍🏫</span>
-        <span className="text-[8px] font-bold mt-1">معلم</span>
-    </div>
-);
-
-const OmaniFemaleTeacherAvatar = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-pink-50 text-pink-900">
-        <span className="text-3xl">👩‍🏫</span>
-        <span className="text-[8px] font-bold mt-1">معلمة</span>
-    </div>
-);
+// 🛑 تم حذف مكونات الشخصيات (SVG) نهائياً لعزل المشكلة
 
 interface DashboardProps {
     students: any[];
@@ -75,38 +59,42 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
-    const [editName, setEditName] = useState(teacherInfo?.name || '');
-    const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
-    const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
-    const [editGovernorate, setEditGovernorate] = useState(teacherInfo?.governorate || '');
-    const [editAvatar, setEditAvatar] = useState(teacherInfo?.avatar || '');
-    const [editStamp, setEditStamp] = useState(teacherInfo?.stamp || '');
-    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo || '');
-    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
-    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
-    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
+    // State for Edit Form
+    const [editName, setEditName] = useState('');
+    const [editSchool, setEditSchool] = useState('');
+    const [editSubject, setEditSubject] = useState('');
+    const [editGovernorate, setEditGovernorate] = useState('');
+    const [editAvatar, setEditAvatar] = useState('');
+    const [editStamp, setEditStamp] = useState('');
+    const [editMinistryLogo, setEditMinistryLogo] = useState('');
+    const [editAcademicYear, setEditAcademicYear] = useState('');
+    const [editSemester, setEditSemester] = useState<'1' | '2'>('1');
+    const [editGender, setEditGender] = useState<'male' | 'female'>('male');
 
+    // ✅ Safe Effect: تحديث البيانات فقط عند وجود teacherInfo
     useEffect(() => {
-        setEditName(teacherInfo?.name || '');
-        setEditSchool(teacherInfo?.school || '');
-        setEditSubject(teacherInfo?.subject || '');
-        setEditGovernorate(teacherInfo?.governorate || '');
-        setEditAvatar(teacherInfo?.avatar || '');
-        setEditStamp(teacherInfo?.stamp || '');
-        setEditMinistryLogo(teacherInfo?.ministryLogo || '');
-        setEditAcademicYear(teacherInfo?.academicYear || '');
-        setEditSemester(currentSemester);
-        setEditGender(teacherInfo?.gender || 'male');
+        if (teacherInfo) {
+            setEditName(teacherInfo.name || '');
+            setEditSchool(teacherInfo.school || '');
+            setEditSubject(teacherInfo.subject || '');
+            setEditGovernorate(teacherInfo.governorate || '');
+            setEditAvatar(teacherInfo.avatar || '');
+            setEditStamp(teacherInfo.stamp || '');
+            setEditMinistryLogo(teacherInfo.ministryLogo || '');
+            setEditAcademicYear(teacherInfo.academicYear || '');
+            setEditSemester(currentSemester || '1');
+            setEditGender(teacherInfo.gender || 'male');
+        }
     }, [teacherInfo, currentSemester]);
 
     useEffect(() => {
         if (showScheduleModal) {
-            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes)));
-            setTempSchedule(JSON.parse(JSON.stringify(schedule)));
+            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes || [])));
+            setTempSchedule(JSON.parse(JSON.stringify(schedule || [])));
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // محرك الإشعارات
+    // Notification Engine
     useEffect(() => {
         if (!notificationsEnabled) return;
         if (Notification.permission === 'default') { Notification.requestPermission().catch(() => {}); }
@@ -118,9 +106,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             if (periodIndex !== -1) {
                 lastAlertTime.current = currentTime; 
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                audio.play().catch(e => console.log('Audio autoplay blocked by iOS:', e));
+                audio.play().catch(() => {});
                 if (Notification.permission === 'granted') {
-                    new Notification('🔔 بداية الحصة', { body: `بدأت الحصة ${periodIndex + 1} الآن`, icon: '/icon.png' });
+                    new Notification('🔔 بداية الحصة', { body: `بدأت الحصة ${periodIndex + 1} الآن` });
                 }
             }
         };
@@ -129,9 +117,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     }, [notificationsEnabled, periodTimes]);
 
     const handleBellClick = () => {
-        const unlockAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        unlockAudio.volume = 0; unlockAudio.play().catch(() => {});
-        if (Notification.permission !== 'granted') Notification.requestPermission();
         onToggleNotifications();
     };
 
@@ -163,20 +148,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
-        const name = subjectName.trim().toLowerCase();
-        
-        // استبدال الأيقونات الثقيلة بإيموجي بسيط للتجربة
-        if (name.includes('اسلام')) return <span>🕌</span>;
-        if (name.includes('عربي')) return <span>📜</span>;
-        if (name.includes('رياضيات')) return <span>📐</span>;
-        if (name.includes('علوم')) return <span>🧪</span>;
-        
-        return <span>📚</span>;
-    };
-
-    // ✅ دالة تحديد صورة المعلم (الآن ترجع مكونات خفيفة جداً)
-    const getTeacherAvatar = () => {
-        return teacherInfo?.gender === 'female' ? <OmaniFemaleTeacherAvatar /> : <OmaniMaleTeacherAvatar />;
+        return <span className="text-xl">📚</span>;
     };
 
     const handleSaveInfo = () => {
@@ -226,7 +198,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="bg-[#f8fafc] text-slate-900 min-h-screen pb-24 font-sans animate-in fade-in duration-500">
-            
             {/* Header */}
             <header className="bg-[#1e3a8a] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-10">
                 <div className="flex items-center justify-between mb-8">
@@ -239,7 +210,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[10px] text-blue-200 font-bold opacity-80">لوحة تحكم المعلم</p>
                         </div>
                     </div>
-
                     <div className="flex items-center gap-2">
                         <button onClick={() => setShowEditModal(true)} className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all active:scale-95 group" title="تعديل بيانات المعلم">
                             <span className="text-xl drop-shadow-md group-hover:scale-110 transition-transform block">✏️</span>
@@ -253,8 +223,11 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {/* هنا تظهر الشخصيات الجديدة الخفيفة */}
-                        {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
+                        {/* 🛑 تم تعطيل الصور نهائياً هنا واستبدالها برمز ثابت */}
+                        {teacherInfo?.avatar ? 
+                            <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : 
+                            <div className="w-full h-full bg-slate-200 flex items-center justify-center text-3xl">👤</div>
+                        }
                     </div>
                     <div className="flex flex-col">
                         <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo?.name || 'مرحباً يا معلم'}</h2>
@@ -266,12 +239,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
 
+                {/* بقية الهيدر كما هو */}
                 <div className="flex items-center justify-between mt-8 relative">
                     <h3 className="text-xl font-extrabold flex items-center gap-2 text-white">
                         <span className="w-1.5 h-6 bg-blue-400 rounded-full"></span>
                         جدول اليوم
                     </h3>
-                    
                     <div className="flex items-center gap-2">
                         <div className="relative z-50">
                             <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`flex items-center justify-center w-9 h-9 rounded-xl border border-white/20 hover:bg-white/20 transition-all group ${showSettingsDropdown ? 'bg-white' : 'bg-white/10'}`}>
@@ -287,12 +260,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                 <span className="text-xs font-bold text-slate-700">استيراد الجدول</span>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto"/>}
                                             </button>
-                                            
                                             <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏱️</span>
                                                 <span className="text-xs font-bold text-slate-700">ضبط توقيت الجدول</span>
                                             </button>
-                                            
                                             <button onClick={() => { handleBellClick(); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group">
                                                 <span className="text-lg drop-shadow-sm group-hover:scale-110 transition-transform">⏰</span>
                                                 <span className="text-xs font-bold text-slate-700">منبه الحصص</span>
@@ -315,7 +286,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     if (!cls) return null;
                     const pt = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
                     const isActive = isToday && checkActivePeriod(pt.startTime, pt.endTime);
-
                     return (
                         <div key={idx} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-shadow relative overflow-hidden ${isActive ? 'ring-2 ring-emerald-400 shadow-xl' : ''}`}>
                             {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>}
@@ -343,7 +313,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     );
                 })}
-
                 {(!todaySchedule.periods || todaySchedule.periods.every(p => !p)) && (
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center opacity-75 mt-8">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
@@ -366,7 +335,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setEditGender('female')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'female' ? 'bg-white border-pink-200 text-pink-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلمة 👩‍🏫</button>
                         </div>
                     </div>
-                    {/* ... بقية المودال كما هو ... */}
                     <div className="flex gap-4 justify-center mb-6 overflow-x-auto pb-4 custom-scrollbar">
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md glass-card bg-white">
@@ -391,7 +359,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
-                    {/* الحقول النصية */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
@@ -427,6 +394,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                  </div>
             </Modal>
 
+            {/* Schedule Modal (محتواه طويل لكنه آمن لأنه نصوص فقط) */}
             <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">إعدادات الجدول</h3>
@@ -434,7 +402,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <button onClick={() => setScheduleTab('timing')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>التوقيت</button>
                         <button onClick={() => setScheduleTab('classes')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-[#1e3a8a]' : 'text-gray-500 hover:text-slate-700'}`}>الحصص</button>
                     </div>
-                    {/* ... محتوى الجدول كما هو (تم اختصاره للعرض) ... */}
                     {scheduleTab === 'timing' ? (
                         <>
                             <div className="mb-3 px-1">
