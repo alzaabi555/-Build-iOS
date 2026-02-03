@@ -1,22 +1,28 @@
+
 {
   "appId": "com.madrasati.app",
   "appName": "راصد",
   "webDir": "www",
-  "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https",
-    "iosScheme": "ionic",
     "cleartext": true,
     "allowNavigation": [
       "*"
     ]
   },
   "plugins": {
-    "GoogleAuth": {
-      "scopes": ["profile", "email"],
-      "serverClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
-      "iosClientId": "87037584903-3uc4aeg3nc5lk3pu8crjbaad184bhjth.apps.googleusercontent.com",
-      "forceCodeForRefreshToken": true
+    "CapacitorHttp": {
+      "enabled": true
     }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "backgroundColor": "#111827"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#F2F2F7",
+    "allowsBackForwardNavigationGestures": true
   }
 }

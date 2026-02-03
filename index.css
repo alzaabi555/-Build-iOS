@@ -1,64 +1,128 @@
-/* ✅ هذا السطر يجب أن يكون الأول دائماً */
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+
 :root {
   font-family: 'Tajawal', sans-serif;
-  direction: rtl;
+  -webkit-tap-highlight-color: transparent;
+  /* متغير لارتفاع الشاشة الديناميكي */
   --app-height: 100dvh;
+}
+
+/* --- LIGHT MODE SETTINGS (Clean Minimalist) --- */
+html {
+  height: 100%; /* Fallback */
+  height: var(--app-height);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* منع تمرير الصفحة بالكامل */
+  background-color: #f3f4f6;
 }
 
 body {
   background-color: #f3f4f6;
+  color: #1e293b;
+  height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
-  -webkit-font-smoothing: antialiased;
-  /* منع السحب للتحديث في الموبايل لأنه يسبب مشاكل في العرض */
-  overscroll-behavior-y: none;
+  overflow: hidden;
+  position: fixed; /* تثبيت الجسم لمنع السحب المطاطي */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  touch-action: none; /* تحسين استجابة اللمس */
 }
 
-/* تحسين شريط التمرير */
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- SCROLLBARS --- */
+.custom-scrollbar { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* منطقة الآيفون الآمنة */
-.safe-area-top { padding-top: env(safe-area-inset-top); }
-.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-/* ============================================================ */
-/* 🛡️ SAFE MODE: وضع تشخيص الشاشة البيضاء (Diagnostic Mode)     */
-/* ============================================================ */
-/* هذا الكود يقوم بتخفيف الحمل على معالج الرسوميات (GPU) لأقصى درجة */
-
-* {
-  /* 1. قتل تأثير الزجاج (Backdrop Filter) - أثقل عملية على الآيفون */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-
-  /* 2. إيقاف جميع الحركات والأنيميشن */
-  animation: none !important;
-  transition: none !important;
-
-  /* 3. إزالة الظلال والشفافيات المعقدة */
-  box-shadow: none !important;
-  text-shadow: none !important;
+/* --- SOFT GLASS CARDS (Minimalist style) --- */
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* 4. إصلاح الخلفيات الشفافة لتصبح مرئية (Flat Design) */
-/* أي عنصر كان يعتمد على الشفافية سيصبح أبيضاً بحدود رمادية */
-.bg-white\/10, .bg-white\/20, .bg-white\/30, .bg-white\/95, .backdrop-blur-md, .backdrop-blur-xl {
-    background-color: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    opacity: 1 !important;
+.glass-card {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 5. ضمان ظهور الصور والأيقونات */
-svg, img {
-    opacity: 1 !important;
-    filter: none !important;
+.glass-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.glass-input {
+  background: #f8fafc; 
+  border: 1px solid #e2e8f0;
+  color: #0f172a !important;
+  font-weight: 600;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  transition: all 0.2s;
+}
+.glass-input::placeholder { color: #94a3b8 !important; font-weight: 500; }
+.glass-input:focus { 
+  background: #ffffff; 
+  border-color: #6366f1; 
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); 
+  transform: translateY(-1px);
+}
+
+.glass-icon {
+  background: #ffffff;
+  color: #64748b;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+.glass-icon:hover {
+  background: #f8fafc;
+  color: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.shimmer-hover { position: relative; overflow: hidden !important; }
+
+/* --- PRINT OVERLAY FIX --- */
+#temp-print-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    background-color: #ffffff;
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
 }

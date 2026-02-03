@@ -1,107 +1,16 @@
-// src/types.ts
-
-// استخدمنا "any" هنا لإسكات الأخطاء المعقدة في الامتحانات
-export type GradingData = any; 
-
-export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'truant';
-export type BehaviorType = 'positive' | 'negative';
-
-export interface PeriodTime {
-  periodNumber: number;
-  startTime: string;
-  endTime: string;
-}
-
-export interface ScheduleDay {
-  dayName: string;
-  periods: string[];
-}
-
-export interface AttendanceRecord {
-  id: string;
-  date: string;
-  status: AttendanceStatus;
-  period?: string; 
-  note?: string;
-}
-
-export interface BehaviorRecord {
-  id: string;
-  date: string;
-  type: BehaviorType;
-  description: string;
-  period?: string;
-  points: number;
-  semester?: number | string;
-}
-
-export interface AssessmentTool {
-  id: string;
-  name: string;
-  maxScore: number;
-  weight: number; 
-}
-
-export interface GradeRecord {
-  id?: string;
-  toolId?: string; // جعلناها اختيارية لتوافق الكود القديم والجديد
-  score: number;
-  date: string;
-  category: string; // ✅ ضروري جداً لصفحة الدرجات
-  semester?: number | string;
-  subject?: string;
-  maxScore: number; // ✅ ضروري للحسابات
-}
-
-// تعريفات الوزارة (كما هي)
-export interface MinistrySession {
-  url: string;
-  token: string;
-  expiry: number;
-  userId?: string;
-  auth?: string;
-  userRoleId?: string;
-  schoolId?: string;
-  teacherId?: string;
-}
-
-export interface StdsAbsDetail {
-  studentId?: string;
-  StudentId?: string; 
-  date: string;
-  status: string;
-}
-
-export interface StdsGradeDetail {
-  studentId?: string;
-  StudentId?: string; 
-  subject: string;
-  grade: number;
-}
-
-export interface ExamPaper {
-  id: string;
-  title: string;
-  totalScore: number;
-  gradingData?: any;
-  fileData?: string;
-}
-
 export interface Student {
   id: string;
+  ministryId?: string;
   name: string;
-  classes: string[]; 
-  grade?: string;      
-  parentPhone?: string; 
-  avatar?: string;
-  gender: 'male' | 'female'; // ✅ هذا السطر هو سر ظهور الشخصيات
+  grade: string;
+  classes: string[];
   attendance: AttendanceRecord[];
   behaviors: BehaviorRecord[];
   grades: GradeRecord[];
-  
-  groupId?: string;
-  ministryId?: string;
-  spentCoins?: number;
+  parentPhone?: string;
+  avatar?: string;
+  spentCoins?: number; 
+  groupId?: string | null;
   examPapers?: ExamPaper[];
 }
 
@@ -111,22 +20,102 @@ export interface Group {
   color: string;
 }
 
+export interface AttendanceRecord {
+  date: string;
+  status: AttendanceStatus;
+  period?: string; // 👈 تمت الإضافة: رقم الحصة
+}
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'truant';
+
+export interface BehaviorRecord {
+  id: string;
+  date: string;
+  type: BehaviorType;
+  description: string;
+  points: number;
+  semester?: '1' | '2';
+  period?: string; // 👈 تمت الإضافة: رقم الحصة
+}
+
+export type BehaviorType = 'positive' | 'negative';
+
+export interface GradeRecord {
+  id: string;
+  subject: string;
+  category: string;
+  score: number;
+  maxScore: number;
+  date: string;
+  semester?: '1' | '2';
+}
+
+export interface ScheduleDay {
+  dayName: string;
+  periods: string[];
+}
+
+export interface PeriodTime {
+  periodNumber: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface AssessmentTool {
+  id: string;
+  name: string;
+  maxScore: number;
+}
+
 export interface CertificateSettings {
   title: string;
   bodyText: string;
-  showDefaultDesign: boolean;
   backgroundImage?: string;
+  showDefaultDesign: boolean;
 }
 
-// ✅✅✅ هذا هو الجزء الذي كان ناقصاً وسبب المشكلة!
-export interface TeacherInfo {
-  name: string;
-  school: string;
-  subject: string;
-  governorate: string;
-  avatar?: string;
-  stamp?: string;
-  ministryLogo?: string;
-  academicYear?: string;
-  gender?: 'male' | 'female'; // ✅ ضروري جداً للمعلم
+// --- Ministry Sync ---
+export interface MinistrySession {
+  userId: string;
+  auth: string;
+  userRoleId: string;
+  schoolId: string;
+  teacherId: string;
+}
+
+export interface StdsAbsDetail {
+  StudentId: string;
+  AbsenceType: number;
+  Notes: string;
+}
+
+export interface StdsGradeDetail {
+  StudentId: string;
+  MarkValue: string;
+  IsAbsent: boolean;
+  Notes: string;
+}
+
+// --- Exam Grading ---
+export interface GradingData {
+  mcq: (number | null)[];
+  essay: { [key: string]: { [part: string]: number } };
+}
+
+export interface ExamPaper {
+  id: string;
+  title: string;
+  fileData: string;
+  date: string;
+  gradingData?: GradingData;
+  totalScore?: number;
+  maxScore?: number;
+}
+
+declare global {
+  interface Window {
+    electron?: {
+      openExternal: (url: string) => Promise<void>;
+    };
+  }
 }
