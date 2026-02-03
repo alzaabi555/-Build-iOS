@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Sparkles, Trash2, Plus, LayoutGrid, UserPlus, Upload, Settings, Trophy, Frown, MoreVertical, FileSpreadsheet, Dices, PlusCircle, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
@@ -26,8 +26,20 @@ const SOUNDS = {
     negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
 };
 
-const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass, onAddStudentManually, onBatchAddStudents, onUpdateStudent, onDeleteStudent, onViewReport, currentSemester, onDeleteClass }) => {
-  const { teacherInfo, defaultStudentGender, setDefaultStudentGender } = useApp();
+// Default values for props to prevent crashes if parent component passes undefined
+const StudentList: React.FC<StudentListProps> = ({ 
+    students = [], 
+    classes = [], 
+    onAddClass, 
+    onAddStudentManually, 
+    onBatchAddStudents, 
+    onUpdateStudent, 
+    onDeleteStudent, 
+    onViewReport, 
+    currentSemester, 
+    onDeleteClass 
+}) => {
+  const { defaultStudentGender } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -36,50 +48,61 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [showManageClasses, setShowManageClasses] = useState(false); 
-  
-  // Dropdown Menu State
   const [showMenu, setShowMenu] = useState(false);
 
   const [newClassInput, setNewClassInput] = useState('');
-  
-  // Edit Student State
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   
-  // New Student State
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentPhone, setNewStudentPhone] = useState('');
   const [newStudentGender, setNewStudentGender] = useState<'male' | 'female'>(defaultStudentGender);
   const [newStudentClass, setNewStudentClass] = useState('');
 
+  // Protect against classes being undefined or empty
+  const safeClasses = useMemo(() => Array.isArray(classes) ? classes : [], [classes]);
+  const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
+
   useEffect(() => {
-      if (classes.length > 0 && !newStudentClass) {
-          setNewStudentClass(classes[0]);
+      if (safeClasses.length > 0 && !newStudentClass) {
+          setNewStudentClass(safeClasses[0]);
       }
-  }, [classes]);
+  }, [safeClasses]);
 
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
-      students.forEach(s => {
-          if (s.grade) grades.add(s.grade);
-          else if (s.classes[0]) {
-              const match = s.classes[0].match(/^(\d+)/);
-              if (match) grades.add(match[1]);
-          }
-      });
+      if (safeStudents.length > 0) {
+          safeStudents.forEach(s => {
+              if (!s) return;
+              if (s.grade) {
+                  grades.add(s.grade);
+              } else if (s.classes && s.classes[0]) {
+                  const match = s.classes[0].match(/^(\d+)/);
+                  if (match) grades.add(match[1]);
+              }
+          });
+      }
       return Array.from(grades).sort();
-  }, [students, classes]);
+  }, [safeStudents]);
 
   const filteredStudents = useMemo(() => {
-      return students.filter(student => {
-          const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase());
-          const matchesClass = selectedClass === 'all' || student.classes.includes(selectedClass);
+      if (safeStudents.length === 0) return [];
+      
+      return safeStudents.filter(student => {
+          if (!student) return false;
+          const nameMatch = (student.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+          
+          // Safety check for classes array
+          const studentClasses = student.classes || [];
+          const matchesClass = selectedClass === 'all' || studentClasses.includes(selectedClass);
+          
           let matchesGrade = true;
           if (selectedGrade !== 'all') {
-             matchesGrade = student.grade === selectedGrade || (student.classes[0] && student.classes[0].startsWith(selectedGrade));
+             const firstClass = studentClasses[0] || '';
+             matchesGrade = student.grade === selectedGrade || firstClass.startsWith(selectedGrade);
           }
-          return matchesSearch && matchesClass && matchesGrade;
+          return nameMatch && matchesClass && matchesGrade;
       });
-  }, [students, searchTerm, selectedClass, selectedGrade]);
+  }, [safeStudents, searchTerm, selectedClass, selectedGrade]);
 
   const playSound = (type: 'positive' | 'negative') => {
       const audio = new Audio(SOUNDS[type]);
@@ -136,7 +159,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                     </div>
                     <div>
                         <h1 className="text-2xl font-black tracking-wide">الطلاب</h1>
-                        <p className="text-[10px] text-blue-200 font-bold opacity-80">{students.length} طالب مسجل</p>
+                        <p className="text-[10px] text-blue-200 font-bold opacity-80">{safeStudents.length} طالب مسجل</p>
                     </div>
                 </div>
 
@@ -187,7 +210,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                     {availableGrades.map(g => (
                          <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
                     ))}
-                    {classes.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
+                    {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
                         <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
                     ))}
                 </div>
@@ -213,7 +236,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                      <div className="flex-1 min-w-0">
                          <h3 className="font-bold text-slate-800 text-sm truncate">{student.name}</h3>
                          <div className="flex items-center gap-2 mt-1">
-                             <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold">{student.classes[0]}</span>
+                             <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold">{student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد'}</span>
                              {student.parentPhone && <span className="text-[10px] text-slate-400 font-mono">{student.parentPhone}</span>}
                          </div>
                      </div>
@@ -231,111 +254,156 @@ const StudentList: React.FC<StudentListProps> = ({ students, classes, onAddClass
                      </div>
                 </div>
             )) : (
-                <div className="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
-                    <UserPlus className="w-16 h-16 text-slate-300 mb-4" />
-                    <p className="font-bold text-slate-400">لا يوجد طلاب مطابقين</p>
+                <div className="flex flex-col items-center justify-center py-20 opacity-50 col-span-full text-center">
+                    <UserPlus className="w-16 h-16 text-gray-300 mb-4" />
+                    <p className="text-sm font-bold text-gray-400">لا يوجد طلاب مطابقين للبحث</p>
+                    {safeClasses.length === 0 && <p className="text-xs text-indigo-400 mt-2 font-bold cursor-pointer" onClick={() => setShowAddClassModal(true)}>ابدأ بإضافة فصل جديد</p>}
                 </div>
             )}
         </div>
 
         {/* Modals */}
-        {/* Manual Add Student Modal */}
-        <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className="max-w-sm rounded-[2rem]">
-            <div className="text-center">
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600">
-                    <UserPlus className="w-6 h-6" />
+        <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className="max-w-md rounded-[2rem]">
+             <div className="text-center">
+                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-500">
+                    <UserPlus className="w-8 h-8" />
                 </div>
-                <h3 className="font-black text-lg text-slate-800 mb-6">إضافة طالب جديد</h3>
+                <h3 className="font-black text-xl mb-6 text-slate-800">إضافة طالب جديد</h3>
                 <div className="space-y-3">
-                    <input type="text" placeholder="اسم الطالب" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500" />
-                    <select value={newStudentClass} onChange={e => setNewStudentClass(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500">
+                    <input 
+                        type="text" 
+                        placeholder="اسم الطالب" 
+                        value={newStudentName}
+                        onChange={(e) => setNewStudentName(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                    />
+                    <select 
+                        value={newStudentClass} 
+                        onChange={(e) => setNewStudentClass(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                    >
                         <option value="" disabled>اختر الفصل</option>
-                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                        {safeClasses.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input type="tel" placeholder="رقم ولي الأمر (اختياري)" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500" />
-                    <div className="flex gap-2">
-                        <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newStudentGender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-400'}`}>طالب 👨‍🎓</button>
-                        <button onClick={() => setNewStudentGender('female')} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newStudentGender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-slate-200 text-slate-400'}`}>طالبة 👩‍🎓</button>
+                    <input 
+                        type="tel" 
+                        placeholder="رقم ولي الأمر (اختياري)" 
+                        value={newStudentPhone}
+                        onChange={(e) => setNewStudentPhone(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                    />
+                     <div className="flex gap-2">
+                        <button 
+                            onClick={() => setNewStudentGender('male')}
+                            className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                        >
+                            طالب 👨‍🎓
+                        </button>
+                        <button 
+                            onClick={() => setNewStudentGender('female')}
+                            className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                        >
+                            طالبة 👩‍🎓
+                        </button>
                     </div>
-                    <button onClick={handleManualAddSubmit} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 mt-2">إضافة</button>
+
+                    <button 
+                        onClick={handleManualAddSubmit}
+                        disabled={!newStudentName || !newStudentClass}
+                        className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    >
+                        حفظ الطالب
+                    </button>
                 </div>
             </div>
         </Modal>
 
-        {/* Add Class Modal */}
-        <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-sm rounded-[2rem]">
-            <div className="text-center">
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600">
-                    <LayoutGrid className="w-6 h-6" />
-                </div>
-                <h3 className="font-black text-lg text-slate-800 mb-6">إضافة فصل جديد</h3>
-                <div className="space-y-3">
-                    <input type="text" placeholder="اسم الفصل (مثال: 5/1)" value={newClassInput} onChange={e => setNewClassInput(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-amber-500" />
-                    <button onClick={handleAddClassSubmit} className="w-full py-3 bg-amber-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-amber-700 mt-2">إضافة الفصل</button>
-                </div>
-            </div>
-        </Modal>
-
-        {/* Import Modal */}
         <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-lg rounded-[2rem]">
-            <div className="text-center mb-4">
-                <h3 className="font-black text-lg text-slate-800">استيراد من Excel</h3>
-                <p className="text-xs text-slate-400 font-bold">يمكنك إضافة فصل كامل دفعة واحدة</p>
-            </div>
             <ExcelImport 
-                existingClasses={classes} 
-                onImport={(students) => { onBatchAddStudents(students); setShowImportModal(false); }} 
+                existingClasses={safeClasses} 
+                onImport={(data) => { onBatchAddStudents(data); setShowImportModal(false); }}
                 onAddClass={onAddClass}
             />
         </Modal>
 
-        {/* Manage Classes Modal */}
-        <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-sm rounded-[2rem]">
-            <div className="text-center mb-4">
-                <h3 className="font-black text-lg text-slate-800">إدارة الفصول</h3>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                {classes.map(c => (
-                    <div key={c} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="font-bold text-sm text-slate-700">{c}</span>
-                        <button 
-                            onClick={() => {
-                                if (confirm(`هل أنت متأكد من حذف الفصل ${c}؟ سيتم حذف جميع الطلاب المرتبطين به.`)) {
-                                    if (onDeleteClass) onDeleteClass(c);
-                                }
-                            }}
-                            className="p-2 bg-white text-rose-500 rounded-lg shadow-sm border border-rose-100 hover:bg-rose-50"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
-                ))}
-                {classes.length === 0 && <p className="text-center text-xs text-slate-400">لا توجد فصول</p>}
-            </div>
+        <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-sm rounded-[2rem]">
+             <div className="text-center">
+                <h3 className="font-black text-lg mb-4 text-slate-800">إضافة فصل جديد</h3>
+                <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="اسم الفصل (مثال: 5/1)" 
+                    value={newClassInput}
+                    onChange={(e) => setNewClassInput(e.target.value)}
+                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800 mb-4"
+                />
+                <button onClick={handleAddClassSubmit} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-xs shadow-lg">إضافة</button>
+             </div>
         </Modal>
 
+        <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-sm rounded-[2rem]">
+            <div className="text-center">
+                <h3 className="font-black text-lg mb-4 text-slate-800">إدارة الفصول</h3>
+                <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 space-y-2">
+                    {safeClasses.map(cls => (
+                        <div key={cls} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <span className="font-bold text-sm text-slate-800">{cls}</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => { if(onDeleteClass && confirm('هل أنت متأكد من حذف هذا الفصل؟ سيتم إخفاء الطلاب المرتبطين به.')) onDeleteClass(cls); }} className="p-2 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-100"><Trash2 className="w-4 h-4"/></button>
+                            </div>
+                        </div>
+                    ))}
+                    {safeClasses.length === 0 && <p className="text-xs text-gray-400">لا توجد فصول مضافة</p>}
+                </div>
+            </div>
+        </Modal>
+        
         {/* Edit Student Modal */}
-        <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} className="max-w-sm rounded-[2rem]">
+        <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} className="max-w-md rounded-[2rem]">
             {editingStudent && (
-                <div className="text-center">
-                    <h3 className="font-black text-lg text-slate-800 mb-6">تعديل بيانات الطالب</h3>
+                 <div className="text-center">
+                    <h3 className="font-black text-xl mb-6 text-slate-800">تعديل بيانات الطالب</h3>
                     <div className="space-y-3">
-                        <input type="text" value={editingStudent.name} onChange={e => setEditingStudent({...editingStudent, name: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500" placeholder="اسم الطالب" />
-                        <select value={editingStudent.classes[0] || ''} onChange={e => setEditingStudent({...editingStudent, classes: [e.target.value]})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500">
-                             {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                        <input 
+                            type="text" 
+                            value={editingStudent.name}
+                            onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})}
+                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                            placeholder="الاسم"
+                        />
+                        <select 
+                            value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} 
+                            onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})}
+                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                        >
+                            {safeClasses.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <input type="tel" value={editingStudent.parentPhone || ''} onChange={e => setEditingStudent({...editingStudent, parentPhone: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500" placeholder="رقم ولي الأمر" />
-                        
+                        <input 
+                            type="tel" 
+                            value={editingStudent.parentPhone || ''}
+                            onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})}
+                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
+                            placeholder="رقم الهاتف"
+                        />
                         <div className="flex gap-2">
-                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editingStudent.gender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-400'}`}>طالب 👨‍🎓</button>
-                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'female'})} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editingStudent.gender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-slate-200 text-slate-400'}`}>طالبة 👩‍🎓</button>
+                            <button 
+                                onClick={() => setEditingStudent({...editingStudent, gender: 'male'})}
+                                className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                            >
+                                طالب 👨‍🎓
+                            </button>
+                            <button 
+                                onClick={() => setEditingStudent({...editingStudent, gender: 'female'})}
+                                className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                            >
+                                طالبة 👩‍🎓
+                            </button>
                         </div>
-
+                        
                         <div className="flex gap-2 mt-4">
-                            <button onClick={() => { if(confirm('هل أنت متأكد من حذف الطالب؟')) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-black text-sm hover:bg-rose-100">حذف</button>
-                            <button onClick={handleEditStudentSave} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700">حفظ التعديلات</button>
+                            <button onClick={handleEditStudentSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg">حفظ التعديلات</button>
+                            <button onClick={() => { if(confirm('هل أنت متأكد من حذف الطالب؟')) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className="px-4 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-black text-sm"><Trash2 className="w-5 h-5"/></button>
                         </div>
-                        <button onClick={() => onViewReport(editingStudent)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm shadow-lg hover:bg-slate-700 mt-2">عرض تقرير الطالب</button>
                     </div>
                 </div>
             )}
