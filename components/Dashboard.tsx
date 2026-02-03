@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
+// تأكد أن مسار types صحيح بالنسبة لموقع هذا الملف
+// إذا كان types.ts في الجذر، فالمسار هو '../types'
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown, User
+  School, Loader2, BookOpen, ChevronLeft, Bell, Settings2, Calendar, Clock, Crown
 } from 'lucide-react';
 import Modal from './Modal';
 import * as XLSX from 'xlsx';
 import BrandLogo from './BrandLogo';
 
-// 🛑 تم حذف مكونات الشخصيات (SVG) نهائياً لعزل المشكلة
+// ✅✅✅ تصحيح المسار: الخروج من components ثم الدخول لـ assets
+import teacherMalePng from '../assets/teacher-male.png';
+import teacherFemalePng from '../assets/teacher-female.png';
+
+// ملاحظة: إذا ظهر خطأ في المسار، جرب './assets/...' إذا كان الملف في الجذر مباشرة وليس في components
 
 interface DashboardProps {
     students: any[];
@@ -59,42 +65,38 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
-    // State for Edit Form
-    const [editName, setEditName] = useState('');
-    const [editSchool, setEditSchool] = useState('');
-    const [editSubject, setEditSubject] = useState('');
-    const [editGovernorate, setEditGovernorate] = useState('');
-    const [editAvatar, setEditAvatar] = useState('');
-    const [editStamp, setEditStamp] = useState('');
-    const [editMinistryLogo, setEditMinistryLogo] = useState('');
-    const [editAcademicYear, setEditAcademicYear] = useState('');
-    const [editSemester, setEditSemester] = useState<'1' | '2'>('1');
-    const [editGender, setEditGender] = useState<'male' | 'female'>('male');
+    const [editName, setEditName] = useState(teacherInfo?.name || '');
+    const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
+    const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
+    const [editGovernorate, setEditGovernorate] = useState(teacherInfo?.governorate || '');
+    const [editAvatar, setEditAvatar] = useState(teacherInfo?.avatar || '');
+    const [editStamp, setEditStamp] = useState(teacherInfo?.stamp || '');
+    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo || '');
+    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
+    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
+    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
 
-    // ✅ Safe Effect: تحديث البيانات فقط عند وجود teacherInfo
     useEffect(() => {
-        if (teacherInfo) {
-            setEditName(teacherInfo.name || '');
-            setEditSchool(teacherInfo.school || '');
-            setEditSubject(teacherInfo.subject || '');
-            setEditGovernorate(teacherInfo.governorate || '');
-            setEditAvatar(teacherInfo.avatar || '');
-            setEditStamp(teacherInfo.stamp || '');
-            setEditMinistryLogo(teacherInfo.ministryLogo || '');
-            setEditAcademicYear(teacherInfo.academicYear || '');
-            setEditSemester(currentSemester || '1');
-            setEditGender(teacherInfo.gender || 'male');
-        }
+        setEditName(teacherInfo?.name || '');
+        setEditSchool(teacherInfo?.school || '');
+        setEditSubject(teacherInfo?.subject || '');
+        setEditGovernorate(teacherInfo?.governorate || '');
+        setEditAvatar(teacherInfo?.avatar || '');
+        setEditStamp(teacherInfo?.stamp || '');
+        setEditMinistryLogo(teacherInfo?.ministryLogo || '');
+        setEditAcademicYear(teacherInfo?.academicYear || '');
+        setEditSemester(currentSemester);
+        setEditGender(teacherInfo?.gender || 'male');
     }, [teacherInfo, currentSemester]);
 
     useEffect(() => {
         if (showScheduleModal) {
-            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes || [])));
-            setTempSchedule(JSON.parse(JSON.stringify(schedule || [])));
+            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes)));
+            setTempSchedule(JSON.parse(JSON.stringify(schedule)));
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // Notification Engine
+    // محرك الإشعارات
     useEffect(() => {
         if (!notificationsEnabled) return;
         if (Notification.permission === 'default') { Notification.requestPermission().catch(() => {}); }
@@ -148,7 +150,21 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return <BookOpen className="w-5 h-5 text-[#1e3a8a] opacity-50" />; 
-        return <span className="text-xl">📚</span>;
+        const name = subjectName.trim().toLowerCase();
+        
+        // استبدال الأيقونات الثقيلة بإيموجي لضمان خفة الأداء في الجذر
+        if (name.includes('اسلام')) return <span>🕌</span>;
+        if (name.includes('عربي')) return <span>📜</span>;
+        if (name.includes('رياضيات')) return <span>📐</span>;
+        if (name.includes('علوم')) return <span>🧪</span>;
+        
+        return <span>📚</span>;
+    };
+
+    // ✅ دالة تحديد صورة المعلم (باستخدام PNG)
+    const getTeacherAvatar = () => {
+        const imageSource = teacherInfo?.gender === 'female' ? teacherFemalePng : teacherMalePng;
+        return <img src={imageSource} className="w-full h-full object-cover" alt="Teacher" loading="eager" />;
     };
 
     const handleSaveInfo = () => {
@@ -223,11 +239,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-6 cursor-pointer" onClick={() => setShowEditModal(true)}>
                     <div className="w-16 h-16 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0">
-                        {/* 🛑 تم تعطيل الصور نهائياً هنا واستبدالها برمز ثابت */}
-                        {teacherInfo?.avatar ? 
-                            <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : 
-                            <div className="w-full h-full bg-slate-200 flex items-center justify-center text-3xl">👤</div>
-                        }
+                        {/* ✅ عرض الصورة (PNG) */}
+                        {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : getTeacherAvatar()}
                     </div>
                     <div className="flex flex-col">
                         <h2 className="text-2xl font-bold mb-1 leading-tight">{teacherInfo?.name || 'مرحباً يا معلم'}</h2>
@@ -335,6 +348,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setEditGender('female')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editGender === 'female' ? 'bg-white border-pink-200 text-pink-600 shadow-sm' : 'border-transparent text-gray-400'}`}>معلمة 👩‍🏫</button>
                         </div>
                     </div>
+                    {/* ... (باقي المودال) */}
                     <div className="flex gap-4 justify-center mb-6 overflow-x-auto pb-4 custom-scrollbar">
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md glass-card bg-white">
@@ -343,7 +357,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, setEditAvatar)} accept="image/*" className="hidden" />
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الصورة</p>
                         </div>
-                        {/* بقية الأيقونات (الختم، الوزارة) */}
                         <div className="relative w-20 h-20 group cursor-pointer shrink-0" onClick={() => stampInputRef.current?.click()}>
                             <div className="w-full h-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
                                 {editStamp ? <img src={editStamp} className="w-full h-full object-contain p-2"/> : <span className="text-gray-300 font-bold">ختم</span>}
@@ -359,6 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <p className="text-[9px] font-bold text-gray-500 mt-2">الوزارة</p>
                         </div>
                     </div>
+                    {/* ... (الحقول النصية) */}
                     <div className="space-y-3 text-right">
                         <div className="space-y-1">
                             <label className="text-[10px] font-bold text-gray-500 pr-1">اسم المعلم</label>
@@ -394,7 +408,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                  </div>
             </Modal>
 
-            {/* Schedule Modal (محتواه طويل لكنه آمن لأنه نصوص فقط) */}
             <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">إعدادات الجدول</h3>
