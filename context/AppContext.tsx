@@ -3,8 +3,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings } from '../types';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
-import { auth } from '../services/firebase';
-import { saveTeacherData, subscribeToTeacherData, migrateLocalToCloud } from '../services/syncService'; // استيراد الخدمة الجديدة
 
 interface TeacherInfo {
     name: string;
@@ -15,7 +13,7 @@ interface TeacherInfo {
     stamp?: string;
     ministryLogo?: string;
     academicYear?: string;
-    gender?: 'male' | 'female'; // إضافة الجنس
+    gender?: 'male' | 'female';
 }
 
 interface AppContextType {
@@ -40,7 +38,6 @@ interface AppContextType {
   certificateSettings: CertificateSettings;
   setCertificateSettings: React.Dispatch<React.SetStateAction<CertificateSettings>>;
   isDataLoaded: boolean;
-  currentUser: any | null;
   defaultStudentGender: 'male' | 'female';
   setDefaultStudentGender: React.Dispatch<React.SetStateAction<'male' | 'female'>>;
 }
@@ -51,7 +48,6 @@ const DB_FILENAME = 'rased_database_v2.json';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
   
   // --- Initial States ---
   const currentMonth = new Date().getMonth();
@@ -95,7 +91,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isInitialLoad = useRef(true);
   const saveTimeoutRef = useRef<any>(null);
 
-  // 1. Load Local Data First
+  // 1. Load Local Data
   useEffect(() => {
     const loadLocalData = async () => {
         try {
@@ -168,47 +164,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadLocalData();
   }, []);
 
-  // 2. Listen for Auth State & Sync via Service
-  useEffect(() => {
-      const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-          setCurrentUser(user);
-          if (user) {
-              console.log("👤 Logged in:", user.email);
-              
-              // أ. محاولة ترحيل البيانات المحلية للسحابة إذا كان حساباً جديداً
-              // نمرر البيانات الحالية الموجودة في الـ State
-              const currentData = {
-                  version: '3.6.0',
-                  timestamp: new Date().toISOString(),
-                  students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, assessmentTools, certificateSettings, defaultStudentGender
-              };
-              
-              if (students.length > 0) {
-                  await migrateLocalToCloud(user.uid, currentData);
-              }
-
-              // ب. الاشتراك في التحديثات الحية باستخدام الخدمة
-              const unsubscribeFirestore = subscribeToTeacherData(user.uid, (data) => {
-                  if (data.students) setStudents(data.students);
-                  if (data.classes) setClasses(data.classes);
-                  if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
-                  if (data.groups) setGroups(data.groups);
-                  if (data.schedule) setSchedule(data.schedule);
-                  if (data.periodTimes) setPeriodTimes(data.periodTimes);
-                  if (data.teacherInfo) setTeacherInfo(data.teacherInfo);
-                  if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
-                  if (data.certificateSettings) setCertificateSettings(data.certificateSettings);
-                  if (data.defaultStudentGender) setDefaultStudentGender(data.defaultStudentGender);
-              });
-
-              // تنظيف الاشتراك عند الخروج
-              return () => unsubscribeFirestore();
-          }
-      });
-      return unsubscribeAuth;
-  }, [students.length > 0]); // Dependency for migration check
-
-  // 3. Save Logic (Debounced) - Hybrid Save
+  // 2. Save Logic (Debounced) - Local Only
   useEffect(() => {
     if (isInitialLoad.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -232,7 +188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const jsonString = JSON.stringify(dataToSave);
 
-        // A. Always save Locally (Backup/Offline)
+        // Save to FileSystem (Native)
         if (Capacitor.isNativePlatform()) {
             try {
                 await Filesystem.writeFile({
@@ -244,6 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } catch (e) { console.error('Save to FS failed', e); }
         } 
         
+        // Save to LocalStorage (Web)
         try {
             if (jsonString.length < 4500000) {
                 localStorage.setItem('studentData', JSON.stringify(students));
@@ -255,7 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
                 localStorage.setItem('currentSemester', currentSemester);
                 localStorage.setItem('teacherName', teacherInfo.name);
-                localStorage.setItem('teacherGender', teacherInfo.gender || 'male'); // حفظ الجنس
+                localStorage.setItem('teacherGender', teacherInfo.gender || 'male');
                 localStorage.setItem('academicYear', teacherInfo.academicYear || '');
                 localStorage.setItem('certificateSettings', JSON.stringify(certificateSettings));
                 localStorage.setItem('teacherAvatar', teacherInfo.avatar || '');
@@ -263,17 +220,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
         } catch (e) { console.error('LocalStorage Quota Exceeded'); }
 
-        // B. Save to Cloud using Service if Logged In
-        if (currentUser) {
-            saveTeacherData(currentUser.uid, dataToSave);
-        }
-
     }, 3000); 
 
     return () => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, certificateSettings, defaultStudentGender, currentUser]);
+  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, certificateSettings, defaultStudentGender]);
 
   return (
     <AppContext.Provider value={{
@@ -288,7 +240,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assessmentTools, setAssessmentTools,
         certificateSettings, setCertificateSettings,
         isDataLoaded,
-        currentUser,
         defaultStudentGender, setDefaultStudentGender
     }}>
       {children}
