@@ -7,36 +7,8 @@ import Modal from './Modal';
 import * as XLSX from 'xlsx';
 import BrandLogo from './BrandLogo';
 
-interface DashboardProps {
-    students: any[];
-    // ✅ تمت إضافة gender للواجهة
-    teacherInfo: { 
-        name: string; 
-        school: string; 
-        subject: string; 
-        governorate: string; 
-        avatar?: string; 
-        stamp?: string; 
-        ministryLogo?: string; 
-        academicYear?: string;
-        gender?: 'male' | 'female'; // تحديد الجنس
-    };
-    onUpdateTeacherInfo: (info: any) => void;
-    schedule: ScheduleDay[];
-    onUpdateSchedule: (schedule: ScheduleDay[]) => void;
-    onSelectStudent: (student: any) => void;
-    onNavigate: (tab: string) => void;
-    onOpenSettings: () => void;
-    periodTimes: PeriodTime[];
-    setPeriodTimes: React.Dispatch<React.SetStateAction<PeriodTime[]>>;
-    notificationsEnabled: boolean;
-    onToggleNotifications: () => void;
-    currentSemester: '1' | '2';
-    onSemesterChange: (sem: '1' | '2') => void;
-}
-
 // ============================================================================
-// ✅ شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
+// ✅ 1. شخصيات المعلمين (فيكتور - مظهر ناضج ورسمي)
 // ============================================================================
 
 // 👨‍🏫 المعلم العماني (مصر + لحية)
@@ -79,6 +51,33 @@ const OmaniFemaleTeacherAvatar = () => (
     </svg>
 );
 
+interface DashboardProps {
+    students: any[];
+    teacherInfo: { 
+        name: string; 
+        school: string; 
+        subject: string; 
+        governorate: string; 
+        avatar?: string; 
+        stamp?: string; 
+        ministryLogo?: string; 
+        academicYear?: string;
+        gender?: 'male' | 'female';
+    };
+    onUpdateTeacherInfo: (info: any) => void;
+    schedule: ScheduleDay[];
+    onUpdateSchedule: (schedule: ScheduleDay[]) => void;
+    onSelectStudent: (student: any) => void;
+    onNavigate: (tab: string) => void;
+    onOpenSettings: () => void;
+    periodTimes: PeriodTime[];
+    setPeriodTimes: React.Dispatch<React.SetStateAction<PeriodTime[]>>;
+    notificationsEnabled: boolean;
+    onToggleNotifications: () => void;
+    currentSemester: '1' | '2';
+    onSemesterChange: (sem: '1' | '2') => void;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo, onUpdateTeacherInfo, schedule, onUpdateSchedule,
     periodTimes, setPeriodTimes, notificationsEnabled,
@@ -111,7 +110,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo || '');
     const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
     const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
-    // ✅ حالة جديدة لاختيار الجنس في المودال
     const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
 
     useEffect(() => {
@@ -124,7 +122,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         setEditMinistryLogo(teacherInfo?.ministryLogo || '');
         setEditAcademicYear(teacherInfo?.academicYear || '');
         setEditSemester(currentSemester);
-        // تحديث الجنس عند التحميل
         setEditGender(teacherInfo?.gender || 'male');
     }, [teacherInfo, currentSemester]);
 
@@ -136,7 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }, [showScheduleModal, periodTimes, schedule]);
 
     // =========================================================================
-    // 🔔 🔥 محرك الإشعارات (للآيفون)
+    // 🔔 🔥 محرك الإشعارات (للآيفون) - نسخة محلية
     // =========================================================================
     useEffect(() => {
         if (!notificationsEnabled) return;
@@ -186,7 +183,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
     // =========================================================================
 
-    // Helpers
     const checkActivePeriod = (start: string, end: string) => {
         if (!start || !end) return false;
         const now = new Date();
