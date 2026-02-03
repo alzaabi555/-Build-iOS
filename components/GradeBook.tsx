@@ -1,84 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Student, GradeRecord, AssessmentTool } from '../types';
-import { Plus, X, Trash2, Settings, Check, Loader2, Edit2, FileSpreadsheet, AlertTriangle, Calculator, LayoutGrid } from 'lucide-react';
+import { Plus, X, Trash2, Settings, Check, Loader2, Edit2, FileSpreadsheet, FileUp, Wand2, Menu, Filter, ChevronDown, Download, AlertTriangle, Calculator } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
-
-// ============================================================================
-// ✅ 1. الشخصيات العمانية (تم التوحيد)
-// ============================================================================
-
-// 👦 الولد العماني (فيكتور)
-const OmaniBoyAvatarSVG = () => (
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-        <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-        <path d="M25 115C25 95 95 95 95 115V120H25V115Z" fill="white" />
-        <path d="M25 115C25 90 40 85 60 85C80 85 95 90 95 115" stroke="#E2E8F0" strokeWidth="1" />
-        <path d="M60 85V100" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="60" cy="102" r="2" fill="#CBD5E1" />
-        <rect x="50" y="70" width="20" height="20" fill="#EBB082" />
-        <circle cx="60" cy="65" r="22" fill="#EBB082" />
-        <path d="M38 55C38 40 45 35 60 35C75 35 82 40 82 55H38Z" fill="white" />
-        <path d="M38 55H82V60C82 60 75 62 60 62C45 62 38 60 38 60V55Z" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1" />
-        <path d="M45 45H75" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" />
-        <path d="M42 50H78" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" />
-        <circle cx="60" cy="40" r="2" fill="#60A5FA" />
-        <circle cx="53" cy="65" r="2.5" fill="#1E293B" />
-        <circle cx="67" cy="65" r="2.5" fill="#1E293B" />
-        <path d="M56 72Q60 75 64 72" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-    </svg>
-);
-
-// 👧 البنت العمانية (تقبل لون الزي)
-const OmaniGirlAvatarSVG = ({ uniformColor }: { uniformColor: 'blue' | 'maroon' }) => {
-    const primaryColor = uniformColor === 'blue' ? '#2563EB' : '#9F1239';
-    const secondaryColor = uniformColor === 'blue' ? '#1E40AF' : '#881337';
-
-    return (
-        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-            <circle cx="60" cy="60" r="55" fill="#F1F5F9" />
-            <path d="M30 115C30 95 90 95 90 115V120H30V115Z" fill={primaryColor} />
-            <path d="M30 115C30 100 45 100 45 120" fill={secondaryColor} opacity="0.2" />
-            <path d="M90 115C90 100 75 100 75 120" fill={secondaryColor} opacity="0.2" />
-            <rect x="52" y="80" width="16" height="15" fill="white" />
-            <path d="M40 60C40 30 50 25 60 25C70 25 80 30 80 60V80C80 90 40 90 40 80V60Z" fill="white" />
-            <circle cx="60" cy="62" r="16" fill="#EBB082" />
-            <path d="M44 60C44 45 50 40 60 40C70 40 76 45 76 60" stroke="#E2E8F0" strokeWidth="1" />
-            <circle cx="55" cy="62" r="2" fill="#1E293B" />
-            <circle cx="65" cy="62" r="2" fill="#1E293B" />
-            <path d="M57 69Q60 71 63 69" stroke="#9A3412" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-            <path d="M53 60L51 58" stroke="#1E293B" strokeWidth="1" />
-            <path d="M67 60L69 58" stroke="#1E293B" strokeWidth="1" />
-        </svg>
-    );
-};
-
-// دالة اختيار الأفاتار (محدثة لتقرأ لون الزي)
-const getStudentAvatar = (student: Student, girlUniform: 'blue' | 'maroon' = 'blue') => {
-    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover rounded-full" alt={student.name} />;
-    
-    if (student.gender === 'female') {
-        return <OmaniGirlAvatarSVG uniformColor={girlUniform} />;
-    }
-    return <OmaniBoyAvatarSVG />;
-};
-
-// ============================================================================
-// بقية الأيقونات (لم يتم لمسها - كما طلبت)
-// ============================================================================
-const Icon3DGradingConfig = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradCalc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient><filter id="shadowCalc" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" /><feOffset dx="1" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="15" width="60" height="70" rx="10" fill="url(#gradCalc)" filter="url(#shadowCalc)" /><rect x="30" y="25" width="40" height="15" rx="4" fill="#dbeafe" /><circle cx="35" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="55" r="5" fill="white" opacity="0.8" /><circle cx="35" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="50" cy="70" r="5" fill="white" opacity="0.8" /><circle cx="65" cy="70" r="5" fill="#fbbf24" /></svg>);
-const Icon3DMenu = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradMenu" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#f1f5f9" /></linearGradient><filter id="shadowMenu" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" /><feOffset dx="0" dy="2" result="offsetblur" /><feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="20" y="25" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="45" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /><rect x="20" y="65" width="60" height="10" rx="5" fill="url(#gradMenu)" filter="url(#shadowMenu)" /></svg>);
-const Icon3DImport = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradImportSheet" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient><linearGradient id="gradArrowUp" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><rect x="25" y="30" width="50" height="55" rx="6" fill="url(#gradImportSheet)" /><path d="M35 45 H65 M35 55 H65 M35 65 H65" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.6" /><path d="M50 10 L30 30 H40 V50 H60 V30 H70 L50 10 Z" fill="url(#gradArrowUp)" stroke="white" strokeWidth="2" /></svg>);
-const Icon3DExport = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradExportSheet" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient><linearGradient id="gradArrowDown" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><rect x="25" y="15" width="50" height="55" rx="6" fill="url(#gradExportSheet)" /><path d="M35 30 H65 M35 40 H65 M35 50 H65" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.6" /><path d="M50 90 L70 70 H60 V50 H40 V70 H30 L50 90 Z" fill="url(#gradArrowDown)" stroke="white" strokeWidth="2" /></svg>);
-const Icon3DTools = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradGear" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#e2e8f0" /><stop offset="100%" stopColor="#94a3b8" /></linearGradient><filter id="shadowGear" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" /><feOffset dx="1" dy="1" result="offsetblur" /><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="50" cy="50" r="20" fill="white" stroke="url(#gradGear)" strokeWidth="15" strokeDasharray="10 6" filter="url(#shadowGear)" /><circle cx="50" cy="50" r="10" fill="#cbd5e1" /></svg>);
-const Icon3DClear = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradTrash" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#f87171" /><stop offset="100%" stopColor="#dc2626" /></linearGradient><filter id="shadowTrash" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" /><feOffset dx="1" dy="2" result="offsetblur" /><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M25 30 L30 85 Q32 90 38 90 H62 Q68 90 70 85 L75 30" fill="url(#gradTrash)" filter="url(#shadowTrash)" /><rect x="20" y="20" width="60" height="10" rx="3" fill="#ef4444" /><path d="M40 20 L42 12 Q43 10 46 10 H54 Q57 10 58 12 L60 20" fill="#ef4444" /><path d="M40 45 L40 75 M50 45 L50 75 M60 45 L60 75" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.5" /></svg>);
-const Icon3DBulk = ({ className }: { className?: string }) => (<svg viewBox="0 0 100 100" className={className || "w-6 h-6"}><defs><linearGradient id="gradWand" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient><linearGradient id="gradHandle" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#7c3aed" /></linearGradient><filter id="shadowWand" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" /><feOffset dx="1" dy="1" result="offsetblur" /><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M20 80 L40 60" stroke="url(#gradHandle)" strokeWidth="10" strokeLinecap="round" filter="url(#shadowWand)" /><path d="M40 60 L80 20" stroke="url(#gradWand)" strokeWidth="8" strokeLinecap="round" /><path d="M80 20 L90 10 M70 10 L80 20 M90 30 L80 20" stroke="white" strokeWidth="2" opacity="0.8" /><circle cx="80" cy="20" r="5" fill="white" filter="blur(2px)" /></svg>);
-
-// -----------------------------------------------------------
 
 interface GradeBookProps {
   students: Student[];
@@ -91,19 +19,19 @@ interface GradeBookProps {
 }
 
 const DEFAULT_GRADING_SETTINGS = {
-  totalScore: 100,
-  finalExamWeight: 40,
-  finalExamName: 'الامتحان النهائي'
+    totalScore: 100,
+    finalExamWeight: 40,
+    finalExamName: 'الامتحان النهائي'
 };
 
 const GradeBook: React.FC<GradeBookProps> = ({ 
-  students = [], 
-  classes = [], 
-  onUpdateStudent, 
-  setStudents, 
-  currentSemester, 
-  onSemesterChange, 
-  teacherInfo 
+    students = [], 
+    classes = [], 
+    onUpdateStudent, 
+    setStudents, 
+    currentSemester, 
+    onSemesterChange, 
+    teacherInfo 
 }) => {
   const { assessmentTools, setAssessmentTools } = useApp();
   const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
@@ -133,19 +61,23 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [score, setScore] = useState('');
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
-  // ✅ قراءة لون الزي الموحد لضمان التناسق
-  const girlUniformColor = (localStorage.getItem('rased_girl_uniform') as 'blue' | 'maroon') || 'blue';
-
   useEffect(() => {
       localStorage.setItem('rased_grading_settings', JSON.stringify(gradingSettings));
   }, [gradingSettings]);
+
+  const styles = {
+      card: `bg-white border border-slate-100 rounded-[1.5rem] hover:border-blue-200 hover:shadow-md transition-all duration-300 relative overflow-hidden shadow-sm group`,
+      pill: 'rounded-xl border border-slate-200 shadow-sm hover:shadow-md',
+  };
 
   useEffect(() => {
      if (showAddGrade && !editingGrade) { setSelectedToolId(''); setScore(''); }
   }, [showAddGrade, editingGrade]);
 
+  // ✅ 1. تحديث منطق استخراج المراحل (نفس المنطق الموحد الجديد)
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
+      
       classes.forEach(c => {
           if (c.includes('/')) {
               grades.add(c.split('/')[0].trim());
@@ -155,7 +87,11 @@ const GradeBook: React.FC<GradeBookProps> = ({
               else grades.add(c.split(' ')[0]);
           }
       });
-      students.forEach(s => { if (s.grade) grades.add(s.grade); });
+
+      students.forEach(s => {
+          if (s.grade) grades.add(s.grade);
+      });
+
       return Array.from(grades).sort((a, b) => {
           const numA = parseInt(a);
           const numB = parseInt(b);
@@ -164,6 +100,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       });
   }, [students, classes]);
 
+  // ✅ 2. تحديث فلترة الفصول بناءً على المرحلة
   const visibleClasses = useMemo(() => {
       if (selectedGrade === 'all') return classes;
       return classes.filter(c => {
@@ -194,18 +131,23 @@ const GradeBook: React.FC<GradeBookProps> = ({
       return 'text-rose-600 bg-rose-50';
   };
 
+  // ✅ 3. تحديث فلترة الطلاب
   const filteredStudents = useMemo(() => {
     if (!Array.isArray(students)) return [];
     return students.filter(s => {
       if (!s || typeof s !== 'object') return false;
       const matchesClass = selectedClass === 'all' || (s.classes && s.classes.includes(selectedClass));
+      
       let matchesGrade = true;
       if (selectedGrade !== 'all') {
+          // التحقق من المرحلة في بداية اسم الفصل أو حقل grade
           if (s.grade === selectedGrade) matchesGrade = true;
           else if (s.classes[0]) {
               if (s.classes[0].includes('/')) matchesGrade = s.classes[0].split('/')[0].trim() === selectedGrade;
               else matchesGrade = s.classes[0].startsWith(selectedGrade);
-          } else matchesGrade = false;
+          } else {
+              matchesGrade = false;
+          }
       }
       return matchesClass && matchesGrade;
     });
@@ -216,6 +158,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       return student.grades.filter(g => { if (!g.semester) return sem === '1'; return g.semester === sem; }); 
   };
 
+  // ... (Rest of functions: handleAddTool, handleDeleteTool, etc. - Kept Same) ...
   const handleAddTool = () => { if (newToolName.trim()) { const finalName = cleanText(newToolName); if (tools.some(t => t.name === finalName)) { alert('هذه الأداة موجودة بالفعل'); return; } const newTool: AssessmentTool = { id: Math.random().toString(36).substr(2, 9), name: finalName, maxScore: 0 }; setAssessmentTools([...tools, newTool]); setNewToolName(''); setIsAddingTool(false); } };
   const handleDeleteTool = (id: string) => { if (confirm('هل أنت متأكد من حذف هذه الأداة؟')) { setAssessmentTools(tools.filter(t => t.id !== id)); } };
   const startEditingTool = (tool: AssessmentTool) => { setEditingToolId(tool.id); setEditToolName(tool.name); };
@@ -286,39 +229,41 @@ const GradeBook: React.FC<GradeBookProps> = ({
     <div className="flex flex-col h-full text-slate-800 bg-[#f8fafc] relative animate-in fade-in duration-500 font-sans">
         
         {/* ================= Fixed Header ================= */}
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300">
             
             <div className="flex justify-between items-center mb-6 mt-2">
                 <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-black tracking-tight">سجل الدرجات</h1>
+                    {/* زر إعدادات الوزن الجديد */}
                     <button onClick={() => setShowGradingSettingsModal(true)} className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors" title="إعدادات توزيع الدرجات">
-                        <Icon3DGradingConfig className="w-6 h-6" />
+                        <Calculator className="w-5 h-5 text-blue-200" />
                     </button>
                 </div>
                 
                 <div className="relative">
                     <button onClick={() => setShowMenuDropdown(!showMenuDropdown)} className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all shadow-sm border border-white/10">
-                        <Icon3DMenu className="w-6 h-6" />
+                        <Menu className="w-6 h-6" />
                     </button>
+                    {/* القائمة المنسدلة */}
                     {showMenuDropdown && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)}></div>
                             <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden origin-top-left z-50 animate-in zoom-in-95 duration-200">
                                 <div className="flex flex-col py-1">
                                     <button onClick={() => { fileInputRef.current?.click(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-right w-full group text-slate-800">
-                                        {isImporting ? <Loader2 className="w-5 h-5 animate-spin text-[#1e3a8a]" /> : <Icon3DImport className="w-5 h-5" />}
+                                        {isImporting ? <Loader2 className="w-4 h-4 animate-spin text-[#1e3a8a]" /> : <FileUp className="w-4 h-4 text-[#1e3a8a]" />}
                                         <span className="text-xs font-bold">استيراد درجات (Excel)</span>
                                     </button>
                                     <button onClick={() => { handleExportExcel(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
-                                        {isExporting ? <Loader2 className="w-5 h-5 animate-spin text-[#1e3a8a]" /> : <Icon3DExport className="w-5 h-5" />}
+                                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-[#1e3a8a]" /> : <FileSpreadsheet className="w-4 h-4 text-[#1e3a8a]" />}
                                         <span className="text-xs font-bold">تصدير إلى Excel</span>
                                     </button>
                                     <button onClick={() => { setShowToolsManager(true); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-t border-slate-50 text-right w-full group text-slate-800">
-                                        <Icon3DTools className="w-5 h-5" />
+                                        <Settings className="w-4 h-4 text-[#1e3a8a]" />
                                         <span className="text-xs font-bold">إعدادات أدوات التقويم</span>
                                     </button>
                                     <button onClick={() => { handleClearGrades(); setShowMenuDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-rose-50 transition-colors border-t border-slate-50 text-right w-full group text-rose-600">
-                                        <Icon3DClear className="w-5 h-5" />
+                                        <Trash2 className="w-4 h-4 text-rose-600" />
                                         <span className="text-xs font-bold">حذف درجات الفصل</span>
                                     </button>
                                 </div>
@@ -350,7 +295,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             <div className="overflow-x-auto no-scrollbar flex gap-2 pt-1 pb-1">
                 {tools.length > 0 ? tools.map(tool => (
                     <button key={tool.id} onClick={() => { setBulkFillTool(tool); setBulkScore(''); }} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl text-[10px] font-bold text-white whitespace-nowrap hover:bg-white/20 border border-white/20 flex items-center gap-1.5 active:scale-95 transition-all">
-                        <Icon3DBulk className="w-4 h-4" /> رصد {tool.name}
+                        <Wand2 className="w-3.5 h-3.5" /> رصد {tool.name}
                     </button>
                 )) : (
                     <span className="text-[10px] text-blue-200 font-bold px-2 py-2 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> قم بإضافة أدوات من القائمة</span>
@@ -358,7 +303,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             </div>
         </div>
 
-        {/* ================= Content List (GRID VIEW) ================= */}
+        {/* ================= Content List ================= */}
         <div className="flex-1 h-full overflow-y-auto custom-scrollbar">
             <div className="w-full h-[280px] shrink-0"></div>
             <div className="px-4 pb-24 pt-2">
@@ -369,45 +314,30 @@ const GradeBook: React.FC<GradeBookProps> = ({
                     </h3>
                 </div>
                 {filteredStudents.length > 0 ? (
-                    // ✅ Grid System (Responsive: 2 mobile, 3 tablet, 4 desktop)
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                         {filteredStudents.map((student) => {
                             const semGrades = getSemesterGrades(student, currentSemester);
                             const totalScore = semGrades.reduce((sum, g) => sum + (Number(g.score) || 0), 0);
                             return (
-                                <div key={student.id} onClick={() => setShowAddGrade({ student })} className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm hover:shadow-md transition-all active:scale-95 cursor-pointer flex flex-col items-center relative overflow-hidden group h-full justify-between">
-                                    
-                                    {/* Avatar (Updated to accept Uniform Color) */}
-                                    <div className="w-16 h-16 sm:w-20 sm:h-20 mt-2 mb-2 rounded-full border-4 border-indigo-50 shadow-inner overflow-hidden bg-slate-50 transform group-hover:scale-105 transition-transform flex-shrink-0">
-                                        {getStudentAvatar(student, girlUniformColor)}
+                                <div key={student.id} onClick={() => setShowAddGrade({ student })} className={`${styles.card} p-4 flex items-center justify-between cursor-pointer active:scale-[0.99]`}>
+                                    <div className="flex items-center gap-4 relative z-10">
+                                        <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center font-bold text-slate-400 overflow-hidden shadow-inner border border-gray-200 group-hover:border-indigo-200 transition-colors">
+                                            {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover"/> : student.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-black text-slate-900 group-hover:text-indigo-700 transition-colors">{student.name}</h3>
+                                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                {tools.slice(0, 3).map(tool => {
+                                                    const grade = semGrades.find(g => g.category.trim() === tool.name.trim());
+                                                    return (<span key={tool.id} className="text-[9px] px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-bold">{tool.name}: <span className="text-indigo-600">{grade ? grade.score : '-'}</span></span>)
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
-                                    
-                                    {/* Name */}
-                                    <h3 className="font-black text-slate-900 text-[10px] sm:text-xs text-center w-full mb-3 leading-snug line-clamp-3 min-h-[2.5em] flex items-center justify-center break-words px-1">
-                                        {student.name}
-                                    </h3>
-
-                                    {/* Grades Preview (Top 3 tools) */}
-                                    <div className="flex gap-1 mb-3 w-full justify-center">
-                                        {tools.slice(0, 3).map(tool => {
-                                            const grade = semGrades.find(g => g.category.trim() === tool.name.trim());
-                                            return (
-                                                <div key={tool.id} className="flex flex-col items-center">
-                                                    <span className="text-[8px] text-slate-400 font-bold mb-0.5 max-w-[40px] truncate">{tool.name}</span>
-                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${grade ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'}`}>
-                                                        {grade ? grade.score : '-'}
-                                                    </span>
-                                                </div>
-                                            )
-                                        })}
+                                    <div className="text-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 shadow-inner group-hover:bg-white transition-colors relative z-10 min-w-[60px]">
+                                        <span className={`block text-xl font-black ${getSymbolColor(totalScore).split(' ')[0]}`}>{totalScore}</span>
+                                        <span className="text-[10px] font-bold text-slate-400">{getGradeSymbol(totalScore)}</span>
                                     </div>
-
-                                    {/* Total Score Badge (Bottom) */}
-                                    <div className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 flex items-center justify-center gap-2 mt-auto">
-                                        <span className={`text-lg font-black ${getSymbolColor(totalScore).split(' ')[0]}`}>{totalScore}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-lg shadow-sm border border-slate-100">{getGradeSymbol(totalScore)}</span>
-                                    </div>
-
                                 </div>
                             );
                         })}
@@ -527,7 +457,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
         <Modal isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} className="max-w-xs rounded-[2rem]">
             {bulkFillTool && (
                 <div className="text-center text-slate-900">
-                    <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-500 shadow-sm border border-indigo-100"><Icon3DBulk className="w-7 h-7" /></div>
+                    <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-500 shadow-sm border border-indigo-100"><Wand2 className="w-7 h-7" /></div>
                     <h3 className="font-black text-lg mb-1">رصد جماعي</h3>
                     <p className="text-xs text-indigo-600 font-bold mb-4 bg-indigo-50 inline-block px-3 py-1 rounded-lg">{bulkFillTool.name}</p>
                     <p className="text-[10px] text-gray-500 mb-4 px-2 font-medium">سيتم رصد هذه الدرجة لجميع الطلاب الظاهرين في القائمة الحالية (الذين لم ترصد لهم درجة لهذه الأداة بعد).</p>

@@ -1,21 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Users, Phone, ShieldCheck, Heart } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 
 const About: React.FC = () => {
-  // 1. حالة لتخزين رقم الإصدار
-  const [appVersion, setAppVersion] = useState('3.6.0'); // قيمة افتراضية
-
-  // 2. جلب الإصدار الحقيقي عند فتح الصفحة
-  useEffect(() => {
-    // التأكد من وجود الجسر (window.electron)
-    if (window.electron && window.electron.getAppVersion) {
-      window.electron.getAppVersion().then((ver: string) => {
-        setAppVersion(ver);
-      });
-    }
-  }, []);
-
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] font-sans overflow-hidden relative">
       
@@ -32,10 +19,8 @@ const About: React.FC = () => {
           </div>
 
           <h1 className="text-3xl font-black mb-2 tracking-wide text-white drop-shadow-md">تطبيق راصد</h1>
-          
-          {/* ✅ 3. هنا تم وضع المتغير الديناميكي بدلاً من الرقم الثابت */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-full text-blue-50 font-black text-xs shadow-sm" dir="ltr">
-              V {appVersion} • الإصدار الملكي
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-full text-blue-50 font-black text-xs shadow-sm">
+              V 3.6.0 • الإصدار الملكي
           </div>
       </div>
 
@@ -87,10 +72,10 @@ const About: React.FC = () => {
 
           <div className="text-center mt-8 mb-4">
               <p className="text-[10px] font-bold text-slate-400 flex items-center justify-center gap-1">
-                 هديتي لكم يا معلميني الاعزاء  <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> 
+                 هديتي لكم با معلميني الاعزاء  <Heart className="w-3 h-3 text-rose-400 fill-rose-400" /> 
               </p>
               <p className="text-[10px] font-bold text-slate-300 mt-1">
-                  alzaabi555 جميع الحقوق محفوظة © {new Date().getFullYear()}
+                 alzaabi555 جميع الحقوق محفوظة © {new Date().getFullYear()}
               </p>
           </div>
 
