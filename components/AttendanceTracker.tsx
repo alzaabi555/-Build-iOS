@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, ArrowRight, Smartphone, Mail } from 'lucide-react';
+import { MessageCircle, ChevronDown, Loader2, UserCircle2, ArrowRight, Smartphone, Mail, Calendar } from 'lucide-react'; // تم إزالة الأيقونات القديمة المستبدلة لتخفيف الكود
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import Modal from './Modal';
@@ -8,6 +8,214 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
+
+// --- أيقونات 3D الجديدة (SVG Components) ---
+
+// 1. الأفاتار (ولد/بنت) مع تعديل خط الشعر
+const OmaniBoyAvatarSVG = () => (
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="boySkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
+      <linearGradient id="dishdasha3D" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="20%" stopColor="#f1f5f9" />
+        <stop offset="50%" stopColor="#ffffff" />
+        <stop offset="80%" stopColor="#e2e8f0" />
+        <stop offset="100%" stopColor="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="kummahBase" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="100%" stopColor="#e2e8f0" />
+      </linearGradient>
+      <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="2" dy="4" result="offsetblur" />
+        <feComponentTransfer>
+          <feFuncA type="linear" slope="0.3" />
+        </feComponentTransfer>
+        <feMerge>
+          <feMergeNode />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#softShadow)"><path d="M50 170 C50 140 150 140 150 170 L150 210 L50 210 Z" fill="url(#dishdasha3D)" /><path d="M100 150 L100 180" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" /><circle cx="100" cy="183" r="3" fill="#cbd5e1" /></g>
+    <rect x="85" y="115" width="30" height="20" fill="#d49066" />
+    <g filter="url(#softShadow)"><circle cx="100" cy="95" r="48" fill="url(#boySkin3D)" />
+    {/* الكمة معدلة لتغطية الجبهة */}
+    <path d="M53 85 Q100 95 147 85 L147 65 Q100 15 53 65 Z" fill="url(#kummahBase)" /><path d="M53 85 Q100 95 147 85" fill="none" stroke="#e2e8f0" strokeWidth="1" /><path d="M60 80 Q100 90 140 80" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" opacity="0.6" /><path d="M65 70 Q100 40 135 70" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" opacity="0.5" />
+    <circle cx="52" cy="95" r="9" fill="#ebb082" /><circle cx="148" cy="95" r="9" fill="#ebb082" /></g>
+    <g><ellipse cx="82" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="84" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="118" cy="100" rx="6" ry="8" fill="#1e293b" /><circle cx="120" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M75 90 Q82 88 89 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M111 90 Q118 88 125 90" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" /><path d="M90 120 Q100 128 110 120" fill="none" stroke="#9a3412" strokeWidth="2.5" strokeLinecap="round" /><ellipse cx="75" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /><ellipse cx="125" cy="115" rx="6" ry="3" fill="#fda4af" opacity="0.4" filter="blur(2px)" /></g>
+  </svg>
+);
+
+const OmaniGirlAvatarSVG = () => (
+  <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="girlSkin3D" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+        <stop offset="0%" stopColor="#ffdfc4" />
+        <stop offset="60%" stopColor="#ebb082" />
+        <stop offset="100%" stopColor="#d49066" />
+      </radialGradient>
+      <linearGradient id="hijab3D" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="50%" stopColor="#f8fafc" />
+        <stop offset="100%" stopColor="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="uniform3D" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#3b82f6" />
+        <stop offset="100%" stopColor="#1e3a8a" />
+      </linearGradient>
+      <filter id="girlShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+        <feOffset dx="0" dy="4" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g filter="url(#girlShadow)"><path d="M40 180 C40 130 160 130 160 180 L160 210 L40 210 Z" fill="url(#uniform3D)" /><path d="M70 160 L70 210 M130 160 L130 210" stroke="#2563eb" strokeWidth="12" opacity="0.3" /></g>
+    <rect x="90" y="120" width="20" height="20" fill="#d49066" />
+    <g filter="url(#girlShadow)"><path d="M45 90 Q100 20 155 90 L155 130 Q155 160 100 170 Q45 160 45 130 Z" fill="url(#hijab3D)" /><circle cx="100" cy="95" r="38" fill="url(#girlSkin3D)" />
+    {/* الحجاب معدل لتغطية الجبهة */}
+    <path d="M62 90 Q100 100 138 90 L138 50 Q100 40 62 50 Z" fill="url(#hijab3D)" /><path d="M62 90 Q100 100 138 90" fill="none" stroke="#f1f5f9" strokeWidth="1" opacity="0.5" /></g>
+    <g><ellipse cx="86" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="88" cy="98" r="2.5" fill="white" opacity="0.9" /><ellipse cx="114" cy="100" rx="5.5" ry="7.5" fill="#1e293b" /><circle cx="116" cy="98" r="2.5" fill="white" opacity="0.9" /><path d="M80 96 L78 94 M120 96 L122 94" stroke="#1e293b" strokeWidth="1.5" /><path d="M94 118 Q100 122 106 118" fill="none" stroke="#db2777" strokeWidth="2" strokeLinecap="round" /><circle cx="80" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /><circle cx="120" cy="110" r="5" fill="#fbcfe8" opacity="0.5" filter="blur(2px)" /></g>
+  </svg>
+);
+
+const getStudentAvatar = (student: Student) => {
+    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
+    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
+};
+
+const Icon3DPresent = () => (
+  <svg viewBox="0 0 100 100" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4ade80" />
+        <stop offset="100%" stopColor="#16a34a" />
+      </linearGradient>
+      <filter id="shadowGreen" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="45" fill="url(#gradGreen)" filter="url(#shadowGreen)" />
+    <path d="M30 50 L45 65 L70 35" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="35" cy="35" r="5" fill="white" opacity="0.3" />
+  </svg>
+);
+
+const Icon3DLate = () => (
+  <svg viewBox="0 0 100 100" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fbbf24" />
+        <stop offset="100%" stopColor="#d97706" />
+      </linearGradient>
+      <filter id="shadowAmber" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="45" fill="url(#gradAmber)" filter="url(#shadowAmber)" />
+    <circle cx="50" cy="50" r="35" fill="#fff7ed" opacity="0.4" />
+    <path d="M50 25 V50 L65 60" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" />
+    <circle cx="50" cy="50" r="4" fill="white" />
+    <circle cx="30" cy="30" r="6" fill="white" opacity="0.5" />
+  </svg>
+);
+
+const Icon3DAbsent = () => (
+  <svg viewBox="0 0 100 100" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradRed" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f87171" />
+        <stop offset="100%" stopColor="#dc2626" />
+      </linearGradient>
+      <filter id="shadowRed" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <circle cx="50" cy="50" r="45" fill="url(#gradRed)" filter="url(#shadowRed)" />
+    <path d="M35 35 L65 65 M65 35 L35 65" stroke="white" strokeWidth="8" strokeLinecap="round" />
+    <circle cx="50" cy="25" r="5" fill="white" opacity="0.3" />
+  </svg>
+);
+
+const Icon3DTruant = () => (
+  <svg viewBox="0 0 100 100" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#a78bfa" />
+        <stop offset="100%" stopColor="#7c3aed" />
+      </linearGradient>
+      <filter id="shadowPurple" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="15" width="60" height="70" rx="4" fill="#ddd6fe" filter="url(#shadowPurple)" />
+    <rect x="25" y="20" width="50" height="65" rx="2" fill="#5b21b6" />
+    <path d="M25 20 L65 25 L65 80 L25 85 Z" fill="url(#gradPurple)" />
+    <circle cx="55" cy="55" r="3" fill="white" />
+    <path d="M50 20 L75 25 L75 80 L50 85" fill="black" opacity="0.1" />
+  </svg>
+);
+
+const Icon3DExport = () => (
+  <svg viewBox="0 0 100 100" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradExcel" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+      <filter id="shadowExport" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+        <feOffset dx="1" dy="1" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="20" width="60" height="60" rx="8" fill="url(#gradExcel)" filter="url(#shadowExport)" />
+    <path d="M35 35 H65 M35 50 H65 M35 65 H50" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
+    <path d="M60 60 L75 75 M75 75 L60 75 M75 75 L75 60" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const Icon3DMessage = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradChat" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4ade80" />
+        <stop offset="100%" stopColor="#16a34a" />
+      </linearGradient>
+      <filter id="shadowChat" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+        <feOffset dx="1" dy="2" result="offsetblur" />
+        <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path d="M50 15 C26 15 6 32 6 54 C6 63 9 71 14 78 L9 93 L26 88 C33 92 41 94 50 94 C74 94 94 76 94 54 C94 32 74 15 50 15" fill="url(#gradChat)" filter="url(#shadowChat)" />
+    <path d="M35 40 C35 40 37 38 39 38 C41 38 43 39 44 42 L46 47 C47 48 46 50 45 51 L43 53 C43 53 44 57 48 61 C52 65 56 66 56 66 L58 64 C59 63 61 63 62 63 L67 65 C69 66 69 68 69 70 C69 72 67 74 65 74 C62 74 58 73 53 69 C48 65 42 59 38 54 C35 49 34 44 34 42 C34 40 35 40 35 40" fill="white" />
+    <circle cx="65" cy="35" r="5" fill="white" opacity="0.4" />
+  </svg>
+);
+
+// -----------------------------------------------------------
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -88,7 +296,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
           let matchesGrade = true;
           if (selectedGrade !== 'all') {
-             // منطق التطابق المحدث
              if (s.grade === selectedGrade) matchesGrade = true;
              else if (s.classes[0]) {
                  if (s.classes[0].includes('/')) matchesGrade = s.classes[0].split('/')[0].trim() === selectedGrade;
@@ -113,7 +320,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       }));
   };
 
-  // ✅ تحديث: منطق استخراج المراحل الموحد
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
       classes.forEach(c => {
@@ -135,7 +341,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       });
   }, [students, classes]);
 
-  // ✅ تحديث: منطق تصفية الفصول بناءً على المرحلة المختارة
   const visibleClasses = useMemo(() => {
       if (selectedGrade === 'all') return classes;
       return classes.filter(c => {
@@ -144,7 +349,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       });
   }, [classes, selectedGrade]);
 
-  // ✅ تحديث: منطق تصفية الطلاب
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
       const matchesClass = classFilter === 'all' || s.classes.includes(classFilter);
@@ -257,12 +461,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     <div className="flex flex-col h-full bg-[#f8fafc] text-slate-800 relative animate-in fade-in duration-500 font-sans">
         
         {/* ================= HEADER ================= */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#1e3a8a] text-white rounded-b-[2.5rem] shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-8 transition-all duration-300">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             
             <div className="flex justify-center items-center mt-4 mb-2 relative">
                 <h1 className="text-xl font-bold tracking-wide opacity-90">رصد الحضور</h1>
                 <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="absolute left-0 w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all" title="تصدير سجل شهري">
-                     {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
+                     {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Icon3DExport />}
                 </button>
             </div>
 
@@ -332,8 +536,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                     {/* Student Header */}
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
+                                            {/* Avatar: Replaced UserCircle2 with 3D Avatar Logic */}
                                             <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden border-2 border-white/50 shadow-sm shrink-0">
-                                                {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover"/> : <span className="text-lg font-black text-slate-300">{student.name.charAt(0)}</span>}
+                                                {getStudentAvatar(student)}
                                             </div>
                                             <div>
                                                 <h3 className="text-base font-black text-slate-900 leading-tight">{student.name}</h3>
@@ -343,8 +548,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                         
                                         {/* زر الواتساب يظهر هنا عند وجود حالة سلبية */}
                                         {(status && status !== 'present') && (
-                                            <button onClick={() => setNotificationTarget({ student, type: status as any })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm border border-slate-100 animate-in zoom-in">
-                                                <MessageCircle className="w-5 h-5" />
+                                            <button onClick={() => setNotificationTarget({ student, type: status as any })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 animate-in zoom-in">
+                                                <Icon3DMessage className="w-6 h-6" />
                                             </button>
                                         )}
                                     </div>
@@ -355,32 +560,32 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                             onClick={() => toggleAttendance(student.id, 'present')}
                                             className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${status === 'present' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-100'}`}
                                         >
-                                            <Check className="w-5 h-5" strokeWidth={3} />
-                                            <span className="text-[10px] font-bold">حضور</span>
+                                            <Icon3DPresent />
+                                            <span className="text-[10px] font-bold mt-1">حضور</span>
                                         </button>
 
                                         <button 
                                             onClick={() => toggleAttendance(student.id, 'late')}
                                             className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${status === 'late' ? 'bg-amber-500 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-amber-50 hover:text-amber-500 border border-slate-100'}`}
                                         >
-                                            <Clock className="w-5 h-5" strokeWidth={3} />
-                                            <span className="text-[10px] font-bold">تأخر</span>
+                                            <Icon3DLate />
+                                            <span className="text-[10px] font-bold mt-1">تأخر</span>
                                         </button>
 
                                         <button 
                                             onClick={() => toggleAttendance(student.id, 'absent')}
                                             className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${status === 'absent' ? 'bg-rose-600 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 border border-slate-100'}`}
                                         >
-                                            <X className="w-5 h-5" strokeWidth={3} />
-                                            <span className="text-[10px] font-bold">غياب</span>
+                                            <Icon3DAbsent />
+                                            <span className="text-[10px] font-bold mt-1">غياب</span>
                                         </button>
 
                                         <button 
                                             onClick={() => toggleAttendance(student.id, 'truant')}
                                             className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${status === 'truant' ? 'bg-purple-600 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-purple-50 hover:text-purple-500 border border-slate-100'}`}
                                         >
-                                            <DoorOpen className="w-5 h-5" strokeWidth={3} />
-                                            <span className="text-[10px] font-bold">تسرب</span>
+                                            <Icon3DTruant />
+                                            <span className="text-[10px] font-bold mt-1">تسرب</span>
                                         </button>
                                     </div>
 
@@ -400,8 +605,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         {/* Notification Modal */}
         <Modal isOpen={!!notificationTarget} onClose={() => setNotificationTarget(null)} className="max-w-xs rounded-[2rem]">
             <div className="text-center p-2">
-                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-sm border border-blue-100">
-                    <MessageCircle className="w-8 h-8" />
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-blue-100">
+                    <Icon3DMessage className="w-10 h-10" />
                 </div>
                 <h3 className="font-black text-lg mb-1 text-slate-900">إشعار ولي الأمر</h3>
                 <p className="text-xs text-gray-500 mb-6 font-bold leading-relaxed">
