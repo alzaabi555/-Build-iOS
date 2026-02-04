@@ -17,7 +17,7 @@ interface StudentReportProps {
 }
 
 const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent, currentSemester, teacherInfo, onBack }) => {
-  const { assessmentTools } = useApp();
+  const { assessmentTools, gradeSettings } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === (currentSemester || '1'));
@@ -29,10 +29,23 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   // Filter grades for current semester
   const currentSemesterGrades = allGrades.filter(g => !g.semester || g.semester === (currentSemester || '1'));
 
-  // --- Logic for Ordered Grade Rows (Matching GradeBook) ---
-  const finalExamName = "الامتحان النهائي";
-  const continuousTools = assessmentTools.filter(t => t.name.trim() !== finalExamName);
-  const finalTool = assessmentTools.find(t => t.name.trim() === finalExamName);
+  // --- Logic for Ordered Grade Rows (Improved with GradeSettings) ---
+  
+  // Find the final exam tool
+  // Priority: 1. Tool with isFinal=true, 2. Tool matching configured final name, 3. Fallback to default name
+  let finalTool = assessmentTools.find(t => t.isFinal === true);
+  
+  if (!finalTool && gradeSettings?.finalExamName) {
+      finalTool = assessmentTools.find(t => t.name.trim() === gradeSettings.finalExamName.trim());
+  }
+  
+  // Identify Final Tool Name for display
+  const finalToolName = finalTool ? finalTool.name : (gradeSettings?.finalExamName || "الامتحان النهائي");
+
+  // Filter out the final tool from continuous tools
+  const continuousTools = assessmentTools.filter(t => 
+      t.id !== finalTool?.id && t.name.trim() !== finalToolName.trim()
+  );
 
   let continuousSum = 0;
   
@@ -44,8 +57,8 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
   // Calculate final score
   let finalScore = 0;
-  if (finalTool) {
-      const g = currentSemesterGrades.find(r => r.category.trim() === finalTool.name.trim());
+  if (finalToolName) {
+      const g = currentSemesterGrades.find(r => r.category.trim() === finalToolName.trim());
       if (g) finalScore = (Number(g.score) || 0);
   }
 
@@ -110,6 +123,11 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
           setIsGeneratingPdf(false); 
       }
   };
+
+  // Determine Max Scores for Display
+  const maxTotal = gradeSettings?.totalScore || 100;
+  const maxFinal = gradeSettings?.finalExamScore || 40;
+  const maxContinuous = maxTotal - maxFinal;
 
   return (
     <div className="flex flex-col h-full space-y-4 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-900">
@@ -226,23 +244,20 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                                         );
                                     })}
                                     
-                                    {/* 2. Sum 60 Row */}
+                                    {/* 2. Continuous Sum Row */}
                                     <tr className="bg-blue-50 font-bold">
-                                        <td colSpan={2} className="border border-slate-300 p-3 text-sm text-center text-blue-900 border-t-2 border-slate-400">المجموع (60)</td>
+                                        <td colSpan={2} className="border border-slate-300 p-3 text-sm text-center text-blue-900 border-t-2 border-slate-400">المجموع ({maxContinuous})</td>
                                         <td className="border border-slate-300 p-3 text-sm text-center font-mono text-blue-900 border-t-2 border-slate-400">{continuousSum}</td>
                                     </tr>
 
                                     {/* 3. Final Exam Row */}
-                                    {finalTool && (() => {
-                                        const grade = currentSemesterGrades.find(g => g.category.trim() === finalTool.name.trim());
-                                        return (
-                                            <tr key={finalTool.id}>
-                                                <td className="border border-slate-300 p-3 text-sm font-bold text-right">{teacherInfo?.subject || 'المادة'}</td>
-                                                <td className="border border-slate-300 p-3 text-sm text-center bg-[#fce7f3]">{finalTool.name} (40)</td>
-                                                <td className="border border-slate-300 p-3 text-sm text-center font-bold font-mono">{grade ? grade.score : '-'}</td>
-                                            </tr>
-                                        );
-                                    })()}
+                                    {finalToolName && (
+                                        <tr key="final">
+                                            <td className="border border-slate-300 p-3 text-sm font-bold text-right">{teacherInfo?.subject || 'المادة'}</td>
+                                            <td className="border border-slate-300 p-3 text-sm text-center bg-[#fce7f3]">{finalToolName} ({maxFinal})</td>
+                                            <td className="border border-slate-300 p-3 text-sm text-center font-bold font-mono">{finalScore || '-'}</td>
+                                        </tr>
+                                    )}
                                 </>
                             ) : (
                                 /* Fallback if no tools defined */
@@ -261,7 +276,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                         </tbody>
                         <tfoot>
                             <tr className="bg-slate-100">
-                                <td colSpan={2} className="border border-slate-300 p-3 text-sm font-black text-right border-t-2 border-black text-black">المجموع الكلي</td>
+                                <td colSpan={2} className="border border-slate-300 p-3 text-sm font-black text-right border-t-2 border-black text-black">المجموع الكلي ({maxTotal})</td>
                                 <td className="border border-slate-300 p-3 text-sm font-black text-center font-mono text-lg border-t-2 border-black text-black">
                                     {totalScore}
                                 </td>

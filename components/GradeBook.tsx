@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Student, GradeRecord, AssessmentTool } from '../types';
-import { Plus, X, Trash2, Settings, Check, Loader2, Edit2, FileSpreadsheet, FileUp, Wand2, BarChart3, SlidersHorizontal, FileDown } from 'lucide-react';
+import { Plus, X, Trash2, Settings, Check, Loader2, Edit2, FileSpreadsheet, FileUp, Wand2, BarChart3, SlidersHorizontal, FileDown, PieChart } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -28,7 +28,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     onSemesterChange, 
     teacherInfo 
 }) => {
-  const { assessmentTools, setAssessmentTools } = useApp();
+  const { assessmentTools, setAssessmentTools, gradeSettings, setGradeSettings } = useApp();
   const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState('all');
@@ -46,6 +46,12 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [editingToolId, setEditingToolId] = useState<string | null>(null);
   const [editToolName, setEditToolName] = useState('');
   
+  // Distribution Logic
+  const [showDistModal, setShowDistModal] = useState(false);
+  const [distTotal, setDistTotal] = useState(gradeSettings.totalScore || 100);
+  const [distFinalScore, setDistFinalScore] = useState(gradeSettings.finalExamScore || 40);
+  const [distFinalName, setDistFinalName] = useState(gradeSettings.finalExamName || 'الامتحان النهائي');
+
   // Bulk Fill
   const [bulkFillTool, setBulkFillTool] = useState<AssessmentTool | null>(null);
   const [bulkScore, setBulkScore] = useState('');
@@ -154,6 +160,48 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const saveEditedTool = () => { if (editingToolId && editToolName.trim()) { setAssessmentTools(tools.map(t => t.id === editingToolId ? { ...t, name: cleanText(editToolName) } : t )); setEditingToolId(null); setEditToolName(''); } };
   const cancelEditingTool = () => { setEditingToolId(null); setEditToolName(''); };
 
+  // --- Distribution Settings Handler ---
+  const handleSaveDistribution = () => {
+      // 1. Update Context Settings
+      setGradeSettings({
+          totalScore: distTotal,
+          finalExamScore: distFinalScore,
+          finalExamName: distFinalName
+      });
+
+      // 2. Manage the Final Exam Tool
+      let newTools = [...tools];
+      // Try to find existing final tool by isFinal flag OR by name
+      let finalToolIndex = newTools.findIndex(t => t.isFinal === true);
+      
+      if (finalToolIndex === -1) {
+          // Fallback: search by current name
+          finalToolIndex = newTools.findIndex(t => t.name.trim() === distFinalName.trim());
+      }
+
+      if (finalToolIndex !== -1) {
+          // Update existing
+          newTools[finalToolIndex] = {
+              ...newTools[finalToolIndex],
+              name: distFinalName,
+              maxScore: distFinalScore,
+              isFinal: true
+          };
+      } else {
+          // Create new
+          newTools.push({
+              id: Math.random().toString(36).substr(2, 9),
+              name: distFinalName,
+              maxScore: distFinalScore,
+              isFinal: true
+          });
+      }
+
+      setAssessmentTools(newTools);
+      setShowDistModal(false);
+      alert('تم اعتماد توزيع الدرجات وتحديث أدوات التقويم ✅');
+  };
+
   // --- Bulk & File Handlers ---
   const handleBulkFill = () => {
       if (!bulkFillTool) return;
@@ -206,10 +254,127 @@ const GradeBook: React.FC<GradeBookProps> = ({
       }
   };
 
-  // ... (Keeping Import/Export logic simplified for brevity, assume same as before) ...
-  // Re-implementing simplified Import/Export for context
-  const handleExportExcel = async () => { /* ... existing export logic ... */ };
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => { /* ... existing import logic ... */ };
+  // --- Real Import Logic (RESTORED & FIXED) ---
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (tools.length === 0) {
+          alert('يرجى إضافة أدوات تقويم أولاً لتتمكن من استيراد الدرجات إليها');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+      }
+
+      setIsImporting(true);
+      try {
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data, { type: 'array' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }) as any[];
+
+          if (jsonData.length === 0) throw new Error('الملف فارغ');
+
+          const headers = Object.keys(jsonData[0]);
+          const nameKeywords = ['الاسم', 'اسم الطالب', 'name', 'student', 'الطالب'];
+          
+          let nameKey = headers.find(h => nameKeywords.some(k => normalizeText(h) === normalizeText(k)));
+          if (!nameKey) {
+             nameKey = headers.find(h => nameKeywords.some(k => h.includes(k)));
+          }
+
+          if (!nameKey) throw new Error('لم يتم العثور على عمود الاسم');
+
+          // Map headers to tools objects
+          const toolMapping: { [header: string]: AssessmentTool } = {};
+          
+          tools.forEach(tool => {
+              const tName = normalizeText(tool.name);
+              // Try to find header that matches tool name
+              const header = headers.find(h => {
+                  const hName = normalizeText(h);
+                  return hName === tName || hName.includes(tName);
+              });
+              
+              if (header) {
+                  toolMapping[header] = tool;
+              }
+          });
+
+          if (Object.keys(toolMapping).length === 0) {
+              throw new Error('لم يتم العثور على أي أعمدة تطابق أدوات التقويم الموجودة');
+          }
+
+          // Build update map for faster processing
+          const updatesMap = new Map<string, { tool: AssessmentTool, score: number }[]>();
+
+          jsonData.forEach(row => {
+              const rawName = row[nameKey!];
+              if (!rawName) return;
+              const normalizedName = normalizeText(String(rawName));
+              
+              const studentUpdates: { tool: AssessmentTool, score: number }[] = [];
+              
+              Object.entries(toolMapping).forEach(([header, tool]) => {
+                  const val = row[header];
+                  if (val !== undefined && val !== "" && val !== null) {
+                      const numVal = parseFloat(String(val));
+                      if (!isNaN(numVal)) {
+                          studentUpdates.push({ tool, score: numVal });
+                      }
+                  }
+              });
+              
+              if (studentUpdates.length > 0) {
+                  updatesMap.set(normalizedName, studentUpdates);
+              }
+          });
+
+          setStudents(prevStudents => {
+              const newStudents = prevStudents.map(student => {
+                  const sName = normalizeText(student.name);
+                  const updates = updatesMap.get(sName);
+                  
+                  if (updates) {
+                      let newGrades = [...(student.grades || [])];
+                      
+                      updates.forEach(({ tool, score }) => {
+                          // Update or Add grade
+                          newGrades = newGrades.filter(g => !(g.category === tool.name && (g.semester || '1') === currentSemester));
+                          newGrades.push({
+                              id: Math.random().toString(36).substr(2, 9),
+                              subject: teacherInfo?.subject || 'المادة',
+                              category: tool.name,
+                              score: score,
+                              maxScore: tool.maxScore || 0,
+                              date: new Date().toISOString(),
+                              semester: currentSemester
+                          });
+                      });
+                      
+                      return { ...student, grades: newGrades };
+                  }
+                  return student;
+              });
+              return newStudents;
+          });
+
+          // Calculate counts for alert
+          const estimatedCount = students.filter(s => updatesMap.has(normalizeText(s.name))).length;
+          alert(`تم استيراد الدرجات بنجاح لـ ${estimatedCount} طالب ✅`);
+
+      } catch (error: any) {
+          console.error(error);
+          alert('خطأ في الاستيراد: ' + error.message);
+      } finally {
+          setIsImporting(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+  };
+
+  const handleExportExcel = async () => {
+      // (Simplified logic for now)
+      alert('سيتم تفعيل التصدير قريباً');
+  };
 
   return (
     <div className="flex flex-col h-full text-slate-800">
@@ -222,6 +387,11 @@ const GradeBook: React.FC<GradeBookProps> = ({
                         <BarChart3 className="w-5 h-5 text-white" />
                     </div>
                     <h1 className="text-2xl font-black tracking-wide">سجل الدرجات</h1>
+                    
+                    {/* زر الإعدادات المباشر بجانب العنوان */}
+                    <button onClick={() => setShowToolsManager(true)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-white/10" title="إدارة الأدوات">
+                        <Settings className="w-4 h-4 text-white" />
+                    </button>
                 </div>
                 
                 <div className="relative">
@@ -240,6 +410,17 @@ const GradeBook: React.FC<GradeBookProps> = ({
                                     <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 mb-1">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">إدارة الدرجات</span>
                                     </div>
+
+                                    {/* Added Grade Distribution Button */}
+                                    <button onClick={() => { setShowDistModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                                            <PieChart className="w-4 h-4 text-indigo-600" />
+                                        </div>
+                                        <div className="flex flex-col items-start">
+                                            <span className="text-xs font-bold text-slate-800">إعدادات توزيع الدرجات</span>
+                                            <span className="text-[9px] text-slate-400">تحديد الدرجة النهائية</span>
+                                        </div>
+                                    </button>
 
                                     <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right">
                                         <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -263,13 +444,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
                                             <Trash2 className="w-4 h-4 text-red-500" />
                                          </div>
                                         <span className="text-xs font-bold text-red-600">تصفير الدرجات</span>
-                                    </button>
-                                    
-                                    <button onClick={() => { setShowToolsManager(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right">
-                                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                                            <Settings className="w-4 h-4 text-slate-600" />
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-700">إعدادات الأدوات</span>
                                     </button>
                                 </div>
                             </div>
@@ -301,9 +475,10 @@ const GradeBook: React.FC<GradeBookProps> = ({
                         <button 
                             key={tool.id}
                             onClick={() => setActiveToolId(tool.id)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap border flex items-center gap-1.5 active:scale-95 shadow-sm transition-all ${activeToolId === tool.id ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'}`}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap border flex items-center gap-1.5 active:scale-95 shadow-sm transition-all ${activeToolId === tool.id ? 'bg-white text-[#1e3a8a] border-white shadow-md' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'} ${tool.isFinal ? 'border-amber-400/50' : ''}`}
                         >
                             {activeToolId === tool.id && <Check className="w-3 h-3" />}
+                            {tool.isFinal && <span className="text-amber-400 ml-1">★</span>}
                             {tool.name}
                         </button>
                     )) : (
@@ -341,13 +516,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
                             >
                                 {/* 1. Student Avatar */}
                                 <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
+                                    {/* استخدام المسار النسبي الصحيح */}
                                     <img 
-                                        src={student.avatar || (student.gender === 'female' ? './assets/student_girl.png' : './assets/student_boy.png')} 
+                                        src={student.avatar || (student.gender === 'female' ? 'assets/student_girl.png' : 'assets/student_boy.png')} 
                                         className="w-full h-full object-cover"
                                         alt={student.name}
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
                                             e.currentTarget.parentElement!.innerText = student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
+                                            e.currentTarget.parentElement!.classList.add('flex', 'items-center', 'justify-center', 'text-2xl');
                                         }}
                                     />
                                 </div>
@@ -387,6 +564,54 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
 
         {/* ... Modals ... */}
+        
+        {/* Distribution Settings Modal */}
+        <Modal isOpen={showDistModal} onClose={() => setShowDistModal(false)} className="max-w-md rounded-[2rem]">
+            <div className="text-center">
+                <h3 className="font-black text-xl mb-6 text-slate-800">إعدادات توزيع الدرجات</h3>
+                <p className="text-sm font-bold text-gray-500 mb-6 px-4">قم بضبط الأوزان النسبية للدرجات حسب المرحلة الدراسية التي تدرسها.</p>
+                
+                <div className="space-y-6">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                        <label className="block text-right text-xs font-black text-slate-700 mb-2">1. الدرجة الكلية للمادة</label>
+                        <input type="number" value={distTotal} onChange={e => setDistTotal(Number(e.target.value))} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-black text-lg outline-none focus:border-indigo-500 text-slate-800" />
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                        <label className="block text-right text-xs font-black text-slate-700 mb-2">2. درجة الامتحان النهائي (أو المشروع)</label>
+                        <input type="number" value={distFinalScore} onChange={e => setDistFinalScore(Number(e.target.value))} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-black text-lg outline-none focus:border-indigo-500 text-slate-800" />
+                        <p className="text-[10px] text-gray-400 mt-2 font-bold text-right">* ضع 0 إذا كانت المادة تقويم مستمر 100%</p>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                        <label className="block text-right text-xs font-black text-slate-700 mb-2">3. مسمى الامتحان النهائي</label>
+                        <input type="text" value={distFinalName} onChange={e => setDistFinalName(e.target.value)} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-bold text-sm outline-none focus:border-indigo-500 text-slate-800" placeholder="مثال: الامتحان النهائي" />
+                    </div>
+
+                    <div className="flex items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-center flex-1">
+                            <span className="block text-xs font-bold text-blue-600 mb-1">التقويم المستمر</span>
+                            <span className="text-xl font-black text-slate-800">{distTotal - distFinalScore}</span>
+                        </div>
+                        <div className="text-xl font-black text-slate-300">+</div>
+                        <div className="text-center flex-1">
+                            <span className="block text-xs font-bold text-blue-600 mb-1">النهائي</span>
+                            <span className="text-xl font-black text-slate-800">{distFinalScore}</span>
+                        </div>
+                        <div className="text-xl font-black text-slate-300">=</div>
+                        <div className="text-center flex-1">
+                            <span className="block text-xs font-bold text-blue-600 mb-1">{distTotal}</span>
+                        </div>
+                    </div>
+
+                    <button onClick={handleSaveDistribution} className="w-full py-4 bg-[#1e3a8a] text-white rounded-xl font-black text-sm shadow-lg hover:bg-[#172554] active:scale-95 transition-all">
+                        حفظ واعتماد التوزيع
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
+        {/* Tools Manager Modal */}
         <Modal isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} className="max-w-sm rounded-[2rem]">
             <div className="text-center text-slate-900">
                 <div className="flex justify-between items-center mb-6">
@@ -409,10 +634,13 @@ const GradeBook: React.FC<GradeBookProps> = ({
                                         </div>
                                     ) : (
                                         <>
-                                            <span className="text-xs font-bold text-slate-700 px-2">{tool.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                {tool.isFinal && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">نهائي</span>}
+                                                <span className="text-xs font-bold text-slate-700 px-2">{tool.name}</span>
+                                            </div>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => startEditingTool(tool)} className="p-1.5 hover:bg-blue-50 text-blue-500 rounded-lg transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
-                                                <button onClick={() => handleDeleteTool(tool.id)} className="p-1.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>
+                                                {!tool.isFinal && <button onClick={() => handleDeleteTool(tool.id)} className="p-1.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>}
                                             </div>
                                         </>
                                     )}

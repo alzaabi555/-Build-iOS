@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, Filter, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react';
+import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, Filter, ChevronLeft, ChevronRight, CalendarCheck, Search } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import Modal from './Modal';
@@ -20,6 +20,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [selectedDate, setSelectedDate] = useState(today.toLocaleDateString('en-CA'));
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
@@ -54,6 +55,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         attendance: currentStatus === status ? filtered : [...filtered, { date: selectedDate, status }]
       };
 
+      // منطق التبليغ يعمل هنا للغياب والتاخير والتسرب
       if ((status === 'absent' || status === 'late' || status === 'truant') && currentStatus !== status) {
           // Trigger notification popup for negative statuses
           setTimeout(() => setNotificationTarget({ student: newStudent, type: status }), 50);
@@ -61,6 +63,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
       return newStudent;
     }));
+  };
+
+  // دالة التحضير الجماعي
+  const markAll = (status: AttendanceStatus) => {
+      const visibleIds = new Set(filteredStudents.map(s => s.id));
+      
+      setStudents(prev => prev.map(s => {
+          if (!visibleIds.has(s.id)) return s;
+          
+          const filtered = s.attendance.filter(a => a.date !== selectedDate);
+          return {
+              ...s,
+              attendance: [...filtered, { date: selectedDate, status }]
+          };
+      }));
   };
 
   const availableGrades = useMemo(() => {
@@ -87,9 +104,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       if (selectedGrade !== 'all') {
           matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
       }
-      return matchesClass && matchesGrade;
+      // منطق البحث بالاسم
+      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesClass && matchesGrade && matchesSearch;
     });
-  }, [students, classFilter, selectedGrade]);
+  }, [students, classFilter, selectedGrade, searchTerm]);
 
   const stats = useMemo(() => {
       const present = filteredStudents.filter(s => getStatus(s) === 'present').length;
@@ -132,7 +151,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   };
 
   const handleExportDailyExcel = async () => {
-      // (Export Logic kept same as before for brevity)
       if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
       setIsExportingExcel(true);
       try {
@@ -175,14 +193,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         
         {/* Header */}
         <header className="bg-[#1e3a8a] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
+            <div className="flex justify-between items-center mb-6 gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                     <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
                         <CalendarCheck className="w-5 h-5 text-white" />
                     </div>
                     <h1 className="text-2xl font-black tracking-wide">سجل الغياب</h1>
                 </div>
-                <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all shadow-sm">
+
+                {/* خانة البحث الجديدة */}
+                <div className="flex-1 mx-2 relative group">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200 group-focus-within:text-white transition-colors" />
+                    <input 
+                        type="text" 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="بحث عن طالب..." 
+                        className="w-full bg-white/10 border border-white/20 rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold text-white placeholder:text-blue-200/70 outline-none focus:bg-white/20 focus:border-white/40 transition-all"
+                    />
+                </div>
+
+                <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-10 h-10 shrink-0 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all shadow-sm">
                      {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
                 </button>
             </div>
@@ -228,6 +259,24 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
             </div>
         </header>
 
+        {/* Stats Section */}
+        <div className="px-4 mb-2">
+            <div className="flex justify-between items-center gap-2 text-center">
+                <button onClick={() => markAll('present')} className="flex-1 bg-emerald-50 rounded-2xl p-2.5 border border-emerald-100 shadow-sm active:scale-95 transition-all group">
+                    <span className="block text-[10px] text-emerald-600 font-bold mb-1 group-hover:underline">حضور (الكل)</span>
+                    <span className="block text-xl font-black text-emerald-700">{stats.present}</span>
+                </button>
+                <button onClick={() => markAll('absent')} className="flex-1 bg-rose-50 rounded-2xl p-2.5 border border-rose-100 shadow-sm active:scale-95 transition-all group">
+                    <span className="block text-[10px] text-rose-600 font-bold mb-1 group-hover:underline">غياب (الكل)</span>
+                    <span className="block text-xl font-black text-rose-700">{stats.absent}</span>
+                </button>
+                <div className="flex-1 bg-amber-50 rounded-2xl p-2.5 border border-amber-100 shadow-sm">
+                    <span className="block text-[10px] text-amber-600 font-bold mb-1">تأخير</span>
+                    <span className="block text-xl font-black text-amber-700">{stats.late}</span>
+                </div>
+            </div>
+        </div>
+
         {/* Content - Cards Grid */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
             {filteredStudents.length > 0 ? (
@@ -239,17 +288,19 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                 status === 'present' ? 'border-emerald-400 shadow-md' : 
                                 status === 'absent' ? 'border-red-400 shadow-md' : 
                                 status === 'late' ? 'border-amber-400 shadow-md' :
+                                status === 'truant' ? 'border-purple-400 shadow-md' :
                                 'border-transparent shadow-sm'
                             }`}>
                                 {/* Upper Part: Image & Name */}
                                 <div className="p-4 flex flex-col items-center w-full">
                                     <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
                                          <img 
-                                            src={student.avatar || (student.gender === 'female' ? './assets/student_girl.png' : './assets/student_boy.png')} 
+                                            src={student.avatar || (student.gender === 'female' ? 'assets/student_girl.png' : 'assets/student_boy.png')} 
                                             className="w-full h-full object-cover" 
                                             onError={(e) => {
                                                 e.currentTarget.style.display = 'none';
                                                 e.currentTarget.parentElement!.innerText = student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
+                                                e.currentTarget.parentElement!.classList.add('flex', 'items-center', 'justify-center', 'text-2xl');
                                             }}
                                          />
                                     </div>
@@ -266,6 +317,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                     >
                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-200 text-white'}`}>✕</div>
                                         <span className="text-[10px] font-bold">غياب</span>
+                                    </button>
+
+                                    {/* Truant Button (تسرب) - Restored with full logic */}
+                                    <button 
+                                        onClick={() => toggleAttendance(student.id, 'truant')}
+                                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-purple-50 active:bg-purple-100 transition-colors ${status === 'truant' ? 'bg-purple-50 text-purple-600' : 'text-slate-400'}`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'truant' ? 'bg-purple-500 text-white' : 'bg-slate-200 text-white'}`}>
+                                            <DoorOpen className="w-3.5 h-3.5" />
+                                        </div>
+                                        <span className="text-[10px] font-bold">تسرب</span>
                                     </button>
 
                                     {/* Late Button */}
@@ -296,24 +358,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     <p className="text-sm font-bold text-gray-400">لا يوجد طلاب</p>
                 </div>
             )}
-        </div>
-
-        {/* Stats Footer */}
-        <div className="bg-white border-t border-slate-200 p-4 pb-safe">
-            <div className="flex justify-between items-center gap-2 text-center">
-                <div className="flex-1 bg-emerald-50 rounded-xl p-2 border border-emerald-100">
-                    <span className="block text-[10px] text-emerald-600 font-bold mb-1">حضور</span>
-                    <span className="block text-lg font-black text-emerald-700">{stats.present}</span>
-                </div>
-                <div className="flex-1 bg-rose-50 rounded-xl p-2 border border-rose-100">
-                    <span className="block text-[10px] text-rose-600 font-bold mb-1">غياب</span>
-                    <span className="block text-lg font-black text-rose-700">{stats.absent}</span>
-                </div>
-                <div className="flex-1 bg-amber-50 rounded-xl p-2 border border-amber-100">
-                    <span className="block text-[10px] text-amber-600 font-bold mb-1">تأخير</span>
-                    <span className="block text-lg font-black text-amber-700">{stats.late}</span>
-                </div>
-            </div>
         </div>
 
         {/* Notification Modal */}

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
@@ -23,7 +23,8 @@ interface StudentListProps {
 
 const SOUNDS = {
     positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
+    negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
+    tada: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'
 };
 
 const NEGATIVE_BEHAVIORS = [
@@ -46,7 +47,7 @@ const StudentList: React.FC<StudentListProps> = ({
     currentSemester, 
     onDeleteClass 
 }) => {
-  const { defaultStudentGender } = useApp();
+  const { defaultStudentGender, setDefaultStudentGender, setStudents } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -69,6 +70,10 @@ const StudentList: React.FC<StudentListProps> = ({
   const [showNegativeModal, setShowNegativeModal] = useState(false);
   const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState<Student | null>(null);
 
+  // Random Picker State
+  const [randomWinner, setRandomWinner] = useState<Student | null>(null);
+  const [pickedStudentIds, setPickedStudentIds] = useState<string[]>([]);
+
   const safeClasses = useMemo(() => Array.isArray(classes) ? classes : [], [classes]);
   const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
 
@@ -77,6 +82,16 @@ const StudentList: React.FC<StudentListProps> = ({
           setNewStudentClass(safeClasses[0]);
       }
   }, [safeClasses]);
+
+  // إعادة تعيين قائمة الطلاب المختارين عند تغيير الفصل (انتهاء الحصة)
+  useEffect(() => {
+      setPickedStudentIds([]);
+  }, [selectedClass, selectedGrade]);
+
+  // تحديث الجنس الافتراضي للطالب الجديد عند تغير الإعدادات
+  useEffect(() => {
+      setNewStudentGender(defaultStudentGender);
+  }, [defaultStudentGender]);
 
   const availableGrades = useMemo(() => {
       const grades = new Set<string>();
@@ -112,10 +127,49 @@ const StudentList: React.FC<StudentListProps> = ({
       });
   }, [safeStudents, searchTerm, selectedClass, selectedGrade]);
 
-  const playSound = (type: 'positive' | 'negative') => {
+  const playSound = (type: 'positive' | 'negative' | 'tada') => {
       const audio = new Audio(SOUNDS[type]);
       audio.volume = 0.5;
       audio.play().catch(e => console.error(e));
+  };
+
+  // --- Random Picker Logic ---
+  const handleRandomPick = () => {
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      
+      // 1. تصفية الطلاب الحاضرين فقط (استبعاد الغياب والتسرب) من القائمة الحالية
+      const presentStudents = filteredStudents.filter(s => {
+          const attendanceRecord = s.attendance.find(a => a.date === todayStr);
+          // استبعاد اذا كان غائب او متسرب
+          const isAbsentOrTruant = attendanceRecord?.status === 'absent' || attendanceRecord?.status === 'truant';
+          return !isAbsentOrTruant;
+      });
+
+      if (presentStudents.length === 0) {
+          alert('لا يوجد طلاب حضور في القائمة الحالية لإجراء القرعة.');
+          return;
+      }
+
+      // 2. استبعاد من تم اختيارهم سابقاً في هذه الجلسة (منع التكرار)
+      const eligibleCandidates = presentStudents.filter(s => !pickedStudentIds.includes(s.id));
+
+      if (eligibleCandidates.length === 0) {
+          // تم اختيار جميع الطلاب الحاضرين
+          if (confirm('تم اختيار جميع الطلاب الحاضرين في هذه الحصة. هل تريد بدء دورة جديدة؟')) {
+              setPickedStudentIds([]); // إعادة تعيين القائمة (إرجاع الأسماء)
+          }
+          return;
+      }
+
+      // 3. الاختيار العشوائي
+      const randomIndex = Math.floor(Math.random() * eligibleCandidates.length);
+      const winner = eligibleCandidates[randomIndex];
+
+      // 4. تحديث الحالة
+      setPickedStudentIds(prev => [...prev, winner.id]);
+      setRandomWinner(winner);
+      playSound('tada');
+      setShowMenu(false);
   };
 
   const handleBehavior = (student: Student, type: BehaviorType) => {
@@ -181,12 +235,28 @@ const StudentList: React.FC<StudentListProps> = ({
       }
   };
 
+  const handleBatchGenderUpdate = (gender: 'male' | 'female') => {
+      if (confirm('هل أنت متأكد؟ سيتم تغيير أيقونات جميع الطلاب المسجلين حالياً ليتناسب مع النوع المختار.')) {
+          setDefaultStudentGender(gender);
+          setStudents(prev => prev.map(s => ({
+              ...s,
+              gender: gender
+          })));
+      }
+  };
+
+  // دالة مساعدة لضبط المسار (مطابقة للداشبورد)
+  const getImg = (path: string) => {
+      return path.startsWith('/') ? path : `/${path}`;
+  };
+
   // دالة تحديد مسار الصورة الصحيح بناءً على الجنس
   const getStudentDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
       if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
           return avatar; 
       }
-      return gender === 'female' ? './student_girl.png' : './student_boy.png';
+      // استخدام المنطق الجديد لاستدعاء الصور من public
+      return getImg(gender === 'female' ? 'student_girl.png' : 'student_boy.png');
   };
 
   return (
@@ -214,6 +284,11 @@ const StudentList: React.FC<StudentListProps> = ({
                          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                          <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
                              <div className="p-1">
+                                 {/* زر القرعة العشوائية */}
+                                 <button onClick={handleRandomPick} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                     <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center"><Dices className="w-4 h-4 text-purple-600" /></div> القرعة العشوائية
+                                 </button>
+                                 <div className="my-1 border-t border-slate-100"></div>
                                  <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
                                      <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
                                  </button>
@@ -352,9 +427,44 @@ const StudentList: React.FC<StudentListProps> = ({
              </div>
         </Modal>
 
-        <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-sm rounded-[2rem]">
+        {/* Manage Classes Modal - Updated with Gender Batch Setting */}
+        <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
             <div className="text-center">
-                <h3 className="font-black text-lg mb-4 text-slate-800">إدارة الفصول</h3>
+                <h3 className="font-black text-xl mb-6 text-slate-800">إعدادات الفصول والصفوف</h3>
+                
+                {/* Gender Batch Settings */}
+                <div className="bg-indigo-50/50 rounded-2xl p-4 mb-6 border border-indigo-100">
+                    <div className="flex items-center justify-center gap-2 mb-3 text-indigo-900">
+                        <Users className="w-4 h-4" />
+                        <span className="font-bold text-sm">نوع المدرسة (تغيير جماعي)</span>
+                    </div>
+                    
+                    <div className="flex gap-3 mb-2">
+                        <button 
+                            onClick={() => handleBatchGenderUpdate('male')}
+                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? 'bg-white border-blue-200 shadow-md text-blue-700' : 'bg-white/50 border-transparent text-slate-500 hover:bg-white'}`}
+                        >
+                            <span className="text-xl">👨‍🎓</span>
+                            <span className="font-black text-sm">بنين</span>
+                        </button>
+                        <button 
+                            onClick={() => handleBatchGenderUpdate('female')}
+                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? 'bg-white border-pink-200 shadow-md text-pink-700' : 'bg-white/50 border-transparent text-slate-500 hover:bg-white'}`}
+                        >
+                            <span className="text-xl">👩‍🎓</span>
+                            <span className="font-black text-sm">بنات</span>
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-indigo-400 font-bold">* سيتم توحيد أيقونات جميع الطلاب حسب اختيارك.</p>
+                </div>
+
+                <div className="w-full h-px bg-gray-100 mb-6"></div>
+
+                <div className="flex justify-between items-center mb-2 px-2">
+                     <span className="text-xs font-bold text-slate-400">يمكنك هنا حذف الفصول الدراسية بالكامل.</span>
+                     <span className="text-[10px] text-red-400 font-bold">تنبيه: الحذف سيؤثر على جميع الصفحات.</span>
+                </div>
+                
                 <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 space-y-2">
                     {safeClasses.map(cls => (
                         <div key={cls} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -366,6 +476,8 @@ const StudentList: React.FC<StudentListProps> = ({
                     ))}
                     {safeClasses.length === 0 && <p className="text-xs text-gray-400">لا توجد فصول مضافة</p>}
                 </div>
+                
+                <button onClick={() => setShowManageClasses(false)} className="mt-4 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200 transition-colors">إغلاق</button>
             </div>
         </Modal>
         
@@ -416,6 +528,39 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button onClick={handleEditStudentSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg">حفظ التعديلات</button>
                             <button onClick={() => { if(confirm('هل أنت متأكد من حذف الطالب؟')) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className="px-4 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-black text-sm"><Trash2 className="w-5 h-5"/></button>
                         </div>
+                    </div>
+                </div>
+            )}
+        </Modal>
+
+        {/* Random Picker Winner Modal */}
+        <Modal isOpen={!!randomWinner} onClose={() => setRandomWinner(null)} className="max-w-sm rounded-[2rem]">
+            {randomWinner && (
+                <div className="text-center py-6 animate-in zoom-in duration-300">
+                    <div className="mb-6 relative inline-block">
+                        <div className="w-24 h-24 rounded-full border-4 border-purple-200 shadow-xl overflow-hidden mx-auto bg-purple-50">
+                            <img 
+                                src={getStudentDisplayImage(randomWinner.avatar, randomWinner.gender)} 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => { e.currentTarget.style.display='none'; }}
+                            />
+                        </div>
+                        <div className="absolute -top-3 -right-3 text-4xl animate-bounce">🎉</div>
+                        <div className="absolute -bottom-2 -left-2 text-4xl animate-bounce" style={{animationDelay: '0.2s'}}>✨</div>
+                    </div>
+                    
+                    <h2 className="text-2xl font-black text-slate-800 mb-1">{randomWinner.name}</h2>
+                    <p className="text-sm font-bold text-purple-600 bg-purple-50 inline-block px-3 py-1 rounded-full mb-6">
+                        {randomWinner.classes[0]}
+                    </p>
+
+                    <div className="flex gap-3">
+                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-200 active:scale-95 transition-all">
+                            تعزيز (+1)
+                        </button>
+                        <button onClick={() => setRandomWinner(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-200 transition-all">
+                            إغلاق
+                        </button>
                     </div>
                 </div>
             )}

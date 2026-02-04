@@ -53,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
 
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
+    const [isImportingPeriods, setIsImportingPeriods] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -101,13 +102,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة معدلة لجلب رابط الصورة بشكل سليم
+    // دالة استيراد الصور (تصحيح المسار)
+    const getImg = (path: string) => {
+        return path.startsWith('/') ? path : `/${path}`;
+    };
+
+    // دالة تحديد الصورة المناسبة
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
             return avatar; 
         }
-        // استخدام اسم الملف مباشرة (يفترض وجودها في public)
-        return gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png';
+        // استخدام getImg لضمان صحة المسار
+        return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
     };
 
     // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
@@ -183,6 +189,72 @@ const Dashboard: React.FC<DashboardProps> = ({
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditAvatar(reader.result as string); reader.readAsDataURL(file); } };
     const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditStamp(reader.result as string); reader.readAsDataURL(file); } };
     const handleMinistryLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditMinistryLogo(reader.result as string); reader.readAsDataURL(file); } };
+
+    // 1. الدالة المساعدة لمعالجة الوقت من الإكسل
+    const parseExcelTime = (value: any): string => {
+        if (!value) return '';
+        if (typeof value === 'number') {
+            const totalSeconds = Math.round(value * 86400);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+        const str = String(value).trim();
+        const match = str.match(/(\d{1,2}):(\d{2})/);
+        return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
+    };
+
+    // 2. الدالة الرئيسية لاستيراد التوقيت
+    const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImportingPeriods(true);
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            
+            const newPeriodTimes = [...tempPeriodTimes];
+            let updatesCount = 0;
+
+            jsonData.forEach((row) => {
+                if (row.length < 2) return;
+                const firstCol = String(row[0] || '');
+                // البحث عن رقم الحصة في العمود الأول
+                const periodNumMatch = firstCol.match(/\d+/);
+                
+                if (periodNumMatch) {
+                    const pIndex = parseInt(periodNumMatch[0]) - 1; 
+                    if (pIndex >= 0 && pIndex < 8) {
+                        const startVal = row[1]; // العمود الثاني: وقت البداية
+                        const endVal = row[2];   // العمود الثالث: وقت النهاية
+                        const parsedStart = parseExcelTime(startVal);
+                        const parsedEnd = parseExcelTime(endVal);
+
+                        if (parsedStart) newPeriodTimes[pIndex].startTime = parsedStart;
+                        if (parsedEnd) newPeriodTimes[pIndex].endTime = parsedEnd;
+                        
+                        if(parsedStart || parsedEnd) updatesCount++;
+                    }
+                }
+            });
+
+            if (updatesCount > 0) {
+                setTempPeriodTimes(newPeriodTimes);
+                alert(`تم تحديث توقيت ${updatesCount} حصص بنجاح ✅`);
+            } else {
+                alert('لم يتم العثور على بيانات توقيت صالحة. تأكد من أن العمود الأول يحتوي على رقم الحصة.');
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء قراءة الملف.');
+        } finally {
+            setIsImportingPeriods(false);
+            if (e.target) e.target.value = '';
+        }
+    };
 
     const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -505,9 +577,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex gap-2">
                             <button onClick={() => modalScheduleFileInputRef.current?.click()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-indigo-100">
                                 <Download className="w-4 h-4" />
-                                <span>استيراد</span>
+                                <span>{isImportingPeriods ? 'جاري...' : 'استيراد'}</span>
                             </button>
-                            <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
+                            <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportPeriodTimes} accept=".xlsx, .xls" className="hidden" />
                             
                             <div className="flex bg-gray-100 p-1 rounded-xl">
                                 <button onClick={() => setScheduleTab('timing')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>التوقيت</button>
