@@ -102,12 +102,13 @@ const Dashboard: React.FC<DashboardProps> = ({
     }, [showScheduleModal, periodTimes, schedule]);
 
     // دالة آمنة لجلب رابط الصورة
-    const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
-        if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
-            return avatar; 
-        }
-        return gender === 'female' ? './teacher_woman.png' : './teacher_man.png';
-    };
+   const getDisplayImage = (avatar?: string, gender?: string) => {
+  // صورة مرفوعة (Base64) تبقى كما هي
+  if (avatar && avatar.startsWith('data:image')) return avatar;
+
+  // صور افتراضية من public (مسار جذري)
+  return gender === 'female' ? '/teacher_woman.png' : '/teacher_man.png';
+};
 
     // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
     const getSubjectIcon = (subjectName: string) => {
