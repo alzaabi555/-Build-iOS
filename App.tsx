@@ -24,88 +24,6 @@ import LoginScreen from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
 import { useSchoolBell } from './hooks/useSchoolBell';
 
-// --- 3D ICONS COMPONENTS (SVG) ---
-// ... (Keeping all existing 3D icons code exactly as is)
-const Dashboard3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="dash_bg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4338ca" />
-      </linearGradient>
-      <filter id="inset_shadow"><feOffset dx="0" dy="2" /><feGaussianBlur stdDeviation="2" result="offset-blur" /><feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" /><feFlood floodColor="black" floodOpacity="0.2" result="color" /><feComposite operator="in" in="color" in2="inverse" result="shadow" /><feComposite operator="over" in="shadow" in2="SourceGraphic" /></filter>
-    </defs>
-    <rect x="10" y="10" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    <rect x="34" y="10" width="20" height="20" rx="6" fill="#a5b4fc" />
-    <rect x="10" y="34" width="20" height="20" rx="6" fill="#c7d2fe" />
-    <rect x="34" y="34" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    <path d="M10 16 Q20 10 30 16 L30 30 L10 30 Z" fill="white" opacity="0.1" />
-  </svg>
-);
-
-const Attendance3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="cal_bg" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#f87171" />
-        <stop offset="100%" stopColor="#dc2626" />
-      </linearGradient>
-    </defs>
-    <rect x="12" y="14" width="40" height="40" rx="8" fill="white" stroke="#e5e7eb" strokeWidth="2" />
-    <path d="M12 24 L52 24 L52 18 Q52 14 48 14 L16 14 Q12 14 12 18 Z" fill="url(#cal_bg)" />
-    <circle cx="20" cy="12" r="3" fill="#991b1b" />
-    <circle cx="44" cy="12" r="3" fill="#991b1b" />
-    <path d="M22 38 L30 46 L44 30" fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" style={{filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.2))'}} />
-  </svg>
-);
-
-const Students3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="user_grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#1d4ed8" />
-      </linearGradient>
-    </defs>
-    <circle cx="32" cy="24" r="12" fill="url(#user_grad)" />
-    <path d="M14 54 C14 40 50 40 50 54 L50 58 L14 58 Z" fill="url(#user_grad)" />
-    <ellipse cx="32" cy="20" rx="6" ry="3" fill="white" opacity="0.3" />
-  </svg>
-);
-
-const Grades3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fbbf24"/><stop offset="1" stopColor="#d97706"/></linearGradient>
-        <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#34d399"/><stop offset="1" stopColor="#059669"/></linearGradient>
-        <linearGradient id="bar3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#818cf8"/><stop offset="1" stopColor="#4f46e5"/></linearGradient>
-    </defs>
-    <path d="M12 44 L22 44 L22 54 L12 54 Z" fill="url(#bar1)" transform="translate(0, -10)" />
-    <rect x="12" y="34" width="10" height="20" rx="2" fill="url(#bar1)" />
-    <rect x="27" y="24" width="10" height="30" rx="2" fill="url(#bar2)" />
-    <rect x="42" y="14" width="10" height="40" rx="2" fill="url(#bar3)" />
-    <path d="M22 36 L25 33 L25 51 L22 54 Z" fill="#b45309" opacity="0.5" />
-    <path d="M37 26 L40 23 L40 51 L37 54 Z" fill="#047857" opacity="0.5" />
-    <path d="M52 16 L55 13 L55 51 L52 54 Z" fill="#3730a3" opacity="0.5" />
-  </svg>
-);
-
-const More3D = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="grid_grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f472b6"/><stop offset="1" stopColor="#db2777"/></linearGradient>
-    </defs>
-    <rect x="14" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" />
-    <rect x="34" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" />
-    <rect x="14" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
-    <rect x="34" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
-    <circle cx="22" cy="22" r="3" fill="white" opacity="0.2" />
-    <circle cx="42" cy="22" r="3" fill="white" opacity="0.2" />
-    <circle cx="22" cy="42" r="3" fill="white" opacity="0.2" />
-    <circle cx="42" cy="42" r="3" fill="white" opacity="0.2" />
-  </svg>
-);
-
 // Main App Container
 const AppContent: React.FC = () => {
   const { 
@@ -259,10 +177,10 @@ const AppContent: React.FC = () => {
   };
 
   const mobileNavItems = [
-      { id: 'dashboard', label: 'الرئيسية', IconComponent: Dashboard3D },
-      { id: 'attendance', label: 'الحضور', IconComponent: Attendance3D },
-      { id: 'students', label: 'الطلاب', IconComponent: Students3D },
-      { id: 'grades', label: 'الدرجات', IconComponent: Grades3D },
+      { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard, gradient: 'from-indigo-500 to-violet-600', shadow: 'shadow-indigo-500/40' },
+      { id: 'attendance', label: 'الحضور', icon: CalendarCheck, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/40' },
+      { id: 'students', label: 'الطلاب', icon: Users, gradient: 'from-blue-500 to-cyan-600', shadow: 'shadow-blue-500/40' },
+      { id: 'grades', label: 'الدرجات', icon: BarChart3, gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/40' },
   ];
 
   const desktopNavItems = [
@@ -333,49 +251,60 @@ const AppContent: React.FC = () => {
             </div>
         </main>
 
-        {/* Mobile Nav (3D Icons) */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom transition-transform duration-300 translate-z-0 pointer-events-auto">
+        {/* Mobile Nav (Faux-3D Pop-out) */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] bg-white/90 backdrop-blur-xl border-t border-white/50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-around items-end pb-safe transition-all duration-300">
             {mobileNavItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
                     <button 
                         key={item.id} 
                         onClick={() => handleNavigate(item.id)} 
-                        className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform"
+                        className="relative w-16 h-full flex flex-col items-center justify-end pb-2 group"
                         style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
-                        <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-                            ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-                           <div className={`w-11 h-11 ${isActive ? 'drop-shadow-2xl' : ''}`}>
-                                <item.IconComponent active={isActive} />
-                           </div>
+                        {/* Icon Container */}
+                        <div className={`
+                            absolute top-2 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) flex items-center justify-center rounded-2xl
+                            ${isActive 
+                                ? `w-12 h-12 -translate-y-8 bg-gradient-to-br ${item.gradient} text-white shadow-lg ${item.shadow} scale-110` 
+                                : 'w-10 h-10 translate-y-2 bg-transparent text-slate-400'
+                            }
+                        `}>
+                            <item.icon strokeWidth={isActive ? 2.5 : 2} size={isActive ? 24 : 24} />
                         </div>
                         
-                        <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
+                        {/* Label */}
+                        <span className={`
+                            text-[10px] font-black transition-all duration-300 absolute bottom-3
+                            ${isActive ? 'opacity-100 translate-y-0 text-slate-800' : 'opacity-0 translate-y-4 text-slate-400'}
+                        `}>
                             {item.label}
                         </span>
-                        
-                        {/* Active Indicator Dot */}
-                        {isActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
                     </button>
                 );
             })}
             
+            {/* More Button */}
             <button 
                 onClick={() => setShowMoreMenu(true)} 
-                className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform"
+                className="relative w-16 h-full flex flex-col items-center justify-end pb-2 group"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-                <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-                    ${isMoreActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-                   <div className={`w-11 h-11 ${isMoreActive ? 'drop-shadow-2xl' : ''}`}>
-                        <More3D active={isMoreActive} />
-                   </div>
+                <div className={`
+                    absolute top-2 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) flex items-center justify-center rounded-2xl
+                    ${isMoreActive 
+                        ? 'w-12 h-12 -translate-y-8 bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-lg shadow-slate-400 scale-110' 
+                        : 'w-10 h-10 translate-y-2 bg-transparent text-slate-400'
+                    }
+                `}>
+                    <Grid strokeWidth={isMoreActive ? 2.5 : 2} size={isMoreActive ? 24 : 24} />
                 </div>
-                <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isMoreActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
+                <span className={`
+                    text-[10px] font-black transition-all duration-300 absolute bottom-3
+                    ${isMoreActive ? 'opacity-100 translate-y-0 text-slate-800' : 'opacity-0 translate-y-4 text-slate-400'}
+                `}>
                     المزيد
                 </span>
-                {isMoreActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
             </button>
         </div>
 
