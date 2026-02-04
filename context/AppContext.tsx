@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings } from '../types';
+import { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings } from '../types';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
@@ -35,6 +35,8 @@ interface AppContextType {
   setCurrentSemester: React.Dispatch<React.SetStateAction<'1' | '2'>>;
   assessmentTools: AssessmentTool[];
   setAssessmentTools: React.Dispatch<React.SetStateAction<AssessmentTool[]>>;
+  gradeSettings: GradeSettings;
+  setGradeSettings: React.Dispatch<React.SetStateAction<GradeSettings>>;
   certificateSettings: CertificateSettings;
   setCertificateSettings: React.Dispatch<React.SetStateAction<CertificateSettings>>;
   isDataLoaded: boolean;
@@ -82,6 +84,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [defaultStudentGender, setDefaultStudentGender] = useState<'male' | 'female'>('male');
 
   const [assessmentTools, setAssessmentTools] = useState<AssessmentTool[]>([]);
+  const [gradeSettings, setGradeSettings] = useState<GradeSettings>({
+      totalScore: 100,
+      finalExamScore: 40,
+      finalExamName: 'الامتحان النهائي'
+  });
+
   const [certificateSettings, setCertificateSettings] = useState<CertificateSettings>({
       title: 'شهادة تفوق دراسي',
       bodyText: 'تتشرف إدارة المدرسة بمنح الطالب هذه الشهادة نظير تفوقه وتميزه في المادة',
@@ -121,6 +129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         schedule: JSON.parse(localStorage.getItem('scheduleData') || '[]'),
                         periodTimes: JSON.parse(localStorage.getItem('periodTimes') || '[]'),
                         assessmentTools: JSON.parse(localStorage.getItem('assessmentTools') || '[]'),
+                        gradeSettings: JSON.parse(localStorage.getItem('gradeSettings') || 'null'),
                         currentSemester: localStorage.getItem('currentSemester'),
                         teacherInfo: {
                             name: localStorage.getItem('teacherName') || '',
@@ -147,6 +156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if(data.schedule && data.schedule.length > 0) setSchedule(data.schedule);
                 if(data.periodTimes && data.periodTimes.length > 0) setPeriodTimes(data.periodTimes);
                 if(data.assessmentTools && data.assessmentTools.length > 0) setAssessmentTools(data.assessmentTools);
+                if(data.gradeSettings) setGradeSettings(data.gradeSettings);
                 if(data.currentSemester) setCurrentSemester(data.currentSemester);
                 if(data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
                 if(data.certificateSettings) setCertificateSettings(prev => ({...prev, ...data.certificateSettings}));
@@ -182,6 +192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             teacherInfo,
             currentSemester,
             assessmentTools,
+            gradeSettings,
             certificateSettings,
             defaultStudentGender
         };
@@ -210,6 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 localStorage.setItem('scheduleData', JSON.stringify(schedule));
                 localStorage.setItem('periodTimes', JSON.stringify(periodTimes));
                 localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
+                localStorage.setItem('gradeSettings', JSON.stringify(gradeSettings));
                 localStorage.setItem('currentSemester', currentSemester);
                 localStorage.setItem('teacherName', teacherInfo.name);
                 localStorage.setItem('teacherGender', teacherInfo.gender || 'male');
@@ -225,7 +237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, certificateSettings, defaultStudentGender]);
+  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender]);
 
   return (
     <AppContext.Provider value={{
@@ -238,6 +250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         teacherInfo, setTeacherInfo,
         currentSemester, setCurrentSemester,
         assessmentTools, setAssessmentTools,
+        gradeSettings, setGradeSettings,
         certificateSettings, setCertificateSettings,
         isDataLoaded,
         defaultStudentGender, setDefaultStudentGender
