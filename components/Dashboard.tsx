@@ -101,14 +101,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة آمنة لجلب رابط الصورة
-   const getDisplayImage = (avatar?: string, gender?: string) => {
-  // صورة مرفوعة (Base64) تبقى كما هي
-  if (avatar && avatar.startsWith('data:image')) return avatar;
-
-  // صور افتراضية من public (مسار جذري)
-  return gender === 'female' ? '/teacher_woman.png' : '/teacher_man.png';
-};
+    // دالة معدلة لجلب رابط الصورة بشكل سليم
+    const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
+        if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
+            return avatar; 
+        }
+        // استخدام اسم الملف مباشرة (يفترض وجودها في public)
+        return gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png';
+    };
 
     // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
     const getSubjectIcon = (subjectName: string) => {
@@ -329,11 +329,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </span>
                         </div>
                         
-                        {/* Image Layer: Hides if error occurs */}
+                        {/* Image Layer: Hides if error occurs, forced update with key */}
                         <img 
+                            key={`profile-${teacherInfo.gender}-${teacherInfo.avatar ? 'custom' : 'default'}`}
                             src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
                             className="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
                             alt="Avatar" 
+                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
                             onError={(e) => {
                                 // Hide the broken image so the fallback div shows
                                 e.currentTarget.style.opacity = '0';
@@ -434,9 +436,11 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                         {/* Actual Image */}
                         <img 
+                            key={`edit-${editGender}-${editAvatar ? 'custom' : 'default'}`}
                             src={getDisplayImage(editAvatar, editGender)}
                             className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md relative z-10 bg-white"
                             alt="Profile"
+                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
                             onError={(e) => e.currentTarget.style.opacity = '0'}
                         />
                         
