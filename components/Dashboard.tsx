@@ -50,6 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const scheduleFileInputRef = useRef<HTMLInputElement>(null);
+    const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
 
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -105,39 +106,43 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
             return avatar; 
         }
-        // استخدام مسار assets النسبي المباشر الذي يعمل في كل البيئات
-        return gender === 'female' ? 'assets/teacher_woman.png' : 'assets/teacher_man.png';
+        return gender === 'female' ? './teacher_woman.png' : './teacher_man.png';
     };
 
-    // دالة ذكية لأيقونات المواد (Regex matching)
+    // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
     const getSubjectIcon = (subjectName: string) => {
-        if (!subjectName) return <span className="text-2xl filter drop-shadow-sm opacity-50">📚</span>; 
-        const name = subjectName.trim().toLowerCase();
+        const teacherSubject = teacherInfo?.subject || '';
         
-        // Islam
-        if (name.match(/اسلام|إسلام|قرآن|تلاوة|توحيد|فقه|حديث|عقيدة/)) return <span className="text-2xl filter drop-shadow-sm">🕌</span>;
-        // Arabic
-        if (name.match(/عربي|لغتي|نحو|أدب|قراءة|مطالعة/)) return <span className="text-2xl filter drop-shadow-sm">📜</span>;
-        // Math
-        if (name.match(/رياضيات|جبر|هندسة|حساب|math/)) return <span className="text-2xl filter drop-shadow-sm">📐</span>;
-        // Science
-        if (name.match(/علوم|كيمياء|فيزياء|أحياء|science|phy|chem/)) return <span className="text-2xl filter drop-shadow-sm">🧪</span>;
-        // English
-        if (name.match(/انجليزي|إنجليزي|english|eng/)) return <span className="text-2xl filter drop-shadow-sm">🅰️</span>;
-        // Computer / Tech
-        if (name.match(/حاسوب|تقنية|كمبيوتر|رقمية|it|computer|tech/)) return <span className="text-2xl filter drop-shadow-sm">💻</span>;
-        // Social Studies
-        if (name.match(/دراسات|اجتماعيات|تاريخ|جغرافيا|وطنية|مواطنة/)) return <span className="text-2xl filter drop-shadow-sm">🌍</span>;
-        // Sports
-        if (name.match(/رياضة|بدنية|sport|gym|pe/)) return <span className="text-2xl filter drop-shadow-sm">⚽</span>;
-        // Art
-        if (name.match(/فنون|رسم|تشكيلية|art|draw/)) return <span className="text-2xl filter drop-shadow-sm">🎨</span>;
-        // Music
-        if (name.match(/موسيقى|music/)) return <span className="text-2xl filter drop-shadow-sm">🎵</span>;
-        // Life Skills / Vocational
-        if (name.match(/حياتية|مهنية|أسرية|بحث|توجيه/)) return <span className="text-2xl filter drop-shadow-sm">🌱</span>;
+        // دالة المواءمة الداخلية
+        const matchIcon = (text: string) => {
+            if (!text) return null;
+            const name = text.trim().toLowerCase();
+            
+            if (name.match(/اسلام|إسلام|قرآن|تلاوة|توحيد|فقه|حديث|عقيدة/)) return <span className="text-2xl filter drop-shadow-sm">🕌</span>;
+            if (name.match(/عربي|لغتي|نحو|أدب|قراءة|مطالعة/)) return <span className="text-2xl filter drop-shadow-sm">📜</span>;
+            if (name.match(/رياضيات|جبر|هندسة|حساب|math/)) return <span className="text-2xl filter drop-shadow-sm">📐</span>;
+            if (name.match(/علوم|كيمياء|فيزياء|أحياء|science|phy|chem/)) return <span className="text-2xl filter drop-shadow-sm">🧪</span>;
+            if (name.match(/انجليزي|إنجليزي|english|eng/)) return <span className="text-2xl filter drop-shadow-sm">🅰️</span>;
+            if (name.match(/حاسوب|تقنية|كمبيوتر|رقمية|it|computer|tech/)) return <span className="text-2xl filter drop-shadow-sm">💻</span>;
+            if (name.match(/دراسات|اجتماعيات|تاريخ|جغرافيا|وطنية|مواطنة/)) return <span className="text-2xl filter drop-shadow-sm">🌍</span>;
+            if (name.match(/رياضة|بدنية|sport|gym|pe/)) return <span className="text-2xl filter drop-shadow-sm">⚽</span>;
+            if (name.match(/فنون|رسم|تشكيلية|art|draw/)) return <span className="text-2xl filter drop-shadow-sm">🎨</span>;
+            if (name.match(/موسيقى|music/)) return <span className="text-2xl filter drop-shadow-sm">🎵</span>;
+            if (name.match(/حياتية|مهنية|أسرية|بحث|توجيه/)) return <span className="text-2xl filter drop-shadow-sm">🌱</span>;
+            
+            return null;
+        };
+
+        // 1. الأولوية للنص المكتوب في الجدول مباشرة
+        const specificIcon = matchIcon(subjectName);
+        if (specificIcon) return specificIcon;
+
+        // 2. إذا لم نجد أيقونة للنص (مثل كتابة "5/1")، نستخدم مادة المعلم
+        const defaultIcon = matchIcon(teacherSubject);
+        if (defaultIcon) return defaultIcon;
         
-        return <span className="text-2xl filter drop-shadow-sm">📚</span>;
+        // 3. أيقونة افتراضية
+        return <span className="text-2xl filter drop-shadow-sm opacity-50">📚</span>;
     };
 
     const handleSaveInfo = () => {
@@ -210,7 +215,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 }
             });
 
-            onUpdateSchedule(newSchedule);
+            // If inside modal, update temp schedule, else update real schedule
+            if (showScheduleModal) {
+                setTempSchedule(newSchedule);
+            } else {
+                onUpdateSchedule(newSchedule);
+            }
             alert('تم استيراد الجدول بنجاح');
         } catch (error) {
             console.error(error);
@@ -485,9 +495,19 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex flex-col h-[80vh]">
                     <div className="flex justify-between items-center mb-4 shrink-0">
                         <h3 className="font-black text-xl text-slate-800">إعدادات الجدول والتوقيت</h3>
-                        <div className="flex bg-gray-100 p-1 rounded-xl">
-                             <button onClick={() => setScheduleTab('timing')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>التوقيت</button>
-                             <button onClick={() => setScheduleTab('classes')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>الحصص</button>
+                        
+                        {/* Import Button added to the modal header */}
+                        <div className="flex gap-2">
+                            <button onClick={() => modalScheduleFileInputRef.current?.click()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-indigo-100">
+                                <Download className="w-4 h-4" />
+                                <span>استيراد</span>
+                            </button>
+                            <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
+                            
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button onClick={() => setScheduleTab('timing')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>التوقيت</button>
+                                <button onClick={() => setScheduleTab('classes')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>الحصص</button>
+                            </div>
                         </div>
                     </div>
 

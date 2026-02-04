@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
@@ -26,7 +26,15 @@ const SOUNDS = {
     negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3'
 };
 
-// Default values for props to prevent crashes if parent component passes undefined
+const NEGATIVE_BEHAVIORS = [
+    { id: '1', title: 'إزعاج في الحصة', points: -1 },
+    { id: '2', title: 'عدم حل الواجب', points: -2 },
+    { id: '3', title: 'نسيان الكتاب', points: -1 },
+    { id: '4', title: 'تأخر عن الحصة', points: -1 },
+    { id: '5', title: 'سلوك غير لائق', points: -3 },
+    { id: '6', title: 'النوم في الفصل', points: -1 },
+];
+
 const StudentList: React.FC<StudentListProps> = ({ 
     students = [], 
     classes = [], 
@@ -35,7 +43,6 @@ const StudentList: React.FC<StudentListProps> = ({
     onBatchAddStudents, 
     onUpdateStudent, 
     onDeleteStudent, 
-    onViewReport, 
     currentSemester, 
     onDeleteClass 
 }) => {
@@ -58,7 +65,10 @@ const StudentList: React.FC<StudentListProps> = ({
   const [newStudentGender, setNewStudentGender] = useState<'male' | 'female'>(defaultStudentGender);
   const [newStudentClass, setNewStudentClass] = useState('');
 
-  // Protect against classes being undefined or empty
+  // Negative Behavior Logic
+  const [showNegativeModal, setShowNegativeModal] = useState(false);
+  const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState<Student | null>(null);
+
   const safeClasses = useMemo(() => Array.isArray(classes) ? classes : [], [classes]);
   const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
 
@@ -90,8 +100,6 @@ const StudentList: React.FC<StudentListProps> = ({
       return safeStudents.filter(student => {
           if (!student) return false;
           const nameMatch = (student.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-          
-          // Safety check for classes array
           const studentClasses = student.classes || [];
           const matchesClass = selectedClass === 'all' || studentClasses.includes(selectedClass);
           
@@ -111,16 +119,42 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleBehavior = (student: Student, type: BehaviorType) => {
-      playSound(type === 'positive' ? 'positive' : 'negative');
+      if (type === 'positive') {
+          // إضافة فورية للنقاط الإيجابية
+          playSound('positive');
+          const newBehavior = {
+              id: Math.random().toString(36).substr(2, 9),
+              date: new Date().toISOString(),
+              type: 'positive' as const,
+              description: 'سلوك إيجابي (تعزيز سريع)',
+              points: 1,
+              semester: currentSemester
+          };
+          onUpdateStudent({ ...student, behaviors: [newBehavior, ...(student.behaviors || [])] });
+      } else {
+          // فتح نافذة للاختيار للسلوك السلبي
+          setSelectedStudentForBehavior(student);
+          setShowNegativeModal(true);
+      }
+  };
+
+  const confirmNegativeBehavior = (title: string, points: number) => {
+      if (!selectedStudentForBehavior) return;
+      playSound('negative');
       const newBehavior = {
           id: Math.random().toString(36).substr(2, 9),
           date: new Date().toISOString(),
-          type,
-          description: type === 'positive' ? 'سلوك إيجابي سريع' : 'سلوك بحاجة لتحسين',
-          points: type === 'positive' ? 1 : -1,
+          type: 'negative' as const,
+          description: title,
+          points: points,
           semester: currentSemester
       };
-      onUpdateStudent({ ...student, behaviors: [newBehavior, ...(student.behaviors || [])] });
+      onUpdateStudent({ 
+          ...selectedStudentForBehavior, 
+          behaviors: [newBehavior, ...(selectedStudentForBehavior.behaviors || [])] 
+      });
+      setShowNegativeModal(false);
+      setSelectedStudentForBehavior(null);
   };
 
   const handleManualAddSubmit = () => {
@@ -145,6 +179,14 @@ const StudentList: React.FC<StudentListProps> = ({
           onUpdateStudent(editingStudent);
           setEditingStudent(null);
       }
+  };
+
+  // دالة تحديد مسار الصورة الصحيح بناءً على الجنس
+  const getStudentDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
+      if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
+          return avatar; 
+      }
+      return gender === 'female' ? './student_girl.png' : './student_boy.png';
   };
 
   return (
@@ -217,39 +259,52 @@ const StudentList: React.FC<StudentListProps> = ({
             </div>
         </header>
 
-        {/* Student List */}
-        <div className="px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
+        {/* Student List - New Vertical Card Design */}
+        <div className="px-4 grid grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
             {filteredStudents.length > 0 ? filteredStudents.map(student => (
-                <div key={student.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden group">
-                     {/* Random Avatar/Icon */}
-                     <div className="w-14 h-14 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-2xl shadow-sm shrink-0 overflow-hidden">
-                         <img 
-                            src={student.avatar || (student.gender === 'female' ? './assets/student_girl.png' : './assets/student_boy.png')} 
-                            className="w-full h-full object-cover" 
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerText = student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
-                            }}
-                         />
-                     </div>
+                <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
                      
-                     <div className="flex-1 min-w-0">
-                         <h3 className="font-bold text-slate-800 text-sm truncate">{student.name}</h3>
-                         <div className="flex items-center gap-2 mt-1">
-                             <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold">{student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد'}</span>
-                             {student.parentPhone && <span className="text-[10px] text-slate-400 font-mono">{student.parentPhone}</span>}
+                     {/* Upper Part: Image & Info */}
+                     <div className="p-4 flex flex-col items-center w-full relative">
+                         <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden relative group">
+                             {/* Fallback Layer */}
+                             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0">
+                                 <span className="text-3xl filter grayscale opacity-50">
+                                    {student.gender === 'female' ? '👩‍🎓' : '👨‍🎓'}
+                                 </span>
+                             </div>
+                             
+                             {/* Image Layer */}
+                             <img 
+                                src={getStudentDisplayImage(student.avatar, student.gender)} 
+                                className="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
+                                alt={student.name}
+                                onError={(e) => {
+                                    e.currentTarget.style.opacity = '0';
+                                }}
+                             />
+                         </div>
+                         <h3 className="font-black text-slate-800 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
+                         <div className="flex gap-1 mt-1">
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد'}</span>
                          </div>
                      </div>
 
-                     <div className="flex gap-2">
-                        <button onClick={() => handleBehavior(student, 'positive')} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 active:scale-90 transition-all border border-emerald-100">
-                             <ThumbsUp className="w-4 h-4" />
+                     {/* Divider */}
+                     <div className="w-full h-px bg-slate-100"></div>
+
+                     {/* Actions Row */}
+                     <div className="flex w-full divide-x divide-x-reverse divide-slate-100">
+                        <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group">
+                             <ThumbsUp className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
                         </button>
-                        <button onClick={() => handleBehavior(student, 'negative')} className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 active:scale-90 transition-all border border-rose-100">
-                             <ThumbsDown className="w-4 h-4" />
+                        
+                        <button onClick={() => handleBehavior(student, 'negative')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-rose-50 active:bg-rose-100 transition-colors group">
+                             <ThumbsDown className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
                         </button>
-                        <button onClick={() => setEditingStudent(student)} className="p-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-all border border-slate-100">
-                             <Edit2 className="w-4 h-4" />
+                        
+                        <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group">
+                             <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                         </button>
                      </div>
                 </div>
@@ -262,7 +317,7 @@ const StudentList: React.FC<StudentListProps> = ({
             )}
         </div>
 
-        {/* Modals */}
+        {/* Modals (No changes to logic, just structure) */}
         <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className="max-w-md rounded-[2rem]">
              <div className="text-center">
                 <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-500">
@@ -270,73 +325,29 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
                 <h3 className="font-black text-xl mb-6 text-slate-800">إضافة طالب جديد</h3>
                 <div className="space-y-3">
-                    <input 
-                        type="text" 
-                        placeholder="اسم الطالب" 
-                        value={newStudentName}
-                        onChange={(e) => setNewStudentName(e.target.value)}
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                    />
-                    <select 
-                        value={newStudentClass} 
-                        onChange={(e) => setNewStudentClass(e.target.value)}
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                    >
+                    <input type="text" placeholder="اسم الطالب" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800" />
+                    <select value={newStudentClass} onChange={(e) => setNewStudentClass(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800">
                         <option value="" disabled>اختر الفصل</option>
                         {safeClasses.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input 
-                        type="tel" 
-                        placeholder="رقم ولي الأمر (اختياري)" 
-                        value={newStudentPhone}
-                        onChange={(e) => setNewStudentPhone(e.target.value)}
-                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                    />
+                    <input type="tel" placeholder="رقم ولي الأمر (اختياري)" value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800" />
                      <div className="flex gap-2">
-                        <button 
-                            onClick={() => setNewStudentGender('male')}
-                            className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
-                        >
-                            طالب 👨‍🎓
-                        </button>
-                        <button 
-                            onClick={() => setNewStudentGender('female')}
-                            className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
-                        >
-                            طالبة 👩‍🎓
-                        </button>
+                        <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>طالب 👨‍🎓</button>
+                        <button onClick={() => setNewStudentGender('female')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>طالبة 👩‍🎓</button>
                     </div>
-
-                    <button 
-                        onClick={handleManualAddSubmit}
-                        disabled={!newStudentName || !newStudentClass}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                    >
-                        حفظ الطالب
-                    </button>
+                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 mt-2">حفظ الطالب</button>
                 </div>
             </div>
         </Modal>
 
         <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className="max-w-lg rounded-[2rem]">
-            <ExcelImport 
-                existingClasses={safeClasses} 
-                onImport={(data) => { onBatchAddStudents(data); setShowImportModal(false); }}
-                onAddClass={onAddClass}
-            />
+            <ExcelImport existingClasses={safeClasses} onImport={(data) => { onBatchAddStudents(data); setShowImportModal(false); }} onAddClass={onAddClass} />
         </Modal>
 
         <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className="max-w-sm rounded-[2rem]">
              <div className="text-center">
                 <h3 className="font-black text-lg mb-4 text-slate-800">إضافة فصل جديد</h3>
-                <input 
-                    autoFocus
-                    type="text" 
-                    placeholder="اسم الفصل (مثال: 5/1)" 
-                    value={newClassInput}
-                    onChange={(e) => setNewClassInput(e.target.value)}
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800 mb-4"
-                />
+                <input autoFocus type="text" placeholder="اسم الفصل (مثال: 5/1)" value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800 mb-4" />
                 <button onClick={handleAddClassSubmit} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-xs shadow-lg">إضافة</button>
              </div>
         </Modal>
@@ -358,48 +369,49 @@ const StudentList: React.FC<StudentListProps> = ({
             </div>
         </Modal>
         
+        {/* Negative Behavior Modal */}
+        <Modal isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} className="max-w-sm rounded-[2rem]">
+            <div className="text-center">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                        تنبيه سلوكي
+                    </h3>
+                    <button onClick={() => setShowNegativeModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4"/></button>
+                </div>
+                
+                <p className="text-xs font-bold text-gray-500 mb-4">اختر نوع الملاحظة للطالب <span className="text-indigo-600">{selectedStudentForBehavior?.name}</span></p>
+                
+                <div className="grid grid-cols-2 gap-2">
+                    {NEGATIVE_BEHAVIORS.map(b => (
+                        <button 
+                            key={b.id}
+                            onClick={() => confirmNegativeBehavior(b.title, b.points)}
+                            className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all flex flex-col items-center gap-1"
+                        >
+                            <span>{b.title}</span>
+                            <span className="text-[10px] bg-white px-2 py-0.5 rounded-full shadow-sm">{b.points}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </Modal>
+
         {/* Edit Student Modal */}
         <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} className="max-w-md rounded-[2rem]">
             {editingStudent && (
                  <div className="text-center">
                     <h3 className="font-black text-xl mb-6 text-slate-800">تعديل بيانات الطالب</h3>
                     <div className="space-y-3">
-                        <input 
-                            type="text" 
-                            value={editingStudent.name}
-                            onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                            placeholder="الاسم"
-                        />
-                        <select 
-                            value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} 
-                            onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                        >
+                        <input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800" placeholder="الاسم" />
+                        <select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800">
                             {safeClasses.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <input 
-                            type="tel" 
-                            value={editingStudent.parentPhone || ''}
-                            onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800"
-                            placeholder="رقم الهاتف"
-                        />
+                        <input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 text-slate-800" placeholder="رقم الهاتف" />
                         <div className="flex gap-2">
-                            <button 
-                                onClick={() => setEditingStudent({...editingStudent, gender: 'male'})}
-                                className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
-                            >
-                                طالب 👨‍🎓
-                            </button>
-                            <button 
-                                onClick={() => setEditingStudent({...editingStudent, gender: 'female'})}
-                                className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
-                            >
-                                طالبة 👩‍🎓
-                            </button>
+                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>طالب 👨‍🎓</button>
+                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'female'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>طالبة 👩‍🎓</button>
                         </div>
-                        
                         <div className="flex gap-2 mt-4">
                             <button onClick={handleEditStudentSave} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg">حفظ التعديلات</button>
                             <button onClick={() => { if(confirm('هل أنت متأكد من حذف الطالب؟')) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className="px-4 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-black text-sm"><Trash2 className="w-5 h-5"/></button>
