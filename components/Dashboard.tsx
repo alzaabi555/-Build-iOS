@@ -1,423 +1,641 @@
-import React, { useState, useRef } from 'react';
-import { Student, ScheduleDay, PeriodTime } from '../types';
-import { Users, Calendar, Clock, Settings, Bell, BellOff, User, BookOpen, Timer, Save, X, Upload } from 'lucide-react';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { ScheduleDay, PeriodTime } from '../types';
+import { 
+  Bell, Clock, Edit3, Settings, 
+  School, Download, Loader2, 
+  PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera
+} from 'lucide-react';
 import Modal from './Modal';
+import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
+import BrandLogo from './BrandLogo';
 
 interface DashboardProps {
-    students: Student[];
-    teacherInfo: any;
+    students: any[];
+    teacherInfo: { name: string; school: string; subject: string; governorate: string; avatar?: string; stamp?: string; ministryLogo?: string; academicYear?: string; gender?: 'male' | 'female' };
     onUpdateTeacherInfo: (info: any) => void;
     schedule: ScheduleDay[];
     onUpdateSchedule: (schedule: ScheduleDay[]) => void;
-    onSelectStudent: (s: Student) => void;
+    onSelectStudent: (student: any) => void;
     onNavigate: (tab: string) => void;
     onOpenSettings: () => void;
     periodTimes: PeriodTime[];
-    setPeriodTimes: (times: PeriodTime[]) => void;
+    setPeriodTimes: React.Dispatch<React.SetStateAction<PeriodTime[]>>;
     notificationsEnabled: boolean;
     onToggleNotifications: () => void;
     currentSemester: '1' | '2';
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
-const getImg = (path: string) => `/${path}`;
+const BELL_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
-const Dashboard: React.FC<DashboardProps> = ({ 
-    students, teacherInfo, onUpdateTeacherInfo, schedule, onUpdateSchedule, periodTimes, setPeriodTimes,
-    currentSemester, onSemesterChange,
-    onOpenSettings, notificationsEnabled, onToggleNotifications
+const Dashboard: React.FC<DashboardProps> = ({
+    teacherInfo,
+    onUpdateTeacherInfo,
+    schedule,
+    onUpdateSchedule,
+    onNavigate,
+    periodTimes,
+    setPeriodTimes,
+    notificationsEnabled,
+    onToggleNotifications,
+    currentSemester,
+    onSemesterChange
 }) => {
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [settingsTab, setSettingsTab] = useState<'profile' | 'schedule' | 'timing'>('schedule');
-    const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+    const { classes } = useApp();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const stampInputRef = useRef<HTMLInputElement>(null); 
+    const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
+    const scheduleFileInputRef = useRef<HTMLInputElement>(null);
+    const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
 
-    const fileInputScheduleRef = useRef<HTMLInputElement>(null);
-    const fileInputTimingRef = useRef<HTMLInputElement>(null);
+    const [isImportingSchedule, setIsImportingSchedule] = useState(false);
+    const [isImportingPeriods, setIsImportingPeriods] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
+    
+    const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
+    // State for Teacher Info Modal
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editName, setEditName] = useState(teacherInfo.name);
+    const [editSchool, setEditSchool] = useState(teacherInfo.school);
+    const [editSubject, setEditSubject] = useState(teacherInfo.subject);
+    const [editGovernorate, setEditGovernorate] = useState(teacherInfo.governorate);
+    const [editAvatar, setEditAvatar] = useState(teacherInfo.avatar || '');
+    const [editStamp, setEditStamp] = useState(teacherInfo.stamp || '');
+    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo.ministryLogo || '');
+    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo.academicYear || '');
+    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo.gender || 'male');
+    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
+
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [scheduleTab, setScheduleTab] = useState<'timing' | 'classes'>('timing');
+    const [editingDayIndex, setEditingDayIndex] = useState(0); 
+    const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
+    const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
+
+    useEffect(() => {
+        setEditName(teacherInfo.name);
+        setEditSchool(teacherInfo.school);
+        setEditSubject(teacherInfo.subject);
+        setEditGovernorate(teacherInfo.governorate);
+        setEditAvatar(teacherInfo.avatar || '');
+        setEditStamp(teacherInfo.stamp || '');
+        setEditMinistryLogo(teacherInfo.ministryLogo || '');
+        setEditAcademicYear(teacherInfo.academicYear || '');
+        setEditGender(teacherInfo.gender || 'male');
+        setEditSemester(currentSemester);
+    }, [teacherInfo, currentSemester]);
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        if (showScheduleModal) {
+            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes)));
+            setTempSchedule(JSON.parse(JSON.stringify(schedule)));
+        }
+    }, [showScheduleModal, periodTimes, schedule]);
+
+    // دالة استيراد الصور (تصحيح المسار)
+    const getImg = (path: string) => {
+        return path.startsWith('/') ? path : `/${path}`;
+    };
+
+    // دالة تحديد الصورة المناسبة
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
             return avatar; 
         }
-        return getImg(gender === 'female' ? 'teacher-female.png' : 'teacher-male.png');
+        // استخدام getImg لضمان صحة المسار
+        return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
     };
 
-    const today = new Date().toLocaleDateString('ar-OM', { weekday: 'long' });
-    const todaySchedule = schedule.find(s => s.dayName === today);
-    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
+    const getSubjectIcon = (subjectName: string) => {
+        const teacherSubject = teacherInfo?.subject || '';
+        
+        // دالة المواءمة الداخلية
+        const matchIcon = (text: string) => {
+            if (!text) return null;
+            const name = text.trim().toLowerCase();
+            
+            if (name.match(/اسلام|إسلام|قرآن|تلاوة|توحيد|فقه|حديث|عقيدة/)) return <span className="text-2xl filter drop-shadow-sm">🕌</span>;
+            if (name.match(/عربي|لغتي|نحو|أدب|قراءة|مطالعة/)) return <span className="text-2xl filter drop-shadow-sm">📜</span>;
+            if (name.match(/رياضيات|جبر|هندسة|حساب|math/)) return <span className="text-2xl filter drop-shadow-sm">📐</span>;
+            if (name.match(/علوم|كيمياء|فيزياء|أحياء|science|phy|chem/)) return <span className="text-2xl filter drop-shadow-sm">🧪</span>;
+            if (name.match(/انجليزي|إنجليزي|english|eng/)) return <span className="text-2xl filter drop-shadow-sm">🅰️</span>;
+            if (name.match(/حاسوب|تقنية|كمبيوتر|رقمية|it|computer|tech/)) return <span className="text-2xl filter drop-shadow-sm">💻</span>;
+            if (name.match(/دراسات|اجتماعيات|تاريخ|جغرافيا|وطنية|مواطنة/)) return <span className="text-2xl filter drop-shadow-sm">🌍</span>;
+            if (name.match(/رياضة|بدنية|sport|gym|pe/)) return <span className="text-2xl filter drop-shadow-sm">⚽</span>;
+            if (name.match(/فنون|رسم|تشكيلية|art|draw/)) return <span className="text-2xl filter drop-shadow-sm">🎨</span>;
+            if (name.match(/موسيقى|music/)) return <span className="text-2xl filter drop-shadow-sm">🎵</span>;
+            if (name.match(/حياتية|مهنية|أسرية|بحث|توجيه/)) return <span className="text-2xl filter drop-shadow-sm">🌱</span>;
+            
+            return null;
+        };
 
-    const handleSubjectChange = (dayIndex: number, periodIndex: number, val: string) => {
-        const newSchedule = [...schedule];
-        // Ensure the day exists
-        if (!newSchedule[dayIndex]) {
-            newSchedule[dayIndex] = { dayName: days[dayIndex], periods: Array(8).fill('') };
+        // 1. الأولوية للنص المكتوب في الجدول مباشرة
+        const specificIcon = matchIcon(subjectName);
+        if (specificIcon) return specificIcon;
+
+        // 2. إذا لم نجد أيقونة للنص (مثل كتابة "5/1")، نستخدم مادة المعلم
+        const defaultIcon = matchIcon(teacherSubject);
+        if (defaultIcon) return defaultIcon;
+        
+        // 3. أيقونة افتراضية
+        return <span className="text-2xl filter drop-shadow-sm opacity-50">📚</span>;
+    };
+
+    const handleSaveInfo = () => {
+        onUpdateTeacherInfo({
+            name: editName,
+            school: editSchool,
+            subject: editSubject,
+            governorate: editGovernorate,
+            avatar: editAvatar,
+            stamp: editStamp,
+            ministryLogo: editMinistryLogo,
+            academicYear: editAcademicYear,
+            gender: editGender
+        });
+        onSemesterChange(editSemester);
+        setShowEditModal(false);
+    };
+
+    const handleSaveScheduleSettings = () => {
+        setPeriodTimes(tempPeriodTimes);
+        onUpdateSchedule(tempSchedule);
+        setShowScheduleModal(false);
+    };
+
+    const updateTempTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
+        const newTimes = [...tempPeriodTimes];
+        newTimes[index] = { ...newTimes[index], [field]: value };
+        setTempPeriodTimes(newTimes);
+    };
+
+    const updateTempClass = (dayIdx: number, periodIdx: number, value: string) => {
+        const newSchedule = [...tempSchedule];
+        newSchedule[dayIdx].periods[periodIdx] = value;
+        setTempSchedule(newSchedule);
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditAvatar(reader.result as string); reader.readAsDataURL(file); } };
+    const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditStamp(reader.result as string); reader.readAsDataURL(file); } };
+    const handleMinistryLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditMinistryLogo(reader.result as string); reader.readAsDataURL(file); } };
+
+    // 1. الدالة المساعدة لمعالجة الوقت من الإكسل
+    const parseExcelTime = (value: any): string => {
+        if (!value) return '';
+        if (typeof value === 'number') {
+            const totalSeconds = Math.round(value * 86400);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
-        const newPeriods = [...newSchedule[dayIndex].periods];
-        newPeriods[periodIndex] = val;
-        newSchedule[dayIndex] = { ...newSchedule[dayIndex], periods: newPeriods };
-        onUpdateSchedule(newSchedule);
-    };
-
-    const handleTimeChange = (index: number, field: 'startTime' | 'endTime', val: string) => {
-        const newTimes = [...periodTimes];
-        newTimes[index] = { ...newTimes[index], [field]: val };
-        setPeriodTimes(newTimes);
-    };
-
-    const formatExcelTime = (val: any): string => {
-        if (!val) return '';
-        if (typeof val === 'number') {
-            const totalMinutes = Math.round(val * 24 * 60);
-            const h = Math.floor(totalMinutes / 60);
-            const m = totalMinutes % 60;
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        }
-        const str = String(val).trim();
+        const str = String(value).trim();
         const match = str.match(/(\d{1,2}):(\d{2})/);
-        if (match) {
-             let h = parseInt(match[1]);
-             const m = match[2];
-             return `${String(h).padStart(2, '0')}:${m}`;
+        return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
+    };
+
+    // 2. الدالة الرئيسية لاستيراد التوقيت
+    const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImportingPeriods(true);
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            
+            const newPeriodTimes = [...tempPeriodTimes];
+            let updatesCount = 0;
+
+            jsonData.forEach((row) => {
+                if (row.length < 2) return;
+                const firstCol = String(row[0] || '');
+                // البحث عن رقم الحصة في العمود الأول
+                const periodNumMatch = firstCol.match(/\d+/);
+                
+                if (periodNumMatch) {
+                    const pIndex = parseInt(periodNumMatch[0]) - 1; 
+                    if (pIndex >= 0 && pIndex < 8) {
+                        const startVal = row[1]; // العمود الثاني: وقت البداية
+                        const endVal = row[2];   // العمود الثالث: وقت النهاية
+                        const parsedStart = parseExcelTime(startVal);
+                        const parsedEnd = parseExcelTime(endVal);
+
+                        if (parsedStart) newPeriodTimes[pIndex].startTime = parsedStart;
+                        if (parsedEnd) newPeriodTimes[pIndex].endTime = parsedEnd;
+                        
+                        if(parsedStart || parsedEnd) updatesCount++;
+                    }
+                }
+            });
+
+            if (updatesCount > 0) {
+                setTempPeriodTimes(newPeriodTimes);
+                alert(`تم تحديث توقيت ${updatesCount} حصص بنجاح ✅`);
+            } else {
+                alert('لم يتم العثور على بيانات توقيت صالحة. تأكد من أن العمود الأول يحتوي على رقم الحصة.');
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء قراءة الملف.');
+        } finally {
+            setIsImportingPeriods(false);
+            if (e.target) e.target.value = '';
         }
-        return '';
     };
 
     const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        setIsImportingSchedule(true);
         try {
             const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
+            const workbook = XLSX.read(data, { type: 'array' });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-            const dayMap: {[key:string]: string} = {
-                'الأحد': 'الأحد', 'sun': 'الأحد',
-                'الاثنين': 'الاثنين', 'الإثنين': 'الاثنين', 'mon': 'الاثنين',
-                'الثلاثاء': 'الثلاثاء', 'tue': 'الثلاثاء',
-                'الأربعاء': 'الأربعاء', 'wed': 'الأربعاء',
-                'الخميس': 'الخميس', 'thu': 'الخميس'
-            };
+            const newSchedule: ScheduleDay[] = [
+                { dayName: 'الأحد', periods: Array(8).fill('') },
+                { dayName: 'الاثنين', periods: Array(8).fill('') },
+                { dayName: 'الثلاثاء', periods: Array(8).fill('') },
+                { dayName: 'الأربعاء', periods: Array(8).fill('') },
+                { dayName: 'الخميس', periods: Array(8).fill('') }
+            ];
 
-            const newSchedule = [...schedule];
-            let found = false;
-
-            jsonData.forEach((row) => {
-                if (row.length > 0 && typeof row[0] === 'string') {
-                    const cell0 = row[0].trim().toLowerCase();
-                    let matchedDay = '';
-                    for(const key in dayMap) {
-                        if(cell0.includes(key)) {
-                            matchedDay = dayMap[key];
-                            break;
-                        }
-                    }
-                    
-                    if (matchedDay) {
-                        const dayIndex = newSchedule.findIndex(s => s.dayName === matchedDay);
-                        if (dayIndex !== -1) {
-                            const periods = newSchedule[dayIndex].periods.map((p, idx) => {
-                                // Skip first column (Day name)
-                                return row[idx + 1] ? String(row[idx + 1]).trim() : p;
-                            });
-                            newSchedule[dayIndex] = { ...newSchedule[dayIndex], periods };
-                            found = true;
+            jsonData.forEach(row => {
+                if (row.length < 2) return;
+                const firstCell = String(row[0]).trim();
+                const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName));
+                if (dayIndex !== -1) {
+                    for (let i = 1; i <= 8; i++) {
+                        if (row[i]) {
+                            newSchedule[dayIndex].periods[i-1] = String(row[i]).trim();
                         }
                     }
                 }
             });
 
-            if(found) {
-                onUpdateSchedule(newSchedule);
-                alert('تم تحديث الجدول من الملف بنجاح');
+            // If inside modal, update temp schedule, else update real schedule
+            if (showScheduleModal) {
+                setTempSchedule(newSchedule);
             } else {
-                alert('لم يتم العثور على أيام في الملف. تأكد من وجود عمود للأيام (الأحد، الاثنين...)');
+                onUpdateSchedule(newSchedule);
             }
-        } catch (err) {
-            console.error(err);
-            alert('خطأ في قراءة الملف');
+            alert('تم استيراد الجدول بنجاح');
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء استيراد الجدول.');
+        } finally {
+            setIsImportingSchedule(false);
+            setShowSettingsDropdown(false);
+            if (e.target) e.target.value = '';
         }
-        if (e.target) e.target.value = '';
     };
 
-    const handleImportTiming = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    const checkActivePeriod = (start: string, end: string) => {
+        if (!start || !end) return false;
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    };
 
-            const newTimes = [...periodTimes];
-            let found = false;
-            
-            jsonData.forEach(row => {
-                if (row.length >= 3) {
-                     const firstCell = String(row[0]).trim();
-                     const match = firstCell.match(/(\d+)/);
-                     if (match) {
-                         const pNum = parseInt(match[1]);
-                         if (pNum >= 1 && pNum <= 8) {
-                             const startTime = formatExcelTime(row[1]);
-                             const endTime = formatExcelTime(row[2]);
-                             
-                             if (startTime && endTime) {
-                                 newTimes[pNum - 1] = { periodNumber: pNum, startTime, endTime };
-                                 found = true;
-                             }
-                         }
-                     }
-                }
-            });
-            
-            if (found) {
-                setPeriodTimes(newTimes);
-                alert('تم تحديث التوقيت من الملف بنجاح');
-            } else {
-                alert('لم يتم العثور على بيانات توقيت صالحة.\nالصيغة المطلوبة: رقم الحصة | البداية | النهاية');
+    const handleTestNotification = async () => {
+        try {
+            const audio = new Audio(BELL_SOUND_URL);
+            audio.volume = 1.0;
+            await audio.play().catch(e => console.warn('Audio blocked', e));
+            if (Capacitor.isNativePlatform()) {
+                await LocalNotifications.schedule({
+                    notifications: [{ id: 99999, title: '🔔 تجربة الجرس', body: 'صوت جرس الحصة', schedule: { at: new Date(Date.now() + 1000) }, sound: 'beep.wav' }]
+                });
             }
-        } catch (err) {
-            console.error(err);
-            alert('خطأ في قراءة الملف');
-        }
-        if (e.target) e.target.value = '';
-    }
+        } catch (e) { console.error('Test notification failed', e); }
+    };
+
+    const today = new Date();
+    const dayIndex = today.getDay();
+    const todaySchedule = schedule[dayIndex] || { dayName: 'اليوم', periods: [] };
+    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    const isToday = todaySchedule.dayName === days[dayIndex];
 
     return (
-        <div className="space-y-6 pb-20">
-            <header className="flex items-center justify-between">
-                 <div>
-                     <h1 className="text-2xl font-black text-slate-800">لوحة التحكم</h1>
-                     <p className="text-slate-500 text-sm font-bold">ملخص اليوم الدراسي</p>
-                 </div>
-                 <div className="flex gap-2">
-                     <button onClick={() => onSemesterChange(currentSemester === '1' ? '2' : '1')} className="px-4 py-2 bg-white rounded-xl text-xs font-black shadow-sm border border-slate-200">
-                         الفصل {currentSemester}
-                     </button>
-                 </div>
-            </header>
+        <div className="space-y-6 pb-20 text-slate-900 animate-in fade-in duration-500">
+            
+            {/* Header Profile */}
+            <header className="bg-[#1e3a8a] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-20 -mx-4 -mt-4 mb-2">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
+                            <BrandLogo className="w-6 h-6" showText={false} variant="light" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black leading-tight tracking-wide">راصد</h1>
+                            <p className="text-[10px] text-blue-200 font-bold opacity-80">لوحة تحكم المعلم</p>
+                        </div>
+                    </div>
 
-            {/* Teacher Profile Summary */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center overflow-hidden border-2 border-indigo-100">
-                    <img 
-                        src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
-                        alt="Teacher" 
-                        className="w-full h-full object-cover"
-                    />
-                </div>
-                <div>
-                    <h2 className="text-lg font-black text-slate-800">{teacherInfo.name || 'مرحباً بك'}</h2>
-                    <p className="text-slate-500 text-xs font-bold">{teacherInfo.school}</p>
-                </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-indigo-600 text-white p-6 rounded-3xl shadow-lg shadow-indigo-200">
-                    <Users className="w-8 h-8 mb-4 opacity-80" />
-                    <h3 className="text-3xl font-black">{students.length}</h3>
-                    <p className="text-indigo-200 text-xs font-bold">إجمالي الطلاب</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <Calendar className="w-8 h-8 mb-4 text-emerald-500" />
-                    <h3 className="text-xl font-black text-slate-800">{today}</h3>
-                    <p className="text-slate-400 text-xs font-bold">اليوم</p>
-                </div>
-            </div>
-
-            {/* Schedule */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-orange-500" />
-                        جدول اليوم
-                    </h3>
                     <div className="flex items-center gap-2">
-                        <button 
-                            onClick={onToggleNotifications} 
-                            className={`p-2 rounded-xl transition-colors ${notificationsEnabled ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'}`}
-                        >
-                            {notificationsEnabled ? <Bell size={18} /> : <BellOff size={18} />}
-                        </button>
-                        <button 
-                            onClick={() => setIsSettingsOpen(true)} 
-                            className="p-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
-                        >
-                            <Settings size={18} />
+                        <div className="relative">
+                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`p-2.5 rounded-xl transition-all border ${showSettingsDropdown ? 'bg-white text-[#1e3a8a] border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}>
+                                <Settings className={`w-6 h-6 ${showSettingsDropdown ? 'animate-spin-slow' : ''}`} />
+                            </button>
+                            {showSettingsDropdown && (
+                                <>
+                                    <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowSettingsDropdown(false)}></div>
+                                    <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-blue-50 overflow-hidden z-50 animate-in zoom-in-95 slide-in-from-top-2 duration-200 origin-top-left">
+                                        <div className="flex flex-col py-1.5">
+                                            <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
+                                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Download className="w-4 h-4 text-blue-600" /></div>
+                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">استيراد الجدول</span><span className="text-[9px] text-slate-400">ملف Excel</span></div>
+                                                {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto text-blue-600"/>}
+                                            </button>
+                                            <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
+                                            <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-slate-600" /></div>
+                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">توقيت الحصص</span><span className="text-[9px] text-slate-400">بداية ونهاية الحصة</span></div>
+                                            </button>
+                                            <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group">
+                                                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0"><AlarmClock className="w-4 h-4 text-red-500" /></div>
+                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">منبه الحصص</span><span className="text-[9px] text-slate-400">تنبيه تلقائي</span></div>
+                                                <span className={`mr-auto text-[9px] font-bold px-2 py-0.5 rounded-md ${notificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>{notificationsEnabled ? 'ON' : 'OFF'}</span>
+                                            </button>
+                                            <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-t border-slate-50 bg-slate-50/50">
+                                                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0"><PlayCircle className="w-4 h-4 text-slate-500" /></div><span className="text-xs font-bold text-slate-600">تجربة صوت الجرس</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <button onClick={onToggleNotifications} className={`p-2.5 rounded-full hover:bg-white/10 transition-colors relative group backdrop-blur-md border border-white/10 ${notificationsEnabled ? 'bg-white/20' : ''}`}>
+                            <Bell className={`w-6 h-6 ${notificationsEnabled ? 'fill-white' : 'text-white'}`} />
+                            {notificationsEnabled && <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#1e3a8a]"></span>}
                         </button>
                     </div>
                 </div>
-                <div className="space-y-3">
-                    {todaySchedule && todaySchedule.periods.some(p => p) ? (
-                        todaySchedule.periods.map((subject, idx) => {
-                            if(!subject) return null;
-                            const time = periodTimes[idx];
-                            return (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs">
-                                            {idx + 1}
-                                        </div>
-                                        <span className="font-bold text-slate-700">{subject}</span>
-                                    </div>
-                                    {time && <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">{time.startTime} - {time.endTime}</span>}
-                                </div>
-                            )
-                        })
-                    ) : (
-                        <p className="text-center text-slate-400 text-sm font-bold py-4">لا يوجد حصص مسجلة لهذا اليوم</p>
-                    )}
+
+                {/* Teacher Info Section (New Layout) */}
+                <div className="flex items-center gap-5 mb-2 relative">
+                    <div className="w-20 h-20 rounded-[1.2rem] bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0 relative group">
+                        {/* Fallback Layer: Always there underneath */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-indigo-50 z-0">
+                            <span className="text-3xl filter grayscale opacity-50">
+                                {teacherInfo.gender === 'female' ? '👩‍🏫' : '👨‍🏫'}
+                            </span>
+                        </div>
+                        
+                        {/* Image Layer: Hides if error occurs, forced update with key */}
+                        <img 
+                            key={`profile-${teacherInfo.gender}-${teacherInfo.avatar ? 'custom' : 'default'}`}
+                            src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
+                            className="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
+                            alt="Avatar" 
+                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
+                            onError={(e) => {
+                                // Hide the broken image so the fallback div shows
+                                e.currentTarget.style.opacity = '0';
+                            }}
+                        />
+                    </div>
+                    
+                    <div className="flex flex-col flex-1 gap-1">
+                        <div className="flex items-start justify-between w-full">
+                            <div>
+                                <h2 className="text-2xl font-bold leading-tight">{teacherInfo.name || 'مرحباً يا معلم'}</h2>
+                                <p className="text-xs text-blue-200 font-medium opacity-90 mt-1 flex items-center gap-1">
+                                    <School className="w-3 h-3"/> {teacherInfo.school || 'المدرسة'}
+                                </p>
+                            </div>
+                            
+                            <button 
+                                onClick={() => setShowEditModal(true)} 
+                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-all border border-white/10 active:scale-95 shadow-sm"
+                                title="تعديل البيانات"
+                            >
+                                <Edit3 className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-2">
+                             <span className="text-[10px] bg-blue-500/30 px-2 py-0.5 rounded-lg border border-blue-400/30 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                                {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}
+                             </span>
+                        </div>
+                    </div>
                 </div>
+            </header>
+
+            {/* Schedule Section */}
+            <div className="px-1">
+                <div className="flex justify-between items-center mb-4 px-2">
+                    <div className="text-right">
+                        <h2 className="text-lg font-black text-slate-800 flex items-center gap-2 justify-end">
+                            جدول {todaySchedule.dayName}
+                            <Clock className="w-5 h-5 text-amber-500" />
+                        </h2>
+                        <p className="text-[10px] text-slate-400 font-bold">اليوم الدراسي الحالي</p>
+                    </div>
+                </div>
+                
+                <section className="space-y-3 pb-4">
+                    {todaySchedule.periods && todaySchedule.periods.map((cls, idx) => {
+                        if (!cls) return null;
+                        const pt = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
+                        const isActive = isToday && checkActivePeriod(pt.startTime, pt.endTime);
+                        return (
+                            <div key={idx} className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-all relative overflow-hidden ${isActive ? 'ring-2 ring-emerald-400 shadow-xl scale-[1.02]' : ''}`}>
+                                {isActive && <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>}
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-colors ${isActive ? 'bg-emerald-50' : 'bg-indigo-50'}`}>
+                                        {getSubjectIcon(cls)}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-lg font-black text-slate-900 line-clamp-1">{cls}</h4>
+                                            {isActive && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold animate-pulse">الآن</span>}
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-bold mt-0.5">الحصة {idx + 1} {teacherInfo?.school ? ` • ${teacherInfo.school}` : ''}</p>
+                                    </div>
+                                </div>
+                                {isActive ? (
+                                    <button onClick={() => onNavigate('attendance')} className="bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-1">تحضير <ChevronLeft className="w-3 h-3"/></button>
+                                ) : (
+                                    <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 min-w-[70px] text-center">
+                                        <span className="text-xs font-black text-slate-600 block">{pt.startTime}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 block">{pt.endTime}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {todaySchedule.periods.every(p => !p) && (
+                        <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-sm font-bold text-gray-400">لا توجد حصص لهذا اليوم</p></div>
+                    )}
+                </section>
             </div>
 
-            {/* Unified Settings Modal */}
-            <Modal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} className="max-w-md w-full rounded-[2rem] max-h-[90vh]">
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
-                    <h3 className="font-black text-lg text-slate-800">الإعدادات السريعة</h3>
-                    <button onClick={() => setIsSettingsOpen(false)} className="p-2 bg-slate-50 rounded-full hover:bg-slate-100"><X size={18} className="text-slate-500" /></button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
-                    <button onClick={() => setSettingsTab('schedule')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 ${settingsTab === 'schedule' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}>
-                        <BookOpen size={14} /> المواد
-                    </button>
-                    <button onClick={() => setSettingsTab('timing')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 ${settingsTab === 'timing' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}>
-                        <Timer size={14} /> التوقيت
-                    </button>
-                    <button onClick={() => setSettingsTab('profile')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 ${settingsTab === 'profile' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}>
-                        <User size={14} /> الملف
-                    </button>
-                </div>
-
-                <div className="overflow-y-auto max-h-[60vh] custom-scrollbar p-1">
+            {/* Modals - Edit Profile */}
+            <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="max-w-md rounded-[2rem]">
+                <div className="text-center">
+                    <h3 className="font-black text-xl mb-4 text-slate-800">تعديل البيانات</h3>
                     
-                    {/* 1. Schedule Settings */}
-                    {settingsTab === 'schedule' && (
-                        <div className="space-y-4 animate-in fade-in">
-                            <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl">
-                                <span className="text-xs font-bold text-indigo-700">تعبئة الجدول من Excel</span>
-                                <button onClick={() => fileInputScheduleRef.current?.click()} className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm hover:bg-indigo-700">
-                                    <Upload size={12} /> استيراد
-                                </button>
-                                <input type="file" ref={fileInputScheduleRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
-                            </div>
+                    {/* Image Preview in Modal */}
+                    <div className="w-24 h-24 mx-auto mb-4 relative group">
+                        {/* Fallback Layer */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-[1.5rem] border-4 border-slate-100 z-0">
+                             <span className="text-4xl filter grayscale opacity-50">
+                                {editGender === 'female' ? '👩‍🏫' : '👨‍🏫'}
+                             </span>
+                        </div>
 
-                            <div className="flex gap-2 overflow-x-auto pb-2">
-                                {days.map((day, idx) => (
-                                    <button 
-                                        key={day} 
-                                        onClick={() => setSelectedDayIndex(idx)}
-                                        className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap border transition-all ${selectedDayIndex === idx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}
-                                    >
-                                        {day}
-                                    </button>
-                                ))}
+                        {/* Actual Image */}
+                        <img 
+                            key={`edit-${editGender}-${editAvatar ? 'custom' : 'default'}`}
+                            src={getDisplayImage(editAvatar, editGender)}
+                            className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md relative z-10 bg-white"
+                            alt="Profile"
+                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
+                            onError={(e) => e.currentTarget.style.opacity = '0'}
+                        />
+                        
+                        <button onClick={() => setEditAvatar('')} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة والعودة للافتراضي">
+                            <span className="font-bold px-1">×</span>
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="الاسم" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                            <input value={editSchool} onChange={e => setEditSchool(e.target.value)} placeholder="المدرسة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                        </div>
+                        <input value={editSubject} onChange={e => setEditSubject(e.target.value)} placeholder="المادة" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                        <div className="grid grid-cols-2 gap-3">
+                            <input value={editGovernorate} onChange={e => setEditGovernorate(e.target.value)} placeholder="المحافظة" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                            <input value={editAcademicYear} onChange={e => setEditAcademicYear(e.target.value)} placeholder="العام الدراسي" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
+                        </div>
+
+                        {/* الفصل الدراسي والجنس */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
+                                <button onClick={() => setEditSemester('1')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '1' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 1</button>
+                                <button onClick={() => setEditSemester('2')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '2' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 2</button>
                             </div>
-                            <div className="space-y-2">
-                                {Array(8).fill(0).map((_, idx) => (
-                                    <div key={idx} className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">{idx + 1}</div>
-                                        <input 
-                                            type="text" 
-                                            placeholder={`الحصة ${idx + 1}`}
-                                            value={schedule[selectedDayIndex]?.periods[idx] || ''}
-                                            onChange={(e) => handleSubjectChange(selectedDayIndex, idx, e.target.value)}
-                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 text-slate-800"
-                                        />
+                            <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
+                                <button onClick={() => { setEditGender('male'); if(!editAvatar) setEditAvatar(''); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-400'}`}>معلم 👨‍🏫</button>
+                                <button onClick={() => { setEditGender('female'); if(!editAvatar) setEditAvatar(''); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-400'}`}>معلمة 👩‍🏫</button>
+                            </div>
+                        </div>
+
+                        {/* الصور والشعارات */}
+                        <div className="space-y-2 pt-2 border-t border-gray-100 mt-2">
+                             <div className="flex gap-2">
+                                <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 flex items-center justify-center gap-2 border border-indigo-100 transition-colors">
+                                    <Camera className="w-4 h-4"/> صورتك
+                                </button>
+                                <button onClick={() => stampInputRef.current?.click()} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs hover:bg-blue-100 flex items-center justify-center gap-2 border border-blue-100 transition-colors">
+                                    <Check className="w-4 h-4"/> الختم
+                                </button>
+                                <button onClick={() => ministryLogoInputRef.current?.click()} className="flex-1 py-3 bg-amber-50 text-amber-600 rounded-xl font-bold text-xs hover:bg-amber-100 flex items-center justify-center gap-2 border border-amber-100 transition-colors">
+                                    <School className="w-4 h-4"/> الشعار
+                                </button>
+                             </div>
+                             <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*"/>
+                             <input type="file" ref={stampInputRef} onChange={handleStampUpload} className="hidden" accept="image/*"/>
+                             <input type="file" ref={ministryLogoInputRef} onChange={handleMinistryLogoUpload} className="hidden" accept="image/*"/>
+                        </div>
+
+                        <button onClick={handleSaveInfo} className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all active:scale-95">حفظ التغييرات</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal - Schedule Settings */}
+            <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-4xl rounded-[2rem]">
+                <div className="flex flex-col h-[80vh]">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                        <h3 className="font-black text-xl text-slate-800">إعدادات الجدول والتوقيت</h3>
+                        
+                        {/* Import Button added to the modal header */}
+                        <div className="flex gap-2">
+                            <button onClick={() => modalScheduleFileInputRef.current?.click()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-indigo-100">
+                                <Download className="w-4 h-4" />
+                                <span>{isImportingPeriods ? 'جاري...' : 'استيراد'}</span>
+                            </button>
+                            <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportPeriodTimes} accept=".xlsx, .xls" className="hidden" />
+                            
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button onClick={() => setScheduleTab('timing')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'timing' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>التوقيت</button>
+                                <button onClick={() => setScheduleTab('classes')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${scheduleTab === 'classes' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>الحصص</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                        {scheduleTab === 'timing' ? (
+                            <div className="space-y-3">
+                                {tempPeriodTimes.map((pt, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center font-black text-slate-500 border border-gray-200">{pt.periodNumber}</div>
+                                        <div className="flex-1 flex gap-2">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-1">بداية الحصة</label>
+                                                <input type="time" value={pt.startTime} onChange={(e) => updateTempTime(idx, 'startTime', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 text-slate-800" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-1">نهاية الحصة</label>
+                                                <input type="time" value={pt.endTime} onChange={(e) => updateTempTime(idx, 'endTime', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 text-slate-800" />
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
-
-                    {/* 2. Timing Settings */}
-                    {settingsTab === 'timing' && (
-                        <div className="space-y-3 animate-in fade-in">
-                            <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-xl mb-2">
-                                <span className="text-xs font-bold text-indigo-700">تعبئة التوقيت من Excel</span>
-                                <button onClick={() => fileInputTimingRef.current?.click()} className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm hover:bg-indigo-700">
-                                    <Upload size={12} /> استيراد
-                                </button>
-                                <input type="file" ref={fileInputTimingRef} onChange={handleImportTiming} accept=".xlsx,.xls" className="hidden" />
-                            </div>
-
-                            <div className="flex justify-between px-2 mb-2">
-                                <span className="text-[10px] font-bold text-slate-400">الحصة</span>
-                                <span className="text-[10px] font-bold text-slate-400 mr-8">بداية</span>
-                                <span className="text-[10px] font-bold text-slate-400">نهاية</span>
-                            </div>
-                            {periodTimes.map((period, idx) => (
-                                <div key={idx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                    <div className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">{idx + 1}</div>
-                                    <input 
-                                        type="time" 
-                                        value={period.startTime} 
-                                        onChange={(e) => handleTimeChange(idx, 'startTime', e.target.value)}
-                                        className="flex-1 bg-transparent text-center font-mono font-bold text-xs outline-none text-slate-800"
-                                    />
-                                    <span className="text-slate-300">-</span>
-                                    <input 
-                                        type="time" 
-                                        value={period.endTime} 
-                                        onChange={(e) => handleTimeChange(idx, 'endTime', e.target.value)}
-                                        className="flex-1 bg-transparent text-center font-mono font-bold text-xs outline-none text-slate-800"
-                                    />
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {tempSchedule.map((day, idx) => (
+                                        <button key={idx} onClick={() => setEditingDayIndex(idx)} className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap border transition-all ${editingDayIndex === idx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-gray-200 hover:bg-gray-50'}`}>
+                                            {day.dayName}
+                                        </button>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* 3. Profile Settings */}
-                    {settingsTab === 'profile' && (
-                        <div className="space-y-4 animate-in fade-in">
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">الاسم</label>
-                                <input 
-                                    type="text" 
-                                    value={teacherInfo.name} 
-                                    onChange={(e) => onUpdateTeacherInfo({...teacherInfo, name: e.target.value})}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 text-slate-800"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">المدرسة</label>
-                                <input 
-                                    type="text" 
-                                    value={teacherInfo.school} 
-                                    onChange={(e) => onUpdateTeacherInfo({...teacherInfo, school: e.target.value})}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 text-slate-800"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">الجنس</label>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => onUpdateTeacherInfo({...teacherInfo, gender: 'male'})}
-                                        className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${teacherInfo.gender !== 'female' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'}`}
-                                    >
-                                        معلم 👨‍🏫
-                                    </button>
-                                    <button 
-                                        onClick={() => onUpdateTeacherInfo({...teacherInfo, gender: 'female'})}
-                                        className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${teacherInfo.gender === 'female' ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white border-slate-200 text-slate-500'}`}
-                                    >
-                                        معلمة 👩‍🏫
-                                    </button>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {tempSchedule[editingDayIndex]?.periods.map((cls, pIdx) => (
+                                        <div key={pIdx} className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                            <span className="text-xs font-black text-gray-400 w-16">حصة {pIdx + 1}</span>
+                                            <input 
+                                                value={cls} 
+                                                onChange={(e) => updateTempClass(editingDayIndex, pIdx, e.target.value)} 
+                                                placeholder="اسم الفصل / المادة" 
+                                                className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500 text-slate-800" 
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                    <button onClick={() => setIsSettingsOpen(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center gap-2">
-                        <Save size={16} /> حفظ وإغلاق
-                    </button>
+                    <div className="pt-4 border-t border-gray-100 mt-4 shrink-0">
+                        <button onClick={handleSaveScheduleSettings} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all">حفظ الجدول والتوقيت</button>
+                    </div>
                 </div>
             </Modal>
         </div>
