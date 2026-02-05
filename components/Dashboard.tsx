@@ -4,7 +4,7 @@ import {
   Bell, Clock, Edit3, Settings, 
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
-  X, Calendar, BellOff
+  X, Calendar, BellOff, Save
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
