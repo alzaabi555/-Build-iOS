@@ -10,28 +10,35 @@ import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
-import BrandLogo from './BrandLogo';
 
-// ✅ التعريف الصحيح للمكون مع تحديد الأنواع
+// --- 1. الشعار مدمج هنا لضمان عدم حدوث خطأ (Internal Logo) ---
+const InternalBrandLogo: React.FC<{ className?: string, variant?: 'light' | 'dark' }> = ({ className = "w-8 h-8", variant = 'dark' }) => {
+    const color = variant === 'light' ? '#ffffff' : '#1e3a8a';
+    return (
+        <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 20C30 20 12 40 5 50C12 60 30 80 50 80C70 80 88 60 95 50C88 40 70 20 50 20Z" stroke={color} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M50 65C58.2843 65 65 58.2843 65 50C65 41.7157 58.2843 35 50 35C41.7157 35 35 41.7157 35 50C35 58.2843 41.7157 65 50 65Z" fill={color} fillOpacity="0.2" stroke={color} strokeWidth="4"/>
+            <path d="M42 50L48 56L68 36" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+    );
+};
+
+// --- 2. مكون الصورة الآمن (Fail-safe Image) ---
 const ImageWithFallback: React.FC<{ src: string; fallbackSrc: string; [key: string]: any }> = ({ src, fallbackSrc, ...props }) => {
     const [imgSrc, setImgSrc] = useState(src);
-    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
-        setImgSrc(src);
-        setHasError(false);
-    }, [src]);
+        setImgSrc(src || fallbackSrc);
+    }, [src, fallbackSrc]);
 
     const handleError = () => {
-        if (!hasError) {
-            setHasError(true);
+        if (imgSrc !== fallbackSrc) {
             setImgSrc(fallbackSrc);
         }
     };
 
-    return <img src={imgSrc || fallbackSrc} onError={handleError} {...props} />;
+    return <img src={imgSrc} onError={handleError} {...props} />;
 };
-
 
 interface DashboardProps {
     students: any[];
@@ -65,6 +72,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     currentSemester,
     onSemesterChange
 } ) => {
+    // حماية ضد البيانات المفقودة (تمنع الشاشة البيضاء)
+    if (!teacherInfo) {
+        return <div className="flex items-center justify-center h-screen text-slate-500 font-bold">جاري تحميل البيانات...</div>;
+    }
+
     const { classes } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
@@ -79,16 +91,18 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editName, setEditName] = useState(teacherInfo.name);
-    const [editSchool, setEditSchool] = useState(teacherInfo.school);
-    const [editSubject, setEditSubject] = useState(teacherInfo.subject);
-    const [editGovernorate, setEditGovernorate] = useState(teacherInfo.governorate);
-    const [editAvatar, setEditAvatar] = useState(teacherInfo.avatar);
-    const [editStamp, setEditStamp] = useState(teacherInfo.stamp);
-    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo.ministryLogo);
-    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo.academicYear);
-    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo.gender || 'male');
-    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
+    
+    // تهيئة المتغيرات بقيم آمنة
+    const [editName, setEditName] = useState(teacherInfo?.name || '');
+    const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
+    const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
+    const [editGovernorate, setEditGovernorate] = useState(teacherInfo?.governorate || '');
+    const [editAvatar, setEditAvatar] = useState(teacherInfo?.avatar);
+    const [editStamp, setEditStamp] = useState(teacherInfo?.stamp);
+    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo);
+    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
+    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
+    const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester || '1');
 
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [scheduleTab, setScheduleTab] = useState<'timing' | 'classes'>('timing');
@@ -97,15 +111,15 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
     useEffect(() => {
-        if (showEditModal) {
-            setEditName(teacherInfo.name);
-            setEditSchool(teacherInfo.school);
-            setEditSubject(teacherInfo.subject);
-            setEditGovernorate(teacherInfo.governorate);
+        if (showEditModal && teacherInfo) {
+            setEditName(teacherInfo.name || '');
+            setEditSchool(teacherInfo.school || '');
+            setEditSubject(teacherInfo.subject || '');
+            setEditGovernorate(teacherInfo.governorate || '');
             setEditAvatar(teacherInfo.avatar);
             setEditStamp(teacherInfo.stamp);
             setEditMinistryLogo(teacherInfo.ministryLogo);
-            setEditAcademicYear(teacherInfo.academicYear);
+            setEditAcademicYear(teacherInfo.academicYear || '');
             setEditGender(teacherInfo.gender || 'male');
             setEditSemester(currentSemester);
         }
@@ -118,8 +132,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     useEffect(() => {
         if (showScheduleModal) {
-            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes)));
-            setTempSchedule(JSON.parse(JSON.stringify(schedule)));
+            setTempPeriodTimes(JSON.parse(JSON.stringify(periodTimes || [])));
+            setTempSchedule(JSON.parse(JSON.stringify(schedule || [])));
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
@@ -130,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     const getDisplayImage = (avatar: string | undefined, gender: 'male' | 'female' = 'male') => {
-        if (avatar) {
+        if (avatar && avatar.length > 10) {
             return avatar; 
         }
         return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
@@ -185,14 +199,18 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const updateTempTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
         const newTimes = [...tempPeriodTimes];
-        newTimes[index] = { ...newTimes[index], [field]: value };
-        setTempPeriodTimes(newTimes);
+        if(newTimes[index]) {
+            newTimes[index] = { ...newTimes[index], [field]: value };
+            setTempPeriodTimes(newTimes);
+        }
     };
 
     const updateTempClass = (dayIdx: number, periodIdx: number, value: string) => {
         const newSchedule = [...tempSchedule];
-        newSchedule[dayIdx].periods[periodIdx] = value;
-        setTempSchedule(newSchedule);
+        if(newSchedule[dayIdx] && newSchedule[dayIdx].periods) {
+            newSchedule[dayIdx].periods[periodIdx] = value;
+            setTempSchedule(newSchedule);
+        }
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditAvatar(reader.result as string); reader.readAsDataURL(file); } };
@@ -238,8 +256,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                         const parsedStart = parseExcelTime(startVal);
                         const parsedEnd = parseExcelTime(endVal);
 
-                        if (parsedStart) newPeriodTimes[pIndex].startTime = parsedStart;
-                        if (parsedEnd) newPeriodTimes[pIndex].endTime = parsedEnd;
+                        if (parsedStart && newPeriodTimes[pIndex]) newPeriodTimes[pIndex].startTime = parsedStart;
+                        if (parsedEnd && newPeriodTimes[pIndex]) newPeriodTimes[pIndex].endTime = parsedEnd;
                         
                         if(parsedStart || parsedEnd) updatesCount++;
                     }
@@ -336,7 +354,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const today = new Date();
     const dayIndex = today.getDay();
-    const todaySchedule = schedule[dayIndex] || { dayName: 'اليوم', periods: [] };
+    const todaySchedule = schedule ? (schedule[dayIndex] || { dayName: 'اليوم', periods: [] }) : { dayName: 'اليوم', periods: [] };
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
     const isToday = todaySchedule.dayName === days[dayIndex];
 
@@ -347,7 +365,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
-                            <BrandLogo className="w-6 h-6" showText={false} variant="light" />
+                            {/* استخدمنا الشعار الداخلي لتجنب الأخطاء */}
+                            <InternalBrandLogo className="w-6 h-6" variant="light" />
                         </div>
                         <div>
                             <h1 className="text-xl font-black leading-tight tracking-wide">راصد</h1>
@@ -473,7 +492,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         );
                     })}
-                    {todaySchedule.periods.every(p => !p) && (
+                    {(!todaySchedule.periods || todaySchedule.periods.every(p => !p)) && (
                         <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-sm font-bold text-gray-400">لا توجد حصص لهذا اليوم</p></div>
                     )}
                 </section>
