@@ -11,19 +11,7 @@ import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-// --- 1. الشعار مدمج هنا لضمان عدم حدوث خطأ (Internal Logo) ---
-const InternalBrandLogo: React.FC<{ className?: string, variant?: 'light' | 'dark' }> = ({ className = "w-8 h-8", variant = 'dark' }) => {
-    const color = variant === 'light' ? '#ffffff' : '#1e3a8a';
-    return (
-        <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M50 20C30 20 12 40 5 50C12 60 30 80 50 80C70 80 88 60 95 50C88 40 70 20 50 20Z" stroke={color} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M50 65C58.2843 65 65 58.2843 65 50C65 41.7157 58.2843 35 50 35C41.7157 35 35 41.7157 35 50C35 58.2843 41.7157 65 50 65Z" fill={color} fillOpacity="0.2" stroke={color} strokeWidth="4"/>
-            <path d="M42 50L48 56L68 36" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-    );
-};
-
-// --- 2. مكون الصورة الآمن (Fail-safe Image) ---
+// --- مكون الصورة الآمن ---
 const ImageWithFallback: React.FC<{ src: string; fallbackSrc: string; [key: string]: any }> = ({ src, fallbackSrc, ...props }) => {
     const [imgSrc, setImgSrc] = useState(src);
 
@@ -72,7 +60,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     currentSemester,
     onSemesterChange
 } ) => {
-    // حماية ضد البيانات المفقودة (تمنع الشاشة البيضاء)
+    // حماية ضد البيانات المفقودة
     if (!teacherInfo) {
         return <div className="flex items-center justify-center h-screen text-slate-500 font-bold">جاري تحميل البيانات...</div>;
     }
@@ -81,10 +69,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
-    const scheduleFileInputRef = useRef<HTMLInputElement>(null);
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
 
-    const [isImportingSchedule, setIsImportingSchedule] = useState(false);
     const [isImportingPeriods, setIsImportingPeriods] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     
@@ -92,7 +78,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const [showEditModal, setShowEditModal] = useState(false);
     
-    // تهيئة المتغيرات بقيم آمنة
     const [editName, setEditName] = useState(teacherInfo?.name || '');
     const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
     const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
@@ -101,7 +86,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [editStamp, setEditStamp] = useState(teacherInfo?.stamp);
     const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo);
     const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
-    const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
     const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester || '1');
 
     const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -120,7 +104,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             setEditStamp(teacherInfo.stamp);
             setEditMinistryLogo(teacherInfo.ministryLogo);
             setEditAcademicYear(teacherInfo.academicYear || '');
-            setEditGender(teacherInfo.gender || 'male');
             setEditSemester(currentSemester);
         }
     }, [teacherInfo, currentSemester, showEditModal]);
@@ -139,12 +122,12 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const getImg = (path: string) => {
         if (!path) return '';
-        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-        return `${import.meta.env.BASE_URL}${cleanPath}`;
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return cleanPath;
     };
 
     const getDisplayImage = (avatar: string | undefined, gender: 'male' | 'female' = 'male') => {
-        if (avatar && avatar.length > 10) {
+        if (avatar && avatar.length > 50) {
             return avatar; 
         }
         return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
@@ -185,7 +168,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
             academicYear: editAcademicYear,
-            gender: editGender
+            gender: teacherInfo.gender // الحفاظ على الجنس كما هو
         });
         onSemesterChange(editSemester);
         setShowEditModal(false);
@@ -280,54 +263,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setIsImportingSchedule(true);
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-
-            const newSchedule: ScheduleDay[] = [
-                { dayName: 'الأحد', periods: Array(8).fill('') },
-                { dayName: 'الاثنين', periods: Array(8).fill('') },
-                { dayName: 'الثلاثاء', periods: Array(8).fill('') },
-                { dayName: 'الأربعاء', periods: Array(8).fill('') },
-                { dayName: 'الخميس', periods: Array(8).fill('') }
-            ];
-
-            jsonData.forEach(row => {
-                if (row.length < 2) return;
-                const firstCell = String(row[0]).trim();
-                const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName));
-                if (dayIndex !== -1) {
-                    for (let i = 1; i <= 8; i++) {
-                        if (row[i]) {
-                            newSchedule[dayIndex].periods[i-1] = String(row[i]).trim();
-                        }
-                    }
-                }
-            });
-
-            if (showScheduleModal) {
-                setTempSchedule(newSchedule);
-            } else {
-                onUpdateSchedule(newSchedule);
-            }
-            alert('تم استيراد الجدول بنجاح');
-        } catch (error) {
-            console.error(error);
-            alert('حدث خطأ أثناء استيراد الجدول.');
-        } finally {
-            setIsImportingSchedule(false);
-            setShowSettingsDropdown(false);
-            if (e.target) e.target.value = '';
-        }
-    };
-
     const checkActivePeriod = (start: string, end: string) => {
         if (!start || !end) return false;
         const now = new Date();
@@ -365,8 +300,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
-                            {/* استخدمنا الشعار الداخلي لتجنب الأخطاء */}
-                            <InternalBrandLogo className="w-6 h-6" variant="light" />
+                            {/* تم استبدال BrandLogo بأيقونة عادية لتجنب الأخطاء */}
+                            <School className="w-6 h-6 text-white" />
                         </div>
                         <div>
                             <h1 className="text-xl font-black leading-tight tracking-wide">راصد</h1>
@@ -388,12 +323,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                 <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0"><Settings className="w-4 h-4 text-indigo-600" /></div>
                                                 <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">هوية المعلم</span><span className="text-[9px] text-slate-400">البيانات والصور</span></div>
                                             </button>
-                                            <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
-                                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Download className="w-4 h-4 text-blue-600" /></div>
-                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">استيراد الجدول</span><span className="text-[9px] text-slate-400">ملف Excel</span></div>
-                                                {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto text-blue-600"/>}
-                                            </button>
-                                            <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
+                                            
                                             <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group">
                                                 <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0"><AlarmClock className="w-4 h-4 text-red-500" /></div>
                                                 <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">منبه الحصص</span><span className="text-[9px] text-slate-400">تنبيه تلقائي</span></div>
@@ -523,15 +453,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input value={editAcademicYear} onChange={e => setEditAcademicYear(e.target.value)} placeholder="العام الدراسي" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
-                                <button onClick={() => setEditSemester('1')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '1' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 1</button>
-                                <button onClick={() => setEditSemester('2')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '2' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 2</button>
-                            </div>
-                            <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
-                                <button onClick={() => { setEditGender('male'); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-400'}`}>معلم 👨‍🏫</button>
-                                <button onClick={() => { setEditGender('female'); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-400'}`}>معلمة 👩‍🏫</button>
-                            </div>
+                        <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
+                            <button onClick={() => setEditSemester('1')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '1' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 1</button>
+                            <button onClick={() => setEditSemester('2')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '2' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 2</button>
                         </div>
 
                         <div className="space-y-2 pt-2 border-t border-gray-100 mt-2">
