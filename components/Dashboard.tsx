@@ -57,16 +57,15 @@ const Dashboard: React.FC<DashboardProps> = ({
     
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
-    // State for Teacher Info Modal
     const [showEditModal, setShowEditModal] = useState(false);
     const [editName, setEditName] = useState(teacherInfo.name);
     const [editSchool, setEditSchool] = useState(teacherInfo.school);
     const [editSubject, setEditSubject] = useState(teacherInfo.subject);
     const [editGovernorate, setEditGovernorate] = useState(teacherInfo.governorate);
-    const [editAvatar, setEditAvatar] = useState(teacherInfo.avatar || '');
-    const [editStamp, setEditStamp] = useState(teacherInfo.stamp || '');
-    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo.ministryLogo || '');
-    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo.academicYear || '');
+    const [editAvatar, setEditAvatar] = useState(teacherInfo.avatar);
+    const [editStamp, setEditStamp] = useState(teacherInfo.stamp);
+    const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo.ministryLogo);
+    const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo.academicYear);
     const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo.gender || 'male');
     const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester);
 
@@ -81,10 +80,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         setEditSchool(teacherInfo.school);
         setEditSubject(teacherInfo.subject);
         setEditGovernorate(teacherInfo.governorate);
-        setEditAvatar(teacherInfo.avatar || '');
-        setEditStamp(teacherInfo.stamp || '');
-        setEditMinistryLogo(teacherInfo.ministryLogo || '');
-        setEditAcademicYear(teacherInfo.academicYear || '');
+        setEditAvatar(teacherInfo.avatar);
+        setEditStamp(teacherInfo.stamp);
+        setEditMinistryLogo(teacherInfo.ministryLogo);
+        setEditAcademicYear(teacherInfo.academicYear);
         setEditGender(teacherInfo.gender || 'male');
         setEditSemester(currentSemester);
     }, [teacherInfo, currentSemester]);
@@ -101,15 +100,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة استيراد الصور (تصحيح المسار ليعمل مع Vite و GitHub Pages)
     const getImg = (path: string) => {
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
         return `${import.meta.env.BASE_URL}${cleanPath}`;
     };
 
-    // دالة تحديد الصورة المناسبة
-    const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
-        if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
+    // ✅ دالة عرض الصورة بعد التصحيح
+    const getDisplayImage = (avatar: string | undefined, gender: 'male' | 'female' = 'male') => {
+        if (avatar) {
             return avatar; 
         }
         return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
@@ -382,12 +380,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </span>
                         </div>
                         <img 
-                            key={`profile-${teacherInfo.gender}-${teacherInfo.avatar ? 'custom' : 'default'}`}
+                            key={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)}
                             src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
-                            className="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
+                            className="w-full h-full object-cover relative z-10" 
                             alt="Avatar" 
-                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
-                            onError={(e) => { e.currentTarget.style.opacity = '0'; }}
                         />
                     </div>
                     
@@ -410,6 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             </header>
+
             <div className="px-1">
                 <div className="flex justify-between items-center mb-4 px-2">
                     <div className="text-right">
@@ -469,22 +466,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">تعديل هوية المعلم</h3>
                     <div className="w-24 h-24 mx-auto mb-4 relative group">
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-[1.5rem] border-4 border-slate-100 z-0">
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-[1.5rem] border-4 border-slate-100
+ z-0">
                              <span className="text-4xl filter grayscale opacity-50">
                                 {editGender === 'female' ? '👩‍🏫' : '👨‍🏫'}
                              </span>
                         </div>
                         <img 
-                            key={`edit-${editGender}-${editAvatar ? 'custom' : 'default'}`}
+                            key={getDisplayImage(editAvatar, editGender)}
                             src={getDisplayImage(editAvatar, editGender)}
                             className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md relative z-10 bg-white"
                             alt="Profile"
-                            onLoad={(e) => e.currentTarget.style.opacity = '1'}
-                            onError={(e) => e.currentTarget.style.opacity = '0'}
                         />
-                        <button onClick={() => setEditAvatar('')} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة والعودة للافتراضي">
-                            <span className="font-bold px-1">
-</span>
+                        {/* ✅ زر الحذف بعد التصحيح */}
+                        <button onClick={() => setEditAvatar(undefined)} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة والعودة للافتراضي">
+                            <span className="font-bold px-1">×</span>
                         </button>
                     </div>
                     <div className="space-y-3">
@@ -504,8 +500,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 <button onClick={() => setEditSemester('2')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '2' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 2</button>
                             </div>
                             <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
-                                <button onClick={() => { setEditGender('male'); if(!editAvatar) setEditAvatar(''); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-400'}`}>معلم 👨‍🏫</button>
-                                <button onClick={() => { setEditGender('female'); if(!editAvatar) setEditAvatar(''); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-400'}`}>معلمة 👩‍🏫</button>
+                                <button onClick={() => { setEditGender('male'); if(!editAvatar) setEditAvatar(undefined); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'male' ? 'bg-white shadow text-blue-600' : 'text-gray-400'}`}>معلم 👨‍🏫</button>
+                                <button onClick={() => { setEditGender('female'); if(!editAvatar) setEditAvatar(undefined); }} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editGender === 'female' ? 'bg-white shadow text-pink-600' : 'text-gray-400'}`}>معلمة 👩‍🏫</button>
                             </div>
                         </div>
 
@@ -605,4 +601,3 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
-
