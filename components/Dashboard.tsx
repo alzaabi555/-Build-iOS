@@ -489,8 +489,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md"
                             alt="Profile"
                         />
-                        <button onClick={() => setEditAvatar(undefined)} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة وال
-
+                        <button onClick={() => setEditAvatar(undefined)} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة">
                             <span className="font-bold px-1">×</span>
                         </button>
                     </div>
