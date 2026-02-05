@@ -60,8 +60,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
+    const scheduleFileInputRef = useRef<HTMLInputElement>(null); // ⬅️ جديد: لاستيراد الجدول
 
     const [isImportingPeriods, setIsImportingPeriods] = useState(false);
+    const [isImportingSchedule, setIsImportingSchedule] = useState(false); // ⬅️ جديد: حالة استيراد الجدول
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
@@ -202,6 +204,45 @@ const Dashboard: React.FC<DashboardProps> = ({
         return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
     };
 
+    // ⬅️ دالة استيراد "الجدول" من Excel (من الكود القديم كما هي تقريباً)
+    const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsImportingSchedule(true);
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            const newSchedule: ScheduleDay[] = [
+                { dayName: 'الأحد', periods: Array(8).fill('') },
+                { dayName: 'الاثنين', periods: Array(8).fill('') },
+                { dayName: 'الثلاثاء', periods: Array(8).fill('') },
+                { dayName: 'الأربعاء', periods: Array(8).fill('') },
+                { dayName: 'الخميس', periods: Array(8).fill('') }
+            ];
+            jsonData.forEach(row => {
+                if (row.length < 2) return;
+                const firstCell = String(row[0]).trim();
+                const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName));
+                if (dayIndex !== -1) {
+                    for (let i = 1; i <= 8; i++) {
+                        if (row[i]) newSchedule[dayIndex].periods[i-1] = String(row[i]).trim();
+                    }
+                }
+            });
+            onUpdateSchedule(newSchedule);
+            alert('تم استيراد الجدول بنجاح');
+        } catch (error) {
+            console.error(error);
+            alert('حدث خطأ أثناء استيراد الجدول.');
+        } finally {
+            setIsImportingSchedule(false);
+            if (e.target) e.target.value = '';
+            setShowSettingsDropdown(false);
+        }
+    };
+
     const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -330,6 +371,19 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right">
                                             <PlayCircle size={16} className="text-emerald-600"/> <span className="text-xs font-bold">تجربة الجرس</span>
                                         </button>
+                                        {/* ⬅️ زر استيراد جدول الحصص */}
+                                        <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right border-t border-slate-50">
+                                            <Download size={16} className="text-emerald-600"/> 
+                                            <span className="text-xs font-bold">استيراد جدول الحصص</span>
+                                            {isImportingSchedule && <Loader2 size={14} className="ml-auto animate-spin" />}
+                                        </button>
+                                        <input 
+                                            type="file" 
+                                            ref={scheduleFileInputRef} 
+                                            onChange={handleImportSchedule} 
+                                            accept=".xlsx,.xls" 
+                                            className="hidden" 
+                                        />
                                     </div>
                                 </>
                             )}
