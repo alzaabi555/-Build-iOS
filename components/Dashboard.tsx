@@ -11,22 +11,15 @@ import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-// --- مكون الصورة الآمن ---
-const ImageWithFallback: React.FC<{ src: string; fallbackSrc: string; [key: string]: any }> = ({ src, fallbackSrc, ...props }) => {
-    const [imgSrc, setImgSrc] = useState(src);
-
-    useEffect(() => {
-        setImgSrc(src || fallbackSrc);
-    }, [src, fallbackSrc]);
-
-    const handleError = () => {
-        if (imgSrc !== fallbackSrc) {
-            setImgSrc(fallbackSrc);
-        }
-    };
-
-    return <img src={imgSrc} onError={handleError} {...props} />;
-};
+// --- صورة افتراضية برمجية (SVG) ---
+// هذا الرسم يتم إنشاؤه بالكود ولا يحتاج لملفات صور، مما يمنع الشاشة البيضاء
+const DefaultTeacherAvatar = ({ gender }: { gender: string }) => (
+    <svg viewBox="0 0 100 100" className="w-full h-full bg-indigo-50" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="40" r="15" fill={gender === 'female' ? '#f472b6' : '#60a5fa'} opacity="0.8"/>
+        <path d="M20 90 C20 70 35 60 50 60 C65 60 80 70 80 90" fill={gender === 'female' ? '#f472b6' : '#60a5fa'} opacity="0.6"/>
+        <circle cx="50" cy="50" r="48" stroke="#e2e8f0" strokeWidth="2" fill="none"/>
+    </svg>
+);
 
 interface DashboardProps {
     students: any[];
@@ -120,19 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    const getImg = (path: string) => {
-        if (!path) return '';
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        return cleanPath;
-    };
-
-    const getDisplayImage = (avatar: string | undefined, gender: 'male' | 'female' = 'male') => {
-        if (avatar && avatar.length > 50) {
-            return avatar; 
-        }
-        return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
-    };
-
+    // دالة لاستخراج الأيقونة المناسبة للمادة
     const getSubjectIcon = (subjectName: string) => {
         const teacherSubject = teacherInfo?.subject || '';
         const matchIcon = (text: string) => {
@@ -168,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
             academicYear: editAcademicYear,
-            gender: teacherInfo.gender // الحفاظ على الجنس كما هو
+            gender: teacherInfo.gender // الحفاظ على الجنس الحالي
         });
         onSemesterChange(editSemester);
         setShowEditModal(false);
@@ -300,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20">
-                            {/* تم استبدال BrandLogo بأيقونة عادية لتجنب الأخطاء */}
+                            {/* استبدلنا BrandLogo بأيقونة School العادية لضمان العمل */}
                             <School className="w-6 h-6 text-white" />
                         </div>
                         <div>
@@ -346,12 +327,19 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                 <div className="flex items-center gap-5 mb-2 relative">
                     <div className="w-20 h-20 rounded-[1.2rem] bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0 relative group">
-                        <ImageWithFallback
-                            src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)}
-                            fallbackSrc={getImg(teacherInfo.gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png')}
-                            className="w-full h-full object-cover"
-                            alt="Avatar"
-                        />
+                        {/* عرض الأفاتار: إذا كان موجوداً نعرضه، وإلا نعرض الرسم البرمجي */}
+                        {teacherInfo.avatar ? (
+                            <img 
+                                src={teacherInfo.avatar} 
+                                className="w-full h-full object-cover" 
+                                alt="Avatar" 
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                            />
+                        ) : (
+                            <DefaultTeacherAvatar gender={teacherInfo.gender || 'male'} />
+                        )}
+                        {/* هذا السطر احتياطي في حالة اختفاء الصورة بعد الخطأ */}
+                        {teacherInfo.avatar && <div className="absolute inset-0 -z-10"><DefaultTeacherAvatar gender={teacherInfo.gender || 'male'} /></div>}
                     </div>
                     
                     <div className="flex flex-col flex-1 gap-1">
@@ -432,12 +420,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-4 text-slate-800">تعديل هوية المعلم</h3>
                     <div className="w-24 h-24 mx-auto mb-4 relative group">
-                        <ImageWithFallback
-                            src={getDisplayImage(editAvatar, editGender)}
-                            fallbackSrc={getImg(editGender === 'female' ? 'teacher_woman.png' : 'teacher_man.png')}
-                            className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md"
-                            alt="Profile"
-                        />
+                        {editAvatar ? (
+                            <img 
+                                src={editAvatar} 
+                                className="w-full h-full rounded-[1.5rem] object-cover border-4 border-slate-100 shadow-md"
+                                alt="Profile"
+                            />
+                        ) : (
+                            <div className="w-full h-full rounded-[1.5rem] border-4 border-slate-100 shadow-md overflow-hidden">
+                                <DefaultTeacherAvatar gender={editGender} />
+                            </div>
+                        )}
                         <button onClick={() => setEditAvatar(undefined)} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة">
                             <span className="font-bold px-1">×</span>
                         </button>
