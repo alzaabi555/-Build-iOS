@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -6,7 +5,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { 
   LayoutDashboard, Users, CalendarCheck, BarChart3, 
-  Settings as SettingsIcon, Grid, Info, FileText, BookOpen, Medal
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, User, School
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -18,26 +17,24 @@ import Modal from './components/Modal';
 import Leaderboard from './components/Leaderboard';
 import About from './components/About';
 import UserGuide from './components/UserGuide';
-import BrandLogo from './components/BrandLogo';
+// ❌ تم حذف BrandLogo نهائياً
 import WelcomeScreen from './components/WelcomeScreen';
 import LoginScreen from './components/LoginScreen'; 
 import { Loader2 } from 'lucide-react';
 import { useSchoolBell } from './hooks/useSchoolBell';
 
 // --- 3D ICONS COMPONENTS (SVG) ---
-// ... (Keeping all existing 3D icons code exactly as is)
 const Dashboard3D = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="dash_bg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4338ca" />
+        <stop offset="0%" stopColor="#1e3a8a" />
+        <stop offset="100%" stopColor="#172554" />
       </linearGradient>
-      <filter id="inset_shadow"><feOffset dx="0" dy="2" /><feGaussianBlur stdDeviation="2" result="offset-blur" /><feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" /><feFlood floodColor="black" floodOpacity="0.2" result="color" /><feComposite operator="in" in="color" in2="inverse" result="shadow" /><feComposite operator="over" in="shadow" in2="SourceGraphic" /></filter>
     </defs>
     <rect x="10" y="10" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    <rect x="34" y="10" width="20" height="20" rx="6" fill="#a5b4fc" />
-    <rect x="10" y="34" width="20" height="20" rx="6" fill="#c7d2fe" />
+    <rect x="34" y="10" width="20" height="20" rx="6" fill="#bfdbfe" />
+    <rect x="10" y="34" width="20" height="20" rx="6" fill="#dbeafe" />
     <rect x="34" y="34" width="20" height="20" rx="6" fill="url(#dash_bg)" />
     <path d="M10 16 Q20 10 30 16 L30 30 L10 30 Z" fill="white" opacity="0.1" />
   </svg>
@@ -285,24 +282,34 @@ const AppContent: React.FC = () => {
         <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 z-50 shadow-sm transition-all h-full">
             <div className="p-8 flex items-center gap-4">
                 <div className="w-12 h-12">
-                    <BrandLogo className="w-full h-full" showText={false} />
+                    {/* ✅ استخدام أيقونة المدرسة بدلاً من اللوجو المفقود */}
+                    <School className="w-full h-full text-[#1e3a8a]" />
                 </div>
                 <div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">راصد</h1>
-                    <span className="text-[10px] font-bold text-indigo-600 tracking-wider">نسخة المعلم</span>
+                    <span className="text-[10px] font-bold text-[#1e3a8a] tracking-wider">نسخة المعلم</span>
                 </div>
             </div>
+            
             <div className="px-6 mb-6">
                 <div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100">
-                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-slate-300 shadow-sm shrink-0">
-                         {teacherInfo.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover"/> : <span className="font-black text-slate-500 text-lg">{teacherInfo.name?.[0]}</span>}
+                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm shrink-0">
+                         {/* ✅ حماية ضد الصور المكسورة */}
+                         {teacherInfo?.avatar ? (
+                             <img src={teacherInfo.avatar} className="w-full h-full object-cover" alt="Teacher" onError={(e) => {e.currentTarget.style.display='none'}} />
+                         ) : (
+                             <User className="text-slate-400 w-5 h-5" />
+                         )}
+                         {/* احتياط في حالة عدم وجود صورة أو خطأ في التحميل */}
+                         {(!teacherInfo?.avatar) && <User className="text-slate-400 w-5 h-5 absolute" />}
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-slate-900 truncate">{teacherInfo.name || 'مرحباً بك'}</p>
-                        <p className="text-[10px] text-gray-500 truncate">{teacherInfo.school || 'المدرسة'}</p>
+                        <p className="text-xs font-bold text-slate-900 truncate">{teacherInfo?.name || 'مرحباً بك'}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{teacherInfo?.school || 'المدرسة'}</p>
                     </div>
                 </div>
             </div>
+
             <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4">
                 {desktopNavItems.map(item => {
                     const isActive = activeTab === item.id;
@@ -310,9 +317,9 @@ const AppContent: React.FC = () => {
                         <button
                             key={item.id}
                             onClick={() => handleNavigate(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.02]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-[#1e3a8a] text-white shadow-lg shadow-blue-200 scale-[1.02]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'}`}
                         >
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-500'} transition-colors`} strokeWidth={2.5} />
+                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#1e3a8a]'} transition-colors`} strokeWidth={2.5} />
                             <span className="font-bold text-sm">{item.label}</span>
                             {isActive && <div className="mr-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
                         </button>
@@ -351,12 +358,12 @@ const AppContent: React.FC = () => {
                            </div>
                         </div>
                         
-                        <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
+                        <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isActive ? 'translate-y-0 text-[#1e3a8a] opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
                             {item.label}
                         </span>
                         
                         {/* Active Indicator Dot */}
-                        {isActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
+                        {isActive && <div className="absolute bottom-1 w-1 h-1 bg-[#1e3a8a] rounded-full"></div>}
                     </button>
                 );
             })}
@@ -372,10 +379,10 @@ const AppContent: React.FC = () => {
                         <More3D active={isMoreActive} />
                    </div>
                 </div>
-                <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isMoreActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
+                <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${isMoreActive ? 'translate-y-0 text-[#1e3a8a] opacity-100' : 'translate-y-4 text-gray-400 opacity-0'}`}>
                     المزيد
                 </span>
-                {isMoreActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
+                {isMoreActive && <div className="absolute bottom-1 w-1 h-1 bg-[#1e3a8a] rounded-full"></div>}
             </button>
         </div>
 
