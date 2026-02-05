@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  Bell, Clock, Edit3, Settings, 
+  Bell, Clock, Settings, 
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera
 } from 'lucide-react';
@@ -44,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     onToggleNotifications,
     currentSemester,
     onSemesterChange
-}) => {
+} ) => {
     const { classes } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
@@ -102,9 +101,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة استيراد الصور (تصحيح المسار)
+    // دالة استيراد الصور (تصحيح المسار ليعمل مع Vite و GitHub Pages)
     const getImg = (path: string) => {
-        return path.startsWith('/') ? path : `/${path}`;
+        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        return `${import.meta.env.BASE_URL}${cleanPath}`;
     };
 
     // دالة تحديد الصورة المناسبة
@@ -112,19 +112,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (avatar && (avatar.startsWith('data:image') || avatar.length > 50)) {
             return avatar; 
         }
-        // استخدام getImg لضمان صحة المسار
         return getImg(gender === 'female' ? 'teacher_woman.png' : 'teacher_man.png');
     };
 
-    // دالة ذكية لأيقونات المواد (محدثة لتعتمد على مادة المعلم كخيار بديل)
     const getSubjectIcon = (subjectName: string) => {
         const teacherSubject = teacherInfo?.subject || '';
-        
-        // دالة المواءمة الداخلية
         const matchIcon = (text: string) => {
             if (!text) return null;
             const name = text.trim().toLowerCase();
-            
             if (name.match(/اسلام|إسلام|قرآن|تلاوة|توحيد|فقه|حديث|عقيدة/)) return <span className="text-2xl filter drop-shadow-sm">🕌</span>;
             if (name.match(/عربي|لغتي|نحو|أدب|قراءة|مطالعة/)) return <span className="text-2xl filter drop-shadow-sm">📜</span>;
             if (name.match(/رياضيات|جبر|هندسة|حساب|math/)) return <span className="text-2xl filter drop-shadow-sm">📐</span>;
@@ -136,19 +131,12 @@ const Dashboard: React.FC<DashboardProps> = ({
             if (name.match(/فنون|رسم|تشكيلية|art|draw/)) return <span className="text-2xl filter drop-shadow-sm">🎨</span>;
             if (name.match(/موسيقى|music/)) return <span className="text-2xl filter drop-shadow-sm">🎵</span>;
             if (name.match(/حياتية|مهنية|أسرية|بحث|توجيه/)) return <span className="text-2xl filter drop-shadow-sm">🌱</span>;
-            
             return null;
         };
-
-        // 1. الأولوية للنص المكتوب في الجدول مباشرة
         const specificIcon = matchIcon(subjectName);
         if (specificIcon) return specificIcon;
-
-        // 2. إذا لم نجد أيقونة للنص (مثل كتابة "5/1")، نستخدم مادة المعلم
         const defaultIcon = matchIcon(teacherSubject);
         if (defaultIcon) return defaultIcon;
-        
-        // 3. أيقونة افتراضية
         return <span className="text-2xl filter drop-shadow-sm opacity-50">📚</span>;
     };
 
@@ -190,7 +178,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditStamp(reader.result as string); reader.readAsDataURL(file); } };
     const handleMinistryLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setEditMinistryLogo(reader.result as string); reader.readAsDataURL(file); } };
 
-    // 1. الدالة المساعدة لمعالجة الوقت من الإكسل
     const parseExcelTime = (value: any): string => {
         if (!value) return '';
         if (typeof value === 'number') {
@@ -204,7 +191,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
     };
 
-    // 2. الدالة الرئيسية لاستيراد التوقيت
     const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -221,14 +207,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             jsonData.forEach((row) => {
                 if (row.length < 2) return;
                 const firstCol = String(row[0] || '');
-                // البحث عن رقم الحصة في العمود الأول
                 const periodNumMatch = firstCol.match(/\d+/);
                 
                 if (periodNumMatch) {
                     const pIndex = parseInt(periodNumMatch[0]) - 1; 
                     if (pIndex >= 0 && pIndex < 8) {
-                        const startVal = row[1]; // العمود الثاني: وقت البداية
-                        const endVal = row[2];   // العمود الثالث: وقت النهاية
+                        const startVal = row[1];
+                        const endVal = row[2];
                         const parsedStart = parseExcelTime(startVal);
                         const parsedEnd = parseExcelTime(endVal);
 
@@ -288,7 +273,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                 }
             });
 
-            // If inside modal, update temp schedule, else update real schedule
             if (showScheduleModal) {
                 setTempSchedule(newSchedule);
             } else {
@@ -338,7 +322,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-20 text-slate-900 animate-in fade-in duration-500">
             
-            {/* Header Profile */}
             <header className="bg-[#1e3a8a] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-20 -mx-4 -mt-4 mb-2">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
@@ -361,16 +344,16 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowSettingsDropdown(false)}></div>
                                     <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-blue-50 overflow-hidden z-50 animate-in zoom-in-95 slide-in-from-top-2 duration-200 origin-top-left">
                                         <div className="flex flex-col py-1.5">
+                                            <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
+                                                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0"><Settings className="w-4 h-4 text-indigo-600" /></div>
+                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">هوية المعلم</span><span className="text-[9px] text-slate-400">البيانات والصور</span></div>
+                                            </button>
                                             <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
                                                 <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Download className="w-4 h-4 text-blue-600" /></div>
                                                 <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">استيراد الجدول</span><span className="text-[9px] text-slate-400">ملف Excel</span></div>
                                                 {isImportingSchedule && <Loader2 className="w-3 h-3 animate-spin mr-auto text-blue-600"/>}
                                             </button>
                                             <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx, .xls" className="hidden" />
-                                            <button onClick={() => { setShowScheduleModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group border-b border-slate-50">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><Clock className="w-4 h-4 text-slate-600" /></div>
-                                                <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">توقيت الحصص</span><span className="text-[9px] text-slate-400">بداية ونهاية الحصة</span></div>
-                                            </button>
                                             <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right group">
                                                 <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0"><AlarmClock className="w-4 h-4 text-red-500" /></div>
                                                 <div className="flex flex-col items-start"><span className="text-xs font-bold text-slate-800">منبه الحصص</span><span className="text-[9px] text-slate-400">تنبيه تلقائي</span></div>
@@ -391,27 +374,20 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
 
-                {/* Teacher Info Section (New Layout) */}
                 <div className="flex items-center gap-5 mb-2 relative">
                     <div className="w-20 h-20 rounded-[1.2rem] bg-white text-[#1e3a8a] flex items-center justify-center shadow-lg border-2 border-blue-200 overflow-hidden shrink-0 relative group">
-                        {/* Fallback Layer: Always there underneath */}
                         <div className="absolute inset-0 flex items-center justify-center bg-indigo-50 z-0">
                             <span className="text-3xl filter grayscale opacity-50">
                                 {teacherInfo.gender === 'female' ? '👩‍🏫' : '👨‍🏫'}
                             </span>
                         </div>
-                        
-                        {/* Image Layer: Hides if error occurs, forced update with key */}
                         <img 
                             key={`profile-${teacherInfo.gender}-${teacherInfo.avatar ? 'custom' : 'default'}`}
                             src={getDisplayImage(teacherInfo.avatar, teacherInfo.gender)} 
                             className="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
                             alt="Avatar" 
                             onLoad={(e) => e.currentTarget.style.opacity = '1'}
-                            onError={(e) => {
-                                // Hide the broken image so the fallback div shows
-                                e.currentTarget.style.opacity = '0';
-                            }}
+                            onError={(e) => { e.currentTarget.style.opacity = '0'; }}
                         />
                     </div>
                     
@@ -423,14 +399,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <School className="w-3 h-3"/> {teacherInfo.school || 'المدرسة'}
                                 </p>
                             </div>
-                            
-                            <button 
-                                onClick={() => setShowEditModal(true)} 
-                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-all border border-white/10 active:scale-95 shadow-sm"
-                                title="تعديل البيانات"
-                            >
-                                <Edit3 className="w-5 h-5" />
-                            </button>
                         </div>
                         
                         <div className="flex items-center gap-2 mt-2">
@@ -442,8 +410,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             </header>
-
-            {/* Schedule Section */}
             <div className="px-1">
                 <div className="flex justify-between items-center mb-4 px-2">
                     <div className="text-right">
@@ -453,6 +419,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </h2>
                         <p className="text-[10px] text-slate-400 font-bold">اليوم الدراسي الحالي</p>
                     </div>
+                    <button 
+                        onClick={() => setShowScheduleModal(true)} 
+                        className="bg-white hover:bg-slate-50 text-slate-600 p-2.5 rounded-xl transition-all border border-slate-200 active:scale-95 shadow-sm"
+                        title="إعدادات الجدول والتوقيت"
+                    >
+                        <Clock className="w-5 h-5" />
+                    </button>
                 </div>
                 
                 <section className="space-y-3 pb-4">
@@ -492,21 +465,15 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </section>
             </div>
 
-            {/* Modals - Edit Profile */}
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
-                    <h3 className="font-black text-xl mb-4 text-slate-800">تعديل البيانات</h3>
-                    
-                    {/* Image Preview in Modal */}
+                    <h3 className="font-black text-xl mb-4 text-slate-800">تعديل هوية المعلم</h3>
                     <div className="w-24 h-24 mx-auto mb-4 relative group">
-                        {/* Fallback Layer */}
                         <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-[1.5rem] border-4 border-slate-100 z-0">
                              <span className="text-4xl filter grayscale opacity-50">
                                 {editGender === 'female' ? '👩‍🏫' : '👨‍🏫'}
                              </span>
                         </div>
-
-                        {/* Actual Image */}
                         <img 
                             key={`edit-${editGender}-${editAvatar ? 'custom' : 'default'}`}
                             src={getDisplayImage(editAvatar, editGender)}
@@ -515,12 +482,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                             onLoad={(e) => e.currentTarget.style.opacity = '1'}
                             onError={(e) => e.currentTarget.style.opacity = '0'}
                         />
-                        
                         <button onClick={() => setEditAvatar('')} className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-full text-[10px] shadow-md border-2 border-white hover:bg-red-600 active:scale-90 transition-transform z-20" title="حذف الصورة والعودة للافتراضي">
-                            <span className="font-bold px-1">×</span>
+                            <span className="font-bold px-1">
+</span>
                         </button>
                     </div>
-
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="الاسم" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
@@ -532,7 +498,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <input value={editAcademicYear} onChange={e => setEditAcademicYear(e.target.value)} placeholder="العام الدراسي" className="p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none text-slate-800 focus:border-indigo-500 transition-colors" />
                         </div>
 
-                        {/* الفصل الدراسي والجنس */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-gray-50 p-1 rounded-xl border border-gray-200 flex">
                                 <button onClick={() => setEditSemester('1')} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${editSemester === '1' ? 'bg-white shadow text-indigo-600' : 'text-gray-400'}`}>فصل 1</button>
@@ -544,7 +509,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
-                        {/* الصور والشعارات */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 mt-2">
                              <div className="flex gap-2">
                                 <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 flex items-center justify-center gap-2 border border-indigo-100 transition-colors">
@@ -567,13 +531,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </Modal>
 
-            {/* Modal - Schedule Settings */}
             <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-4xl rounded-[2rem]">
                 <div className="flex flex-col h-[80vh]">
                     <div className="flex justify-between items-center mb-4 shrink-0">
                         <h3 className="font-black text-xl text-slate-800">إعدادات الجدول والتوقيت</h3>
                         
-                        {/* Import Button added to the modal header */}
                         <div className="flex gap-2">
                             <button onClick={() => modalScheduleFileInputRef.current?.click()} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-indigo-100">
                                 <Download className="w-4 h-4" />
@@ -643,3 +605,4 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
+
