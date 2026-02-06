@@ -190,4 +190,171 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children, firebaseUser
           if (data.schedule && data.schedule.length > 0) setSchedule(data.schedule);
           if (data.periodTimes && data.periodTimes.length > 0) setPeriodTimes(data.periodTimes);
 
-          if (data.assessmentTool
+          if (data.assessmentTools && data.assessmentTools.length > 0)
+            setAssessmentTools(data.assessmentTools);
+
+          if (data.currentSemester) setCurrentSemester(data.currentSemester);
+
+          if (data.teacherInfo) {
+            setTeacherInfo((prev) => ({ ...prev, ...data.teacherInfo }));
+          }
+
+          if (data.certificateSettings) {
+            setCertificateSettings((prev) => ({ ...prev, ...data.certificateSettings }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load data', error);
+      } finally {
+        setIsDataLoaded(true);
+        setTimeout(() => {
+          isInitialLoad.current = false;
+        }, 1000);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // حفظ محلي
+  useEffect(() => {
+    if (isInitialLoad.current) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      const dataToSave = {
+        version: '3.6.0',
+        timestamp: new Date().toISOString(),
+        students,
+        classes,
+        hiddenClasses,
+        groups,
+        schedule,
+        periodTimes,
+        teacherInfo,
+        currentSemester,
+        assessmentTools,
+        certificateSettings,
+        syncMode,
+      };
+
+      const jsonString = JSON.stringify(dataToSave);
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await Filesystem.writeFile({
+            path: DBFILENAME,
+            data: jsonString,
+            directory: Directory.Data,
+            encoding: Encoding.UTF8,
+          });
+        } catch (e) {
+          console.error('Save to FS failed', e);
+        }
+      }
+
+      try {
+        if (jsonString.length < 4500000) {
+          localStorage.setItem('studentData', JSON.stringify(students));
+          localStorage.setItem('classesData', JSON.stringify(classes));
+          localStorage.setItem('hiddenClasses', JSON.stringify(hiddenClasses));
+          localStorage.setItem('groupsData', JSON.stringify(groups));
+          localStorage.setItem('scheduleData', JSON.stringify(schedule));
+          localStorage.setItem('periodTimes', JSON.stringify(periodTimes));
+          localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
+          localStorage.setItem('currentSemester', String(currentSemester));
+
+          localStorage.setItem('teacherName', teacherInfo.name || '');
+          localStorage.setItem('academicYear', teacherInfo.academicYear || '');
+          localStorage.setItem('teacherAvatar', teacherInfo.avatar || '');
+          localStorage.setItem('certificateSettings', JSON.stringify(certificateSettings));
+
+          localStorage.setItem(LS_SYNC_MODE, syncMode);
+        }
+      } catch (e) {
+        console.error('LocalStorage Quota Exceeded or Error', e);
+      }
+    }, 3000);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [
+    students,
+    classes,
+    hiddenClasses,
+    groups,
+    schedule,
+    periodTimes,
+    teacherInfo,
+    currentSemester,
+    assessmentTools,
+    certificateSettings,
+    syncMode,
+  ]);
+
+  // مزامنة مع Firestore عند syncMode = 'cloud'
+  useFirebaseSync({
+    teacherId,
+    syncMode,
+    students,
+    classes,
+    hiddenClasses,
+    groups,
+    schedule,
+    periodTimes,
+    teacherInfo,
+    currentSemester,
+    assessmentTools,
+    certificateSettings,
+    setStudents,
+    setClasses,
+    setHiddenClasses,
+    setGroups,
+    setSchedule,
+    setPeriodTimes,
+    setTeacherInfo,
+    setCurrentSemester,
+    setAssessmentTools,
+    setCertificateSettings,
+  });
+
+  return (
+    <AppContext.Provider
+      value={{
+        students,
+        setStudents,
+        classes,
+        setClasses,
+        hiddenClasses,
+        setHiddenClasses,
+        groups,
+        setGroups,
+        schedule,
+        setSchedule,
+        periodTimes,
+        setPeriodTimes,
+        teacherInfo,
+        setTeacherInfo,
+        currentSemester,
+        setCurrentSemester,
+        assessmentTools,
+        setAssessmentTools,
+        certificateSettings,
+        setCertificateSettings,
+        syncMode,
+        setSyncMode,
+        isDataLoaded,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) throw new Error('useApp must be used within an AppProvider');
+  return context;
+};
