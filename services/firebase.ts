@@ -14,12 +14,13 @@ import {
 // إعدادات Firebase الخاصة بتطبيق راصد
 // عَبِّئ القيم من Firebase Console (Web app) لمشروع rasedapp-m555
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyB93x2kKaFd7-Ni3O2zzkqfi4BveVrsQ1U",
   authDomain: "rasedapp-m555.firebaseapp.com",
   projectId: "rasedapp-m555",
-  storageBucket: "rasedapp-m555.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  storageBucket: "rasedapp-m555.firebasestorage.app",
+  messagingSenderId: "87037584903",
+  appId: "1:87037584903:web:ea709deb8d2203fa41eca2",
+};
 };
 
 // تهيئة التطبيق
