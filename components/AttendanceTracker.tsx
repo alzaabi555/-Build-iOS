@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Student, AttendanceStatus } from '../types';
 import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, Filter, ChevronLeft, ChevronRight, CalendarCheck, Search } from 'lucide-react';
@@ -191,7 +190,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   return (
     <div className="flex flex-col h-full text-slate-800 relative animate-in fade-in duration-500">
         
-        {/* Header */}
+        {/* Header - Fixed Blue Header */}
         <header className="bg-[#1e3a8a] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
             <div className="flex justify-between items-center mb-6 gap-3">
                 <div className="flex items-center gap-3 shrink-0">
@@ -201,7 +200,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     <h1 className="text-2xl font-black tracking-wide">سجل الغياب</h1>
                 </div>
 
-                {/* خانة البحث الجديدة */}
+                {/* خانة البحث الجديدة (مدمجة في الهيدر) */}
                 <div className="flex-1 mx-2 relative group">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200 group-focus-within:text-white transition-colors" />
                     <input 
@@ -218,7 +217,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 </button>
             </div>
 
-            {/* Calendar Strip */}
+            {/* Calendar Strip (داخل الهيدر الأزرق) */}
             <div className="flex items-center justify-between gap-1 mb-4 bg-white/10 p-2 rounded-2xl border border-white/10 shadow-inner">
                 <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
                 <div className="flex flex-1 justify-between gap-1 text-center">
@@ -241,7 +240,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
             </div>
 
-            {/* Filters */}
+            {/* Filters (داخل الهيدر الأزرق) */}
             <div className="space-y-2 mb-1 px-1">
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                     {availableGrades.length > 0 && (
