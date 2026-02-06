@@ -17,11 +17,6 @@ interface TeacherInfo {
 
 type SyncMode = 'cloud' | 'local';
 
-interface AppProviderProps {
-  children: React.ReactNode;
-  firebaseUser: { uid: string; email?: string | null } | null;
-}
-
 interface AppContextType {
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
@@ -66,12 +61,20 @@ const DBFILENAME = 'raseddatabasev2.json';
 
 // localStorage keys
 const LS_SYNC_MODE = 'rasedSyncMode';
+const LS_FIREBASE_UID = 'rased_firebase_uid';
 
-export const AppProvider: React.FC<AppProviderProps> = ({ children, firebaseUser }) => {
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // teacherId من Firebase user
-  const teacherId = firebaseUser?.uid || null;
+  // نقرأ uid من localStorage (تم تخزينه في LoginScreen بعد نجاح Google)
+  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const uid = localStorage.getItem(LS_FIREBASE_UID);
+    if (uid) setFirebaseUid(uid);
+  }, []);
+
+  const teacherId = firebaseUid; // إن لم يوجد uid تبقى null → لا مزامنة سحابية
 
   // --- Initial States ---
   const currentMonth = new Date().getMonth();
@@ -294,7 +297,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children, firebaseUser
     syncMode,
   ]);
 
-  // مزامنة مع Firestore عند syncMode = 'cloud'
+  // مزامنة مع Firestore عند syncMode = 'cloud' ووجود teacherId
   useFirebaseSync({
     teacherId,
     syncMode,
