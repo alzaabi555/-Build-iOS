@@ -1,3 +1,4 @@
+// hooks/useFirebaseSync.ts
 import { useEffect, useRef } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
@@ -10,6 +11,7 @@ import type {
   CertificateSettings,
 } from "../types";
 
+// هذا الـ hook يقرأ ويكتب وثيقة واحدة لكل معلم: teachers/{teacherId}
 interface UseFirebaseSyncParams {
   teacherId: string | null;
   syncMode: "cloud" | "local";
@@ -65,7 +67,7 @@ export const useFirebaseSync = (params: UseFirebaseSyncParams) => {
 
   const isApplyingRemote = useRef(false);
 
-  // قراءة من Firestore عند cloud
+  // قراءة من Firestore
   useEffect(() => {
     if (!teacherId || syncMode !== "cloud") return;
 
@@ -94,7 +96,7 @@ export const useFirebaseSync = (params: UseFirebaseSyncParams) => {
     return () => unsub();
   }, [teacherId, syncMode]);
 
-  // كتابة إلى Firestore عند cloud
+  // كتابة إلى Firestore
   useEffect(() => {
     if (!teacherId || syncMode !== "cloud") return;
     if (isApplyingRemote.current) return;
