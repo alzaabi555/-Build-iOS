@@ -1,350 +1,269 @@
-const AppContent: React.FC = () => {
-  const { 
-    isDataLoaded, students, setStudents, classes, setClasses, 
-    teacherInfo, setTeacherInfo, schedule, setSchedule, 
-    periodTimes, setPeriodTimes, currentSemester, setCurrentSemester
-  } = useApp();
+
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings } from '../types';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
+
+interface TeacherInfo {
+    name: string;
+    school: string;
+    subject: string;
+    governorate: string;
+    avatar?: string;
+    stamp?: string;
+    ministryLogo?: string;
+    academicYear?: string;
+    gender?: 'male' | 'female';
+}
+
+interface AppContextType {
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  classes: string[];
+  setClasses: React.Dispatch<React.SetStateAction<string[]>>;
+  hiddenClasses: string[];
+  setHiddenClasses: React.Dispatch<React.SetStateAction<string[]>>;
+  groups: Group[];
+  setGroups: React.Dispatch<React.SetStateAction<Group[]>>;
+  schedule: ScheduleDay[];
+  setSchedule: React.Dispatch<React.SetStateAction<ScheduleDay[]>>;
+  periodTimes: PeriodTime[];
+  setPeriodTimes: React.Dispatch<React.SetStateAction<PeriodTime[]>>;
+  teacherInfo: TeacherInfo;
+  setTeacherInfo: React.Dispatch<React.SetStateAction<TeacherInfo>>;
+  currentSemester: '1' | '2';
+  setCurrentSemester: React.Dispatch<React.SetStateAction<'1' | '2'>>;
+  assessmentTools: AssessmentTool[];
+  setAssessmentTools: React.Dispatch<React.SetStateAction<AssessmentTool[]>>;
+  gradeSettings: GradeSettings;
+  setGradeSettings: React.Dispatch<React.SetStateAction<GradeSettings>>;
+  certificateSettings: CertificateSettings;
+  setCertificateSettings: React.Dispatch<React.SetStateAction<CertificateSettings>>;
+  isDataLoaded: boolean;
+  defaultStudentGender: 'male' | 'female';
+  setDefaultStudentGender: React.Dispatch<React.SetStateAction<'male' | 'female'>>;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const DB_FILENAME = 'rased_database_v2.json';
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // --- Initial States ---
+  const currentMonth = new Date().getMonth();
+  const defaultSemester = (currentMonth >= 1 && currentMonth <= 7) ? '2' : '1';
 
-  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
-    return !localStorage.getItem('rased_welcome_seen');
+  const [currentSemester, setCurrentSemester] = useState<'1' | '2'>(defaultSemester);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [hiddenClasses, setHiddenClasses] = useState<string[]>([]);
+  const [groups, setGroups] = useState<Group[]>([
+      { id: 'g1', name: 'الصقور', color: 'emerald' }, 
+      { id: 'g2', name: 'النمور', color: 'orange' }, 
+      { id: 'g3', name: 'النجوم', color: 'purple' }, 
+      { id: 'g4', name: 'الرواد', color: 'blue' }
+  ]);
+  const [schedule, setSchedule] = useState<ScheduleDay[]>([
+    { dayName: 'الأحد', periods: Array(8).fill('') }, { dayName: 'الاثنين', periods: Array(8).fill('') }, 
+    { dayName: 'الثلاثاء', periods: Array(8).fill('') }, { dayName: 'الأربعاء', periods: Array(8).fill('') }, 
+    { dayName: 'الخميس', periods: Array(8).fill('') }
+  ]);
+  const [periodTimes, setPeriodTimes] = useState<PeriodTime[]>(
+    Array(8).fill(null).map((_, i) => ({ periodNumber: i + 1, startTime: '', endTime: '' }))
+  );
+  
+  const now = new Date();
+  const defaultAcademicYear = now.getMonth() < 7 ? `${now.getFullYear() - 1} / ${now.getFullYear()}` : `${now.getFullYear()} / ${now.getFullYear() + 1}`;
+
+  const [teacherInfo, setTeacherInfo] = useState<TeacherInfo>({ 
+      name: '', school: '', subject: '', governorate: '', avatar: '', stamp: '', ministryLogo: '', academicYear: defaultAcademicYear, gender: 'male' 
   });
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('bell_enabled') === 'true';
+  const [defaultStudentGender, setDefaultStudentGender] = useState<'male' | 'female'>('male');
+
+  const [assessmentTools, setAssessmentTools] = useState<AssessmentTool[]>([]);
+  const [gradeSettings, setGradeSettings] = useState<GradeSettings>({
+      totalScore: 100,
+      finalExamScore: 40,
+      finalExamName: 'الامتحان النهائي'
   });
 
-  useSchoolBell(periodTimes, schedule, notificationsEnabled);
+  const [certificateSettings, setCertificateSettings] = useState<CertificateSettings>({
+      title: 'شهادة تفوق دراسي',
+      bodyText: 'تتشرف إدارة المدرسة بمنح الطالب هذه الشهادة نظير تفوقه وتميزه في المادة',
+      showDefaultDesign: true
+  });
 
+  const isInitialLoad = useRef(true);
+  const saveTimeoutRef = useRef<any>(null);
+
+  // 1. Load Local Data
   useEffect(() => {
-    if (Capacitor.getPlatform() === 'android') {
-      const backListener = CapacitorApp.addListener('backButton', () => {
-        if (showMoreMenu) {
-          setShowMoreMenu(false);
-        } else if (activeTab !== 'dashboard') {
-          setActiveTab('dashboard');
-        } else {
-          CapacitorApp.exitApp();
+    const loadLocalData = async () => {
+        try {
+            let data: any = null;
+
+            if (Capacitor.isNativePlatform()) {
+                try {
+                    const result = await Filesystem.readFile({
+                        path: DB_FILENAME,
+                        directory: Directory.Data,
+                        encoding: Encoding.UTF8
+                    });
+                    data = JSON.parse(result.data as string);
+                } catch (e) {
+                    console.log('📂 No FileSystem data found');
+                }
+            }
+
+            if (!data) {
+                const lsStudents = localStorage.getItem('studentData');
+                if (lsStudents) {
+                    data = {
+                        students: JSON.parse(lsStudents),
+                        classes: JSON.parse(localStorage.getItem('classesData') || '[]'),
+                        hiddenClasses: JSON.parse(localStorage.getItem('hiddenClasses') || '[]'),
+                        groups: JSON.parse(localStorage.getItem('groupsData') || '[]'),
+                        schedule: JSON.parse(localStorage.getItem('scheduleData') || '[]'),
+                        periodTimes: JSON.parse(localStorage.getItem('periodTimes') || '[]'),
+                        assessmentTools: JSON.parse(localStorage.getItem('assessmentTools') || '[]'),
+                        gradeSettings: JSON.parse(localStorage.getItem('gradeSettings') || 'null'),
+                        currentSemester: localStorage.getItem('currentSemester'),
+                        teacherInfo: {
+                            name: localStorage.getItem('teacherName') || '',
+                            school: localStorage.getItem('schoolName') || '',
+                            subject: localStorage.getItem('subjectName') || '',
+                            governorate: localStorage.getItem('governorate') || '',
+                            avatar: localStorage.getItem('teacherAvatar') || '',
+                            stamp: localStorage.getItem('teacherStamp') || '',
+                            ministryLogo: localStorage.getItem('ministryLogo') || '',
+                            academicYear: localStorage.getItem('academicYear') || defaultAcademicYear,
+                            gender: localStorage.getItem('teacherGender') || 'male'
+                        },
+                        certificateSettings: JSON.parse(localStorage.getItem('certificateSettings') || 'null'),
+                        defaultStudentGender: localStorage.getItem('defaultStudentGender') || 'male'
+                    };
+                }
+            }
+
+            if (data) {
+                if(data.students) setStudents(data.students);
+                if(data.classes) setClasses(data.classes);
+                if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
+                if(data.groups && data.groups.length > 0) setGroups(data.groups);
+                if(data.schedule && data.schedule.length > 0) setSchedule(data.schedule);
+                if(data.periodTimes && data.periodTimes.length > 0) setPeriodTimes(data.periodTimes);
+                if(data.assessmentTools && data.assessmentTools.length > 0) setAssessmentTools(data.assessmentTools);
+                if(data.gradeSettings) setGradeSettings(data.gradeSettings);
+                if(data.currentSemester) setCurrentSemester(data.currentSemester);
+                if(data.teacherInfo) setTeacherInfo(prev => ({...prev, ...data.teacherInfo}));
+                if(data.certificateSettings) setCertificateSettings(prev => ({...prev, ...data.certificateSettings}));
+                if(data.defaultStudentGender) setDefaultStudentGender(data.defaultStudentGender);
+            }
+
+        } catch (error) {
+            console.error('Failed to load local data:', error);
+        } finally {
+            setIsDataLoaded(true);
+            setTimeout(() => { isInitialLoad.current = false; }, 1000);
         }
-      });
+    };
 
-      return () => {
-        backListener.then(listener => listener.remove());
-      };
-    }
-  }, [showMoreMenu, activeTab]);
+    loadLocalData();
+  }, []);
 
-  const handleToggleNotifications = () => {
-    setNotificationsEnabled(prev => {
-      const newState = !prev;
-      localStorage.setItem('bell_enabled', String(newState));
-      return newState;
-    });
-  };
+  // 2. Save Logic (Debounced) - Local Only
+  useEffect(() => {
+    if (isInitialLoad.current) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-  const handleFinishWelcome = () => {
-    localStorage.setItem('rased_welcome_seen', 'true');
-    setShowWelcome(false);
-  };
+    saveTimeoutRef.current = setTimeout(async () => {
+        const dataToSave = {
+            version: '3.6.0',
+            timestamp: new Date().toISOString(),
+            students,
+            classes,
+            hiddenClasses,
+            groups,
+            schedule,
+            periodTimes,
+            teacherInfo,
+            currentSemester,
+            assessmentTools,
+            gradeSettings,
+            certificateSettings,
+            defaultStudentGender
+        };
 
-  if (!isDataLoaded) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-      </div>
-    );
-  }
+        const jsonString = JSON.stringify(dataToSave);
 
-  if (showWelcome) {
-    return <WelcomeScreen onFinish={handleFinishWelcome} />;
-  }
+        // Save to FileSystem (Native)
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await Filesystem.writeFile({
+                    path: DB_FILENAME,
+                    data: jsonString,
+                    directory: Directory.Data,
+                    encoding: Encoding.UTF8
+                });
+            } catch (e) { console.error('Save to FS failed', e); }
+        } 
+        
+        // Save to LocalStorage (Web)
+        try {
+            if (jsonString.length < 4500000) {
+                localStorage.setItem('studentData', JSON.stringify(students));
+                localStorage.setItem('classesData', JSON.stringify(classes));
+                localStorage.setItem('hiddenClasses', JSON.stringify(hiddenClasses));
+                localStorage.setItem('groupsData', JSON.stringify(groups));
+                localStorage.setItem('scheduleData', JSON.stringify(schedule));
+                localStorage.setItem('periodTimes', JSON.stringify(periodTimes));
+                localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
+                localStorage.setItem('gradeSettings', JSON.stringify(gradeSettings));
+                localStorage.setItem('currentSemester', currentSemester);
+                localStorage.setItem('teacherName', teacherInfo.name);
+                localStorage.setItem('teacherGender', teacherInfo.gender || 'male');
+                localStorage.setItem('academicYear', teacherInfo.academicYear || '');
+                localStorage.setItem('certificateSettings', JSON.stringify(certificateSettings));
+                localStorage.setItem('teacherAvatar', teacherInfo.avatar || '');
+                localStorage.setItem('defaultStudentGender', defaultStudentGender);
+            }
+        } catch (e) { console.error('LocalStorage Quota Exceeded'); }
 
-  const handleNavigate = (tab: string) => {
-    setActiveTab(tab);
-    setShowMoreMenu(false);
-  };
+    }, 3000); 
 
-  const handleUpdateStudent = (updated: any) =>
-    setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-
-  const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
-
-  const handleDeleteClass = (className: string) => {
-    setClasses(prev => prev.filter(c => c !== className));
-    setStudents(prev => prev.map(s => {
-      if (s.classes.includes(className)) {
-        return { ...s, classes: s.classes.filter(c => c !== className) };
-      }
-      return s;
-    }));
-  };
-
-  const handleAddStudent = (
-    name: string,
-    className: string,
-    phone?: string,
-    avatar?: string,
-    gender?: 'male' | 'female'
-  ) => {
-    setStudents(prev => [
-      ...prev,
-      { 
-        id: Math.random().toString(36).substr(2,9), 
-        name,
-        classes: [className],
-        attendance: [],
-        behaviors: [],
-        grades: [],
-        grade: '',
-        parentPhone: phone,
-        avatar,
-        gender: gender || 'male',
-      },
-    ]);
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return (
-          <Dashboard 
-            students={students}
-            teacherInfo={teacherInfo}
-            onUpdateTeacherInfo={(i) => setTeacherInfo(prev => ({...prev, ...i}))}
-            schedule={schedule}
-            onUpdateSchedule={setSchedule}
-            onSelectStudent={() => {}}
-            onNavigate={handleNavigate}
-            onOpenSettings={() => setActiveTab('settings')}
-            periodTimes={periodTimes}
-            setPeriodTimes={setPeriodTimes}
-            notificationsEnabled={notificationsEnabled}
-            onToggleNotifications={handleToggleNotifications}
-            currentSemester={currentSemester}
-            onSemesterChange={setCurrentSemester}
-          />
-        );
-      case 'attendance':
-        return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
-      case 'students':
-        return (
-          <StudentList 
-            students={students}
-            classes={classes}
-            onAddClass={handleAddClass}
-            onAddStudentManually={handleAddStudent}
-            onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])}
-            onUpdateStudent={handleUpdateStudent}
-            onDeleteStudent={(id) => setStudents(prev => prev.filter(s => s.id !== id))}
-            onViewReport={() => {}}
-            currentSemester={currentSemester}
-            onSemesterChange={setCurrentSemester}
-            onDeleteClass={handleDeleteClass}
-          />
-        );
-      case 'grades':
-        return (
-          <GradeBook 
-            students={students}
-            classes={classes}
-            onUpdateStudent={handleUpdateStudent}
-            setStudents={setStudents}
-            currentSemester={currentSemester}
-            onSemesterChange={setCurrentSemester}
-            teacherInfo={teacherInfo}
-          />
-        );
-      case 'leaderboard':
-        return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />;
-      case 'reports':
-        return <Reports />;
-      case 'guide':
-        return <UserGuide />;
-      case 'settings':
-        return <Settings />;
-      case 'about':
-        return <About />;
-      default:
-        return null;
-    }
-  };
-
-  const mobileNavItems = [
-    { id: 'dashboard', label: 'الرئيسية', IconComponent: Dashboard3D },
-    { id: 'attendance', label: 'الحضور', IconComponent: Attendance3D },
-    { id: 'students', label: 'الطلاب', IconComponent: Students3D },
-    { id: 'grades', label: 'الدرجات', IconComponent: Grades3D },
-  ];
-
-  const desktopNavItems = [
-    { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
-    { id: 'attendance', label: 'الحضور', icon: CalendarCheck },
-    { id: 'students', label: 'الطلاب', icon: Users },
-    { id: 'grades', label: 'الدرجات', icon: BarChart3 },
-    { id: 'leaderboard', label: 'فرسان الشهر', icon: Medal },
-    { id: 'reports', label: 'التقارير', icon: FileText },
-    { id: 'guide', label: 'دليل المستخدم', icon: BookOpen },
-    { id: 'settings', label: 'الإعدادات', icon: SettingsIcon },
-    { id: 'about', label: 'حول التطبيق', icon: Info },
-  ];
-
-  const isMoreActive = !mobileNavItems.some(item => item.id === activeTab);
+    return () => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender]);
 
   return (
-    <div className="flex h-full bg-[#f3f4f6] font-sans overflow-hidden text-slate-900 relative">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 z-50 shadow-sm transition-all h-full">
-        <div className="p-8 flex items-center gap-4">
-          <div className="w-12 h-12">
-            <BrandLogo className="w-full h-full" showText={false} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">راصد</h1>
-            <span className="text-[10px] font-bold text-indigo-600 tracking-wider">نسخة المعلم</span>
-          </div>
-        </div>
-        <div className="px-6 mb-6">
-          <div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3 border border-slate-100">
-            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-slate-300 shadow-sm shrink-0">
-              {teacherInfo.avatar ? (
-                <img src={teacherInfo.avatar} className="w-full h-full object-cover" />
-              ) : (
-                <span className="font-black text-slate-500 text-lg">
-                  {teacherInfo.name?.[0] || 'م'}
-                </span>
-              )}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-slate-900 truncate">
-                {teacherInfo.name || 'مرحباً بك'}
-              </p>
-              <p className="text-[10px] text-gray-500 truncate">
-                {teacherInfo.school || 'المدرسة'}
-              </p>
-            </div>
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4">
-          {desktopNavItems.map(item => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.02]'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'
-                }`}
-              >
-                <item.icon
-                  className={`w-5 h-5 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-500'
-                  } transition-colors`}
-                  strokeWidth={2.5}
-                />
-                <span className="font-bold text-sm">{item.label}</span>
-                {isActive && (
-                  <div className="mr-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-6 text-center border-t border-slate-200">
-          <p className="text-[10px] font-bold text-gray-400">الإصدار 3.6.0</p>
-        </div>
-      </aside>
-
-      {/* Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#f3f4f6] z-0">
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe overscroll-contain" id="main-scroll-container">
-          <div className="max-w-5xl mx-auto w-full min-h-full">
-            {renderContent()}
-          </div>
-        </div>
-      </main>
-
-      {/* Mobile Nav (3D Icons) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t border-slate-200/60 pb-safe safe-area-bottom transition-transform duration-300 translate-z-0 pointer-events-auto">
-        {mobileNavItems.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button 
-              key={item.id} 
-              onClick={() => handleNavigate(item.id)} 
-              className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-            >
-              <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-                  ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-                <div className={`w-11 h-11 ${isActive ? 'drop-shadow-2xl' : ''}`}>
-                  <item.IconComponent active={isActive} />
-                </div>
-              </div>
-              
-              <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${
-                isActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'
-              }`}>
-                {item.label}
-              </span>
-              
-              {isActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
-            </button>
-          );
-        })}
-
-        <button 
-          onClick={() => setShowMoreMenu(true)} 
-          className="relative w-full h-full flex flex-col items-center justify-end group pb-1 touch-manipulation active:scale-90 transition-transform"
-          style={{ WebkitTapHighlightColor: 'transparent' }}
-        >
-          <div className={`absolute top-0 transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) pointer-events-none 
-              ${isMoreActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-            <div className={`w-11 h-11 ${isMoreActive ? 'drop-shadow-2xl' : ''}`}>
-              <More3D active={isMoreActive} />
-            </div>
-          </div>
-          <span className={`text-[10px] font-black transition-all duration-300 pointer-events-none ${
-            isMoreActive ? 'translate-y-0 text-indigo-600 opacity-100' : 'translate-y-4 text-gray-400 opacity-0'
-          }`}>
-            المزيد
-          </span>
-          {isMoreActive && <div className="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></div>}
-        </button>
-      </div>
-
-      {/* Menu Modal */}
-      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000]">
-        <div className="text-center mb-6">
-          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
-          <h3 className="font-black text-slate-800 text-lg">القائمة الكاملة</h3>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={() => handleNavigate('leaderboard')} className="p-4 bg-amber-50 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform border border-amber-200 aspect-square shadow-sm">
-            <Medal className="w-7 h-7 text-amber-600" />
-            <span className="font-bold text-[10px] text-amber-800">فرسان الشهر</span>
-          </button>
-          <button onClick={() => handleNavigate('reports')} className="p-4 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform border border-indigo-200 aspect-square shadow-sm">
-            <FileText className="w-7 h-7 text-indigo-600" />
-            <span className="font-bold text-[10px] text-indigo-800">التقارير</span>
-          </button>
-          <button onClick={() => handleNavigate('settings')} className="p-4 bg-gray-100 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform border border-gray-300 aspect-square shadow-sm">
-            <SettingsIcon className="w-7 h-7 text-gray-600" />
-            <span className="font-bold text-[10px] text-gray-800">الإعدادات</span>
-          </button>
-          <button onClick={() => handleNavigate('guide')} className="p-4 bg-cyan-50 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform border border-cyan-200 aspect-square shadow-sm">
-            <BookOpen className="w-7 h-7 text-cyan-600" />
-            <span className="font-bold text-[10px] text-cyan-800">الدليل</span>
-          </button>
-          <button onClick={() => handleNavigate('about')} className="p-4 bg-purple-50 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform border border-purple-200 aspect-square shadow-sm">
-            <Info className="w-7 h-7 text-purple-600" />
-            <span className="font-bold text-[10px] text-purple-800">حول التطبيق</span>
-          </button>
-        </div>
-      </Modal>
-    </div>
+    <AppContext.Provider value={{
+        students, setStudents,
+        classes, setClasses,
+        hiddenClasses, setHiddenClasses,
+        groups, setGroups,
+        schedule, setSchedule,
+        periodTimes, setPeriodTimes,
+        teacherInfo, setTeacherInfo,
+        currentSemester, setCurrentSemester,
+        assessmentTools, setAssessmentTools,
+        gradeSettings, setGradeSettings,
+        certificateSettings, setCertificateSettings,
+        isDataLoaded,
+        defaultStudentGender, setDefaultStudentGender
+    }}>
+      {children}
+    </AppContext.Provider>
   );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
 };
