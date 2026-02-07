@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
-  Bell, Clock, Edit3, Settings, 
+  Bell, Clock, Settings, Edit3,
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
   X, Calendar, BellOff, Save
@@ -60,10 +60,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
-    const scheduleFileInputRef = useRef<HTMLInputElement>(null); // ⬅️ جديد: لاستيراد الجدول
+    const scheduleFileInputRef = useRef<HTMLInputElement>(null);
 
     const [isImportingPeriods, setIsImportingPeriods] = useState(false);
-    const [isImportingSchedule, setIsImportingSchedule] = useState(false); // ⬅️ جديد: حالة استيراد الجدول
+    const [isImportingSchedule, setIsImportingSchedule] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
@@ -79,7 +79,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [editStamp, setEditStamp] = useState(teacherInfo?.stamp);
     const [editMinistryLogo, setEditMinistryLogo] = useState(teacherInfo?.ministryLogo);
     const [editAcademicYear, setEditAcademicYear] = useState(teacherInfo?.academicYear || '');
-    // تم حذف editGender من الواجهة لكن نحتفظ به في الخلفية
     const [editGender, setEditGender] = useState<'male' | 'female'>(teacherInfo?.gender || 'male');
     const [editSemester, setEditSemester] = useState<'1' | '2'>(currentSemester || '1');
 
@@ -124,10 +123,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && avatar.length > 50) return avatar;
-        return null; // سنعرض الـ SVG الافتراضي إذا لم توجد صورة
+        return null;
     };
 
-    // دالة الأيقونات
+    // ✅ دالة الأيقونات (تم إصلاح منطق الاستدعاء في الأسفل)
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
         const name = subjectName.trim().toLowerCase();
@@ -137,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (name.match(/علوم|فيزياء|كيمياء/)) return <span className="text-2xl">🧪</span>;
         if (name.match(/انجليزي|english/)) return <span className="text-2xl">🅰️</span>;
         if (name.match(/حاسوب|تقنية/)) return <span className="text-2xl">💻</span>;
-        if (name.match(/اجتماعيات|تاريخ/)) return <span className="text-2xl">🌍</span>;
+        if (name.match(/اجتماعيات|تاريخ| دراسات اجتماعية|/)) return <span className="text-2xl">🌍</span>;
         if (name.match(/رياضة|بدنية/)) return <span className="text-2xl">⚽</span>;
         if (name.match(/فنون|رسم/)) return <span className="text-2xl">🎨</span>;
         return <span className="text-xl opacity-50">📚</span>;
@@ -204,7 +203,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
     };
 
-    // ⬅️ دالة استيراد "الجدول" من Excel (من الكود القديم كما هي تقريباً)
     const handleImportSchedule = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -309,7 +307,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     const todayRaw = new Date().getDay();
-    const dayIndex = (todayRaw === 5 || todayRaw === 6) ? 0 : todayRaw; // الجمعة والسبت -> الأحد
+    const dayIndex = (todayRaw === 5 || todayRaw === 6) ? 0 : todayRaw;
     const todaySchedule = schedule ? schedule[dayIndex] : { dayName: 'اليوم', periods: [] };
     const isToday = todayRaw === dayIndex;
 
@@ -320,7 +318,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <header className="bg-[#1e3a8a] text-white pt-8 pb-8 px-6 rounded-b-[2.5rem] shadow-xl relative z-20 -mx-4 -mt-4 mb-2">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
-                        {/* صورة المعلم وزر التعديل المحسن */}
+                        {/* صورة المعلم وزر التعديل */}
                         <div className="relative group">
                             <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-inner">
                                 {getDisplayImage(teacherInfo.avatar, teacherInfo.gender) ? (
@@ -349,7 +347,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     
                     {/* أزرار الهيدر */}
                     <div className="flex gap-2">
-                        {/* زر الإعدادات والقائمة */}
                         <div className="relative">
                             <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center transition-all ${showSettingsDropdown ? 'bg-white text-[#1e3a8a]' : ''}`}>
                                 <Settings size={20} />
@@ -371,19 +368,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right">
                                             <PlayCircle size={16} className="text-emerald-600"/> <span className="text-xs font-bold">تجربة الجرس</span>
                                         </button>
-                                        {/* ⬅️ زر استيراد جدول الحصص */}
                                         <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right border-t border-slate-50">
                                             <Download size={16} className="text-emerald-600"/> 
                                             <span className="text-xs font-bold">استيراد جدول الحصص</span>
                                             {isImportingSchedule && <Loader2 size={14} className="ml-auto animate-spin" />}
                                         </button>
-                                        <input 
-                                            type="file" 
-                                            ref={scheduleFileInputRef} 
-                                            onChange={handleImportSchedule} 
-                                            accept=".xlsx,.xls" 
-                                            className="hidden" 
-                                        />
+                                        <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
                                     </div>
                                 </>
                             )}
@@ -416,6 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#1e3a8a] text-white border-[#1e3a8a] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                                        {/* ✅ هنا الإصلاح: عرض الأيقونة إذا وجدت، وإلا عرض رقم الحصة */}
                                         {getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
@@ -455,7 +446,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         ) : (
                             <div className="w-full h-full rounded-2xl border-4 border-slate-50 bg-indigo-50 flex items-center justify-center"><DefaultAvatarSVG gender={editGender}/></div>
                         )}
-                        {/* زر حذف الصورة: تم إصلاحه وتأمينه */}
                         <button onClick={() => setEditAvatar(undefined)} className="absolute -bottom-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full shadow-lg border-2 border-white hover:bg-rose-600 transition-colors">
                             <X size={14}/>
                         </button>
@@ -477,7 +467,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setEditSemester('2')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${editSemester === '2' ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}>فصل 2</button>
                         </div>
 
-                        {/* أزرار الرفع */}
                         <div className="flex gap-2 pt-2">
                             <button onClick={() => fileInputRef.current?.click()} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-bold flex flex-col items-center gap-1 border border-indigo-100 hover:bg-indigo-100"><Camera size={16}/> صورتك</button>
                             <button onClick={() => stampInputRef.current?.click()} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-bold flex flex-col items-center gap-1 border border-blue-100 hover:bg-blue-100"><Check size={16}/> الختم</button>
