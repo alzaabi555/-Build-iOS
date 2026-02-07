@@ -1,8 +1,9 @@
-
 import React, { useState, useMemo } from 'react';
 import { Student } from '../types';
 import { Trophy, Crown, Sparkles, Star } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+// ✅ استيراد مكون الأفاتار الجديد
+import StudentAvatar from './StudentAvatar';
 
 interface LeaderboardProps {
     students: Student[];
@@ -47,17 +48,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         });
 
         // ترتيب الطلاب حسب النقاط (الأكثر نقاطاً أولاً)
-        // ملاحظة: يتم إرجاع جميع الطلاب حتى من لديهم 0 نقاط
         return withPoints.sort((a, b) => b.monthlyPoints - a.monthlyPoints);
     }, [students, selectedClass, currentMonth, currentYear]);
 
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
-
-    const getStudentImage = (student: Student) => {
-        if (student.avatar) return student.avatar;
-        return student.gender === 'female' ? './assets/student_girl.png' : './assets/student_boy.png';
-    };
 
     // دالة إضافة النقاط التشجيعية (3 نقاط)
     const handleAddPoints = (student: Student) => {
@@ -120,7 +115,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     {topThree[1] && (
                         <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-100" onClick={() => handleAddPoints(topThree[1])}>
                             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 shadow-xl overflow-hidden mb-2 relative bg-white transform hover:scale-105 active:scale-95 transition-transform cursor-pointer">
-                                <img src={getStudentImage(topThree[1])} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerText = '🎓'; }} />
+                                {/* ✅ استخدام StudentAvatar */}
+                                <StudentAvatar 
+                                    gender={topThree[1].gender} 
+                                    className="w-full h-full" 
+                                />
                                 <div className="absolute -bottom-1 -right-1 bg-slate-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">2</div>
                             </div>
                             <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl text-center border border-slate-200 w-28 md:w-32 shadow-sm">
@@ -137,7 +136,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                             <div className="relative cursor-pointer">
                                 <Crown className="w-12 h-12 text-amber-400 fill-amber-400 absolute -top-10 left-1/2 -translate-x-1/2 animate-pulse drop-shadow-md" />
                                 <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-amber-400 shadow-2xl overflow-hidden mb-2 relative bg-white ring-4 ring-amber-100 transform hover:scale-105 active:scale-95 transition-transform">
-                                    <img src={getStudentImage(topThree[0])} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerText = '👑'; }} />
+                                    {/* ✅ استخدام StudentAvatar */}
+                                    <StudentAvatar 
+                                        gender={topThree[0].gender} 
+                                        className="w-full h-full" 
+                                    />
                                     <div className="absolute -bottom-1 -right-1 bg-amber-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-lg">1</div>
                                 </div>
                             </div>
@@ -156,7 +159,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     {topThree[2] && (
                         <div className="flex flex-col items-center animate-in slide-in-from-bottom-4 duration-700 delay-200" onClick={() => handleAddPoints(topThree[2])}>
                             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-300 shadow-xl overflow-hidden mb-2 relative bg-white transform hover:scale-105 active:scale-95 transition-transform cursor-pointer">
-                                <img src={getStudentImage(topThree[2])} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerText = '🥉'; }} />
+                                {/* ✅ استخدام StudentAvatar */}
+                                <StudentAvatar 
+                                    gender={topThree[2].gender} 
+                                    className="w-full h-full" 
+                                />
                                 <div className="absolute -bottom-1 -right-1 bg-orange-300 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-2 border-white shadow-sm text-sm">3</div>
                             </div>
                             <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl text-center border border-orange-200 w-28 md:w-32 shadow-sm">
@@ -174,7 +181,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 </div>
             )}
 
-            {/* Rest of Students List (New Design Matching Request) */}
+            {/* Rest of Students List */}
             {restOfStudents.length > 0 && (
                 <div className="px-4">
                     <h3 className="font-black text-slate-700 mb-4 text-sm flex items-center gap-2">
@@ -204,14 +211,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
                                 {/* 3. Avatar (Left in RTL) */}
                                 <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-slate-50 overflow-hidden shrink-0">
-                                    <img 
-                                        src={getStudentImage(student)} 
-                                        className="w-full h-full object-cover" 
-                                        alt={student.name}
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement!.innerText = student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
-                                        }}
+                                    {/* ✅ استخدام StudentAvatar */}
+                                    <StudentAvatar 
+                                        gender={student.gender} 
+                                        className="w-full h-full" 
                                     />
                                 </div>
 
