@@ -11,6 +11,8 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
+// ✅ استيراد مكون الأفاتار الجديد
+import StudentAvatar from './StudentAvatar';
 
 interface GradeBookProps {
   students: Student[];
@@ -136,15 +138,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return 'هـ';
   };
 
-  const getSymbolColor = (score: number) => {
-    const percentage = (score / gradingSettings.totalScore) * 100;
-    if (percentage >= 90) return 'text-emerald-600 bg-emerald-50';
-    if (percentage >= 80) return 'text-blue-600 bg-blue-50';
-    if (percentage >= 65) return 'text-amber-600 bg-amber-50';
-    if (percentage >= 50) return 'text-orange-600 bg-orange-50';
-    return 'text-rose-600 bg-rose-50';
-  };
-
   const getSemesterGrades = (student: Student, sem: '1' | '2') => {
     if (!student || !Array.isArray(student.grades)) return [];
     return student.grades.filter(g => {
@@ -198,7 +191,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     });
   }, [students, selectedClass, selectedGrade]);
 
-  // === رصد سريع داخل الكارت (يبقى منطق الجديد لكنه يعتمد نفس بنية GradeRecord) ===
+  // === رصد سريع داخل الكارت ===
   const handleGradeChange = (studentId: string, value: string) => {
     if (!activeToolId) return alert('الرجاء اختيار أداة تقويم من الأعلى أولاً');
 
@@ -243,7 +236,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return grade ? grade.score.toString() : '';
   };
 
-  // === إدارة الأدوات (منطق قديم مع إضافة activeToolId) ===
+  // === إدارة الأدوات ===
   const handleAddTool = () => {
     if (newToolName.trim()) {
       const finalName = cleanText(newToolName);
@@ -291,7 +284,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     setEditToolName('');
   };
 
-  // === توزيع الدرجات (يحدث gradingSettings + final tool) ===
+  // === توزيع الدرجات ===
   const handleSaveDistribution = () => {
     const newSettings = {
       totalScore: distTotal,
@@ -327,7 +320,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     alert('تم اعتماد توزيع الدرجات وتحديث أدوات التقويم ✅');
   };
 
-  // === الرصد الجماعي (منطق قديم) ===
+  // === الرصد الجماعي ===
   const handleBulkFill = () => {
     if (!bulkFillTool) return;
     const scoreValue = bulkScore.trim();
@@ -374,7 +367,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     alert('تم الرصد الجماعي بنجاح! ✅');
   };
 
-  // === حذف درجات فصل كامل (منطق قديم قريب من الجديد) ===
+  // === حذف درجات فصل كامل ===
   const handleClearGrades = () => {
     const targetClassText =
       selectedClass === 'all' ? 'جميع الطلاب' : `طلاب فصل ${selectedClass}`;
@@ -401,7 +394,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // === استيراد Excel (منطق قديم) ===
+  // === استيراد Excel ===
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -505,7 +498,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // === تصدير Excel (منطق قديم) ===
+  // === تصدير Excel ===
   const handleExportExcel = async () => {
     if (filteredStudents.length === 0) {
       alert('لا يوجد طلاب');
@@ -580,7 +573,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // === التعامل مع درجات طالب من خلال المودال (منطق قديم) ===
+  // === التعامل مع درجات طالب من خلال المودال ===
   const handleDeleteGrade = (gradeId: string) => {
     if (!showAddGrade) return;
     if (confirm('حذف الدرجة؟')) {
@@ -882,31 +875,11 @@ const GradeBook: React.FC<GradeBookProps> = ({
                   className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all duration-200 relative"
                   onClick={() => setShowAddGrade({ student })}
                 >
-                  <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
-                    <img
-                      src={
-                        student.avatar ||
-                        (student.gender === 'female'
-                          ? 'assets/student_girl.png'
-                          : 'assets/student_boy.png')
-                      }
-                      className="w-full h-full object-cover"
-                      alt={student.name}
-                      onError={e => {
-                        e.currentTarget.style.display = 'none';
-                        if (e.currentTarget.parentElement) {
-                          e.currentTarget.parentElement.innerText =
-                            student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
-                          e.currentTarget.parentElement.classList.add(
-                            'flex',
-                            'items-center',
-                            'justify-center',
-                            'text-2xl'
-                          );
-                        }
-                      }}
-                    />
-                  </div>
+                  {/* ✅ هنا التعديل: استخدام الكومبوننت الجديد */}
+                  <StudentAvatar 
+                    gender={student.gender}
+                    className="w-16 h-16 mb-3 border-4 border-white shadow-sm"
+                  />
 
                   <h3 className="font-bold text-slate-800 text-xs text-center line-clamp-1 mb-3 w-full">
                     {student.name}
