@@ -23,20 +23,20 @@ const OmaniBoyAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
       
-      {/* الرابط يبدأ من الجذر (public) -> ثم المجلد assets */}
       <img 
+        // نبدأ بالمسار المطلق لأنه القياسي في الويب
         src="/assets/boy-avatar.png"  
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
         onError={(e) => {
           const target = e.target as HTMLImageElement;
-          // حيلة ذكية: إذا فشل الاسم العادي، نجرب الاسم المزدوج تلقائياً
+          // إذا فشل المسار المطلق (يحدث غالباً في تطبيقات الموبايل)، نجرب المسار النسبي
           if (!target.getAttribute('data-tried-fix')) {
              target.setAttribute('data-tried-fix', 'true');
-             target.src = "/assets/boy-avatar.png.png"; // المحاولة الثانية
+             target.src = "assets/boy-avatar.png"; // إزالة الشرطة المائلة الأولى
           } else {
-             // إذا فشل الاثنان، نخفي الصورة
+             // إذا فشل الخياران، نظهر لوناً احتياطياً بدلاً من أيقونة الصورة المكسورة
              target.style.display = 'none';
              target.parentElement!.style.backgroundColor = '#cbd5e1';
           }
@@ -57,10 +57,9 @@ const OmaniGirlAvatarSVG = () => (
         loading="lazy"
         onError={(e) => {
           const target = e.target as HTMLImageElement;
-          // حيلة ذكية: إذا فشل الاسم العادي، نجرب الاسم المزدوج تلقائياً
           if (!target.getAttribute('data-tried-fix')) {
              target.setAttribute('data-tried-fix', 'true');
-             target.src = "/assets/girl-avatar.png.png"; // المحاولة الثانية
+             target.src = "assets/girl-avatar.png"; // إزالة الشرطة المائلة الأولى
           } else {
              target.style.display = 'none';
              target.parentElement!.style.backgroundColor = '#e2e8f0';
