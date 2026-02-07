@@ -14,6 +14,54 @@ interface AttendanceTrackerProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
+// ============================================================================
+// ✅ استدعاء صور الأفاتار من مجلد public/assets
+// ============================================================================
+
+// 1. مكون أفاتار الطالب (الفتى)
+const OmaniBoyAvatarSVG = () => (
+  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
+      {/* ✅ المسار الصحيح للصور في public/assets */}
+      <img 
+        src="/assets/boy-avatar.png"  
+        alt="طالب" 
+        className="w-full h-full object-cover transform scale-110 translate-y-1"
+        loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#cbd5e1';
+        }}
+      />
+  </div>
+);
+
+// 2. مكون أفاتار الطالبة (الفتاة)
+const OmaniGirlAvatarSVG = () => (
+  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
+      {/* ✅ المسار الصحيح للصور في public/assets */}
+      <img 
+        src="/assets/girl-avatar.png" 
+        alt="طالبة" 
+        className="w-full h-full object-cover transform scale-110 translate-y-1"
+        loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#e2e8f0';
+        }}
+      />
+  </div>
+);
+
+// دالة تحديد الأفاتار المناسب
+const getStudentAvatar = (student: Student) => {
+    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
+    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
+};
+
+// ============================================================================
+
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today.toLocaleDateString('en-CA'));
@@ -54,9 +102,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         attendance: currentStatus === status ? filtered : [...filtered, { date: selectedDate, status }]
       };
 
-      // منطق التبليغ يعمل هنا للغياب والتاخير والتسرب
       if ((status === 'absent' || status === 'late' || status === 'truant') && currentStatus !== status) {
-          // Trigger notification popup for negative statuses
           setTimeout(() => setNotificationTarget({ student: newStudent, type: status }), 50);
       }
 
@@ -64,13 +110,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     }));
   };
 
-  // دالة التحضير الجماعي
   const markAll = (status: AttendanceStatus) => {
       const visibleIds = new Set(filteredStudents.map(s => s.id));
-      
       setStudents(prev => prev.map(s => {
           if (!visibleIds.has(s.id)) return s;
-          
           const filtered = s.attendance.filter(a => a.date !== selectedDate);
           return {
               ...s,
@@ -103,7 +146,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       if (selectedGrade !== 'all') {
           matchesGrade = s.grade === selectedGrade || (s.classes[0] && s.classes[0].startsWith(selectedGrade));
       }
-      // منطق البحث بالاسم
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesClass && matchesGrade && matchesSearch;
     });
@@ -190,9 +232,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   return (
     <div className="flex flex-col h-full text-slate-800 relative animate-in fade-in duration-500">
         
-        {/* Header - Fixed Blue Header */}
-        <header className="bg-[#1e3a8a] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
-            <div className="flex justify-between items-center mb-6 gap-3">
+        {/* ================= FIXED HEADER ================= */}
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+            
+            <div className="flex justify-between items-center mb-6 mt-2 gap-3">
                 <div className="flex items-center gap-3 shrink-0">
                     <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
                         <CalendarCheck className="w-5 h-5 text-white" />
@@ -200,7 +243,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     <h1 className="text-2xl font-black tracking-wide">سجل الغياب</h1>
                 </div>
 
-                {/* خانة البحث الجديدة (مدمجة في الهيدر) */}
                 <div className="flex-1 mx-2 relative group">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200 group-focus-within:text-white transition-colors" />
                     <input 
@@ -217,7 +259,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 </button>
             </div>
 
-            {/* Calendar Strip (داخل الهيدر الأزرق) */}
             <div className="flex items-center justify-between gap-1 mb-4 bg-white/10 p-2 rounded-2xl border border-white/10 shadow-inner">
                 <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
                 <div className="flex flex-1 justify-between gap-1 text-center">
@@ -240,7 +281,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
             </div>
 
-            {/* Filters (داخل الهيدر الأزرق) */}
             <div className="space-y-2 mb-1 px-1">
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                     {availableGrades.length > 0 && (
@@ -256,107 +296,102 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     ))}
                 </div>
             </div>
-        </header>
-
-        {/* Stats Section */}
-        <div className="px-4 mb-2">
-            <div className="flex justify-between items-center gap-2 text-center">
-                <button onClick={() => markAll('present')} className="flex-1 bg-emerald-50 rounded-2xl p-2.5 border border-emerald-100 shadow-sm active:scale-95 transition-all group">
-                    <span className="block text-[10px] text-emerald-600 font-bold mb-1 group-hover:underline">حضور (الكل)</span>
-                    <span className="block text-xl font-black text-emerald-700">{stats.present}</span>
-                </button>
-                <button onClick={() => markAll('absent')} className="flex-1 bg-rose-50 rounded-2xl p-2.5 border border-rose-100 shadow-sm active:scale-95 transition-all group">
-                    <span className="block text-[10px] text-rose-600 font-bold mb-1 group-hover:underline">غياب (الكل)</span>
-                    <span className="block text-xl font-black text-rose-700">{stats.absent}</span>
-                </button>
-                <div className="flex-1 bg-amber-50 rounded-2xl p-2.5 border border-amber-100 shadow-sm">
-                    <span className="block text-[10px] text-amber-600 font-bold mb-1">تأخير</span>
-                    <span className="block text-xl font-black text-amber-700">{stats.late}</span>
-                </div>
-            </div>
         </div>
 
-        {/* Content - Cards Grid */}
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
-            {filteredStudents.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                    {filteredStudents.map(student => {
-                        const status = getStatus(student);
-                        return (
-                            <div key={student.id} className={`bg-white rounded-[1.5rem] border-2 flex flex-col items-center overflow-hidden transition-all duration-200 ${
-                                status === 'present' ? 'border-emerald-400 shadow-md' : 
-                                status === 'absent' ? 'border-red-400 shadow-md' : 
-                                status === 'late' ? 'border-amber-400 shadow-md' :
-                                status === 'truant' ? 'border-purple-400 shadow-md' :
-                                'border-transparent shadow-sm'
-                            }`}>
-                                {/* Upper Part: Image & Name */}
-                                <div className="p-4 flex flex-col items-center w-full">
-                                    <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
-                                         <img 
-                                            src={student.avatar || (student.gender === 'female' ? 'assets/student_girl.png' : 'assets/student_boy.png')} 
-                                            className="w-full h-full object-cover" 
-                                            onError={(e) => {
-                                                e.currentTarget.style.display = 'none';
-                                                e.currentTarget.parentElement!.innerText = student.gender === 'female' ? '👩‍🎓' : '👨‍🎓';
-                                                e.currentTarget.parentElement!.classList.add('flex', 'items-center', 'justify-center', 'text-2xl');
-                                            }}
-                                         />
-                                    </div>
-                                    <h3 className="font-bold text-slate-900 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
-                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full mt-1 font-bold">{student.classes[0]}</span>
-                                </div>
+            
+            <div className="w-full h-[280px] shrink-0 md:h-0"></div>
 
-                                {/* Bottom Part: Action Buttons (Large) */}
-                                <div className="flex w-full border-t border-slate-100 divide-x divide-x-reverse divide-slate-100">
-                                    {/* Absent Button */}
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'absent')}
-                                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-red-50 active:bg-red-100 transition-colors ${status === 'absent' ? 'bg-red-50 text-red-600' : 'text-slate-400'}`}
-                                    >
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-200 text-white'}`}>✕</div>
-                                        <span className="text-[10px] font-bold">غياب</span>
-                                    </button>
+            <div className="-mt-4 relative z-10 px-2">
+                {/* Stats Section */}
+                <div className="mb-4">
+                    <div className="flex justify-between items-center gap-2 text-center">
+                        <button onClick={() => markAll('present')} className="flex-1 bg-emerald-50 rounded-2xl p-2.5 border border-emerald-100 shadow-sm active:scale-95 transition-all group">
+                            <span className="block text-[10px] text-emerald-600 font-bold mb-1 group-hover:underline">حضور (الكل)</span>
+                            <span className="block text-xl font-black text-emerald-700">{stats.present}</span>
+                        </button>
+                        <button onClick={() => markAll('absent')} className="flex-1 bg-rose-50 rounded-2xl p-2.5 border border-rose-100 shadow-sm active:scale-95 transition-all group">
+                            <span className="block text-[10px] text-rose-600 font-bold mb-1 group-hover:underline">غياب (الكل)</span>
+                            <span className="block text-xl font-black text-rose-700">{stats.absent}</span>
+                        </button>
+                        <div className="flex-1 bg-amber-50 rounded-2xl p-2.5 border border-amber-100 shadow-sm">
+                            <span className="block text-[10px] text-amber-600 font-bold mb-1">تأخير</span>
+                            <span className="block text-xl font-black text-amber-700">{stats.late}</span>
+                        </div>
+                    </div>
+                </div>
 
-                                    {/* Truant Button (تسرب) - Restored with full logic */}
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'truant')}
-                                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-purple-50 active:bg-purple-100 transition-colors ${status === 'truant' ? 'bg-purple-50 text-purple-600' : 'text-slate-400'}`}
-                                    >
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'truant' ? 'bg-purple-500 text-white' : 'bg-slate-200 text-white'}`}>
-                                            <DoorOpen className="w-3.5 h-3.5" />
+                {/* Cards Grid */}
+                {filteredStudents.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        {filteredStudents.map(student => {
+                            const status = getStatus(student);
+                            return (
+                                <div key={student.id} className={`bg-white rounded-[1.5rem] border-2 flex flex-col items-center overflow-hidden transition-all duration-200 ${
+                                    status === 'present' ? 'border-emerald-400 shadow-md' : 
+                                    status === 'absent' ? 'border-red-400 shadow-md' : 
+                                    status === 'late' ? 'border-amber-400 shadow-md' :
+                                    status === 'truant' ? 'border-purple-400 shadow-md' :
+                                    'border-transparent shadow-sm'
+                                }`}>
+                                    {/* Upper Part: Image & Name */}
+                                    <div className="p-4 flex flex-col items-center w-full">
+                                        <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
+                                             {/* ✅ تم تصحيح هذا السطر: استخدام دالة getStudentAvatar بدلاً من img القديم */}
+                                             {getStudentAvatar(student)}
                                         </div>
-                                        <span className="text-[10px] font-bold">تسرب</span>
-                                    </button>
+                                        <h3 className="font-bold text-slate-900 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full mt-1 font-bold">{student.classes[0]}</span>
+                                    </div>
 
-                                    {/* Late Button */}
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'late')}
-                                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-amber-50 active:bg-amber-100 transition-colors ${status === 'late' ? 'bg-amber-50 text-amber-600' : 'text-slate-400'}`}
-                                    >
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'late' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-white'}`}>⏰</div>
-                                        <span className="text-[10px] font-bold">تأخر</span>
-                                    </button>
+                                    {/* Bottom Part: Action Buttons */}
+                                    <div className="flex w-full border-t border-slate-100 divide-x divide-x-reverse divide-slate-100">
+                                        <button 
+                                            onClick={() => toggleAttendance(student.id, 'absent')}
+                                            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-red-50 active:bg-red-100 transition-colors ${status === 'absent' ? 'bg-red-50 text-red-600' : 'text-slate-400'}`}
+                                        >
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-200 text-white'}`}>✕</div>
+                                            <span className="text-[10px] font-bold">غياب</span>
+                                        </button>
 
-                                    {/* Present Button */}
-                                    <button 
-                                        onClick={() => toggleAttendance(student.id, 'present')}
-                                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 active:bg-emerald-100 transition-colors ${status === 'present' ? 'bg-emerald-50 text-emerald-600' : 'text-slate-400'}`}
-                                    >
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'present' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-white'}`}>✓</div>
-                                        <span className="text-[10px] font-bold">حضور</span>
-                                    </button>
+                                        <button 
+                                            onClick={() => toggleAttendance(student.id, 'truant')}
+                                            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-purple-50 active:bg-purple-100 transition-colors ${status === 'truant' ? 'bg-purple-50 text-purple-600' : 'text-slate-400'}`}
+                                        >
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'truant' ? 'bg-purple-500 text-white' : 'bg-slate-200 text-white'}`}>
+                                                <DoorOpen className="w-3.5 h-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-bold">تسرب</span>
+                                        </button>
+
+                                        <button 
+                                            onClick={() => toggleAttendance(student.id, 'late')}
+                                            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-amber-50 active:bg-amber-100 transition-colors ${status === 'late' ? 'bg-amber-50 text-amber-600' : 'text-slate-400'}`}
+                                        >
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'late' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-white'}`}>⏰</div>
+                                            <span className="text-[10px] font-bold">تأخر</span>
+                                        </button>
+
+                                        <button 
+                                            onClick={() => toggleAttendance(student.id, 'present')}
+                                            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 active:bg-emerald-100 transition-colors ${status === 'present' ? 'bg-emerald-50 text-emerald-600' : 'text-slate-400'}`}
+                                        >
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${status === 'present' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-white'}`}>✓</div>
+                                            <span className="text-[10px] font-bold">حضور</span>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                    <UserCircle2 className="w-16 h-16 text-gray-300 mb-4" />
-                    <p className="text-sm font-bold text-gray-400">لا يوجد طلاب</p>
-                </div>
-            )}
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                        <UserCircle2 className="w-16 h-16 text-gray-300 mb-4" />
+                        <p className="text-sm font-bold text-gray-400">لا يوجد طلاب</p>
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* Notification Modal */}
