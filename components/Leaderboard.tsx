@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Student } from '../types';
 import { Trophy, Crown, Sparkles, Star, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-// ✅ استيراد مكون الأفاتار
-import StudentAvatar from './StudentAvatar';
+// ✅ التصحيح هنا: إضافة القوسين {}
+import { StudentAvatar } from './StudentAvatar';
 
 interface LeaderboardProps {
     students: Student[];
@@ -14,10 +14,8 @@ interface LeaderboardProps {
 const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateStudent }) => {
     const { currentSemester } = useApp();
     const [selectedClass, setSelectedClass] = useState<string>('all');
-    // ✅ 1. حالة البحث الجديدة
     const [searchTerm, setSearchTerm] = useState('');
     
-    // تحديد الشهر الحالي
     const today = new Date();
     const currentMonth = today.getMonth(); 
     const currentYear = today.getFullYear();
@@ -25,16 +23,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     const monthName = months[currentMonth];
 
-    // تصفية وحساب النقاط
     const rankedStudents = useMemo(() => {
         let filtered = students;
-        
-        // فلترة الصف
         if (selectedClass !== 'all') {
             filtered = students.filter(s => s.classes && s.classes.includes(selectedClass));
         }
-
-        // ✅ 2. فلترة البحث بالاسم
         if (searchTerm.trim()) {
             filtered = filtered.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
@@ -56,9 +49,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             return { ...student, monthlyPoints };
         });
 
-        // ترتيب الطلاب حسب النقاط
         return withPoints.sort((a, b) => b.monthlyPoints - a.monthlyPoints);
-    }, [students, selectedClass, searchTerm, currentMonth, currentYear]); // أضفنا searchTerm للمصفوفة
+    }, [students, selectedClass, searchTerm, currentMonth, currentYear]);
 
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
@@ -83,8 +75,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500">
-            
-            {/* Header */}
             <header className="bg-[#1e3a8a] text-white pt-8 pb-8 px-6 rounded-b-[2.5rem] shadow-lg relative z-10 -mx-4 -mt-4">
                 <div className="flex flex-col items-center text-center">
                     <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner">
@@ -93,7 +83,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     <h1 className="text-2xl font-black tracking-wide mb-1">فرسان شهر {monthName}</h1>
                     <p className="text-xs text-blue-200 font-bold opacity-80 mb-4">التنافس على أشدّه! من سيعتلي القمة؟</p>
                     
-                    {/* ✅ 3. محرك البحث في الهيدر */}
                     <div className="relative w-full max-w-sm mb-4">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300" />
                         <input 
@@ -105,32 +94,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         />
                     </div>
 
-                    {/* Filters */}
                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar px-2 w-full justify-center">
-                        <button 
-                            onClick={() => setSelectedClass('all')} 
-                            className={`px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border ${selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-lg border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}
-                        >
-                            الكل
-                        </button>
+                        <button onClick={() => setSelectedClass('all')} className={`px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border ${selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-lg border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
                         {classes.map(c => (
-                            <button 
-                                key={c}
-                                onClick={() => setSelectedClass(c)} 
-                                className={`px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-lg border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}
-                            >
-                                {c}
-                            </button>
+                            <button key={c} onClick={() => setSelectedClass(c)} className={`px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-lg border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
                         ))}
                     </div>
                 </div>
             </header>
 
-            {/* Podium (Top 3) */}
-            {/* يظهر فقط إذا لم يكن هناك بحث، أو إذا كان البحث يطابقهم */}
             {topThree.length > 0 ? (
                 <div className="flex justify-center items-end gap-2 md:gap-6 py-2 min-h-[260px]">
-                    {/* 2nd Place */}
                     {topThree[1] && (
                         <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-100" onClick={() => handleAddPoints(topThree[1])}>
                             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 shadow-xl overflow-hidden mb-2 relative bg-white transform hover:scale-105 active:scale-95 transition-transform cursor-pointer">
@@ -145,7 +119,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     )}
 
-                    {/* 1st Place */}
                     {topThree[0] && (
                         <div className="flex flex-col items-center z-10 -mb-4 animate-in slide-in-from-bottom-12 duration-700" onClick={() => handleAddPoints(topThree[0])}>
                             <div className="relative cursor-pointer">
@@ -166,7 +139,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     )}
 
-                    {/* 3rd Place */}
                     {topThree[2] && (
                         <div className="flex flex-col items-center animate-in slide-in-from-bottom-4 duration-700 delay-200" onClick={() => handleAddPoints(topThree[2])}>
                             <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-300 shadow-xl overflow-hidden mb-2 relative bg-white transform hover:scale-105 active:scale-95 transition-transform cursor-pointer">
@@ -188,15 +160,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 </div>
             )}
 
-            {/* Rest of Students List - ✅ 4. تحويل العرض إلى شبكة (Grid) */}
             {restOfStudents.length > 0 && (
                 <div className="px-4">
                     <h3 className="font-black text-slate-700 mb-4 text-sm flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-indigo-500" />
                         باقي الفرسان
                     </h3>
-                    
-                    {/* هنا التغيير: Grid بدلاً من قائمة عمودية */}
                     <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pb-8">
                         {restOfStudents.map((student, index) => (
                             <div 
@@ -204,17 +173,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                 onClick={() => handleAddPoints(student)}
                                 className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col items-center text-center relative overflow-hidden cursor-pointer active:scale-95 transition-all hover:shadow-md hover:border-indigo-200"
                             >
-                                {/* Rank Badge (Absolute) */}
                                 <div className="absolute top-2 right-2 bg-indigo-50 text-indigo-600 font-bold w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shadow-sm border border-indigo-100">
                                     {index + 4}
                                 </div>
-
-                                {/* Avatar */}
                                 <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-slate-50 overflow-hidden mb-2 mt-1">
                                     <StudentAvatar gender={student.gender} className="w-full h-full" />
                                 </div>
-
-                                {/* Info */}
                                 <div className="w-full">
                                     <h3 className="font-black text-slate-800 text-xs truncate w-full mb-1">{student.name.split(' ')[0]} {student.name.split(' ')[1]?.charAt(0)}</h3>
                                     <div className="flex items-center justify-center gap-1 bg-slate-50 rounded-lg py-1 px-2 mx-auto w-fit">
@@ -224,8 +188,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                         </p>
                                     </div>
                                 </div>
-
-                                {/* Flash Effect on Click */}
                                 <div className="absolute inset-0 bg-yellow-400 opacity-0 active:opacity-10 transition-opacity pointer-events-none"></div>
                             </div>
                         ))}
