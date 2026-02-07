@@ -14,19 +14,8 @@ interface AttendanceTrackerProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-// ✅✅✅ الحل الجذري: استيراد الصور برمجياً من المجلد الرئيسي ✅✅✅
-// تأكد أن الصور boy.png و girl.png موجودة في مجلد assets الموجود بجانب مجلد components
-import boyImage from '../assets/boy.png';
-import girlImage from '../assets/girl.png';
-
-interface AttendanceTrackerProps {
-  students: Student[];
-  classes: string[];
-  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
-}
-
 // ============================================================================
-// ✅ استخدام الصور المستوردة (Imports)
+// ✅ قسم الأفاتار (نفس منطق تطبيق الخريطة: الرابط يبدأ من / الذي يمثل public)
 // ============================================================================
 
 // 1. مكون أفاتار الطالب (الفتى)
@@ -34,15 +23,23 @@ const OmaniBoyAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
       
-      {/* استخدام المتغير المستورد مباشرة */}
+      {/* الرابط يبدأ من الجذر (public) -> ثم المجلد assets */}
       <img 
-        src={boyImage}  
+        src="/assets/boy-avatar.png"  
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
         onError={(e) => {
-          (e.target as HTMLImageElement).style.display = 'none';
-          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#cbd5e1';
+          const target = e.target as HTMLImageElement;
+          // حيلة ذكية: إذا فشل الاسم العادي، نجرب الاسم المزدوج تلقائياً
+          if (!target.getAttribute('data-tried-fix')) {
+             target.setAttribute('data-tried-fix', 'true');
+             target.src = "/assets/boy-avatar.png.png"; // المحاولة الثانية
+          } else {
+             // إذا فشل الاثنان، نخفي الصورة
+             target.style.display = 'none';
+             target.parentElement!.style.backgroundColor = '#cbd5e1';
+          }
         }}
       />
   </div>
@@ -53,15 +50,21 @@ const OmaniGirlAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
       
-      {/* استخدام المتغير المستورد مباشرة */}
       <img 
-        src={girlImage} 
+        src="/assets/girl-avatar.png" 
         alt="طالبة" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
         onError={(e) => {
-          (e.target as HTMLImageElement).style.display = 'none';
-          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#e2e8f0';
+          const target = e.target as HTMLImageElement;
+          // حيلة ذكية: إذا فشل الاسم العادي، نجرب الاسم المزدوج تلقائياً
+          if (!target.getAttribute('data-tried-fix')) {
+             target.setAttribute('data-tried-fix', 'true');
+             target.src = "/assets/girl-avatar.png.png"; // المحاولة الثانية
+          } else {
+             target.style.display = 'none';
+             target.parentElement!.style.backgroundColor = '#e2e8f0';
+          }
         }}
       />
   </div>
