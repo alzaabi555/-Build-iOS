@@ -138,6 +138,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return 'هـ';
   };
 
+  const getSymbolColor = (score: number) => {
+    const percentage = (score / gradingSettings.totalScore) * 100;
+    if (percentage >= 90) return 'text-emerald-600 bg-emerald-50';
+    if (percentage >= 80) return 'text-blue-600 bg-blue-50';
+    if (percentage >= 65) return 'text-amber-600 bg-amber-50';
+    if (percentage >= 50) return 'text-orange-600 bg-orange-50';
+    return 'text-rose-600 bg-rose-50';
+  };
+
   const getSemesterGrades = (student: Student, sem: '1' | '2') => {
     if (!student || !Array.isArray(student.grades)) return [];
     return student.grades.filter(g => {
@@ -861,6 +870,12 @@ const GradeBook: React.FC<GradeBookProps> = ({
               const currentGrade = getStudentGradeForActiveTool(student);
               const numericCurrent = currentGrade ? parseFloat(currentGrade) : 0;
 
+              // ✅ حساب المجموع الكلي والتقدير
+              const semGrades = getSemesterGrades(student, currentSemester);
+              const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
+              const symbol = getGradeSymbol(totalScore);
+              const symbolColor = getSymbolColor(totalScore);
+
               const gradeColorClass = !currentGrade
                 ? 'border-slate-200 bg-white text-slate-800'
                 : numericCurrent >= 9
@@ -875,7 +890,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
                   className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all duration-200 relative"
                   onClick={() => setShowAddGrade({ student })}
                 >
-                  {/* ✅ هنا التعديل: استخدام الكومبوننت الجديد */}
                   <StudentAvatar 
                     gender={student.gender}
                     className="w-16 h-16 mb-3 border-4 border-white shadow-sm"
@@ -885,26 +899,40 @@ const GradeBook: React.FC<GradeBookProps> = ({
                     {student.name}
                   </h3>
 
+                  {/* ✅ عرض المجموع والتقدير بشكل واضح */}
+                  <div className="flex items-center justify-center gap-2 mb-2 w-full bg-slate-50 py-2 rounded-xl border border-slate-100">
+                      <span className={`text-lg font-black ${symbolColor.replace('bg-', 'text-').replace('50', '600')}`}>
+                          {totalScore}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${symbolColor}`}>
+                          {symbol}
+                      </span>
+                  </div>
+
+                  {/* حقل الإدخال للرصد السريع (يظهر فقط إذا تم اختيار أداة) */}
                   <div
                     className="w-full relative mt-auto"
                     onClick={e => e.stopPropagation()}
                   >
-                    <input
-                      type="tel"
-                      maxLength={3}
-                      value={currentGrade}
-                      onChange={e => handleGradeChange(student.id, e.target.value)}
-                      placeholder="-"
-                      className={`w-full h-12 rounded-2xl text-center font-black text-xl outline-none border-2 transition-all shadow-inner focus:ring-4 focus:ring-opacity-20 focus:ring-blue-400 ${gradeColorClass}`}
-                      disabled={!activeToolId}
-                    />
-                    <span className="absolute -bottom-5 left-0 right-0 text-center text-[9px] font-bold text-slate-400">
-                      {!activeToolId
-                        ? 'اختر أداة'
-                        : currentGrade
-                        ? 'تم الرصد (اضغط لعرض التفاصيل)'
-                        : 'أدخل الدرجة (اضغط لعرض السجل)'}
-                    </span>
+                    {activeToolId ? (
+                        <>
+                            <input
+                              type="tel"
+                              maxLength={3}
+                              value={currentGrade}
+                              onChange={e => handleGradeChange(student.id, e.target.value)}
+                              placeholder="-"
+                              className={`w-full h-10 rounded-xl text-center font-black text-lg outline-none border-2 transition-all shadow-inner focus:ring-2 focus:ring-opacity-20 focus:ring-blue-400 ${gradeColorClass}`}
+                            />
+                            <span className="block text-center text-[9px] font-bold text-slate-400 mt-1">
+                                رصد: {tools.find(t => t.id === activeToolId)?.name}
+                            </span>
+                        </>
+                    ) : (
+                        <p className="text-center text-[9px] font-bold text-slate-300 py-2">
+                            اختر أداة للرصد
+                        </p>
+                    )}
                   </div>
                 </div>
               );
@@ -918,7 +946,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
         )}
       </div>
 
-      {/* مودال توزيع الدرجات */}
+      {/* باقي المودالات كما هي (توزيع الدرجات، الأدوات، الرصد الجماعي، تفاصيل الطالب) */}
       <Modal
         isOpen={showDistModal}
         onClose={() => setShowDistModal(false)}
@@ -1004,7 +1032,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </Modal>
 
-      {/* مودال إدارة الأدوات */}
       <Modal
         isOpen={showToolsManager}
         onClose={() => {
@@ -1129,7 +1156,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </Modal>
 
-      {/* مودال الرصد الجماعي */}
       <Modal
         isOpen={!!bulkFillTool}
         onClose={() => {
@@ -1168,7 +1194,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
         )}
       </Modal>
 
-      {/* مودال سجل درجات طالب (منطق قديم) */}
       <Modal
         isOpen={!!showAddGrade}
         onClose={() => {
@@ -1196,7 +1221,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
               </button>
             </div>
 
-            {/* اختيار أداة داخل المودال */}
             <div className="mb-3">
               <label className="text-[11px] font-bold text-slate-500 mb-1 block">
                 أداة التقويم
@@ -1215,7 +1239,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
               </select>
             </div>
 
-            {/* إدخال الدرجة */}
             <div className="mb-3">
               <label className="text-[11px] font-bold text-slate-500 mb-1 block">
                 الدرجة
@@ -1236,7 +1259,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
               حفظ الدرجة
             </button>
 
-            {/* قائمة درجات الطالب في هذا الفصل */}
             <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
               {getSemesterGrades(showAddGrade.student, currentSemester).map(
                 g => (
