@@ -15,22 +15,23 @@ interface AttendanceTrackerProps {
 }
 
 // ============================================================================
-// ✅ استدعاء صور الأفاتار من مجلد assets
+// ✅ قسم الأفاتار (بعد حل تعارض المجلدات وتصحيح الأسماء)
+// المسار الجديد: public/avatars/boy.png
 // ============================================================================
 
-// 1. مكون أفاتار الطالب (الفتى)
+// 1. مكون أفاتار الطالب (الولد)
 const OmaniBoyAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      {/* خلفية دائرية خفيفة */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
       
-      {/* ✅ استدعاء الصورة من الجذر مباشرة (public/assets) */}
+      {/* ✅ الرابط الجديد: مجلد avatars واسم قصير boy.png */}
       <img 
-        src="/assets/boy-avatar.png"  
+        src="/avatars/boy.png"  
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
         onError={(e) => {
+          // إذا فشل التحميل، نعرض خلفية رمادية ونخفي الصورة المكسورة
           (e.target as HTMLImageElement).style.display = 'none';
           (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#cbd5e1';
         }}
@@ -38,15 +39,14 @@ const OmaniBoyAvatarSVG = () => (
   </div>
 );
 
-// 2. مكون أفاتار الطالبة (الفتاة)
+// 2. مكون أفاتار الطالبة (البنت)
 const OmaniGirlAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      {/* خلفية دائرية خفيفة */}
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
       
-      {/* ✅ استدعاء الصورة من الجذر مباشرة (public/assets) */}
+      {/* ✅ الرابط الجديد: مجلد avatars واسم قصير girl.png */}
       <img 
-        src="/assets/girl-avatar.png" 
+        src="/avatars/girl.png" 
         alt="طالبة" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
@@ -60,9 +60,7 @@ const OmaniGirlAvatarSVG = () => (
 
 // دالة تحديد الأفاتار المناسب
 const getStudentAvatar = (student: Student) => {
-    // إذا كان للطالب صورة خاصة، اعرضها
     if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
-    // وإلا اعرض الصورة الافتراضية من المجلد حسب الجنس
     return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
 };
 
