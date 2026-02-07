@@ -7,53 +7,14 @@ import Modal from './Modal';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+// ✅ استيراد الأفاتار من الملف المنفصل
+import { StudentAvatar } from './StudentAvatar';
 
 interface AttendanceTrackerProps {
   students: Student[];
   classes: string[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
-
-// 1. مكون أفاتار الطالب (الفتى)
-const OmaniBoyAvatarSVG = () => (
-  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
-      <img 
-        src="/assets/boy-avatar.png"  // ✅ الشرطة المائلة في البداية تعني "من جذر المشروع"
-        alt="طالب" 
-        className="w-full h-full object-cover transform scale-110 translate-y-1"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.parentElement!.style.backgroundColor = '#cbd5e1';
-        }}
-      />
-  </div>
-);
-// 2. مكون أفاتار الطالبة (الفتاة)
-const OmaniGirlAvatarSVG = () => (
-  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
-      <img 
-        src="/assets/girl-avatar.png"  // ✅ الشرطة المائلة في البداية
-        alt="طالبة" 
-        className="w-full h-full object-cover transform scale-110 translate-y-1"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.parentElement!.style.backgroundColor = '#e2e8f0';
-        }}
-      />
-  </div>
-);
-
-// دالة تحديد الأفاتار المناسب
-const getStudentAvatar = (student: Student) => {
-    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
-    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
-};
-
-// ============================================================================
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
   const today = new Date();
@@ -331,11 +292,12 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                 }`}>
                                     {/* Upper Part: Image & Name */}
                                     <div className="p-4 flex flex-col items-center w-full">
-                                        <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
-                                             {/* ✅ استخدام الدالة الصحيحة */}
-                                             {getStudentAvatar(student)}
-                                        </div>
-                                        <h3 className="font-bold text-slate-900 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
+                                        {/* ✅ استخدام الكومبوننت الجديد */}
+                                        <StudentAvatar 
+                                            gender={student.gender}
+                                            className="w-16 h-16"
+                                        />
+                                        <h3 className="font-bold text-slate-900 text-sm text-center line-clamp-1 w-full mt-3">{student.name}</h3>
                                         <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full mt-1 font-bold">{student.classes[0]}</span>
                                     </div>
 
