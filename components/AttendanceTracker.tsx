@@ -14,60 +14,64 @@ interface AttendanceTrackerProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-// ============================================================================
-// ✅ قسم الأفاتار (نفس منطق تطبيق الخريطة: الرابط يبدأ من / الذي يمثل public)
-// ============================================================================
-
 // 1. مكون أفاتار الطالب (الفتى)
-const OmaniBoyAvatarSVG = () => (
-  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
-      
-      <img 
-        // نبدأ بالمسار المطلق لأنه القياسي في الويب
-        src="/assets/boy-avatar.png"  
-        alt="طالب" 
-        className="w-full h-full object-cover transform scale-110 translate-y-1"
-        loading="lazy"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          // إذا فشل المسار المطلق (يحدث غالباً في تطبيقات الموبايل)، نجرب المسار النسبي
-          if (!target.getAttribute('data-tried-fix')) {
-             target.setAttribute('data-tried-fix', 'true');
-             target.src = "assets/boy-avatar.png"; // إزالة الشرطة المائلة الأولى
-          } else {
-             // إذا فشل الخياران، نظهر لوناً احتياطياً بدلاً من أيقونة الصورة المكسورة
-             target.style.display = 'none';
-             target.parentElement!.style.backgroundColor = '#cbd5e1';
-          }
-        }}
-      />
-  </div>
-);
+const OmaniBoyAvatarSVG = () => {
+  // هذا السطر يضمن الحصول على المسار الصحيح مهما كانت بيئة التشغيل
+  const imagePath = `${import.meta.env.BASE_URL}assets/boy-avatar.png`.replace('//', '/');
+
+  return (
+    <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
+        
+        <img 
+          src={imagePath}  
+          alt="طالب" 
+          className="w-full h-full object-cover transform scale-110 translate-y-1"
+          loading="lazy"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            // محاولة أخيرة بدون أي مسارات إضافية إذا فشل المسار المركب
+            if (!target.getAttribute('data-tried-fix')) {
+               target.setAttribute('data-tried-fix', 'true');
+               target.src = "assets/boy-avatar.png"; 
+            } else {
+               target.style.display = 'none';
+               target.parentElement!.style.backgroundColor = '#cbd5e1';
+            }
+          }}
+        />
+    </div>
+  );
+};
 
 // 2. مكون أفاتار الطالبة (الفتاة)
-const OmaniGirlAvatarSVG = () => (
-  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
-      
-      <img 
-        src="/assets/girl-avatar.png" 
-        alt="طالبة" 
-        className="w-full h-full object-cover transform scale-110 translate-y-1"
-        loading="lazy"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          if (!target.getAttribute('data-tried-fix')) {
-             target.setAttribute('data-tried-fix', 'true');
-             target.src = "assets/girl-avatar.png"; // إزالة الشرطة المائلة الأولى
-          } else {
-             target.style.display = 'none';
-             target.parentElement!.style.backgroundColor = '#e2e8f0';
-          }
-        }}
-      />
-  </div>
-);
+const OmaniGirlAvatarSVG = () => {
+  const imagePath = `${import.meta.env.BASE_URL}assets/girl-avatar.png`.replace('//', '/');
+
+  return (
+    <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
+        
+        <img 
+          src={imagePath} 
+          alt="طالبة" 
+          className="w-full h-full object-cover transform scale-110 translate-y-1"
+          loading="lazy"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (!target.getAttribute('data-tried-fix')) {
+               target.setAttribute('data-tried-fix', 'true');
+               target.src = "assets/girl-avatar.png";
+            } else {
+               target.style.display = 'none';
+               target.parentElement!.style.backgroundColor = '#e2e8f0';
+            }
+          }}
+        />
+    </div>
+  );
+};
+
 
 // دالة تحديد الأفاتار المناسب
 const getStudentAvatar = (student: Student) => {
