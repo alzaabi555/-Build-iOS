@@ -15,20 +15,22 @@ interface AttendanceTrackerProps {
 }
 
 // ============================================================================
-// ✅ استدعاء صور الأفاتار من مجلد public/assets
+// ✅ قسم الأفاتار (يعمل مباشرة مع مجلد assets الموجود في الجذر)
 // ============================================================================
 
-// 1. مكون أفاتار الطالب (الفتى)
+// 1. مكون أفاتار الطالب (الولد)
 const OmaniBoyAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
-      {/* ✅ المسار الصحيح للصور في public/assets */}
+      
+      {/* الرابط يبدأ بـ /assets مباشرة لأن public هو الجذر */}
       <img 
         src="/assets/boy-avatar.png"  
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         loading="lazy"
         onError={(e) => {
+          // إذا لم يجد الصورة، يخفيها ويظهر خلفية رمادية
           (e.target as HTMLImageElement).style.display = 'none';
           (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#cbd5e1';
         }}
@@ -36,11 +38,11 @@ const OmaniBoyAvatarSVG = () => (
   </div>
 );
 
-// 2. مكون أفاتار الطالبة (الفتاة)
+// 2. مكون أفاتار الطالبة (البنت)
 const OmaniGirlAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
-      {/* ✅ المسار الصحيح للصور في public/assets */}
+      
       <img 
         src="/assets/girl-avatar.png" 
         alt="طالبة" 
@@ -54,7 +56,7 @@ const OmaniGirlAvatarSVG = () => (
   </div>
 );
 
-// دالة تحديد الأفاتار المناسب
+// دالة اختيار الصورة
 const getStudentAvatar = (student: Student) => {
     if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
     return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
@@ -71,15 +73,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
-  // شريط التواريخ (Week View)
+  // شريط الأيام
   const [weekOffset, setWeekOffset] = useState(0);
   
   const weekDates = useMemo(() => {
       const dates = [];
       const startOfWeek = new Date();
-      startOfWeek.setDate(today.getDate() - (today.getDay()) + (weekOffset * 7)); // Start from Sunday
+      startOfWeek.setDate(today.getDate() - (today.getDay()) + (weekOffset * 7)); 
       
-      for (let i = 0; i < 5; i++) { // Sunday to Thursday
+      for (let i = 0; i < 5; i++) { 
           const d = new Date(startOfWeek);
           d.setDate(startOfWeek.getDate() + i);
           dates.push(d);
@@ -232,7 +234,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   return (
     <div className="flex flex-col h-full text-slate-800 relative animate-in fade-in duration-500">
         
-        {/* ================= FIXED HEADER ================= */}
+        {/* ================= HEADER (Fixed) ================= */}
         <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             
             <div className="flex justify-between items-center mb-6 mt-2 gap-3">
@@ -259,6 +261,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 </button>
             </div>
 
+            {/* Calendar Strip */}
             <div className="flex items-center justify-between gap-1 mb-4 bg-white/10 p-2 rounded-2xl border border-white/10 shadow-inner">
                 <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
                 <div className="flex flex-1 justify-between gap-1 text-center">
@@ -281,6 +284,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
             </div>
 
+            {/* Filters */}
             <div className="space-y-2 mb-1 px-1">
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                     {availableGrades.length > 0 && (
@@ -338,7 +342,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                     {/* Upper Part: Image & Name */}
                                     <div className="p-4 flex flex-col items-center w-full">
                                         <div className="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 overflow-hidden">
-                                             {/* ✅ تم تصحيح هذا السطر: استخدام دالة getStudentAvatar بدلاً من img القديم */}
+                                             {/* ✅ استخدام الأفاتار المخصص */}
                                              {getStudentAvatar(student)}
                                         </div>
                                         <h3 className="font-bold text-slate-900 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
