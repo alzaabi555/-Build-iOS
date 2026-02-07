@@ -14,13 +14,12 @@ interface AttendanceTrackerProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-// ✅ الحل الآمن والبسيط (بدون استخدام import.meta لتجنب الشاشة البيضاء)
-
+// 1. مكون أفاتار الطالب (الفتى)
 const OmaniBoyAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
       <img 
-        src="assets/boy-avatar.png"  // مسار نسبي مباشر بدون شرطة مائلة في البداية
+        src="/assets/boy-avatar.png"  // ✅ الشرطة المائلة في البداية تعني "من جذر المشروع"
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         onError={(e) => {
@@ -31,12 +30,12 @@ const OmaniBoyAvatarSVG = () => (
       />
   </div>
 );
-
+// 2. مكون أفاتار الطالبة (الفتاة)
 const OmaniGirlAvatarSVG = () => (
   <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
       <img 
-        src="assets/girl-avatar.png" // مسار نسبي مباشر
+        src="/assets/girl-avatar.png"  // ✅ الشرطة المائلة في البداية
         alt="طالبة" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
         onError={(e) => {
