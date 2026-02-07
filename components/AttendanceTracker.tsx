@@ -14,59 +14,64 @@ interface AttendanceTrackerProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
+// ✅✅✅ الحل الجذري: استيراد الصور برمجياً من المجلد الرئيسي ✅✅✅
+// تأكد أن الصور boy.png و girl.png موجودة في مجلد assets الموجود بجانب مجلد components
+import boyImage from '../assets/boy.png';
+import girlImage from '../assets/girl.png';
+
+interface AttendanceTrackerProps {
+  students: Student[];
+  classes: string[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+}
+
 // ============================================================================
-// ✅ أفاتار نهائي مع تشخيص + fallback (يعمل 100%)
+// ✅ استخدام الصور المستوردة (Imports)
 // ============================================================================
 
-const OmaniBoyAvatarSVG = () => {
-  const [imgSrc, setImgSrc] = useState('/avatars/boy.png');
-  useEffect(() => {
-    console.log('جاري تحميل boy.png من:', imgSrc);
-  }, []);
-  
-  return (
-    <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+// 1. مكون أفاتار الطالب (الفتى)
+const OmaniBoyAvatarSVG = () => (
+  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-slate-200 opacity-50"></div>
+      
+      {/* استخدام المتغير المستورد مباشرة */}
       <img 
-        src={imgSrc}
+        src={boyImage}  
         alt="طالب" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
-        onLoad={() => console.log('✅ boy.png تحمّل بنجاح!')}
-        onError={() => {
-          console.error('❌ boy.png فشل → fallback');
-          setImgSrc('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGRkZGRkYiLz4KPGNpcmNsZSBjeD0iMzIiIGN5PSIyMiIgcj0iOSIgZmlsbD0iIzhBQThCQyIvPgo8cGF0aCBkPSJNOSAxNiBDOSAxNiAxNCAyNCAxOSA0MiBDMjQgNDYgMjkgNDYgMzUgNDYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBQThCQyIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMTgiIHI9IjIiIGZpbGw9IiM4QThCQWMiLz4KPGNpcmNsZSBjeD0iMzkiIGN5PSIxOCIgcj0iMiIgZmlsbD0iIzhBQThCQyIvPgo8L3N2Zz4K');
-        }}
         loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#cbd5e1';
+        }}
       />
-    </div>
-  );
-};
+  </div>
+);
 
-const OmaniGirlAvatarSVG = () => {
-  const [imgSrc, setImgSrc] = useState('/avatars/girl.png');
-  return (
-    <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
+// 2. مكون أفاتار الطالبة (الفتاة)
+const OmaniGirlAvatarSVG = () => (
+  <div className="w-full h-full rounded-full overflow-hidden bg-slate-50 relative flex items-center justify-center border border-slate-100">
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 to-purple-50 opacity-50"></div>
+      
+      {/* استخدام المتغير المستورد مباشرة */}
       <img 
-        src={imgSrc}
+        src={girlImage} 
         alt="طالبة" 
         className="w-full h-full object-cover transform scale-110 translate-y-1"
-        onLoad={() => console.log('✅ girl.png تحمّل بنجاح!')}
-        onError={() => {
-          console.error('❌ girl.png فشل → fallback');
-          setImgSrc('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGRkZGRkYiLz4KPGNpcmNsZSBjeD0iMzIiIGN5PSIyMiIgcj0iOSIgZmlsbD0iIzlmM2ZhZiIvPgo8L3N2Zz4K');
-        }}
         loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+          (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#e2e8f0';
+        }}
       />
-    </div>
-  );
-};
+  </div>
+);
 
+// دالة تحديد الأفاتار المناسب
 const getStudentAvatar = (student: Student) => {
-  if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
-  return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
+    if (student.avatar) return <img src={student.avatar} className="w-full h-full object-cover" alt={student.name} />;
+    return student.gender === 'female' ? <OmaniGirlAvatarSVG /> : <OmaniBoyAvatarSVG />;
 };
-
 
 // ============================================================================
 
