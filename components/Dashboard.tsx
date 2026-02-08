@@ -11,10 +11,9 @@ import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
-// ✅ استيراد صوت الجرس محلياً
 import alarmSound from '../assets/alarm.mp3';
 
-// 1. رسمة برمجية افتراضية (SVG) لتجنب الشاشة البيضاء نهائياً
+// رسمة افتراضية
 const DefaultAvatarSVG = ({ gender }: { gender: string }) => (
     <svg viewBox="0 0 100 100" className="w-full h-full bg-indigo-50" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="40" r="15" fill={gender === 'female' ? '#f472b6' : '#60a5fa'} opacity="0.8"/>
@@ -39,7 +38,6 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
-// ✅ التصحيح هنا: تعريف المتغير مرة واحدة فقط
 const BELL_SOUND_URL = alarmSound;
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -55,7 +53,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     currentSemester,
     onSemesterChange
 }) => {
-    // حماية ضد البيانات المفقودة
     if (!teacherInfo) return <div className="flex items-center justify-center h-screen">جاري التحميل...</div>;
 
     const { classes } = useApp();
@@ -117,28 +114,26 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    const getImg = (path: string) => {
-        if (!path) return '';
-        return path.startsWith('/') ? path : `/${path}`;
-    };
-
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && avatar.length > 50) return avatar;
         return null;
     };
 
+    // ✅ 2. استرجاع دالة أيقونات المواد
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
         const name = subjectName.trim().toLowerCase();
-        if (name.match(/اسلام|قرآن|دين/)) return <span className="text-2xl">🕌</span>;
-        if (name.match(/عربي|لغتي/)) return <span className="text-2xl">📜</span>;
-        if (name.match(/رياضيات|حساب/)) return <span className="text-2xl">📐</span>;
-        if (name.match(/علوم|فيزياء|كيمياء/)) return <span className="text-2xl">🧪</span>;
+        if (name.match(/اسلام|قرآن|دين|توحيد|فقه/)) return <span className="text-2xl">🕌</span>;
+        if (name.match(/عربي|لغتي|نحو|أدب/)) return <span className="text-2xl">📜</span>;
+        if (name.match(/رياضيات|حساب|جبر|هندسة/)) return <span className="text-2xl">📐</span>;
+        if (name.match(/علوم|فيزياء|كيمياء|أحياء/)) return <span className="text-2xl">🧪</span>;
         if (name.match(/انجليزي|english/)) return <span className="text-2xl">🅰️</span>;
-        if (name.match(/حاسوب|تقنية/)) return <span className="text-2xl">💻</span>;
-        if (name.match(/اجتماعيات|تاريخ/)) return <span className="text-2xl">🌍</span>;
+        if (name.match(/حاسوب|تقنية|رقمية/)) return <span className="text-2xl">💻</span>;
+        if (name.match(/اجتماعيات|تاريخ|جغرافيا/)) return <span className="text-2xl">🌍</span>;
         if (name.match(/رياضة|بدنية/)) return <span className="text-2xl">⚽</span>;
-        if (name.match(/فنون|رسم/)) return <span className="text-2xl">🎨</span>;
+        if (name.match(/فنون|رسم|تربية فنية/)) return <span className="text-2xl">🎨</span>;
+        if (name.match(/تفكير|ناقد/)) return <span className="text-2xl">🧠</span>;
+        if (name.match(/مهارات|حياتية/)) return <span className="text-2xl">🤝</span>;
         return <span className="text-xl opacity-50">📚</span>;
     };
 
@@ -163,22 +158,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         setPeriodTimes(tempPeriodTimes);
         onUpdateSchedule(tempSchedule);
         setShowScheduleModal(false);
-    };
-
-    const updateTempTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
-        const newTimes = [...tempPeriodTimes];
-        if(newTimes[index]) {
-            newTimes[index] = { ...newTimes[index], [field]: value };
-            setTempPeriodTimes(newTimes);
-        }
-    };
-
-    const updateTempClass = (dayIdx: number, periodIdx: number, value: string) => {
-        const newSchedule = [...tempSchedule];
-        if(newSchedule[dayIdx]?.periods) {
-            newSchedule[dayIdx].periods[periodIdx] = value;
-            setTempSchedule(newSchedule);
-        }
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
@@ -314,80 +293,83 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
-            {/* 🟦 Header */}
-            {/* ✅ تم حذف rounded-b ليصبح مستقيماً */}
-            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-4">
-                        {/* صورة المعلم وزر التعديل */}
+            {/* ✅ 1. الهيدر المكبر (pt-16 pb-12 px-6) */}
+            <header className="bg-[#446A8D] text-white pt-16 pb-12 px-6 shadow-xl relative z-20 -mx-4 -mt-4">
+                <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-5">
                         <div className="relative group">
-                            <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-inner">
+                            <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-inner transition-transform hover:scale-105">
                                 {getDisplayImage(teacherInfo.avatar, teacherInfo.gender) ? (
                                     <img src={teacherInfo.avatar} className="w-full h-full object-cover" alt="Teacher" onError={(e) => e.currentTarget.style.display='none'} />
                                 ) : <DefaultAvatarSVG gender={teacherInfo.gender || 'male'} />}
                             </div>
                             <button 
                                 onClick={() => setShowEditModal(true)} 
-                                className="absolute -bottom-2 -right-2 bg-white text-[#1e3a8a] p-1.5 rounded-full shadow-lg border-2 border-[#1e3a8a] hover:scale-110 transition-transform"
+                                className="absolute -bottom-2 -right-2 bg-white text-[#446A8D] p-2 rounded-full shadow-lg border-2 border-[#446A8D] hover:scale-110 transition-transform"
                                 title="تعديل البيانات"
                             >
-                                <Edit3 size={12} strokeWidth={3} />
+                                <Edit3 size={14} strokeWidth={3} />
                             </button>
                         </div>
 
-                        <div>
-                            <h1 className="text-xl font-black tracking-wide">{teacherInfo.name || 'مرحباً بك'}</h1>
-                            <p className="text-blue-200 text-xs font-bold opacity-90 flex items-center gap-1">
-                                <School size={12} /> {teacherInfo.school || 'المدرسة'}
-                            </p>
-                            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-lg mt-1 inline-block border border-white/10">
-                                {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}
-                            </span>
+                        <div className="flex flex-col gap-1">
+                            <h1 className="text-3xl font-black tracking-wide">{teacherInfo.name || 'مرحباً بك'}</h1>
+                            <div className="flex items-center gap-2 text-blue-100/90">
+                                <p className="text-sm font-bold flex items-center gap-1">
+                                    <School size={14} /> {teacherInfo.school || 'المدرسة'}
+                                </p>
+                                <span className="text-[10px] bg-white/20 px-3 py-1 rounded-full font-bold border border-white/10">
+                                    {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     
-                    {/* أزرار الهيدر */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <div className="relative">
-                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center transition-all ${showSettingsDropdown ? 'bg-white text-[#1e3a8a]' : ''}`}>
-                                <Settings size={20} />
+                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center transition-all ${showSettingsDropdown ? 'bg-white text-[#446A8D]' : ''}`}>
+                                <Settings size={24} />
                             </button>
                             {showSettingsDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
-                                    <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden text-slate-800 animate-in zoom-in-95">
-                                        <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right border-b border-slate-50">
-                                            <User size={16} className="text-indigo-600"/> <span className="text-xs font-bold">الهوية</span>
+                                    <div className="absolute left-0 top-full mt-3 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden text-slate-800 animate-in zoom-in-95 origin-top-left">
+                                        <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className="flex items-center gap-3 px-4 py-4 hover:bg-slate-50 w-full text-right border-b border-slate-50 transition-colors">
+                                            <div className="p-2 bg-indigo-50 rounded-lg"><User size={18} className="text-indigo-600"/></div>
+                                            <span className="text-sm font-bold text-slate-700">تعديل الهوية</span>
                                         </button>
-                                        <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right border-b border-slate-50">
-                                            <AlarmClock size={16} className="text-rose-600"/> 
+                                        <button onClick={onToggleNotifications} className="flex items-center gap-3 px-4 py-4 hover:bg-slate-50 w-full text-right border-b border-slate-50 transition-colors">
+                                            <div className={`p-2 rounded-lg ${notificationsEnabled ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                                                <AlarmClock size={18} className={notificationsEnabled ? 'text-emerald-600' : 'text-rose-600'}/> 
+                                            </div>
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-bold">التنبيهات</span>
-                                                <span className="text-[9px] text-slate-400">{notificationsEnabled ? 'مفعل' : 'معطل'}</span>
+                                                <span className="text-sm font-bold text-slate-700">التنبيهات</span>
+                                                <span className={`text-[10px] font-bold ${notificationsEnabled ? 'text-emerald-500' : 'text-slate-400'}`}>{notificationsEnabled ? 'مفعل' : 'معطل'}</span>
                                             </div>
                                         </button>
-                                        <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right">
-                                            <PlayCircle size={16} className="text-emerald-600"/> <span className="text-xs font-bold">تجربة الجرس</span>
+                                        <button onClick={handleTestNotification} className="flex items-center gap-3 px-4 py-4 hover:bg-slate-50 w-full text-right transition-colors">
+                                            <div className="p-2 bg-amber-50 rounded-lg"><PlayCircle size={18} className="text-amber-600"/></div>
+                                            <span className="text-sm font-bold text-slate-700">تجربة الجرس</span>
                                         </button>
-                                        <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-right border-t border-slate-50">
-                                            <Download size={16} className="text-emerald-600"/> 
-                                            <span className="text-xs font-bold">استيراد جدول الحصص</span>
-                                            {isImportingSchedule && <Loader2 size={14} className="ml-auto animate-spin" />}
+                                        <button onClick={() => scheduleFileInputRef.current?.click()} className="flex items-center gap-3 px-4 py-4 hover:bg-slate-50 w-full text-right border-t border-slate-50 bg-slate-50/50">
+                                            <div className="p-2 bg-blue-50 rounded-lg"><Download size={18} className="text-blue-600"/></div>
+                                            <span className="text-sm font-bold text-slate-700">استيراد الجدول</span>
+                                            {isImportingSchedule && <Loader2 size={16} className="ml-auto animate-spin text-blue-600" />}
                                         </button>
                                         <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
                                     </div>
                                 </>
                             )}
                         </div>
-                        <button onClick={onToggleNotifications} className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md border transition-all ${notificationsEnabled ? 'bg-amber-400/20 border-amber-400/50 text-amber-300' : 'bg-white/10 border-white/10 text-white/60'}`}>
-                            {notificationsEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                        <button onClick={onToggleNotifications} className={`w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border transition-all ${notificationsEnabled ? 'bg-amber-400/20 border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-white/10 border-white/10 text-white/60 hover:bg-white/20'}`}>
+                            {notificationsEnabled ? <Bell size={24} className="animate-pulse" /> : <BellOff size={24} />}
                         </button>
                     </div>
                 </div>
             </header>
 
-            {/* الجدول اليومي */}
-            <div className="px-4">
+            {/* ✅ 3. إضافة المسافة (mt-6) ليكون الجدول أسفل الهيدر بوضوح */}
+            <div className="px-4 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
                         جدول اليوم <span className="text-xs text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">{todaySchedule.dayName}</span>
@@ -404,10 +386,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                         const isActive = isToday && checkActivePeriod(time.startTime, time.endTime);
 
                         return (
-                            <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#1e3a8a] text-white border-[#1e3a8a] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
+                            <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#446A8D] text-white border-[#446A8D] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* عرض الأيقونة إذا وجدت، وإلا عرض رقم الحصة */}
+                                        {/* ✅ تطبيق دالة الأيقونات هنا */}
                                         {getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
@@ -419,7 +401,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     </div>
                                 </div>
                                 {isActive ? (
-                                    <button onClick={() => onNavigate('attendance')} className="bg-white text-[#1e3a8a] px-3 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center gap-1 active:scale-95">
+                                    <button onClick={() => onNavigate('attendance')} className="bg-white text-[#446A8D] px-3 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center gap-1 active:scale-95">
                                         تحضير <ChevronLeft size={14} />
                                     </button>
                                 ) : (
@@ -511,7 +493,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 ))}
                             </div>
                         ) : (
-                            <div className="px-4 mt-4">
+                            <div className="space-y-4">
                                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                     {tempSchedule.map((day, idx) => (
                                         <button key={idx} onClick={() => setEditingDayIndex(idx)} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${editingDayIndex === idx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>{day.dayName}</button>
