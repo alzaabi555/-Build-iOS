@@ -302,7 +302,7 @@ const StudentList: React.FC<StudentListProps> = ({
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             
             {/* Header */}
-            <header className="shrink-0 bg-[#1e3a8a] text-white pt-8 pb-10 px-6 shadow-lg relative z-10 -mx-4 -mt-4">
+            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
@@ -391,7 +391,7 @@ const StudentList: React.FC<StudentListProps> = ({
             </header>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto px-4 pb-20 pt-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-6 pb-20 pt-6 custom-scrollbar">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
