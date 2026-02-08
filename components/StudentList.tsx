@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices, Timer, Play, Pause, RotateCcw } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices, Timer, Play, Pause, RotateCcw, CheckCircle2 } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
+// ✅ استيراد مكون الأفاتار
 import { StudentAvatar } from './StudentAvatar';
+
+// ✅ استيراد الأصوات محلياً
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
-import tadaSound from '../assets/tada.mp3';
+import tadaSound from '../assets/tada.mp3'; // هذا هو صوت التكتكة الطويل (10 ثواني)
 import alarmSound from '../assets/alarm.mp3';
 
 interface StudentListProps {
@@ -28,10 +31,11 @@ interface StudentListProps {
 const SOUNDS = {
     positive: positiveSound,
     negative: negativeSound,
-    tada: tadaSound,
+    tada: tadaSound, // تذكر: هذا الملف يحتوي على 10 ثواني تكتكة + صفارة
     alarm: alarmSound
 };
 
+// ✅ قائمة السلوكيات السلبية
 const NEGATIVE_BEHAVIORS = [
     { id: '1', title: 'إزعاج في الحصة', points: -1 },
     { id: '2', title: 'عدم حل الواجب', points: -2 },
@@ -39,6 +43,16 @@ const NEGATIVE_BEHAVIORS = [
     { id: '4', title: 'تأخر عن الحصة', points: -1 },
     { id: '5', title: 'سلوك غير لائق', points: -3 },
     { id: '6', title: 'النوم في الفصل', points: -1 },
+];
+
+// ✅ تم استرجاع قائمة السلوكيات الإيجابية لتظهر في التقارير
+const POSITIVE_BEHAVIORS = [
+    { id: 'p1', title: 'مشاركة فعالة', points: 1 },
+    { id: 'p2', title: 'إجابة صحيحة', points: 1 },
+    { id: 'p3', title: 'واجب مميز', points: 2 },
+    { id: 'p4', title: 'مساعدة الزملاء', points: 2 },
+    { id: 'p5', title: 'نظام وانضباط', points: 1 },
+    { id: 'p6', title: 'إبداع وتميز', points: 3 },
 ];
 
 const StudentList: React.FC<StudentListProps> = ({ 
@@ -71,13 +85,15 @@ const StudentList: React.FC<StudentListProps> = ({
     const [newStudentGender, setNewStudentGender] = useState<'male' | 'female'>(defaultStudentGender);
     const [newStudentClass, setNewStudentClass] = useState('');
 
+    // ✅ حالة المودال للسلوكيات (الإيجابية والسلبية)
     const [showNegativeModal, setShowNegativeModal] = useState(false);
+    const [showPositiveModal, setShowPositiveModal] = useState(false); // جديد: مودال الإيجابيات
     const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState<Student | null>(null);
 
     const [randomWinner, setRandomWinner] = useState<Student | null>(null);
     const [pickedStudentIds, setPickedStudentIds] = useState<string[]>([]);
 
-    // --- Timer Logic ---
+    // --- Timer Logic (منطق المؤقت المعدل) ---
     const [showTimerModal, setShowTimerModal] = useState(false);
     const [timerSeconds, setTimerSeconds] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -85,19 +101,33 @@ const StudentList: React.FC<StudentListProps> = ({
 
     useEffect(() => {
         let interval: any;
+        
         if (isTimerRunning && timerSeconds > 0) {
+            
+            // ✅ عند الثانية 10، نشغل صوت التكتكة الطويل (tada.mp3)
+            // سيعمل مرة واحدة ويستمر لمدة 10 ثواني حتى الصفر
+            if (timerSeconds === 10) {
+                const countdownAudio = new Audio(SOUNDS.tada);
+                countdownAudio.volume = 1.0;
+                countdownAudio.play().catch((e) => console.error("Error playing audio", e));
+            }
+
             interval = setInterval(() => {
                 setTimerSeconds((prev) => prev - 1);
             }, 1000);
+
         } else if (timerSeconds === 0 && isTimerRunning) {
+            // ✅ انتهى الوقت
             setIsTimerRunning(false);
-            const audio = new Audio(SOUNDS.alarm);
-            audio.play().catch((e) => console.log("Audio play failed", e));
+            
             if (navigator.vibrate) {
-                navigator.vibrate([500, 200, 500]);
+                navigator.vibrate([500, 200, 500]); // اهتزاز عند الصفر
             }
-            setTimeout(() => alert('⏰ انتهى الوقت!'), 100);
+
+            // تأخير بسيط لظهور الرسالة
+            setTimeout(() => alert('⏰ انتهى الوقت!'), 500);
         }
+        
         return () => clearInterval(interval);
     }, [isTimerRunning, timerSeconds]);
 
@@ -197,26 +227,44 @@ const StudentList: React.FC<StudentListProps> = ({
 
         setPickedStudentIds(prev => [...prev, winner.id]);
         setRandomWinner(winner);
-        playSound('tada');
+        
+        // ✅ تعديل هام: استخدام صوت قصير للقرعة بدلاً من tada الطويل
+        playSound('positive'); 
+        
         setShowMenu(false);
     };
 
     const handleBehavior = (student: Student, type: BehaviorType) => {
+        setSelectedStudentForBehavior(student);
         if (type === 'positive') {
-            playSound('positive');
-            const newBehavior = {
-                id: Math.random().toString(36).substr(2, 9),
-                date: new Date().toISOString(),
-                type: 'positive' as const,
-                description: 'سلوك إيجابي (تعزيز سريع)',
-                points: 1,
-                semester: currentSemester
-            };
-            onUpdateStudent({ ...student, behaviors: [newBehavior, ...(student.behaviors || [])] });
+            // ✅ الآن نفتح مودال الخيارات الإيجابية بدلاً من الإضافة المباشرة
+            setShowPositiveModal(true);
         } else {
-            setSelectedStudentForBehavior(student);
             setShowNegativeModal(true);
         }
+    };
+
+    // ✅ دالة جديدة لتأكيد السلوك الإيجابي المحدد
+    const confirmPositiveBehavior = (title: string, points: number) => {
+        if (!selectedStudentForBehavior) return;
+        
+        playSound('positive'); // صوت قصير ومفرح
+        
+        const newBehavior = {
+            id: Math.random().toString(36).substr(2, 9),
+            date: new Date().toISOString(),
+            type: 'positive' as const,
+            description: title, // سيظهر هذا الاسم في التقرير
+            points: points,
+            semester: currentSemester
+        };
+        onUpdateStudent({ 
+            ...selectedStudentForBehavior, 
+            behaviors: [newBehavior, ...(selectedStudentForBehavior.behaviors || [])] 
+        });
+        
+        setShowPositiveModal(false);
+        setSelectedStudentForBehavior(null);
     };
 
     const confirmNegativeBehavior = (title: string, points: number) => {
@@ -273,12 +321,10 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     return (
-        // ✅ التعديل هنا: overflow-hidden لمنع الصفحة كاملة من التحرك
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             
             {/* Header */}
-            {/* ✅ التعديل هنا: shrink-0 لمنع الهيدر من التقلص */}
-            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+            <header className="shrink-0 bg-[#1e3a8a] text-white pt-8 pb-10 px-6 shadow-lg relative z-10 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
@@ -366,12 +412,13 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </header>
 
-            {/* ✅ التعديل هنا: إضافة حاوية للقائمة تجعلها قابلة للتمرير بينما الهيدر ثابت */}
-           <div className="flex-1 overflow-y-auto px-4 pb-20 pt-6 custom-scrollbar">
-                <div className="px-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* ✅ التعديل هنا: pt-6 لتبدأ القائمة أسفل الهيدر بمسافة مناسبة */}
+            <div className="flex-1 overflow-y-auto px-4 pb-20 pt-6 custom-scrollbar">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
                             <div className="p-4 flex flex-col items-center w-full relative">
+                                {/* استخدام StudentAvatar بدلاً من img */}
                                 <StudentAvatar 
                                     gender={student.gender}
                                     className="w-16 h-16 mb-3"
@@ -489,6 +536,33 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </Modal>
             
+            {/* ✅ مودال السلوكيات الإيجابية (جديد) */}
+            <Modal isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} className="max-w-sm rounded-[2rem]">
+                <div className="text-center">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                            تعزيز إيجابي
+                        </h3>
+                        <button onClick={() => setShowPositiveModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4"/></button>
+                    </div>
+                    <p className="text-xs font-bold text-gray-500 mb-4">اختر نوع التميز للطالب <span className="text-indigo-600">{selectedStudentForBehavior?.name}</span></p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {POSITIVE_BEHAVIORS.map(b => (
+                            <button 
+                                key={b.id}
+                                onClick={() => confirmPositiveBehavior(b.title, b.points)}
+                                className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all flex flex-col items-center gap-1"
+                            >
+                                <span>{b.title}</span>
+                                <span className="text-[10px] bg-white px-2 py-0.5 rounded-full shadow-sm text-emerald-600">+{b.points}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
+
+            {/* مودال السلوكيات السلبية */}
             <Modal isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} className="max-w-sm rounded-[2rem]">
                 <div className="text-center">
                     <div className="flex justify-between items-center mb-4">
@@ -555,8 +629,9 @@ const StudentList: React.FC<StudentListProps> = ({
                             {randomWinner.classes[0]}
                         </p>
                         <div className="flex gap-3">
+                            {/* تم تعديل هذا الزر ليفتح المودال أيضاً إذا أردت، أو يضيف نقطة عامة. حالياً يضيف +1 عامة */}
                             <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-200 active:scale-95 transition-all">
-                                تعزيز (+1)
+                                تعزيز
                             </button>
                             <button onClick={() => setRandomWinner(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-200 transition-all">
                                 إغلاق
@@ -571,6 +646,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <h3 className="font-black text-lg mb-4 text-slate-800 flex items-center justify-center gap-2">
                         <Timer className="w-5 h-5 text-amber-500"/> المؤقت
                     </h3>
+                    
                     <div className="grid grid-cols-3 gap-2 mb-4">
                         {[1, 3, 5, 10, 15, 20].map(min => (
                             <button 
@@ -582,6 +658,7 @@ const StudentList: React.FC<StudentListProps> = ({
                             </button>
                         ))}
                     </div>
+
                     <div className="flex gap-2 items-center mb-4">
                         <input 
                             type="number" 
@@ -597,6 +674,7 @@ const StudentList: React.FC<StudentListProps> = ({
                             <Play size={16} fill="white" />
                         </button>
                     </div>
+
                     {isTimerRunning && (
                         <div className="border-t border-slate-100 pt-4 mt-2">
                             <h2 className="text-4xl font-black text-slate-800 mb-4 font-mono">{formatTime(timerSeconds)}</h2>
