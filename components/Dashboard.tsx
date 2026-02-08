@@ -316,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             
             {/* 🟦 Header */}
             {/* ✅ تم حذف rounded-b ليصبح مستقيماً */}
-            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-6 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
                         {/* صورة المعلم وزر التعديل */}
@@ -511,7 +511,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 ))}
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="px-4 mt-4">
                                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                     {tempSchedule.map((day, idx) => (
                                         <button key={idx} onClick={() => setEditingDayIndex(idx)} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${editingDayIndex === idx ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>{day.dayName}</button>

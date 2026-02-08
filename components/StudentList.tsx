@@ -367,7 +367,7 @@ const StudentList: React.FC<StudentListProps> = ({
             </header>
 
             {/* ✅ التعديل هنا: إضافة حاوية للقائمة تجعلها قابلة للتمرير بينما الهيدر ثابت */}
-            <div className="flex-1 overflow-y-auto pb-24 custom-scrollbar">
+           <div className="flex-1 overflow-y-auto px-4 pb-20 pt-6 custom-scrollbar">
                 <div className="px-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
