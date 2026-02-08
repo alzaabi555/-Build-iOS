@@ -4,6 +4,7 @@ import { Trophy, Crown, Sparkles, Star, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 // ✅ التصحيح هنا: إضافة القوسين {}
 import { StudentAvatar } from './StudentAvatar';
+import positiveSound from '../assets/positive.mp3';
 
 interface LeaderboardProps {
     students: Student[];
@@ -57,7 +58,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
     const handleAddPoints = (student: Student) => {
         if (!onUpdateStudent) return;
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
+        const audio = // بدلاً من الرابط الطويل
+const BELL_SOUND_URL = PositiveSound;');
         audio.volume = 0.5;
         audio.play().catch(() => {});
 

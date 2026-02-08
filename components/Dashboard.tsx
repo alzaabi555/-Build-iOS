@@ -11,6 +11,7 @@ import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import alarmSound from '../assets/alarm.mp3';
 
 // 1. رسمة برمجية افتراضية (SVG) لتجنب الشاشة البيضاء نهائياً
 const DefaultAvatarSVG = ({ gender }: { gender: string }) => (
@@ -37,7 +38,7 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
-const BELL_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+const BELL_SOUND_URL = const BELL_SOUND_URL = alarmSound;
 
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo,
