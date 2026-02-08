@@ -59,7 +59,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const handleAddPoints = (student: Student) => {
         if (!onUpdateStudent) return;
         const audio = // بدلاً من الرابط الطويل
-const BELL_SOUND_URL = PositiveSound;');
+const audio = new Audio(positiveSound);
         audio.volume = 0.5;
         audio.play().catch(() => {});
 
