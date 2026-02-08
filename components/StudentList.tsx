@@ -278,7 +278,7 @@ const StudentList: React.FC<StudentListProps> = ({
             
             {/* Header */}
             {/* ✅ التعديل هنا: shrink-0 لمنع الهيدر من التقلص */}
-            <header className="shrink-0 bg-[#446A8D] text-white pt-8 pb-10 px-6 shadow-lg relative z-10 -mx-4 -mt-4">
+            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">

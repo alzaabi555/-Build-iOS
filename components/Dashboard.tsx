@@ -38,7 +38,7 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
- const BELL_SOUND_URL = alarmSound;
+const BELL_SOUND_URL = const BELL_SOUND_URL = alarmSound;
 
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo,
@@ -316,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
             {/* 🟦 Header */}
-            <header className="bg-[#446A8D] text-white pt-8 pb-8 px-6  shadow-xl relative z-20 -mx-4 -mt-4 mb-2">
+            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
                         {/* صورة المعلم وزر التعديل */}
@@ -539,4 +539,3 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
-
