@@ -140,7 +140,7 @@ const UserGuide: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-50 text-slate-900 font-sans relative overflow-hidden user-guide-wrapper">
         
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 p-4 flex justify-between items-center shadow-sm z-20 shrink-0 sticky top-0">
+        <div className="bg-[#446A8D]-b border-slate-200 p-4 flex justify-between items-center shadow-sm z-20 shrink-0 sticky top-0">
             <div className="flex items-center gap-3">
                 <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600">
                     <Menu className="w-6 h-6" />
@@ -212,8 +212,7 @@ const UserGuide: React.FC = () => {
                             <ul className="list-disc pr-5 space-y-2">
                                 <li>يعمل التطبيق <strong>بدون إنترنت</strong> بشكل كامل للحفاظ على الخصوصية والسرعة.</li>
                                 <li>تم تصميم واجهة المستخدم لتكون مريحة للعين وتدعم الاستخدام السريع بيد واحدة.</li>
-                                <li>يدعم التطبيق التزامن مع بوابة الوزارة عند توفر الإنترنت برغبة المعلم.</li>
-                            </ul>
+                               
                         </div>
                     </section>
                     
@@ -273,7 +272,7 @@ const UserGuide: React.FC = () => {
                                     <p className="text-sm">الطريقة الأسرع. قم برفع ملف إكسل يحتوي على عمودي "الاسم" و"رقم الهاتف" وسيتم إضافة الفصل كاملاً.</p>
                                 </div>
                             </div>
-                            <p><strong>تلميح:</strong> يمكنك استخدام ميزة "الاختيار العشوائي" في الفصل لطرح الأسئلة بشكل عادل.</p>
+                            <p><strong>تلميح:</strong> يمكنك استخدام ميزة "القرعة  العشوائية- القرعة " في الفصل لطرح الأسئلة بشكل عادل.</p>
                         </div>
                     </section>
 
@@ -301,46 +300,13 @@ const UserGuide: React.FC = () => {
                         </div>
                         <div className="text-slate-600 leading-relaxed font-medium space-y-4">
                             <p>يتيح لك السجل إنشاء أدوات تقويم مخصصة (مثل: اختبار قصير 1، مشروع، واجبات) ورصد الدرجات بسهولة.</p>
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm text-amber-900">
-                                <strong>ميزة المصحح الإلكتروني:</strong> يمكنك تصوير ورقة اختبار الطالب وتصحيحها داخل التطبيق وحفظ صورة الورقة المصححة مع الدرجة في ملف الطالب.
+                            
                             </div>
                         </div>
                     </section>
 
-                    {/* 7. Gamification */}
-                    <section id="gamification" className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 scroll-mt-24">
-                        <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
-                            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600"><Award className="w-6 h-6" /></div>
-                            <h2 className="text-2xl font-black text-slate-800">7. التحفيز ودوري العباقرة</h2>
-                        </div>
-                        <div className="text-slate-600 leading-relaxed font-medium">
-                            <p className="mb-4">حول فصلك إلى بيئة تنافسية ممتعة:</p>
-                            <ul className="space-y-3">
-                                <li><strong>نقاط السلوك:</strong> امنح نقاطاً إيجابية (👍) أو سلبية (👎) للطلاب. النقاط الإيجابية تتحول إلى "عملات ذهبية".</li>
-                                <li><strong>المتجر:</strong> يمكن للطلاب استبدال عملاتهم بمكافآت (مثل: تغيير المكان، قائد الطابور).</li>
-                                <li><strong>دوري المجموعات:</strong> قسّم الفصل إلى فرق وتنافسوا على اللقب.</li>
-                            </ul>
-                        </div>
-                    </section>
 
-                    {/* 8. Ministry Sync */}
-                    <section id="ministry" className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 scroll-mt-24">
-                        <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
-                            <div className="w-12 h-12 bg-cyan-100 rounded-2xl flex items-center justify-center text-cyan-600"><Globe className="w-6 h-6" /></div>
-                            <h2 className="text-2xl font-black text-slate-800">8. الربط الوزاري الآمن</h2>
-                        </div>
-                        <div className="text-slate-600 leading-relaxed font-medium">
-                            <p className="mb-4">ميزة حصرية لربط التطبيق مع البوابة التعليمية لرفع الغياب والدرجات بضغطة زر.</p>
-                            <div className="bg-slate-100 p-4 rounded-xl text-xs font-mono mb-4 text-left" dir="ltr">
-                                https://mobile.moe.gov.om/...
-                            </div>
-                            <p className="text-sm text-slate-500">
-                                <strong>ملاحظة هامة:</strong> يتم الاتصال مباشرة بين جهازك وخوادم الوزارة عبر قناة مشفرة. لا يتم تخزين كلمات المرور أو البيانات الحساسة على أي خوادم خارجية.
-                            </p>
-                        </div>
-                    </section>
-
-                    {/* 9. Data & Security */}
+                    {/* 7. Data & Security */}
                     <section id="data" className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 scroll-mt-24">
                         <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
                             <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600"><Database className="w-6 h-6" /></div>

@@ -188,7 +188,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
     <div className="flex flex-col h-full text-slate-800 relative animate-in fade-in duration-500">
         
         {/* ================= FIXED HEADER ================= */}
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#0F766E] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             
             <div className="flex justify-between items-center mb-6 mt-2 gap-3">
                 <div className="flex items-center gap-3 shrink-0">

@@ -415,7 +415,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
 
   return (
     <div className="flex flex-col h-full text-slate-800">
-      <header className="bg-[#1e3a8a] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
+      <header className="bg-[#446A8D] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">

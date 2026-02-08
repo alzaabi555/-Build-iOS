@@ -255,7 +255,7 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
 
     return (
         // ✅ z-[99999] لتغطية القائمة الجانبية تماماً، و pt-16 للهاتف لتفادي النوتش
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             {/* Header */}
             <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top relative z-50 rounded-t-2xl md:rounded-none">
                 <div className="flex items-center gap-3">
@@ -512,7 +512,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
       
       {/* ================= HEADER (Sticky Fix: No Overlay) ================= */}
       {/* ✅ تعديل الهيدر ليكون sticky بدون تمدد غريب */}
-      <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#1e3a8a] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+      <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
           <div className="flex items-center gap-3 mb-6 mt-4 px-2">
              <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20"><Icon3DReportCenter className="w-6 h-6" /></div>
              <div><h1 className="text-xl font-black tracking-wide">مركز التقارير</h1><p className="text-[10px] text-blue-200 font-bold opacity-80">طباعة الكشوفات والشهادات</p></div>
