@@ -38,7 +38,7 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
-const BELL_SOUND_URL = const BELL_SOUND_URL = alarmSound;
+ const BELL_SOUND_URL = alarmSound;
 
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo,
@@ -539,3 +539,4 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
+
