@@ -164,7 +164,7 @@ const Settings: React.FC = () => {
     <div className="flex flex-col h-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
         {/* 2️⃣ New Royal Blue Header */}
-        <header className="bg-[#446A8D] text-white pt-12 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-10 -mx-4 -mt-4 mb-4">
+        <header className="bg-[#446A8D] text-white pt-12 pb-6 px-6  shadow-lg relative z-10 -mx-4 -mt-4 mb-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button onClick={() => window.history.back()} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">

@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices } from 'lucide-react';
+import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices, Timer, Play, Pause, RotateCcw } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
+import positiveSound from '../assets/positive.mp3';
+import negativeSound from '../assets/negative.mp3';
+import tadaSound from '../assets/tada.mp3';
+import alarmSound from '../assets/alarm.mp3';
 
 interface StudentListProps {
     students: Student[];
@@ -22,9 +26,10 @@ interface StudentListProps {
 }
 
 const SOUNDS = {
-    positive: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    negative: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
-    tada: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'
+    positive: positiveSound,
+    negative: negativeSound,
+    tada: tadaSound,
+    alarm: alarmSound
 };
 
 const NEGATIVE_BEHAVIORS = [
@@ -72,6 +77,43 @@ const StudentList: React.FC<StudentListProps> = ({
     const [randomWinner, setRandomWinner] = useState<Student | null>(null);
     const [pickedStudentIds, setPickedStudentIds] = useState<string[]>([]);
 
+    // --- Timer Logic ---
+    const [showTimerModal, setShowTimerModal] = useState(false);
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [timerInput, setTimerInput] = useState('5');
+
+    useEffect(() => {
+        let interval: any;
+        if (isTimerRunning && timerSeconds > 0) {
+            interval = setInterval(() => {
+                setTimerSeconds((prev) => prev - 1);
+            }, 1000);
+        } else if (timerSeconds === 0 && isTimerRunning) {
+            setIsTimerRunning(false);
+            const audio = new Audio(SOUNDS.alarm);
+            audio.play().catch((e) => console.log("Audio play failed", e));
+            if (navigator.vibrate) {
+                navigator.vibrate([500, 200, 500]);
+            }
+            setTimeout(() => alert('⏰ انتهى الوقت!'), 100);
+        }
+        return () => clearInterval(interval);
+    }, [isTimerRunning, timerSeconds]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const startTimer = (minutes: number) => {
+        setTimerSeconds(minutes * 60);
+        setIsTimerRunning(true);
+        setShowTimerModal(false);
+    };
+    // ------------------------------------
+
     const safeClasses = useMemo(() => Array.isArray(classes) ? classes : [], [classes]);
     const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
 
@@ -107,7 +149,6 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const filteredStudents = useMemo(() => {
         if (safeStudents.length === 0) return [];
-        
         return safeStudents.filter(student => {
             if (!student) return false;
             const nameMatch = (student.name || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -232,10 +273,12 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     return (
-        <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500">
+        // ✅ التعديل هنا: overflow-hidden لمنع الصفحة كاملة من التحرك
+        <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             
             {/* Header */}
-            <header className="bg-[#446A8D] text-white pt-8 pb-10 px-6 rounded-b-[2.5rem] shadow-lg relative z-10 -mx-4 -mt-4">
+            {/* ✅ التعديل هنا: shrink-0 لمنع الهيدر من التقلص */}
+            <header className="shrink-0 bg-[#446A8D] text-white pt-8 pb-10 px-6 shadow-lg relative z-10 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
@@ -247,9 +290,20 @@ const StudentList: React.FC<StudentListProps> = ({
                         </div>
                     </div>
 
-                    {/* ✅ الأزرار العلوية: القرعة + القائمة */}
                     <div className="flex gap-2">
-                          {/* زر القرعة العشوائية (تم نقله هنا) */}
+                          <div className="relative">
+                              <button 
+                                 onClick={() => setShowTimerModal(true)} 
+                                 className={`p-2.5 rounded-xl backdrop-blur-md border active:scale-95 transition-all hover:bg-white/20 flex items-center gap-2 ${timerSeconds > 0 ? 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse' : 'bg-white/10 border-white/20 text-white'}`}
+                                 title="المؤقت"
+                              >
+                                 <Timer className="w-5 h-5" />
+                                 {timerSeconds > 0 && (
+                                     <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
+                                 )}
+                              </button>
+                          </div>
+
                           <button 
                              onClick={handleRandomPick} 
                              className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all hover:bg-white/20"
@@ -258,7 +312,6 @@ const StudentList: React.FC<StudentListProps> = ({
                              <Dices className="w-5 h-5 text-white" />
                           </button>
 
-                          {/* زر القائمة المنسدلة */}
                           <div className="relative">
                               <button onClick={() => setShowMenu(!showMenu)} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
                                  <MoreVertical className="w-5 h-5 text-white" />
@@ -268,7 +321,6 @@ const StudentList: React.FC<StudentListProps> = ({
                                   <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                                   <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
                                       <div className="p-1">
-                                          {/* تم إزالة زر القرعة من هنا */}
                                           <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
                                               <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
                                           </button>
@@ -290,7 +342,6 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 </div>
 
-                {/* Search & Filters */}
                 <div className="space-y-3">
                     <div className="relative">
                         <Search className="absolute right-4 top-3.5 w-5 h-5 text-blue-200" />
@@ -315,51 +366,49 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </header>
 
-            {/* Student List - New Vertical Card Design */}
-            <div className="px-4 grid grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
-                {filteredStudents.length > 0 ? filteredStudents.map(student => (
-                    <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
-                          
-                          {/* Upper Part: Image & Info */}
-                          <div className="p-4 flex flex-col items-center w-full relative">
-                              <StudentAvatar 
-                                  gender={student.gender}
-                                  className="w-16 h-16 mb-3"
-                              />
-                              <h3 className="font-black text-slate-800 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
-                              <div className="flex gap-1 mt-1">
-                                 <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد'}</span>
-                              </div>
-                          </div>
+            {/* ✅ التعديل هنا: إضافة حاوية للقائمة تجعلها قابلة للتمرير بينما الهيدر ثابت */}
+            <div className="flex-1 overflow-y-auto pb-24 custom-scrollbar">
+                <div className="px-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredStudents.length > 0 ? filteredStudents.map(student => (
+                        <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
+                            <div className="p-4 flex flex-col items-center w-full relative">
+                                <StudentAvatar 
+                                    gender={student.gender}
+                                    className="w-16 h-16 mb-3"
+                                />
+                                <h3 className="font-black text-slate-800 text-sm text-center line-clamp-1 w-full">{student.name}</h3>
+                                <div className="flex gap-1 mt-1">
+                                    <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد'}</span>
+                                </div>
+                            </div>
 
-                          {/* Divider */}
-                          <div className="w-full h-px bg-slate-100"></div>
+                            <div className="w-full h-px bg-slate-100"></div>
 
-                          {/* Actions Row */}
-                          <div className="flex w-full divide-x divide-x-reverse divide-slate-100">
-                             <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group">
-                                  <ThumbsUp className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-                             </button>
-                             
-                             <button onClick={() => handleBehavior(student, 'negative')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-rose-50 active:bg-rose-100 transition-colors group">
-                                  <ThumbsDown className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
-                             </button>
-                             
-                             <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group">
-                                  <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                             </button>
-                          </div>
-                    </div>
-                )) : (
-                    <div className="flex flex-col items-center justify-center py-20 opacity-50 col-span-full text-center">
-                        <UserPlus className="w-16 h-16 text-gray-300 mb-4" />
-                        <p className="text-sm font-bold text-gray-400">لا يوجد طلاب مطابقين للبحث</p>
-                        {safeClasses.length === 0 && <p className="text-xs text-indigo-400 mt-2 font-bold cursor-pointer" onClick={() => setShowAddClassModal(true)}>ابدأ بإضافة فصل جديد</p>}
-                    </div>
-                )}
+                            <div className="flex w-full divide-x divide-x-reverse divide-slate-100">
+                                <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group">
+                                    <ThumbsUp className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+                                </button>
+                                
+                                <button onClick={() => handleBehavior(student, 'negative')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-rose-50 active:bg-rose-100 transition-colors group">
+                                    <ThumbsDown className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
+                                </button>
+                                
+                                <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group">
+                                    <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-50 col-span-full text-center">
+                            <UserPlus className="w-16 h-16 text-gray-300 mb-4" />
+                            <p className="text-sm font-bold text-gray-400">لا يوجد طلاب مطابقين للبحث</p>
+                            {safeClasses.length === 0 && <p className="text-xs text-indigo-400 mt-2 font-bold cursor-pointer" onClick={() => setShowAddClassModal(true)}>ابدأ بإضافة فصل جديد</p>}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Modals (No changes to logic, just structure) */}
+            {/* Modals */}
             <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className="max-w-md rounded-[2rem]">
                  <div className="text-center">
                     <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-500">
@@ -394,18 +443,14 @@ const StudentList: React.FC<StudentListProps> = ({
                  </div>
             </Modal>
 
-            {/* Manage Classes Modal - Updated with Gender Batch Setting */}
             <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
                     <h3 className="font-black text-xl mb-6 text-slate-800">إعدادات الفصول والصفوف</h3>
-                    
-                    {/* Gender Batch Settings */}
                     <div className="bg-indigo-50/50 rounded-2xl p-4 mb-6 border border-indigo-100">
                         <div className="flex items-center justify-center gap-2 mb-3 text-indigo-900">
                             <Users className="w-4 h-4" />
                             <span className="font-bold text-sm">نوع المدرسة (تغيير جماعي)</span>
                         </div>
-                        
                         <div className="flex gap-3 mb-2">
                             <button 
                                 onClick={() => handleBatchGenderUpdate('male')}
@@ -424,14 +469,11 @@ const StudentList: React.FC<StudentListProps> = ({
                         </div>
                         <p className="text-[10px] text-indigo-400 font-bold">* سيتم توحيد أيقونات جميع الطلاب حسب اختيارك.</p>
                     </div>
-
                     <div className="w-full h-px bg-gray-100 mb-6"></div>
-
                     <div className="flex justify-between items-center mb-2 px-2">
                           <span className="text-xs font-bold text-slate-400">يمكنك هنا حذف الفصول الدراسية بالكامل.</span>
                           <span className="text-[10px] text-red-400 font-bold">تنبيه: الحذف سيؤثر على جميع الصفحات.</span>
                     </div>
-                    
                     <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 space-y-2">
                         {safeClasses.map(cls => (
                             <div key={cls} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -443,12 +485,10 @@ const StudentList: React.FC<StudentListProps> = ({
                         ))}
                         {safeClasses.length === 0 && <p className="text-xs text-gray-400">لا توجد فصول مضافة</p>}
                     </div>
-                    
                     <button onClick={() => setShowManageClasses(false)} className="mt-4 w-full py-3 bg-gray-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-gray-200 transition-colors">إغلاق</button>
                 </div>
             </Modal>
             
-            {/* Negative Behavior Modal */}
             <Modal isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} className="max-w-sm rounded-[2rem]">
                 <div className="text-center">
                     <div className="flex justify-between items-center mb-4">
@@ -458,9 +498,7 @@ const StudentList: React.FC<StudentListProps> = ({
                         </h3>
                         <button onClick={() => setShowNegativeModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4"/></button>
                     </div>
-                    
                     <p className="text-xs font-bold text-gray-500 mb-4">اختر نوع الملاحظة للطالب <span className="text-indigo-600">{selectedStudentForBehavior?.name}</span></p>
-                    
                     <div className="grid grid-cols-2 gap-2">
                         {NEGATIVE_BEHAVIORS.map(b => (
                             <button 
@@ -476,7 +514,6 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </Modal>
 
-            {/* Edit Student Modal */}
             <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} className="max-w-md rounded-[2rem]">
                 {editingStudent && (
                      <div className="text-center">
@@ -500,13 +537,11 @@ const StudentList: React.FC<StudentListProps> = ({
                 )}
             </Modal>
 
-            {/* Random Picker Winner Modal */}
             <Modal isOpen={!!randomWinner} onClose={() => setRandomWinner(null)} className="max-w-sm rounded-[2rem]">
                 {randomWinner && (
                     <div className="text-center py-6 animate-in zoom-in duration-300">
                         <div className="mb-6 relative inline-block">
                             <div className="w-24 h-24 rounded-full border-4 border-purple-200 shadow-xl overflow-hidden mx-auto bg-purple-50">
-                                {/* ✅ استخدام الكومبوننت الجديد داخل المودال أيضاً */}
                                 <StudentAvatar 
                                     gender={randomWinner.gender}
                                     className="w-full h-full"
@@ -515,12 +550,10 @@ const StudentList: React.FC<StudentListProps> = ({
                             <div className="absolute -top-3 -right-3 text-4xl animate-bounce">🎉</div>
                             <div className="absolute -bottom-2 -left-2 text-4xl animate-bounce" style={{animationDelay: '0.2s'}}>✨</div>
                         </div>
-                        
                         <h2 className="text-2xl font-black text-slate-800 mb-1">{randomWinner.name}</h2>
                         <p className="text-sm font-bold text-purple-600 bg-purple-50 inline-block px-3 py-1 rounded-full mb-6">
                             {randomWinner.classes[0]}
                         </p>
-
                         <div className="flex gap-3">
                             <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-200 active:scale-95 transition-all">
                                 تعزيز (+1)
@@ -531,6 +564,53 @@ const StudentList: React.FC<StudentListProps> = ({
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal isOpen={showTimerModal} onClose={() => setShowTimerModal(false)} className="max-w-xs rounded-[2rem]">
+                <div className="text-center">
+                    <h3 className="font-black text-lg mb-4 text-slate-800 flex items-center justify-center gap-2">
+                        <Timer className="w-5 h-5 text-amber-500"/> المؤقت
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                        {[1, 3, 5, 10, 15, 20].map(min => (
+                            <button 
+                                key={min} 
+                                onClick={() => startTimer(min)} 
+                                className="bg-slate-50 border border-slate-200 rounded-xl py-2 text-xs font-bold text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
+                            >
+                                {min} د
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 items-center mb-4">
+                        <input 
+                            type="number" 
+                            value={timerInput} 
+                            onChange={(e) => setTimerInput(e.target.value)} 
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-center font-black text-slate-800 outline-none focus:border-indigo-500" 
+                            placeholder="دقيقة"
+                        />
+                        <button 
+                            onClick={() => startTimer(Number(timerInput))} 
+                            className="bg-indigo-600 text-white p-2.5 rounded-xl active:scale-95 shadow-lg shadow-indigo-200"
+                        >
+                            <Play size={16} fill="white" />
+                        </button>
+                    </div>
+                    {isTimerRunning && (
+                        <div className="border-t border-slate-100 pt-4 mt-2">
+                            <h2 className="text-4xl font-black text-slate-800 mb-4 font-mono">{formatTime(timerSeconds)}</h2>
+                            <div className="flex gap-2 justify-center">
+                                <button onClick={() => setIsTimerRunning(false)} className="bg-rose-50 text-rose-600 p-3 rounded-full border border-rose-100 hover:bg-rose-100 active:scale-95">
+                                    <Pause size={20} fill="currentColor" />
+                                </button>
+                                <button onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className="bg-slate-100 text-slate-500 p-3 rounded-full border border-slate-200 hover:bg-slate-200 active:scale-95">
+                                    <RotateCcw size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </Modal>
 
         </div>

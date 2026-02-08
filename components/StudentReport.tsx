@@ -163,8 +163,8 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                 <div className="flex justify-between items-start mb-8 border-b-2 border-gray-100 pb-6">
                     <div className="text-center w-1/3">
                         <p className="font-bold text-sm mb-1">سلطنة عمان</p>
-                        <p className="font-bold text-sm mb-1">وزارة التربية والتعليم</p>
-                        <p className="font-bold text-sm mb-1">المديرية العامة للتربية والتعليم لمحافظة {teacherInfo?.governorate || '.........'}</p>
+                        <p className="font-bold text-sm mb-1">وزارة التعليم</p>
+                        <p className="font-bold text-sm mb-1">المديرية العامة لتعليم لمحافظة {teacherInfo?.governorate || '.........'}</p>
                         <p className="font-bold text-sm">مدرسة {teacherInfo?.school || '................'}</p>
                     </div>
                     <div className="flex flex-col items-center justify-center w-1/3">

@@ -11,7 +11,6 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
-// ✅ التصحيح هنا: إضافة القوسين {}
 import { StudentAvatar } from './StudentAvatar';
 
 interface GradeBookProps {
@@ -199,7 +198,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return grade ? grade.score.toString() : '';
   };
 
-  // ... (Functions: handleAddTool, handleDeleteTool, etc. remain the same)
   const handleAddTool = () => {
     if (newToolName.trim()) {
       const finalName = cleanText(newToolName);
@@ -414,8 +412,11 @@ const GradeBook: React.FC<GradeBookProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full text-slate-800">
-      <header className="bg-[#446A8D] text-white pt-8 pb-6 px-6 rounded-b-[2.5rem] shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
+    // ✅ التعديل هنا: overflow-hidden على الحاوية الأب
+    <div className="flex flex-col h-full overflow-hidden text-slate-800">
+      
+      {/* Header: shrink-0 لمنع التقلص */}
+      <header className="shrink-0 bg-[#446A8D] text-white pt-8 pb-6 px-6 shadow-lg relative z-30 -mx-4 -mt-4 mb-4">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
@@ -497,13 +498,13 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
+      {/* ✅ التعديل هنا: إضافة حاوية للقائمة مع التمرير الداخلي */}
+      <div className="flex-1 overflow-y-auto px-2 pb-20 pt-2 custom-scrollbar">
         {filteredStudents.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {filteredStudents.map(student => {
               const currentGrade = getStudentGradeForActiveTool(student);
               const numericCurrent = currentGrade ? parseFloat(currentGrade) : 0;
-              // ✅ حساب المجموع الكلي والتقدير
               const semGrades = getSemesterGrades(student, currentSemester);
               const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
               const symbol = getGradeSymbol(totalScore);
@@ -514,7 +515,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
                 <div key={student.id} className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex flex-col items-center hover:shadow-md transition-all duration-200 relative" onClick={() => setShowAddGrade({ student })}>
                   <StudentAvatar gender={student.gender} className="w-16 h-16 mb-3 border-4 border-white shadow-sm" />
                   <h3 className="font-bold text-slate-800 text-xs text-center line-clamp-1 mb-3 w-full">{student.name}</h3>
-                  {/* ✅ عرض المجموع والتقدير بشكل واضح */}
                   <div className="flex items-center justify-center gap-2 mb-2 w-full bg-slate-50 py-2 rounded-xl border border-slate-100">
                       <span className={`text-lg font-black ${symbolColor.replace('bg-', 'text-').replace('50', '600')}`}>{totalScore}</span>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${symbolColor}`}>{symbol}</span>
@@ -542,17 +542,16 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </div>
 
       <Modal isOpen={showDistModal} onClose={() => setShowDistModal(false)} className="max-w-md rounded-[2rem]">
-        {/* ... (محتوى المودال نفسه كما في الكود السابق) ... */}
+        {/* ... (باقي المودالات كما هي في الكود السابق) ... */}
+        {/* تم اختصارها هنا لتوفير المساحة، انسخها من الكود السابق أو اتركها كما كانت إذا لم تتغير */}
         <div className="text-center">
           <h3 className="font-black text-xl mb-6 text-slate-800">إعدادات توزيع الدرجات</h3>
-          {/* ... */}
-          {/* تم اختصار الكود هنا للتكرار، الكود الكامل في النسخة السابقة */}
-          <div className="space-y-6">
+          {/* ... (نفس محتوى المودال السابق) ... */}
+           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
               <label className="block text-right text-xs font-black text-slate-700 mb-2">1. الدرجة الكلية للمادة</label>
               <input type="number" value={distTotal} onChange={e => setDistTotal(Number(e.target.value))} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-black text-lg outline-none focus:border-indigo-500 text-slate-800" />
             </div>
-            {/* ... باقي الحقول ... */}
              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
               <label className="block text-right text-xs font-black text-slate-700 mb-2">2. درجة الامتحان النهائي (أو المشروع)</label>
               <input type="number" value={distFinalScore} onChange={e => setDistFinalScore(Number(e.target.value))} className="w-full p-3 bg-white border border-gray-200 rounded-xl text-center font-black text-lg outline-none focus:border-indigo-500 text-slate-800" />
@@ -567,7 +566,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </Modal>
 
       <Modal isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} className="max-w-sm rounded-[2rem]">
-         {/* ... (محتوى المودال نفسه) ... */}
+         {/* ... (نفس محتوى المودال السابق) ... */}
          <div className="text-center text-slate-900">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-black text-lg">أدوات التقويم</h3>
@@ -616,7 +615,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </Modal>
 
       <Modal isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} className="max-w-xs rounded-[2rem]">
-         {/* ... (محتوى المودال نفسه) ... */}
+         {/* ... (نفس محتوى المودال السابق) ... */}
          {bulkFillTool && (
           <div className="text-center text-slate-900">
             <div className="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-500 shadow-sm border border-indigo-100"><Wand2 className="w-7 h-7" /></div>
@@ -629,7 +628,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </Modal>
 
       <Modal isOpen={!!showAddGrade} onClose={() => { setShowAddGrade(null); setEditingGrade(null); setScore(''); }} className="max-w-md rounded-[2rem]">
-         {/* ... (محتوى المودال نفسه) ... */}
+         {/* ... (نفس محتوى المودال السابق) ... */}
          {showAddGrade && (
           <div className="text-right text-slate-900">
             <div className="flex justify-between items-center mb-4">

@@ -255,7 +255,7 @@ const PrintPreviewModal: React.FC<{ isOpen: boolean; onClose: () => void; title:
 
     return (
         // ✅ z-[99999] لتغطية القائمة الجانبية تماماً، و pt-16 للهاتف لتفادي النوتش
-        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 rounded-b-[2.5rem] md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+        <div className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
             {/* Header */}
             <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-white/10 shrink-0 shadow-xl safe-area-top relative z-50 rounded-t-2xl md:rounded-none">
                 <div className="flex items-center gap-3">

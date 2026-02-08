@@ -75,7 +75,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500">
-            <header className="bg-[#446A8D] text-white pt-8 pb-8 px-6 rounded-b-[2.5rem] shadow-lg relative z-10 -mx-4 -mt-4">
+            <header className="bg-[#446A8D] text-white pt-8 pb-8 px-6  shadow-lg relative z-10 -mx-4 -mt-4">
                 <div className="flex flex-col items-center text-center">
                     <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner">
                         <Crown className="w-8 h-8 text-amber-400 fill-amber-400 animate-bounce" />

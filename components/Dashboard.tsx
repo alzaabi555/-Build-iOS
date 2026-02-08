@@ -315,7 +315,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
             {/* 🟦 Header */}
-            <header className="bg-[#446A8D] text-white pt-8 pb-8 px-6 rounded-b-[2.5rem] shadow-xl relative z-20 -mx-4 -mt-4 mb-2">
+            <header className="bg-[#446A8D] text-white pt-8 pb-8 px-6  shadow-xl relative z-20 -mx-4 -mt-4 mb-2">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
                         {/* صورة المعلم وزر التعديل */}
