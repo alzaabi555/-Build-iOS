@@ -11,6 +11,7 @@ import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+// ✅ استيراد صوت الجرس محلياً
 import alarmSound from '../assets/alarm.mp3';
 
 // 1. رسمة برمجية افتراضية (SVG) لتجنب الشاشة البيضاء نهائياً
@@ -38,7 +39,8 @@ interface DashboardProps {
     onSemesterChange: (sem: '1' | '2') => void;
 }
 
-const BELL_SOUND_URL = const BELL_SOUND_URL = alarmSound;
+// ✅ التصحيح هنا: تعريف المتغير مرة واحدة فقط
+const BELL_SOUND_URL = alarmSound;
 
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo,
@@ -71,7 +73,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     // State for Teacher Info Modal
     const [showEditModal, setShowEditModal] = useState(false);
     
-    // استخدام Optional Chaining لتجنب الأخطاء
     const [editName, setEditName] = useState(teacherInfo?.name || '');
     const [editSchool, setEditSchool] = useState(teacherInfo?.school || '');
     const [editSubject, setEditSubject] = useState(teacherInfo?.subject || '');
@@ -116,7 +117,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
-    // دالة استيراد الصور الآمنة
     const getImg = (path: string) => {
         if (!path) return '';
         return path.startsWith('/') ? path : `/${path}`;
@@ -127,7 +127,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return null;
     };
 
-    // ✅ دالة الأيقونات (تم إصلاح منطق الاستدعاء في الأسفل)
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
         const name = subjectName.trim().toLowerCase();
@@ -137,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (name.match(/علوم|فيزياء|كيمياء/)) return <span className="text-2xl">🧪</span>;
         if (name.match(/انجليزي|english/)) return <span className="text-2xl">🅰️</span>;
         if (name.match(/حاسوب|تقنية/)) return <span className="text-2xl">💻</span>;
-        if (name.match(/اجتماعيات|تاريخ| دراسات اجتماعية|/)) return <span className="text-2xl">🌍</span>;
+        if (name.match(/اجتماعيات|تاريخ/)) return <span className="text-2xl">🌍</span>;
         if (name.match(/رياضة|بدنية/)) return <span className="text-2xl">⚽</span>;
         if (name.match(/فنون|رسم/)) return <span className="text-2xl">🎨</span>;
         return <span className="text-xl opacity-50">📚</span>;
@@ -316,6 +315,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
             {/* 🟦 Header */}
+            {/* ✅ تم حذف rounded-b ليصبح مستقيماً */}
             <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-4">
@@ -407,7 +407,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#1e3a8a] text-white border-[#1e3a8a] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* ✅ هنا الإصلاح: عرض الأيقونة إذا وجدت، وإلا عرض رقم الحصة */}
+                                        {/* عرض الأيقونة إذا وجدت، وإلا عرض رقم الحصة */}
                                         {getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
