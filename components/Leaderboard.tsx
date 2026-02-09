@@ -125,7 +125,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             </header>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-20 custom-scrollbar pt-2">
+           <div className="flex-1 overflow-y-auto px-4 pb-20 custom-scrollbar pt-64 md:pt-2">
                 
                 {/* Podium (Top 3) */}
                 {topThree.length > 0 ? (
