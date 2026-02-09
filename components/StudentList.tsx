@@ -301,43 +301,43 @@ const StudentList: React.FC<StudentListProps> = ({
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             
             {/* Header */}
-<header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-4 transition-all duration-300 md:pb-6 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-    <div className="flex justify-between items-center mb-3 md:mb-6">
-        <div className="flex items-center gap-2 md:gap-3">
-            <div className="bg-white/10 p-1.5 md:p-2 rounded-xl backdrop-blur-md border border-white/20">
-                <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
+<header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+    <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+                <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-                <h1 className="text-xl md:text-2xl font-black tracking-wide">الطلاب</h1>
-                <p className="text-[9px] md:text-[10px] text-blue-200 font-bold opacity-80">{safeStudents.length} طالب مسجل</p>
+                <h1 className="text-2xl font-black tracking-wide">الطلاب</h1>
+                <p className="text-[10px] text-blue-200 font-bold opacity-80">{safeStudents.length} طالب مسجل</p>
             </div>
         </div>
 
-        <div className="flex gap-1.5 md:gap-2">
+        <div className="flex gap-2">
             <div className="relative">
                 <button 
                     onClick={() => setShowTimerModal(true)} 
-                    className={`p-2 md:p-2.5 rounded-xl backdrop-blur-md border active:scale-95 transition-all hover:bg-white/20 flex items-center gap-1.5 md:gap-2 ${timerSeconds > 0 ? 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse' : 'bg-white/10 border-white/20 text-white'}`}
+                    className={`p-2.5 rounded-xl backdrop-blur-md border active:scale-95 transition-all hover:bg-white/20 flex items-center gap-2 ${timerSeconds > 0 ? 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse' : 'bg-white/10 border-white/20 text-white'}`}
                     title="المؤقت"
                 >
-                    <Timer className="w-4 h-4 md:w-5 md:h-5" />
+                    <Timer className="w-5 h-5" />
                     {timerSeconds > 0 && (
-                        <span className="text-[10px] md:text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
+                        <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
                     )}
                 </button>
             </div>
 
             <button 
                 onClick={handleRandomPick} 
-                className="bg-white/10 p-2 md:p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all hover:bg-white/20"
+                className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all hover:bg-white/20"
                 title="القرعة العشوائية"
             >
-                <Dices className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                <Dices className="w-5 h-5 text-white" />
             </button>
 
             <div className="relative">
-                <button onClick={() => setShowMenu(!showMenu)} className="bg-white/10 p-2 md:p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
-                    <MoreVertical className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                <button onClick={() => setShowMenu(!showMenu)} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
+                    <MoreVertical className="w-5 h-5 text-white" />
                 </button>
                 {showMenu && (
                 <>
@@ -365,32 +365,32 @@ const StudentList: React.FC<StudentListProps> = ({
         </div>
     </div>
 
-    <div className="space-y-2 md:space-y-3">
+    <div className="space-y-3">
         <div className="relative">
-            <Search className="absolute right-3 md:right-4 top-2.5 md:top-3.5 w-4 h-4 md:w-5 md:h-5 text-blue-200" />
+            <Search className="absolute right-4 top-3.5 w-5 h-5 text-blue-200" />
             <input 
                 type="text" 
                 placeholder="بحث عن طالب..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-2xl py-2 md:py-3 pr-10 md:pr-12 pl-4 text-xs md:text-sm font-bold text-white placeholder:text-blue-200/50 outline-none focus:bg-white/20 transition-all"
+                className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 pr-12 pl-4 text-sm font-bold text-white placeholder:text-blue-200/50 outline-none focus:bg-white/20 transition-all"
             />
         </div>
         
-        <div className="flex gap-1.5 md:gap-2 overflow-x-auto no-scrollbar pb-1">
-            <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
             {availableGrades.map(g => (
-                 <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
+                 <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
             ))}
             {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
-                <button key={c} onClick={() => setSelectedClass(c)} className={`px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
+                <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
             ))}
         </div>
     </div>
 </header>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
+           <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
