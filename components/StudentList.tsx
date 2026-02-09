@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, BehaviorType } from '../types';
-import { Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, Dices, Timer, Play, Pause, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { 
+    Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, 
+    FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, 
+    Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus 
+} from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
@@ -30,7 +34,7 @@ interface StudentListProps {
 const SOUNDS = {
     positive: positiveSound,
     negative: negativeSound,
-    tada: tadaSound, // تذكر: هذا الملف يحتوي على 10 ثواني تكتكة + صفارة
+    tada: tadaSound, 
     alarm: alarmSound
 };
 
@@ -86,6 +90,10 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showPositiveModal, setShowPositiveModal] = useState(false);
     const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState<Student | null>(null);
 
+    // ✅ حالة جديدة للإدخال اليدوي للسلوكيات
+    const [customPositiveReason, setCustomPositiveReason] = useState('');
+    const [customNegativeReason, setCustomNegativeReason] = useState('');
+
     const [randomWinner, setRandomWinner] = useState<Student | null>(null);
     const [pickedStudentIds, setPickedStudentIds] = useState<string[]>([]);
 
@@ -98,7 +106,6 @@ const StudentList: React.FC<StudentListProps> = ({
     useEffect(() => {
         let interval: any;
         if (isTimerRunning && timerSeconds > 0) {
-            // تشغيل صوت التكتكة الطويل عند الدقيقة 10 ثواني
             if (timerSeconds === 10) {
                 const countdownAudio = new Audio(SOUNDS.tada);
                 countdownAudio.volume = 1.0;
@@ -218,11 +225,46 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const handleBehavior = (student: Student, type: BehaviorType) => {
         setSelectedStudentForBehavior(student);
+        // تصفير الحقول اليدوية عند الفتح
+        setCustomPositiveReason('');
+        setCustomNegativeReason('');
+        
         if (type === 'positive') {
             setShowPositiveModal(true);
         } else {
             setShowNegativeModal(true);
         }
+    };
+
+    // ✅ دالة إرسال تقرير الواتساب
+    const handleSendWhatsAppReport = (student: Student) => {
+        if (!student.parentPhone) {
+            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي أمر هذا الطالب.\nيرجى تعديل بيانات الطالب وإضافة الرقم أولاً.');
+            return;
+        }
+
+        const negativeBehaviors = (student.behaviors || []).filter(b => b.type === 'negative');
+
+        if (negativeBehaviors.length === 0) {
+            alert('🎉 هذا الطالب متميز! لا توجد لديه سلوكيات سلبية مسجلة لإرسالها.');
+            return;
+        }
+
+        let message = `السلام عليكم، ولي أمر الطالب *${student.name}* المحترم.\n`;
+        message += `تحية طيبة،\nنود إشعاركم بتقرير بالملاحظات السلوكية المسجلة على الطالب مؤخراً:\n\n`;
+
+        negativeBehaviors.slice(0, 5).forEach(b => {
+            const dateObj = new Date(b.date);
+            const date = dateObj.toLocaleDateString('ar-EG');
+            const time = dateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+            
+            message += `🔴 *${b.description}*\n📅 ${date} - ⏰ ${time}\n─────────────────\n`;
+        });
+
+        message += `\nنأمل منكم التكرم بمتابعة الطالب وتوجيهه.\nشكراً لتعاونكم.\n*إدارة المدرسة*`;
+
+        const url = `https://wa.me/${student.parentPhone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     };
 
     const confirmPositiveBehavior = (title: string, points: number) => {
@@ -301,96 +343,96 @@ const StudentList: React.FC<StudentListProps> = ({
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             
             {/* Header */}
-<header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
-    <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
-                <Users className="w-5 h-5 text-white" />
-            </div>
-            <div>
-                <h1 className="text-2xl font-black tracking-wide">الطلاب</h1>
-                <p className="text-[10px] text-blue-200 font-bold opacity-80">{safeStudents.length} طالب مسجل</p>
-            </div>
-        </div>
-
-        <div className="flex gap-2">
-            <div className="relative">
-                <button 
-                    onClick={() => setShowTimerModal(true)} 
-                    className={`p-2.5 rounded-xl backdrop-blur-md border active:scale-95 transition-all hover:bg-white/20 flex items-center gap-2 ${timerSeconds > 0 ? 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse' : 'bg-white/10 border-white/20 text-white'}`}
-                    title="المؤقت"
-                >
-                    <Timer className="w-5 h-5" />
-                    {timerSeconds > 0 && (
-                        <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
-                    )}
-                </button>
-            </div>
-
-            <button 
-                onClick={handleRandomPick} 
-                className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all hover:bg-white/20"
-                title="القرعة العشوائية"
-            >
-                <Dices className="w-5 h-5 text-white" />
-            </button>
-
-            <div className="relative">
-                <button onClick={() => setShowMenu(!showMenu)} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
-                    <MoreVertical className="w-5 h-5 text-white" />
-                </button>
-                {showMenu && (
-                <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                    <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
-                        <div className="p-1">
-                            <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
-                            </button>
-                            <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> استيراد من Excel
-                            </button>
-                            <div className="my-1 border-t border-slate-100"></div>
-                            <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                <LayoutGrid className="w-4 h-4 text-amber-600" /> إضافة فصل جديد
-                            </button>
-                            <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                <Settings className="w-4 h-4 text-slate-500" /> إدارة الفصول
-                            </button>
+            <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+                            <Users className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black tracking-wide">الطلاب</h1>
+                            <p className="text-[10px] text-blue-200 font-bold opacity-80">{safeStudents.length} طالب مسجل</p>
                         </div>
                     </div>
-                </>
-                )}
-            </div>
-        </div>
-    </div>
 
-    <div className="space-y-3">
-        <div className="relative">
-            <Search className="absolute right-4 top-3.5 w-5 h-5 text-blue-200" />
-            <input 
-                type="text" 
-                placeholder="بحث عن طالب..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 pr-12 pl-4 text-sm font-bold text-white placeholder:text-blue-200/50 outline-none focus:bg-white/20 transition-all"
-            />
-        </div>
-        
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
-            {availableGrades.map(g => (
-                 <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
-            ))}
-            {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
-                <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
-            ))}
-        </div>
-    </div>
-</header>
+                    <div className="flex gap-2">
+                        <div className="relative">
+                            <button 
+                                onClick={() => setShowTimerModal(true)} 
+                                className={`p-2.5 rounded-xl backdrop-blur-md border active:scale-95 transition-all hover:bg-white/20 flex items-center gap-2 ${timerSeconds > 0 ? 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse' : 'bg-white/10 border-white/20 text-white'}`}
+                                title="المؤقت"
+                            >
+                                <Timer className="w-5 h-5" />
+                                {timerSeconds > 0 && (
+                                    <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
+                                )}
+                            </button>
+                        </div>
+
+                        <button 
+                            onClick={handleRandomPick} 
+                            className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all hover:bg-white/20"
+                            title="القرعة العشوائية"
+                        >
+                            <Dices className="w-5 h-5 text-white" />
+                        </button>
+
+                        <div className="relative">
+                            <button onClick={() => setShowMenu(!showMenu)} className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all">
+                                <MoreVertical className="w-5 h-5 text-white" />
+                            </button>
+                            {showMenu && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
+                                <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
+                                    <div className="p-1">
+                                        <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                            <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
+                                        </button>
+                                        <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> استيراد من Excel
+                                        </button>
+                                        <div className="my-1 border-t border-slate-100"></div>
+                                        <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                            <LayoutGrid className="w-4 h-4 text-amber-600" /> إضافة فصل جديد
+                                        </button>
+                                        <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                            <Settings className="w-4 h-4 text-slate-500" /> إدارة الفصول
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="relative">
+                        <Search className="absolute right-4 top-3.5 w-5 h-5 text-blue-200" />
+                        <input 
+                            type="text" 
+                            placeholder="بحث عن طالب..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 pr-12 pl-4 text-sm font-bold text-white placeholder:text-blue-200/50 outline-none focus:bg-white/20 transition-all"
+                        />
+                    </div>
+                    
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
+                        {availableGrades.map(g => (
+                             <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
+                        ))}
+                        {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
+                            <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
+                        ))}
+                    </div>
+                </div>
+            </header>
 
             {/* List */}
-           <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2">
+            <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
@@ -408,15 +450,19 @@ const StudentList: React.FC<StudentListProps> = ({
                             <div className="w-full h-px bg-slate-100"></div>
 
                             <div className="flex w-full divide-x divide-x-reverse divide-slate-100">
-                                <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group">
+                                <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group" title="تعزيز إيجابي">
                                     <ThumbsUp className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
                                 </button>
                                 
-                                <button onClick={() => handleBehavior(student, 'negative')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-rose-50 active:bg-rose-100 transition-colors group">
+                                <button onClick={() => handleBehavior(student, 'negative')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-rose-50 active:bg-rose-100 transition-colors group" title="سلوك سلبي">
                                     <ThumbsDown className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
                                 </button>
+
+                                <button onClick={() => handleSendWhatsAppReport(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-green-50 active:bg-green-100 transition-colors group" title="إرسال تقرير واتساب">
+                                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:scale-110 transition-transform" />
+                                </button>
                                 
-                                <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group">
+                                <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group" title="تعديل">
                                     <Edit2 className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                                 </button>
                             </div>
@@ -522,7 +568,8 @@ const StudentList: React.FC<StudentListProps> = ({
                         <button onClick={() => setShowPositiveModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4"/></button>
                     </div>
                     <p className="text-xs font-bold text-gray-500 mb-4">اختر نوع التميز للطالب <span className="text-indigo-600">{selectedStudentForBehavior?.name}</span></p>
-                    <div className="grid grid-cols-2 gap-2">
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-4">
                         {POSITIVE_BEHAVIORS.map(b => (
                             <button 
                                 key={b.id}
@@ -533,6 +580,30 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <span className="text-[10px] bg-white px-2 py-0.5 rounded-full shadow-sm text-emerald-600">+{b.points}</span>
                             </button>
                         ))}
+                    </div>
+
+                    {/* ✅ إضافة الإدخال اليدوي للسلوك الإيجابي */}
+                    <div className="pt-3 border-t border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 mb-2 text-right">أو أضف سلوكاً مخصصاً:</p>
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={customPositiveReason}
+                                onChange={(e) => setCustomPositiveReason(e.target.value)}
+                                placeholder="سبب آخر..." 
+                                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500 text-slate-800"
+                            />
+                            <button 
+                                onClick={() => {
+                                    if(customPositiveReason.trim()) {
+                                        confirmPositiveBehavior(customPositiveReason, 1);
+                                    }
+                                }}
+                                className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-600 active:scale-95 flex items-center gap-1"
+                            >
+                                <Plus size={14} /> إضافة
+                            </button>
+                        </div>
                     </div>
                 </div>
             </Modal>
@@ -547,7 +618,8 @@ const StudentList: React.FC<StudentListProps> = ({
                         <button onClick={() => setShowNegativeModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4"/></button>
                     </div>
                     <p className="text-xs font-bold text-gray-500 mb-4">اختر نوع الملاحظة للطالب <span className="text-indigo-600">{selectedStudentForBehavior?.name}</span></p>
-                    <div className="grid grid-cols-2 gap-2">
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-4">
                         {NEGATIVE_BEHAVIORS.map(b => (
                             <button 
                                 key={b.id}
@@ -558,6 +630,30 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <span className="text-[10px] bg-white px-2 py-0.5 rounded-full shadow-sm">{b.points}</span>
                             </button>
                         ))}
+                    </div>
+
+                    {/* ✅ إضافة الإدخال اليدوي للسلوك السلبي */}
+                    <div className="pt-3 border-t border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 mb-2 text-right">أو أضف ملاحظة مخصصة:</p>
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={customNegativeReason}
+                                onChange={(e) => setCustomNegativeReason(e.target.value)}
+                                placeholder="سبب آخر..." 
+                                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-rose-500 text-slate-800"
+                            />
+                            <button 
+                                onClick={() => {
+                                    if(customNegativeReason.trim()) {
+                                        confirmNegativeBehavior(customNegativeReason, -1);
+                                    }
+                                }}
+                                className="bg-rose-500 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-rose-600 active:scale-95 flex items-center gap-1"
+                            >
+                                <Plus size={14} /> إضافة
+                            </button>
+                        </div>
                     </div>
                 </div>
             </Modal>

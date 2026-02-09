@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return null;
     };
 
-    // ✅ 2. استرجاع دالة أيقونات المواد
+    // ✅ دالة الأيقونات مفعلة بالكامل
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
         const name = subjectName.trim().toLowerCase();
@@ -293,7 +293,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
-            {/* ✅ 1. الهيدر المكبر (pt-16 pb-12 px-6) */}
+            {/* ✅ 1. الهيدر الكبير (pt-16 pb-12 px-6) */}
             <header className="bg-[#446A8D] text-white pt-16 pb-12 px-6 shadow-xl relative z-20 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-5">
@@ -368,7 +368,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* ✅ 3. إضافة المسافة (mt-6) ليكون الجدول أسفل الهيدر بوضوح */}
+            {/* ✅ 3. الجدول يظهر أسفل الهيدر (mt-6) */}
             <div className="px-4 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -389,7 +389,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#446A8D] text-white border-[#446A8D] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* ✅ تطبيق دالة الأيقونات هنا */}
+                                        {/* ✅ 2. تفعيل أيقونات المواد هنا */}
                                         {getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
@@ -397,7 +397,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                                             <h4 className={`font-black text-sm ${isActive ? 'text-white' : 'text-slate-800'}`}>{subject}</h4>
                                             {isActive && <span className="text-[9px] bg-emerald-400 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">الآن</span>}
                                         </div>
-                                        <span className={`text-[10px] font-bold ${isActive ? 'text-blue-200' : 'text-slate-400'}`}>{time.startTime} - {time.endTime}</span>
+                                        {/* ✅ 2. إعادة إظهار رقم الحصة بجوار التوقيت */}
+                                        <span className={`text-[10px] font-bold ${isActive ? 'text-blue-200' : 'text-slate-400'}`}>
+                                            الحصة {idx + 1} • {time.startTime} - {time.endTime}
+                                        </span>
                                     </div>
                                 </div>
                                 {isActive ? (
