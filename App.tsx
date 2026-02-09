@@ -6,7 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { 
   LayoutDashboard, Users, CalendarCheck, BarChart3, 
   Settings as SettingsIcon, Grid, Info, FileText, BookOpen, Medal,
-  ClipboardCheck, Trophy, Menu // أضفت أيقونات إضافية نحتاجها
+  ClipboardCheck, Trophy, Menu 
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
@@ -167,7 +167,7 @@ const AppContent: React.FC = () => {
                   students={students} classes={classes} onUpdateStudent={handleUpdateStudent} setStudents={setStudents}
                   currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo}
               />;
-          case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} />;
+          case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} teacherInfo={teacherInfo} />;
           case 'reports': return <Reports />;
           case 'guide': return <UserGuide />;
           case 'settings': return <Settings />;
@@ -176,13 +176,12 @@ const AppContent: React.FC = () => {
       }
   };
 
-  // ✅ القائمة السفلية الجديدة (بالتصميم القديم + قفز + لون 446A8D)
+  // عناصر القائمة السفلية
   const mobileNavItems = [
       { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
       { id: 'attendance', label: 'الغياب', icon: ClipboardCheck },
       { id: 'students', label: 'الطلاب', icon: Users },
       { id: 'grades', label: 'الدرجات', icon: BookOpen },
-      // { id: 'more', label: 'المزيد', icon: Menu }, // سنعالج زر "المزيد" بشكل منفصل في الـ render
   ];
 
   const desktopNavItems = [
@@ -197,12 +196,11 @@ const AppContent: React.FC = () => {
       { id: 'about', label: 'حول التطبيق', icon: Info },
   ];
 
-  // التحقق مما إذا كان التبويب النشط هو أحد التبويبات المخفية في القائمة "المزيد"
   const isMoreActive = !mobileNavItems.some(item => item.id === activeTab);
 
   return (
     <div className="flex h-full bg-[#f3f4f6] font-sans overflow-hidden text-slate-900 relative">
-        {/* Sidebar (Desktop) */}
+        {/* Sidebar (لنسخة الكمبيوتر) */}
         <aside className="hidden md:flex w-72 flex-col bg-white border-l border-slate-200 z-50 shadow-sm transition-all h-full">
             <div className="p-8 flex items-center gap-4">
                 <div className="w-12 h-12">
@@ -210,7 +208,7 @@ const AppContent: React.FC = () => {
                 </div>
                 <div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">راصد</h1>
-                    <span className="text-[10px] font-bold text-indigo-600 tracking-wider">نسخة المعلم</span>
+                    <span className="text-[10px] font-bold text-[#446A8D] tracking-wider">نسخة المعلم</span>
                 </div>
             </div>
             <div className="px-6 mb-6">
@@ -231,9 +229,9 @@ const AppContent: React.FC = () => {
                         <button
                             key={item.id}
                             onClick={() => handleNavigate(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.02]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-[#446A8D] text-white shadow-lg shadow-indigo-200 scale-[1.02]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'}`}
                         >
-                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-500'} transition-colors`} strokeWidth={2.5} />
+                            <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#446A8D]'} transition-colors`} strokeWidth={2.5} />
                             <span className="font-bold text-sm">{item.label}</span>
                             {isActive && <div className="mr-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
                         </button>
@@ -254,63 +252,98 @@ const AppContent: React.FC = () => {
             </div>
         </main>
 
-        {/* ✅ Mobile Nav (Classic Style with Jump Effect & Color #446A8D) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 pb-safe pt-2 px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-[9999] rounded-t-2xl flex justify-around items-end">
+        {/* ✅ القائمة السفلية (شكل الدائرة العائمة - Floating Circle Style) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[9999]">
+            {/* خلفية الشريط */}
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100"></div>
             
-            {mobileNavItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                    <button
-                        key={item.id}
-                        onClick={() => handleNavigate(item.id)}
-                        className={`flex flex-col items-center justify-center w-full transition-colors duration-300 group pb-2 ${isActive ? 'text-[#446A8D]' : 'text-slate-400 hover:text-slate-500'}`}
+            {/* عناصر التنقل */}
+            <div className="relative flex justify-around items-end pb-safe h-20 px-2">
+                {mobileNavItems.map((item) => {
+                    const isActive = activeTab === item.id;
+                    return (
+                        <button
+                            key={item.id}
+                            onClick={() => handleNavigate(item.id)}
+                            className="relative flex flex-col items-center justify-end w-full h-full pb-3 group"
+                        >
+                            {/* الدائرة الخلفية المتحركة (تظهر عند التفعيل فقط) */}
+                            <div 
+                                className={`absolute transition-all duration-300 ease-out rounded-full flex items-center justify-center shadow-lg
+                                    ${isActive 
+                                        ? 'bg-[#446A8D] w-12 h-12 -top-4 opacity-100 scale-100' // لون الهيدر + رفع للأعلى
+                                        : 'bg-transparent w-8 h-8 top-4 opacity-0 scale-50'
+                                    }`}
+                            >
+                                {/* الأيقونة داخل الدائرة (بيضاء عند التفعيل) */}
+                                <item.icon 
+                                    size={24} 
+                                    strokeWidth={2.5}
+                                    color="white"
+                                    className={`${isActive ? 'opacity-100' : 'opacity-0'}`}
+                                />
+                            </div>
+
+                            {/* الأيقونة العادية (تظهر عند عدم التفعيل) */}
+                            <div className={`transition-all duration-300 ${isActive ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+                                <item.icon 
+                                    size={26} 
+                                    strokeWidth={2}
+                                    className="text-slate-400 group-hover:text-slate-600"
+                                />
+                            </div>
+                            
+                            {/* النص */}
+                            <span 
+                                className={`text-[10px] font-bold mt-1 transition-all duration-300 
+                                    ${isActive ? 'text-[#446A8D] translate-y-1' : 'text-slate-500'}`}
+                            >
+                                {item.label}
+                            </span>
+                        </button>
+                    );
+                })}
+
+                {/* زر المزيد (بنفس الستايل) */}
+                <button
+                    onClick={() => setShowMoreMenu(true)}
+                    className="relative flex flex-col items-center justify-end w-full h-full pb-3 group"
+                >
+                    <div 
+                        className={`absolute transition-all duration-300 ease-out rounded-full flex items-center justify-center shadow-lg
+                            ${isMoreActive 
+                                ? 'bg-[#446A8D] w-12 h-12 -top-4 opacity-100 scale-100' 
+                                : 'bg-transparent w-8 h-8 top-4 opacity-0 scale-50'
+                            }`}
                     >
-                        {/* Jump Effect */}
-                        <div className={`transition-all duration-300 transform ${isActive ? '-translate-y-2 scale-110' : ''}`}>
-                            <item.icon 
-                                size={26} 
-                                strokeWidth={isActive ? 2.5 : 2}
-                                fill={isActive ? "#446A8D" : "none"} 
-                                className={isActive ? "fill-current opacity-100" : "fill-none"}
-                                style={{ fillOpacity: isActive ? 0.15 : 0 }}
-                            />
-                        </div>
-                        
-                        {/* Text (Appear on Active) */}
-                        <span className={`text-[10px] font-black transition-all duration-300 absolute -bottom-1 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-                            {item.label}
-                        </span>
-                        
-                        {/* Active Dot */}
-                        <span className={`w-1 h-1 rounded-full bg-[#446A8D] mt-1 transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}></span>
-                    </button>
-                );
-            })}
+                        <Menu 
+                            size={24} 
+                            strokeWidth={2.5}
+                            color="white"
+                            className={`${isMoreActive ? 'opacity-100' : 'opacity-0'}`}
+                        />
+                    </div>
 
-            {/* زر المزيد (بنفس الستايل) */}
-            <button
-                onClick={() => setShowMoreMenu(true)}
-                className={`flex flex-col items-center justify-center w-full transition-colors duration-300 group pb-2 ${isMoreActive ? 'text-[#446A8D]' : 'text-slate-400 hover:text-slate-500'}`}
-            >
-                <div className={`transition-all duration-300 transform ${isMoreActive ? '-translate-y-2 scale-110' : ''}`}>
-                    <Menu 
-                        size={26} 
-                        strokeWidth={isMoreActive ? 2.5 : 2}
-                        fill={isMoreActive ? "#446A8D" : "none"} 
-                        className={isMoreActive ? "fill-current opacity-100" : "fill-none"}
-                        style={{ fillOpacity: isMoreActive ? 0.15 : 0 }}
-                    />
-                </div>
-                <span className={`text-[10px] font-black transition-all duration-300 absolute -bottom-1 ${isMoreActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-                    المزيد
-                </span>
-                <span className={`w-1 h-1 rounded-full bg-[#446A8D] mt-1 transition-all duration-300 ${isMoreActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}></span>
-            </button>
-
+                    <div className={`transition-all duration-300 ${isMoreActive ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+                        <Menu 
+                            size={26} 
+                            strokeWidth={2}
+                            className="text-slate-400 group-hover:text-slate-600"
+                        />
+                    </div>
+                    
+                    <span 
+                        className={`text-[10px] font-bold mt-1 transition-all duration-300 
+                            ${isMoreActive ? 'text-[#446A8D] translate-y-1' : 'text-slate-500'}`}
+                    >
+                        المزيد
+                    </span>
+                </button>
+            </div>
         </nav>
 
         {/* Menu Modal (Existing) */}
-        <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-20 md:hidden z-[10000]">
+        <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-24 md:hidden z-[10000]">
             <div className="text-center mb-6">
                 <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
                 <h3 className="font-black text-slate-800 text-lg">القائمة الكاملة</h3>
