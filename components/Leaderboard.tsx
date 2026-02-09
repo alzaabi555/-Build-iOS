@@ -1,20 +1,28 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Student } from '../types';
-import { Trophy, Crown, Sparkles, Star, Search, Award, Printer, X } from 'lucide-react';
+import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-// ✅ استيراد مكون الأفاتار بشكل صحيح
 import { StudentAvatar } from './StudentAvatar';
-// ✅ استيراد المودال
 import Modal from './Modal';
-// ✅ استيراد الصوت محلياً
 import positiveSound from '../assets/positive.mp3';
+
+// ✅ استيراد المكتبات الموجودة لديك
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface LeaderboardProps {
     students: Student[];
     classes: string[];
     onUpdateStudent?: (student: Student) => void;
-    // ✅ استقبلنا بيانات المعلم هنا لاستخدامها في الشهادة
-    teacherInfo?: { name: string; school: string; subject: string; governorate: string; ministryLogo?: string }; 
+    // ✅ التأكد من استقبال كافة حقول الهوية بشكل صحيح
+    teacherInfo?: { 
+        name: string; 
+        school: string; 
+        subject: string; 
+        governorate: string; 
+        ministryLogo?: string; 
+        stamp?: string; 
+    }; 
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateStudent, teacherInfo }) => {
@@ -22,11 +30,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
     
-    // ✅ حالة لشهادة التميز
+    // حالات الشهادة والتحميل
     const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const certificateRef = useRef<HTMLDivElement>(null);
     
-    // تحديد الشهر الحالي
     const today = new Date();
     const currentMonth = today.getMonth(); 
     const currentYear = today.getFullYear();
@@ -34,7 +42,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     const monthName = months[currentMonth];
 
-    // تصفية وحساب النقاط
     const rankedStudents = useMemo(() => {
         let filtered = students;
         
@@ -72,7 +79,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const handleAddPoints = (student: Student) => {
         if (!onUpdateStudent) return;
         
-        // ✅ تشغيل الصوت المحلي
         const audio = new Audio(positiveSound);
         audio.volume = 0.5;
         audio.play().catch(() => {});
@@ -89,37 +95,46 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         alert(`تم إضافة 3 نقاط للطالب ${student.name} 🌟`);
     };
 
-    // ✅ دالة الطباعة
-    const handlePrintCertificate = () => {
-        const content = certificateRef.current;
-        if (content) {
-            const printWindow = window.open('', '', 'width=800,height=600');
-            if (printWindow) {
-                printWindow.document.write('<html><head><title>شهادة تميز</title>');
-                printWindow.document.write('<style>');
-                printWindow.document.write(`
-                    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-                    body { font-family: 'Tajawal', sans-serif; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
-                    .certificate-container { width: 100%; height: 100%; padding: 20px; box-sizing: border-box; }
-                    @page { size: landscape; margin: 0; }
-                `);
-                printWindow.document.write('</style></head><body>');
-                printWindow.document.write(content.innerHTML);
-                printWindow.document.write('</body></html>');
-                printWindow.document.close();
-                printWindow.focus();
-                setTimeout(() => {
-                    printWindow.print();
-                    printWindow.close();
-                }, 500);
-            }
+    // ✅ دالة حفظ الشهادة كملف PDF
+    const handleDownloadPDF = async () => {
+        if (!certificateRef.current) return;
+        
+        try {
+            setIsGeneratingPdf(true); 
+
+            // 1. التقاط الصورة بجودة عالية
+            const canvas = await html2canvas(certificateRef.current, {
+                scale: 2, 
+                useCORS: true, // ضروري لتحميل الصور الخارجية (الشعار والختم)
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+
+            // 2. إعداد ملف PDF (عرضي Landscape A4)
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('l', 'mm', 'a4'); 
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            // 3. إضافة الصورة
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            // 4. الحفظ
+            pdf.save(`شهادة_تميز_${certificateStudent?.name.replace(/\s+/g, '_')}.pdf`);
+
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('حدث خطأ أثناء حفظ الملف.');
+        } finally {
+            setIsGeneratingPdf(false); 
         }
     };
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500 overflow-hidden">
             
-            {/* Header */}
+            {/* Header (نفس التصميم السابق) */}
             <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex flex-col items-center text-center">
                     <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner">
@@ -178,7 +193,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                     <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">{topThree[1].name.split(' ')[0]}</h3>
                                     <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-2 py-0.5 rounded-lg">{topThree[1].monthlyPoints} pts</span>
                                 </div>
-                                {/* زر الشهادة */}
                                 <button onClick={() => setCertificateStudent(topThree[1])} className="text-[10px] bg-[#446A8D] text-white px-2 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-700 transition-colors shadow-sm">
                                     <Award size={12} /> شهادة
                                 </button>
@@ -203,7 +217,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                         <span className="text-amber-600 font-black text-xs">{topThree[0].monthlyPoints} pts</span>
                                     </div>
                                 </div>
-                                {/* زر الشهادة */}
                                 <button onClick={() => setCertificateStudent(topThree[0])} className="text-[10px] bg-amber-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-amber-600 transition-colors shadow-md -translate-y-2">
                                     <Award size={14} /> شهادة تميز
                                 </button>
@@ -224,7 +237,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                     <h3 className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">{topThree[2].name.split(' ')[0]}</h3>
                                     <span className="text-orange-600/70 font-bold text-[10px] bg-orange-50 px-2 py-0.5 rounded-lg">{topThree[2].monthlyPoints} pts</span>
                                 </div>
-                                {/* زر الشهادة */}
                                 <button onClick={() => setCertificateStudent(topThree[2])} className="text-[10px] bg-[#446A8D] text-white px-2 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-700 transition-colors shadow-sm">
                                     <Award size={12} /> شهادة
                                 </button>
@@ -239,7 +251,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     </div>
                 )}
 
-                {/* Rest of Students Grid */}
                 {restOfStudents.length > 0 && (
                     <div className="mt-4">
                         <h3 className="font-black text-slate-700 mb-4 text-sm flex items-center gap-2">
@@ -271,7 +282,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                             شهادة
                                         </button>
                                     </div>
-                                    <div className="absolute inset-0 bg-yellow-400 opacity-0 active:opacity-10 transition-opacity pointer-events-none"></div>
                                 </div>
                             ))}
                         </div>
@@ -280,20 +290,20 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             </div>
 
             {/* ✅ نافذة الشهادة (Modal) */}
-            <Modal isOpen={!!certificateStudent} onClose={() => setCertificateStudent(null)} className="max-w-2xl rounded-xl p-0 overflow-hidden">
+            <Modal isOpen={!!certificateStudent} onClose={() => { if(!isGeneratingPdf) setCertificateStudent(null); }} className="max-w-2xl rounded-xl p-0 overflow-hidden">
                 {certificateStudent && (
                     <div className="flex flex-col h-full bg-white">
                         <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-100">
                             <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
                                 <Award className="w-5 h-5 text-amber-500" /> معاينة الشهادة
                             </h3>
-                            <button onClick={() => setCertificateStudent(null)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-colors">
+                            <button onClick={() => setCertificateStudent(null)} disabled={isGeneratingPdf} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-colors disabled:opacity-50">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        {/* ✅ تصميم الشهادة للطباعة */}
                         <div className="p-8 overflow-y-auto bg-slate-100 flex justify-center">
+                            {/* عنصر الشهادة الذي سيتم تحويله لـ PDF */}
                             <div ref={certificateRef} className="bg-white w-full max-w-lg aspect-[1.414/1] relative shadow-2xl p-8 text-center text-slate-900 certificate-container" style={{ backgroundImage: 'radial-gradient(circle at center, #fff 0%, #fdfdfd 100%)' }}>
                                 {/* إطار زخرفي */}
                                 <div className="absolute inset-2 border-4 border-double border-[#446A8D] pointer-events-none"></div>
@@ -303,15 +313,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                 <div className="flex justify-between items-start mb-8 relative z-10 px-4">
                                     <div className="text-right text-[10px] font-bold leading-relaxed text-slate-600">
                                         <p>سلطنة عمان</p>
-                                        <p>وزارةالتعليم</p>
+                                        <p>وزارة التربية والتعليم</p>
                                         <p>{teacherInfo?.governorate || 'المديرية العامة...'}</p>
                                         <p>{teacherInfo?.school || 'المدرسة...'}</p>
                                     </div>
-                                    <div className="w-16 h-16 opacity-80">
-                                        {/* مكان الشعار (يمكنك وضع صورة افتراضية) */}
-                                        <div className="w-full h-full bg-slate-50 rounded-full flex items-center justify-center border border-slate-200">
-                                            <Crown className="w-8 h-8 text-amber-500 opacity-50" />
-                                        </div>
+                                    <div className="w-20 h-20 opacity-90 -mt-2">
+                                        {/* ✅ شعار الوزارة (مع Fallback) */}
+                                        {teacherInfo?.ministryLogo ? (
+                                            <img src={teacherInfo.ministryLogo} alt="الشعار" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                                        ) : (
+                                            <div className="w-full h-full bg-slate-50 rounded-full flex items-center justify-center border border-slate-200">
+                                                <Crown className="w-8 h-8 text-amber-500 opacity-50" />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="text-left text-[10px] font-bold leading-relaxed text-slate-600">
                                         <p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
@@ -342,29 +356,52 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                     </p>
                                 </div>
 
-                                {/* التوقيعات */}
+                                {/* التوقيعات (مع التبديل والختم) */}
                                 <div className="flex justify-between items-end px-8 mt-auto relative z-10">
-                                    <div className="text-center">
-                                        <p className="text-xs font-bold text-slate-500 mb-2">مدير/ة المدرسة</p>
-                                        <p className="text-sm font-black text-[#446A8D]">....................</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 mb-2 mx-auto opacity-10">
-                                            <Award className="w-full h-full text-[#446A8D]" />
-                                        </div>
-                                    </div>
-                                    <div className="text-center">
+                                    {/* ✅ اليمين: المعلم */}
+                                    <div className="text-center w-1/3">
                                         <p className="text-xs font-bold text-slate-500 mb-2">المعلم/ة</p>
                                         <p className="text-sm font-black text-[#446A8D]">{teacherInfo?.name || '....................'}</p>
+                                    </div>
+
+                                    {/* ✅ الوسط: ختم المدرسة */}
+                                    <div className="text-center w-1/3 flex justify-center">
+                                        <div className="w-20 h-20 opacity-80 rotate-[-10deg]">
+                                            {teacherInfo?.stamp ? (
+                                                <img src={teacherInfo.stamp} alt="الختم" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                                            ) : (
+                                                <div className="w-16 h-16 mb-2 mx-auto opacity-10">
+                                                    <Award className="w-full h-full text-[#446A8D]" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* ✅ اليسار: مدير المدرسة */}
+                                    <div className="text-center w-1/3">
+                                        <p className="text-xs font-bold text-slate-500 mb-2">مدير/ة المدرسة</p>
+                                        <p className="text-sm font-black text-[#446A8D]">....................</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* زر الطباعة */}
+                        {/* زر الحفظ */}
                         <div className="p-4 border-t border-slate-100 flex gap-3 bg-white">
-                            <button onClick={handlePrintCertificate} className="flex-1 py-3 bg-[#446A8D] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
-                                <Printer size={18} /> طباعة / حفظ كـ PDF
+                            <button 
+                                onClick={handleDownloadPDF} 
+                                disabled={isGeneratingPdf}
+                                className="flex-1 py-3 bg-[#446A8D] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {isGeneratingPdf ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" /> جاري إنشاء الشهادة...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download size={18} /> حفظ كـ PDF
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

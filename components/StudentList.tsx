@@ -10,6 +10,10 @@ import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 
+// ✅ استيراد الكابستور والمتصفح لضمان عمل الواتساب على الوندوز والموبايل
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
+
 // استيراد الأصوات
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
@@ -90,7 +94,7 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showPositiveModal, setShowPositiveModal] = useState(false);
     const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState<Student | null>(null);
 
-    // ✅ حالة جديدة للإدخال اليدوي للسلوكيات
+    // حالة جديدة للإدخال اليدوي للسلوكيات
     const [customPositiveReason, setCustomPositiveReason] = useState('');
     const [customNegativeReason, setCustomNegativeReason] = useState('');
 
@@ -236,8 +240,8 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    // ✅ دالة إرسال تقرير الواتساب
-    const handleSendWhatsAppReport = (student: Student) => {
+    // ✅ دالة إرسال تقرير الواتساب المعدلة (لتعمل على ويندوز وموبايل)
+    const handleSendWhatsAppReport = async (student: Student) => {
         if (!student.parentPhone) {
             alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي أمر هذا الطالب.\nيرجى تعديل بيانات الطالب وإضافة الرقم أولاً.');
             return;
@@ -263,8 +267,19 @@ const StudentList: React.FC<StudentListProps> = ({
 
         message += `\nنأمل منكم التكرم بمتابعة الطالب وتوجيهه.\nشكراً لتعاونكم.\n*إدارة المدرسة*`;
 
-        const url = `https://wa.me/${student.parentPhone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        // ✅ المنطق الجديد: تنظيف الرقم واستخدام الرابط العالمي
+        const cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+
+        try {
+            if (Capacitor.isNativePlatform()) {
+                await Browser.open({ url: universalUrl });
+            } else {
+                window.open(universalUrl, '_blank');
+            }
+        } catch (e) {
+            window.open(universalUrl, '_blank');
+        }
     };
 
     const confirmPositiveBehavior = (title: string, points: number) => {
@@ -582,7 +597,7 @@ const StudentList: React.FC<StudentListProps> = ({
                         ))}
                     </div>
 
-                    {/* ✅ إضافة الإدخال اليدوي للسلوك الإيجابي */}
+                    {/* إضافة الإدخال اليدوي للسلوك الإيجابي */}
                     <div className="pt-3 border-t border-slate-100">
                         <p className="text-[10px] font-bold text-slate-400 mb-2 text-right">أو أضف سلوكاً مخصصاً:</p>
                         <div className="flex gap-2">
@@ -632,7 +647,7 @@ const StudentList: React.FC<StudentListProps> = ({
                         ))}
                     </div>
 
-                    {/* ✅ إضافة الإدخال اليدوي للسلوك السلبي */}
+                    {/* إضافة الإدخال اليدوي للسلوك السلبي */}
                     <div className="pt-3 border-t border-slate-100">
                         <p className="text-[10px] font-bold text-slate-400 mb-2 text-right">أو أضف ملاحظة مخصصة:</p>
                         <div className="flex gap-2">
