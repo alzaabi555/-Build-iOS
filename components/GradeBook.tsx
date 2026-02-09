@@ -499,7 +499,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </header>
 
       {/* Student List Grid - Fixed Header with Scrolling Content */}
-      <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
+     <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2">
         {filteredStudents.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {filteredStudents.map(student => {

@@ -377,7 +377,7 @@ const StudentList: React.FC<StudentListProps> = ({
                         />
                     </div>
                     
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-[220px] md:pt-2">
                         <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
                         {availableGrades.map(g => (
                              <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? 'bg-white text-[#1e3a8a] shadow-md border-white' : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
