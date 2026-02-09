@@ -390,7 +390,7 @@ const StudentList: React.FC<StudentListProps> = ({
             </header>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto px-8 pb-20 pt-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredStudents.length > 0 ? filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col items-center overflow-hidden hover:shadow-md transition-all">
