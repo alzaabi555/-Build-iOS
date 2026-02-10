@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef } from 'react';
 import { Student } from '../types';
 import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2 } from 'lucide-react';
@@ -6,9 +7,11 @@ import { StudentAvatar } from './StudentAvatar';
 import Modal from './Modal';
 import positiveSound from '../assets/positive.mp3';
 
-// ✅ استيراد المكتبات الموجودة لديك
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// ✅ تحديث المكتبات لتطابق التقارير
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
+import html2pdf from 'html2pdf.js';
 
 interface LeaderboardProps {
     students: Student[];
@@ -95,70 +98,56 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         alert(`تم إضافة 3 نقاط للطالب ${student.name} 🌟`);
     };
 
-    // ✅ دالة حفظ الشهادة كملف PDF
-   // ✅ دالة حفظ الشهادة كملف PDF (تعمل على الويندوز والموبايل)
-const handleDownloadPDF = async () => {
-    if (!certificateRef.current || !certificateStudent) return;
-    
-    try {
-        setIsGeneratingPdf(true); 
+    // ✅ دالة حفظ الشهادة كملف PDF (نفس منطق التقارير)
+    const handleDownloadPDF = async () => {
+        if (!certificateRef.current || !certificateStudent) return;
+        
+        setIsGeneratingPdf(true);
 
-        // 1. التقاط الصورة بجودة عالية
-        const canvas = await html2canvas(certificateRef.current, {
-            scale: 2, 
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            allowTaint: true, // ✅ مهم للصور الخارجية
-        });
+        const element = certificateRef.current;
+        // اسم الملف
+        const fileName = `Certificate_${certificateStudent.name.replace(/\s+/g, '_')}.pdf`;
 
-        // 2. إعداد ملف PDF (عرضي Landscape A4)
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('l', 'mm', 'a4'); 
+        // إعدادات html2pdf
+        const opt = {
+            margin: 0, 
+            filename: fileName,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
 
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
+        try {
+            const worker = html2pdf().set(opt).from(element).toPdf();
 
-        // 3. إضافة الصورة
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            if (Capacitor.isNativePlatform()) {
+                // ✅ للموبايل: تحويل لـ Base64 ثم حفظ ومشاركة
+                const pdfBase64 = await worker.output('datauristring');
+                const base64Data = pdfBase64.split(',')[1];
 
-        // ✅ 4. الحفظ حسب البيئة
-        const fileName = `شهادة_تميز_${certificateStudent.name.replace(/\s+/g, '_')}.pdf`;
+                const result = await Filesystem.writeFile({
+                    path: fileName,
+                    data: base64Data,
+                    directory: Directory.Cache
+                });
 
-        if (Capacitor.isNativePlatform()) {
-            // ✅ للموبايل (iOS & Android)
-            const pdfOutput = pdf.output('datauristring'); // تحويل إلى base64
-            const base64Data = pdfOutput.split(',')[1]; // استخراج Base64 فقط
+                await Share.share({
+                    title: 'شهادة تميز',
+                    url: result.uri,
+                    dialogTitle: 'مشاركة الشهادة'
+                });
+            } else {
+                // ✅ للويب/الويندوز: تحميل مباشر
+                worker.save();
+            }
 
-            // حفظ الملف في الكاش
-            const savedFile = await Filesystem.writeFile({
-                path: fileName,
-                data: base64Data,
-                directory: Directory.Cache
-            });
-
-            // مشاركة الملف
-            await Share.share({
-                title: 'شهادة تميز',
-                text: `شهادة تميز للطالب ${certificateStudent.name}`,
-                url: savedFile.uri,
-                dialogTitle: 'مشاركة الشهادة'
-            });
-
-            alert('✅ تم حفظ الشهادة بنجاح!');
-            
-        } else {
-            // ✅ للويب/الويندوز
-            pdf.save(fileName);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('❌ حدث خطأ أثناء حفظ الملف');
+        } finally {
+            setIsGeneratingPdf(false); 
         }
-
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        alert('❌ حدث خطأ أثناء حفظ الملف: ' + error);
-    } finally {
-        setIsGeneratingPdf(false); 
-    }
-};
+    };
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500 overflow-hidden">
@@ -342,7 +331,7 @@ const handleDownloadPDF = async () => {
                                 <div className="flex justify-between items-start mb-8 relative z-10 px-4">
                                     <div className="text-right text-[10px] font-bold leading-relaxed text-slate-600">
                                         <p>سلطنة عمان</p>
-                                        <p>وزارة التربية والتعليم</p>
+                                        <p>وزارة التعليم</p>
                                         <p>{teacherInfo?.governorate || 'المديرية العامة...'}</p>
                                         <p>{teacherInfo?.school || 'المدرسة...'}</p>
                                     </div>
@@ -428,7 +417,7 @@ const handleDownloadPDF = async () => {
                                     </>
                                 ) : (
                                     <>
-                                        <Download size={18} /> حفظ كـ PDF
+                                        <Download size={18} /> حفظ / مشاركة PDF
                                     </>
                                 )}
                             </button>
