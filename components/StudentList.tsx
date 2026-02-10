@@ -3,7 +3,8 @@ import { Student, BehaviorType } from '../types';
 import { 
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, 
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, 
-    Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus 
+    Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
+    Sparkles // ✅ تمت إضافة الأيقونة هنا
 } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
@@ -323,6 +324,64 @@ const StudentList: React.FC<StudentListProps> = ({
         setSelectedStudentForBehavior(null);
     };
 
+    // ✅ دالة مكافأة الانضباط الجماعي (الميزة الجديدة)
+    const handleQuietAndDiscipline = () => {
+        if (!confirm('هل تريد إضافة نقطتين (هدوء وانضباط) لجميع الطلاب الحاضرين والمنضبطين في القائمة المعروضة؟')) return;
+
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const now = new Date();
+
+        // 1. تحديد الطلاب المستحقين من القائمة المعروضة حالياً
+        const eligibleStudents = filteredStudents.filter(student => {
+            // أ. التحقق من الغياب
+            const attendance = student.attendance.find(a => a.date === todayStr);
+            const isAbsent = attendance?.status === 'absent' || attendance?.status === 'truant';
+            if (isAbsent) return false;
+
+            // ب. التحقق من السلوك السلبي (اليوم)
+            const hasNegativeToday = (student.behaviors || []).some(b => {
+                const bDate = new Date(b.date);
+                return b.type === 'negative' && 
+                       bDate.getDate() === now.getDate() &&
+                       bDate.getMonth() === now.getMonth() &&
+                       bDate.getFullYear() === now.getFullYear();
+            });
+            if (hasNegativeToday) return false;
+
+            return true;
+        });
+
+        if (eligibleStudents.length === 0) {
+            alert('لا يوجد طلاب مستحقين للنقاط في القائمة الحالية (بسبب الغياب أو وجود مخالفات).');
+            return;
+        }
+
+        // 2. تحديث قائمة الطلاب
+        const updatedStudents = students.map(student => {
+            // إذا كان الطالب ضمن المستحقين، نضيف له النقاط
+            if (eligibleStudents.find(es => es.id === student.id)) {
+                const newBehavior = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    date: new Date().toISOString(),
+                    type: 'positive' as const,
+                    description: 'هدوء وانضباط',
+                    points: 2,
+                    semester: currentSemester
+                };
+                return {
+                    ...student,
+                    behaviors: [newBehavior, ...(student.behaviors || [])]
+                };
+            }
+            return student;
+        });
+
+        setStudents(updatedStudents);
+        playSound('positive');
+        alert(`تم إضافة نقطتي (هدوء وانضباط) لـ ${eligibleStudents.length} طالب ✅\nتم استبعاد الغائبين والمخالفين.`);
+        setShowMenu(false);
+    };
+
     const handleManualAddSubmit = () => {
         if (newStudentName && newStudentClass) {
             onAddStudentManually(newStudentName, newStudentClass, newStudentPhone, undefined, newStudentGender);
@@ -347,14 +406,13 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    // ✅ التصحيح هنا: تصفير الأيقونة (Avatar) عند تغيير الجنس لضمان ظهور الأيقونة الجديدة
     const handleBatchGenderUpdate = (gender: 'male' | 'female') => {
         if (confirm('هل أنت متأكد؟ سيتم تغيير أيقونات جميع الطلاب المسجلين حالياً ليتناسب مع النوع المختار.')) {
             setDefaultStudentGender(gender);
             setStudents(prev => prev.map(s => ({
                 ...s,
                 gender: gender,
-                avatar: undefined // ✅ إعادة تعيين الأفاتار ليأخذ الافتراضي الجديد
+                avatar: undefined
             })));
         }
     };
@@ -406,6 +464,9 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                                 <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
                                     <div className="p-1">
+                                        <button onClick={handleQuietAndDiscipline} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors w-full text-right text-xs font-bold text-slate-700 border-b border-slate-50">
+                                            <Sparkles className="w-4 h-4 text-purple-600" /> مكافأة الانضباط (هدوء)
+                                        </button>
                                         <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
                                             <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
                                         </button>
