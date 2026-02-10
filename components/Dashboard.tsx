@@ -119,39 +119,92 @@ const Dashboard: React.FC<DashboardProps> = ({
         return null;
     };
 
-    // ✅ دالة الأيقونات مفعلة بالكامل
+    // ✅ دالة محسّنة لأيقونات المواد (أكثر مرونة)
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
+        
         const name = subjectName.trim().toLowerCase();
-        if (name.match(/اسلام|قرآن|دين|توحيد|فقه/)) return <span className="text-2xl">🕌</span>;
-        if (name.match(/عربي|لغتي|نحو|أدب/)) return <span className="text-2xl">📜</span>;
-        if (name.match(/رياضيات|حساب|جبر|هندسة/)) return <span className="text-2xl">📐</span>;
-        if (name.match(/علوم|فيزياء|كيمياء|أحياء/)) return <span className="text-2xl">🧪</span>;
-        if (name.match(/انجليزي|english/)) return <span className="text-2xl">🅰️</span>;
-        if (name.match(/حاسوب|تقنية|رقمية/)) return <span className="text-2xl">💻</span>;
-        if (name.match(/اجتماعيات|تاريخ|جغرافيا/)) return <span className="text-2xl">🌍</span>;
-        if (name.match(/رياضة|بدنية/)) return <span className="text-2xl">⚽</span>;
-        if (name.match(/فنون|رسم|تربية فنية/)) return <span className="text-2xl">🎨</span>;
-        if (name.match(/تفكير|ناقد/)) return <span className="text-2xl">🧠</span>;
-        if (name.match(/مهارات|حياتية/)) return <span className="text-2xl">🤝</span>;
+        
+        // تنظيف النص من الأحرف الخاصة
+        const cleanName = name.replace(/[^\u0600-\u06FFa-z0-9\s]/g, '');
+        
+        // ✅ التربية الإسلامية والقرآن
+        if (cleanName.match(/اسلام|قران|قرآن|دين|توحيد|فقه|تربية اسلامية|حديث|تفسير/)) 
+            return <span className="text-2xl">🕌</span>;
+        
+        // ✅ اللغة العربية
+        if (cleanName.match(/عربي|لغتي|نحو|ادب|أدب|لغة عربية|بلاغة|عروض/)) 
+            return <span className="text-2xl">📜</span>;
+        
+        // ✅ الرياضيات
+        if (cleanName.match(/رياضيات|حساب|جبر|هندسة|رياضة|math/)) 
+            return <span className="text-2xl">📐</span>;
+        
+        // ✅ العلوم
+        if (cleanName.match(/علوم|فيزياء|كيمياء|احياء|أحياء|biology|science/)) 
+            return <span className="text-2xl">🧪</span>;
+        
+        // ✅ الإنجليزي
+        if (cleanName.match(/انجليزي|انقليزي|english|لغة انجليزية/)) 
+            return <span className="text-2xl">🅰️</span>;
+        
+        // ✅ الحاسوب
+        if (cleanName.match(/حاسوب|تقنية|رقمية|برمجة|كمبيوتر|computer/)) 
+            return <span className="text-2xl">💻</span>;
+        
+        // ✅ الاجتماعيات
+        if (cleanName.match(/اجتماعيات|تاريخ|جغرافيا|جغرافية|وطنية|دراسات اجتماعية/)) 
+            return <span className="text-2xl">🌍</span>;
+        
+        // ✅ الرياضة
+        if (cleanName.match(/رياضة|بدنية|تربية بدنية|sport/)) 
+            return <span className="text-2xl">⚽</span>;
+        
+        // ✅ الفنون
+        if (cleanName.match(/فن|فنون|رسم|تربية فنية|موسيقى|موسيقي/)) 
+            return <span className="text-2xl">🎨</span>;
+        
+        // ✅ التفكير الناقد
+        if (cleanName.match(/تفكير|ناقد|منطق/)) 
+            return <span className="text-2xl">🧠</span>;
+        
+        // ✅ المهارات الحياتية
+        if (cleanName.match(/مهارات|حياتية|مهارة/)) 
+            return <span className="text-2xl">🤝</span>;
+        
+        // ✅ افتراضي (إذا لم يطابق أي شيء)
         return <span className="text-xl opacity-50">📚</span>;
     };
 
+    // ✅ دالة حفظ بيانات المعلم (محدثة)
     const handleSaveInfo = () => {
-        onUpdateTeacherInfo({
-            ...teacherInfo,
-            name: editName,
-            school: editSchool,
-            subject: editSubject,
-            governorate: editGovernorate,
+        const updatedInfo = {
+            name: editName.trim(),
+        school: editSchool.trim(),
+        subject: editSubject.trim(),      // ✅ المادة
+        governorate: editGovernorate.trim(), // ✅ المحافظة
+        academicYear: editAcademicYear.trim(), // ✅ السنة الدراسية
             avatar: editAvatar,
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
-            academicYear: editAcademicYear,
+            academicYear: editAcademicYear.trim(),
             gender: editGender
-        });
+        };
+
+        console.log('💾 حفظ البيانات:', updatedInfo);
+        console.log('📅 الفصل الدراسي:', editSemester);
+
+        // ✅ حفظ بيانات المعلم
+        onUpdateTeacherInfo(updatedInfo);
+        
+        // ✅ حفظ الفصل الدراسي
         onSemesterChange(editSemester);
+        
+        // إغلاق النافذة
         setShowEditModal(false);
+        
+        // رسالة تأكيد
+        alert('✅ تم حفظ البيانات بنجاح');
     };
 
     const handleSaveScheduleSettings = () => {
@@ -160,13 +213,58 @@ const Dashboard: React.FC<DashboardProps> = ({
         setShowScheduleModal(false);
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    // ✅ دالة ضغط الصور قبل الحفظ (لتجنب تجاوز حد localStorage)
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | undefined) => void) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setter(reader.result as string);
-            reader.readAsDataURL(file);
-        }
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const img = new Image();
+            img.onload = () => {
+                // إنشاء Canvas لضغط الصورة
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // ✅ تحديد الحجم الأقصى (400x400 بكسل)
+                const MAX_SIZE = 400;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height = (height * MAX_SIZE) / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width = (width * MAX_SIZE) / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // ✅ تحويل إلى Base64 بجودة 70%
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // التحقق من الحجم النهائي
+                const sizeInKB = (compressedBase64.length * 3) / 4 / 1024;
+                console.log(`📏 حجم الصورة بعد الضغط: ${sizeInKB.toFixed(2)} KB`);
+
+                if (sizeInKB > 500) {
+                    alert('⚠️ الصورة كبيرة جداً. يرجى اختيار صورة أصغر.');
+                    return;
+                }
+
+                setter(compressedBase64);
+            };
+            img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
     };
 
     const parseExcelTime = (value: any): string => {
@@ -293,8 +391,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
-            {/* ✅ 1. الهيدر الكبير (pt-16 pb-12 px-6) */}
-            <header className="bg-[#446A8D] text-white pt-16 pb-12 px-6 shadow-xl relative z-20 -mx-4 -mt-4">
+            {/* ✅ 1. الهيدر الكبير */}
+            <header className="bg-[#446A8D] text-white pt-16 pb-12 px-4 shadow-xl relative z-20 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-5">
                         <div className="relative group">
@@ -368,7 +466,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* ✅ 3. الجدول يظهر أسفل الهيدر (mt-6) */}
+            {/* ✅ 3. الجدول */}
             <div className="px-4 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -389,7 +487,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#446A8D] text-white border-[#446A8D] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* ✅ 2. تفعيل أيقونات المواد هنا */}
+                                        {/* ✅ عرض الأيقونة */}
                                         {getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
@@ -397,7 +495,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                             <h4 className={`font-black text-sm ${isActive ? 'text-white' : 'text-slate-800'}`}>{subject}</h4>
                                             {isActive && <span className="text-[9px] bg-emerald-400 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">الآن</span>}
                                         </div>
-                                        {/* ✅ 2. إعادة إظهار رقم الحصة بجوار التوقيت */}
                                         <span className={`text-[10px] font-bold ${isActive ? 'text-blue-200' : 'text-slate-400'}`}>
                                             الحصة {idx + 1} • {time.startTime} - {time.endTime}
                                         </span>
