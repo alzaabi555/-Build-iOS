@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
@@ -100,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             setEditGender(teacherInfo.gender || 'male');
             setEditSemester(currentSemester);
         }
-    }, [teacherInfo, currentSemester, showEditModal]);
+    }, [showEditModal]); // Removed teacherInfo dependency to prevent overwrite during editing
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -153,7 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             return <span className="text-2xl">💻</span>;
         
         // ✅ الاجتماعيات
-        if (cleanName.match(/اجتماعيات|تاريخ|جغرافيا|جغرافية|وطنية|دراسات اجتماعية/)) 
+        if (cleanName.match(/اجتماعيات|تاريخ|جغرافيا|جغرافية|وطنية|دراسات|social/)) 
             return <span className="text-2xl">🌍</span>;
         
         // ✅ الرياضة
@@ -180,20 +181,18 @@ const Dashboard: React.FC<DashboardProps> = ({
     const handleSaveInfo = () => {
         const updatedInfo = {
             name: editName.trim(),
-        school: editSchool.trim(),
-        subject: editSubject.trim(),      // ✅ المادة
-        governorate: editGovernorate.trim(), // ✅ المحافظة
-        academicYear: editAcademicYear.trim(), // ✅ السنة الدراسية
+            school: editSchool.trim(),
+            subject: editSubject.trim(),
+            governorate: editGovernorate.trim(),
+            academicYear: editAcademicYear.trim(),
             avatar: editAvatar,
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
-            academicYear: editAcademicYear.trim(),
             gender: editGender
         };
 
         console.log('💾 حفظ البيانات:', updatedInfo);
-        console.log('📅 الفصل الدراسي:', editSemester);
-
+        
         // ✅ حفظ بيانات المعلم
         onUpdateTeacherInfo(updatedInfo);
         
@@ -265,6 +264,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             img.src = reader.result as string;
         };
         reader.readAsDataURL(file);
+        // Reset input to allow re-selecting same file
+        e.target.value = '';
     };
 
     const parseExcelTime = (value: any): string => {
@@ -392,41 +393,41 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             
             {/* ✅ 1. الهيدر الكبير */}
-            <header className="bg-[#446A8D] text-white pt-16 pb-12 px-4 shadow-xl relative z-20 -mx-4 -mt-4">
+            <header className="bg-[#446A8D] text-white pt-10 pb-8 px-4 md:pt-16 md:pb-12 md:px-6 shadow-xl relative z-20 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-5">
+                    <div className="flex items-center gap-3 md:gap-5">
                         <div className="relative group">
-                            <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-inner transition-transform hover:scale-105">
+                            <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-inner transition-transform hover:scale-105">
                                 {getDisplayImage(teacherInfo.avatar, teacherInfo.gender) ? (
                                     <img src={teacherInfo.avatar} className="w-full h-full object-cover" alt="Teacher" onError={(e) => e.currentTarget.style.display='none'} />
                                 ) : <DefaultAvatarSVG gender={teacherInfo.gender || 'male'} />}
                             </div>
                             <button 
                                 onClick={() => setShowEditModal(true)} 
-                                className="absolute -bottom-2 -right-2 bg-white text-[#446A8D] p-2 rounded-full shadow-lg border-2 border-[#446A8D] hover:scale-110 transition-transform"
+                                className="absolute -bottom-2 -right-2 bg-white text-[#446A8D] p-1.5 md:p-2 rounded-full shadow-lg border-2 border-[#446A8D] hover:scale-110 transition-transform"
                                 title="تعديل البيانات"
                             >
-                                <Edit3 size={14} strokeWidth={3} />
+                                <Edit3 size={12} className="md:w-3.5 md:h-3.5" strokeWidth={3} />
                             </button>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                            <h1 className="text-3xl font-black tracking-wide">{teacherInfo.name || 'مرحباً بك'}</h1>
+                        <div className="flex flex-col gap-0.5 md:gap-1">
+                            <h1 className="text-xl md:text-3xl font-black tracking-wide">{teacherInfo.name || 'مرحباً بك'}</h1>
                             <div className="flex items-center gap-2 text-blue-100/90">
-                                <p className="text-sm font-bold flex items-center gap-1">
-                                    <School size={14} /> {teacherInfo.school || 'المدرسة'}
+                                <p className="text-xs md:text-sm font-bold flex items-center gap-1">
+                                    <School size={12} className="md:w-3.5 md:h-3.5" /> {teacherInfo.school || 'المدرسة'}
                                 </p>
-                                <span className="text-[10px] bg-white/20 px-3 py-1 rounded-full font-bold border border-white/10">
+                                <span className="text-[9px] md:text-[10px] bg-white/20 px-2 md:px-3 py-0.5 md:py-1 rounded-full font-bold border border-white/10">
                                     {currentSemester === '1' ? 'الفصل الأول' : 'الفصل الثاني'}
                                 </span>
                             </div>
                         </div>
                     </div>
                     
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 md:gap-3">
                         <div className="relative">
-                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center transition-all ${showSettingsDropdown ? 'bg-white text-[#446A8D]' : ''}`}>
-                                <Settings size={24} />
+                            <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center transition-all ${showSettingsDropdown ? 'bg-white text-[#446A8D]' : ''}`}>
+                                <Settings size={20} className="md:w-6 md:h-6" />
                             </button>
                             {showSettingsDropdown && (
                                 <>
@@ -459,8 +460,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 </>
                             )}
                         </div>
-                        <button onClick={onToggleNotifications} className={`w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border transition-all ${notificationsEnabled ? 'bg-amber-400/20 border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-white/10 border-white/10 text-white/60 hover:bg-white/20'}`}>
-                            {notificationsEnabled ? <Bell size={24} className="animate-pulse" /> : <BellOff size={24} />}
+                        <button onClick={onToggleNotifications} className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border transition-all ${notificationsEnabled ? 'bg-amber-400/20 border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-white/10 border-white/10 text-white/60 hover:bg-white/20'}`}>
+                            {notificationsEnabled ? <Bell size={20} className="md:w-6 md:h-6 animate-pulse" /> : <BellOff size={20} className="md:w-6 md:h-6" />}
                         </button>
                     </div>
                 </div>
