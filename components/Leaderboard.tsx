@@ -96,40 +96,69 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     };
 
     // ✅ دالة حفظ الشهادة كملف PDF
-    const handleDownloadPDF = async () => {
-        if (!certificateRef.current) return;
-        
-        try {
-            setIsGeneratingPdf(true); 
+   // ✅ دالة حفظ الشهادة كملف PDF (تعمل على الويندوز والموبايل)
+const handleDownloadPDF = async () => {
+    if (!certificateRef.current || !certificateStudent) return;
+    
+    try {
+        setIsGeneratingPdf(true); 
 
-            // 1. التقاط الصورة بجودة عالية
-            const canvas = await html2canvas(certificateRef.current, {
-                scale: 2, 
-                useCORS: true, // ضروري لتحميل الصور الخارجية (الشعار والختم)
-                backgroundColor: '#ffffff',
-                logging: false
+        // 1. التقاط الصورة بجودة عالية
+        const canvas = await html2canvas(certificateRef.current, {
+            scale: 2, 
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            allowTaint: true, // ✅ مهم للصور الخارجية
+        });
+
+        // 2. إعداد ملف PDF (عرضي Landscape A4)
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('l', 'mm', 'a4'); 
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        // 3. إضافة الصورة
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+        // ✅ 4. الحفظ حسب البيئة
+        const fileName = `شهادة_تميز_${certificateStudent.name.replace(/\s+/g, '_')}.pdf`;
+
+        if (Capacitor.isNativePlatform()) {
+            // ✅ للموبايل (iOS & Android)
+            const pdfOutput = pdf.output('datauristring'); // تحويل إلى base64
+            const base64Data = pdfOutput.split(',')[1]; // استخراج Base64 فقط
+
+            // حفظ الملف في الكاش
+            const savedFile = await Filesystem.writeFile({
+                path: fileName,
+                data: base64Data,
+                directory: Directory.Cache
             });
 
-            // 2. إعداد ملف PDF (عرضي Landscape A4)
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('l', 'mm', 'a4'); 
+            // مشاركة الملف
+            await Share.share({
+                title: 'شهادة تميز',
+                text: `شهادة تميز للطالب ${certificateStudent.name}`,
+                url: savedFile.uri,
+                dialogTitle: 'مشاركة الشهادة'
+            });
 
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-
-            // 3. إضافة الصورة
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-            // 4. الحفظ
-            pdf.save(`شهادة_تميز_${certificateStudent?.name.replace(/\s+/g, '_')}.pdf`);
-
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('حدث خطأ أثناء حفظ الملف.');
-        } finally {
-            setIsGeneratingPdf(false); 
+            alert('✅ تم حفظ الشهادة بنجاح!');
+            
+        } else {
+            // ✅ للويب/الويندوز
+            pdf.save(fileName);
         }
-    };
+
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert('❌ حدث خطأ أثناء حفظ الملف: ' + error);
+    } finally {
+        setIsGeneratingPdf(false); 
+    }
+};
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500 overflow-hidden">
