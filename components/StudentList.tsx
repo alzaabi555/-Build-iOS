@@ -4,7 +4,7 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, 
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, 
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles // ✅ تمت إضافة الأيقونة هنا
+    Sparkles 
 } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
@@ -74,8 +74,16 @@ const StudentList: React.FC<StudentListProps> = ({
 }) => {
     const { defaultStudentGender, setDefaultStudentGender, setStudents } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedGrade, setSelectedGrade] = useState<string>('all');
-    const [selectedClass, setSelectedClass] = useState<string>('all');
+    
+    // ✅ 1. التعديل السحري: استدعاء القيم المحفوظة في ذاكرة الجلسة
+    const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
+    const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
+
+    // ✅ 2. التعديل السحري: حفظ القيم فور تغيرها لتتذكرها الصفحات الأخرى
+    useEffect(() => {
+        sessionStorage.setItem('rased_grade', selectedGrade);
+        sessionStorage.setItem('rased_class', selectedClass);
+    }, [selectedGrade, selectedClass]);
     
     const [showManualAddModal, setShowManualAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
@@ -241,7 +249,7 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    // ✅ دالة إرسال تقرير الواتساب المعدلة (لتعمل على ويندوز وموبايل)
+    // ✅ دالة إرسال تقرير الواتساب
     const handleSendWhatsAppReport = async (student: Student) => {
         if (!student.parentPhone) {
             alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي أمر هذا الطالب.\nيرجى تعديل بيانات الطالب وإضافة الرقم أولاً.');
@@ -267,22 +275,32 @@ const StudentList: React.FC<StudentListProps> = ({
         });
 
         message += `\nنأمل منكم التكرم بمتابعة الطالب وتوجيهه.\nشكراً لتعاونكم.\n*إدارة المدرسة*`;
+        const msg = encodeURIComponent(message);
 
-        // ✅ المنطق الجديد: تنظيف الرقم واستخدام الرابط العالمي
-        const cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-        const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+        // ✅ المنطق المنسوخ من صفحة الحضور والغياب للتوافق مع الويندوز والموبايل
+        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        if (!cleanPhone || cleanPhone.length < 5) {
+            alert('⚠️ رقم الهاتف غير صحيح أو قصير جداً.');
+            return;
+        }
+        
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
 
-        try {
-            if (Capacitor.isNativePlatform()) {
-                // للموبايل: فتح التطبيق
-                await Browser.open({ url: universalUrl });
-            } else {
-                // للويندوز/الويب: فتح في تاب جديد
-                window.open(universalUrl, '_blank');
-            }
-        } catch (e) {
-            // كخيار احتياطي
-            window.open(universalUrl, '_blank');
+        if ((window as any).electron) { 
+            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
+        } else { 
+            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
+            try { 
+                if (Capacitor.isNativePlatform()) { 
+                    await Browser.open({ url: universalUrl }); 
+                } else { 
+                    window.open(universalUrl, '_blank'); 
+                } 
+            } catch (e) { 
+                window.open(universalUrl, '_blank'); 
+            } 
         }
     };
 
@@ -324,21 +342,17 @@ const StudentList: React.FC<StudentListProps> = ({
         setSelectedStudentForBehavior(null);
     };
 
-    // ✅ دالة مكافأة الانضباط الجماعي (الميزة الجديدة)
     const handleQuietAndDiscipline = () => {
         if (!confirm('هل تريد إضافة نقطتين (هدوء وانضباط) لجميع الطلاب الحاضرين والمنضبطين في القائمة المعروضة؟')) return;
 
         const todayStr = new Date().toLocaleDateString('en-CA');
         const now = new Date();
 
-        // 1. تحديد الطلاب المستحقين من القائمة المعروضة حالياً
         const eligibleStudents = filteredStudents.filter(student => {
-            // أ. التحقق من الغياب
             const attendance = student.attendance.find(a => a.date === todayStr);
             const isAbsent = attendance?.status === 'absent' || attendance?.status === 'truant';
             if (isAbsent) return false;
 
-            // ب. التحقق من السلوك السلبي (اليوم)
             const hasNegativeToday = (student.behaviors || []).some(b => {
                 const bDate = new Date(b.date);
                 return b.type === 'negative' && 
@@ -356,9 +370,7 @@ const StudentList: React.FC<StudentListProps> = ({
             return;
         }
 
-        // 2. تحديث قائمة الطلاب
         const updatedStudents = students.map(student => {
-            // إذا كان الطالب ضمن المستحقين، نضيف له النقاط
             if (eligibleStudents.find(es => es.id === student.id)) {
                 const newBehavior = {
                     id: Math.random().toString(36).substr(2, 9),
@@ -412,13 +424,14 @@ const StudentList: React.FC<StudentListProps> = ({
             setStudents(prev => prev.map(s => ({
                 ...s,
                 gender: gender,
-                avatar: undefined
+                avatar: undefined 
             })));
         }
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
+    <div className="flex flex-col h-full overflow-hidden">
+        {/* التعديل السحري هنا */}
             
             {/* Header */}
             <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">

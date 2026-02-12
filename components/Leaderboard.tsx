@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Student } from '../types';
-import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle } from 'lucide-react'; // ✅ إضافة MinusCircle
+import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal } from 'lucide-react'; 
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import Modal from './Modal';
@@ -28,9 +28,16 @@ interface LeaderboardProps {
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateStudent, teacherInfo }) => {
     const { currentSemester } = useApp();
-    const [selectedClass, setSelectedClass] = useState<string>('all');
+    
+    // ✅ استدعاء القيم المحفوظة في ذاكرة الجلسة
+    const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
     const [searchTerm, setSearchTerm] = useState('');
     
+    // ✅ حفظ القيم فور تغيرها لتتذكرها الصفحات الأخرى
+    useEffect(() => {
+        sessionStorage.setItem('rased_class', selectedClass);
+    }, [selectedClass]);
+
     // حالات الشهادة والتحميل
     const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -96,83 +103,75 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         alert(`تم إضافة 3 نقاط للطالب ${student.name} 🌟`);
     };
 
-    // ✅ دالة الخصم الجديدة (تصحيح الخطأ)
     const handleDeductPoint = (student: Student) => {
         if (!onUpdateStudent) return;
         
         if(confirm(`هل تريد خصم نقطة واحدة من الطالب ${student.name}؟ (تصحيح خطأ)`)) {
-            // نقوم بإضافة "سلوك إيجابي" لكن بنقاط سالبة لتقليل المجموع في الفرسان فقط
-            // (لأن الفرسان يحسب النقاط الإيجابية فقط، فنضيف "إيجابي" بقيمة سالبة لضبط العداد)
             const correctionBehavior = {
                 id: Math.random().toString(36).substr(2, 9),
                 date: new Date().toISOString(),
-                type: 'positive' as const, // نستخدم النوع positive لكي يدخل في حسبة الفرسان
+                type: 'positive' as const, 
                 description: 'تصحيح نقاط (خصم)',
-                points: -3, // قيمة سالبة للخصم
+                points: -1, 
                 semester: currentSemester
             };
             onUpdateStudent({ ...student, behaviors: [correctionBehavior, ...(student.behaviors || [])] });
         }
     };
 
-    // ✅ دالة الحفظ المعدلة لتعمل على الموبايل والويندوز
     const handleDownloadPDF = async () => {
         if (!certificateRef.current || !certificateStudent) return;
         
         setIsGeneratingPdf(true);
 
         const element = certificateRef.current;
-        // اسم الملف
         const fileName = `Certificate_${certificateStudent.name.replace(/\s+/g, '_')}.pdf`;
 
-        // إعدادات html2pdf
+        // إعدادات تصدير PDF للحفاظ على صفحة واحدة
         const opt = {
             margin: 0, 
             filename: fileName,
-            image: { type: 'jpeg', quality: 0.98 },
+            image: { type: 'jpeg', quality: 1.0 },
             html2canvas: { scale: 2, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
 
         try {
-            // تحويل العنصر إلى PDF
             const worker = html2pdf().set(opt).from(element).toPdf();
 
             if (Capacitor.isNativePlatform()) {
-                // ✅ الخطوة الحاسمة للموبايل: الحصول على البيانات كـ Base64
                 const pdfBase64 = await worker.output('datauristring');
-                const base64Data = pdfBase64.split(',')[1]; // إزالة المقدمة (data:application/pdf;base64,)
+                const base64Data = pdfBase64.split(',')[1]; 
 
-                // 1. حفظ الملف في ذاكرة الكاش للجهاز
                 const result = await Filesystem.writeFile({
                     path: fileName,
                     data: base64Data,
                     directory: Directory.Cache
                 });
 
-                // 2. فتح نافذة المشاركة (Share Sheet) ليختار المستخدم أين يحفظه أو يرسله
                 await Share.share({
                     title: 'شهادة تميز',
                     url: result.uri,
                     dialogTitle: 'مشاركة الشهادة'
                 });
             } else {
-                // ✅ للويب/الويندوز: التحميل المباشر التقليدي
                 worker.save();
             }
 
         } catch (error) {
             console.error('Error generating PDF:', error);
-            alert('❌ حدث خطأ أثناء إنشاء ملف الشهادة. يرجى المحاولة مرة أخرى.');
+            alert('❌ حدث خطأ أثناء إنشاء ملف الشهادة.');
         } finally {
             setIsGeneratingPdf(false); 
         }
     };
 
+    const isFemale = certificateStudent?.gender === 'female';
+
     return (
-        <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 animate-in fade-in duration-500 overflow-hidden">
+        <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden">
             
-            {/* Header (نفس التصميم السابق) */}
+            {/* Header */}
             <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300  md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex flex-col items-center text-center">
                     <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner">
@@ -330,7 +329,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                                 {student.monthlyPoints}
                                             </p>
                                         </div>
-                                        {/* زر شهادة وخصم مصغر للبقية */}
                                         <div className="flex gap-1 justify-center">
                                             <button onClick={() => setCertificateStudent(student)} className="flex-1 py-1 bg-slate-100 text-slate-500 text-[9px] font-bold rounded-lg hover:bg-[#446A8D] hover:text-white transition-colors">
                                                 شهادة
@@ -347,117 +345,151 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 )}
             </div>
 
-            {/* ✅ نافذة الشهادة (Modal) */}
-            <Modal isOpen={!!certificateStudent} onClose={() => { if(!isGeneratingPdf) setCertificateStudent(null); }} className="max-w-2xl rounded-xl p-0 overflow-hidden">
+            {/* ✅ نافذة الشهادة الفخمة (تصميم الصفحة الواحدة المحكم) */}
+            <Modal isOpen={!!certificateStudent} onClose={() => { if(!isGeneratingPdf) setCertificateStudent(null); }} className="max-w-4xl w-[95vw] rounded-xl p-0 overflow-hidden">
                 {certificateStudent && (
-                    <div className="flex flex-col h-full bg-white">
-                        <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-100">
+                    <div className="flex flex-col h-full bg-white max-h-[90vh]">
+                        <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-100 shrink-0">
                             <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
-                                <Award className="w-5 h-5 text-amber-500" /> معاينة الشهادة
+                                <Award className="w-5 h-5 text-amber-500" /> معاينة شهادة التميز
                             </h3>
                             <button onClick={() => setCertificateStudent(null)} disabled={isGeneratingPdf} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full transition-colors disabled:opacity-50">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="p-8 overflow-y-auto bg-slate-100 flex justify-center">
-                            {/* عنصر الشهادة الذي سيتم تحويله لـ PDF */}
-                            <div ref={certificateRef} className="bg-white w-full max-w-lg aspect-[1.414/1] relative shadow-2xl p-8 text-center text-slate-900 certificate-container" style={{ backgroundImage: 'radial-gradient(circle at center, #fff 0%, #fdfdfd 100%)' }}>
-                                {/* إطار زخرفي */}
-                                <div className="absolute inset-2 border-4 border-double border-[#446A8D] pointer-events-none"></div>
-                                <div className="absolute inset-4 border border-[#cba35c] pointer-events-none opacity-50"></div>
+                        {/* منطقة العرض للشهادة (Scrollable) */}
+                        <div className="flex-1 overflow-auto bg-slate-800 flex justify-center p-4 md:p-8">
+                            
+                            {/* ✅ الحاوية الرئيسية للشهادة: الارتفاع محدد بـ 210mm لمنع الانقسام */}
+                            <div ref={certificateRef} className="bg-white shadow-2xl text-center text-slate-900 mx-auto relative flex flex-col box-border overflow-hidden" 
+                                 style={{ width: '297mm', height: '210mm', backgroundColor: '#fdfbf7', backgroundImage: 'radial-gradient(circle at center, #ffffff 0%, #fdfbf7 100%)' }}>
+                                
+                                {/* ✅ الإطارات الملكية (Borders) */}
+                                <div className="absolute z-20 pointer-events-none" style={{ top: '12mm', bottom: '12mm', left: '12mm', right: '12mm', border: '5px solid #1a365d' }}></div>
+                                <div className="absolute z-20 pointer-events-none" style={{ top: '14mm', bottom: '14mm', left: '14mm', right: '14mm', border: '1px solid #d4af37' }}></div>
 
-                                {/* الترويسة */}
-                                <div className="flex justify-between items-start mb-8 relative z-10 px-4">
-                                    <div className="text-right text-[10px] font-bold leading-relaxed text-slate-600">
-                                        <p>سلطنة عمان</p>
-                                        <p>وزارة التعليم</p>
-                                        <p>{teacherInfo?.governorate || 'المديرية العامة...'}</p>
-                                        <p>{teacherInfo?.school || 'المدرسة...'}</p>
-                                    </div>
-                                    <div className="w-20 h-20 opacity-90 -mt-2">
-                                        {/* ✅ شعار الوزارة (مع Fallback) */}
-                                        {teacherInfo?.ministryLogo ? (
-                                            <img src={teacherInfo.ministryLogo} alt="الشعار" className="w-full h-full object-contain" crossOrigin="anonymous" />
-                                        ) : (
-                                            <div className="w-full h-full bg-slate-50 rounded-full flex items-center justify-center border border-slate-200">
-                                                <Crown className="w-8 h-8 text-amber-500 opacity-50" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="text-left text-[10px] font-bold leading-relaxed text-slate-600">
-                                        <p>التاريخ: {new Date().toLocaleDateString('ar-EG')}</p>
-                                        <p>العام الدراسي: {new Date().getFullYear()}</p>
-                                    </div>
+                                {/* ✅ الزخارف الزاوية (Corner Accents) */}
+                                <div className="absolute w-10 h-10 border-t-4 border-r-4 border-[#d4af37] z-30" style={{ top: '10mm', right: '10mm' }}></div>
+                                <div className="absolute w-10 h-10 border-t-4 border-l-4 border-[#d4af37] z-30" style={{ top: '10mm', left: '10mm' }}></div>
+                                <div className="absolute w-10 h-10 border-b-4 border-r-4 border-[#d4af37] z-30" style={{ bottom: '10mm', right: '10mm' }}></div>
+                                <div className="absolute w-10 h-10 border-b-4 border-l-4 border-[#d4af37] z-30" style={{ bottom: '10mm', left: '10mm' }}></div>
+
+                                {/* ✅ العلامة المائية الشفافة في الخلفية */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                                    <Trophy className="w-[350px] h-[350px] text-[#d4af37] opacity-[0.04]" />
                                 </div>
 
-                                {/* العنوان */}
-                                <div className="mb-8 relative z-10">
-                                    <h1 className="text-4xl font-black text-[#446A8D] mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>شهادة تميز</h1>
-                                    <div className="h-1 w-24 bg-amber-400 mx-auto rounded-full"></div>
-                                </div>
-
-                                {/* نص الشهادة */}
-                                <div className="mb-12 relative z-10 px-8">
-                                    <p className="text-base font-bold leading-loose text-slate-700 mb-4">
-                                        تُمنح للطالب / <span className="text-[#446A8D] text-xl border-b-2 border-dashed border-slate-300 px-4">{certificateStudent.name}</span>
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-600 mb-4">
-                                        المقيد بالصف: <span className="text-slate-900">{certificateStudent.classes[0]}</span>
-                                    </p>
-                                    <p className="text-sm font-medium leading-loose text-slate-600">
-                                        لحصوله على أعلى نقاط في تطبيق <span className="font-black text-[#446A8D]">راصد</span> خلال شهر <span className="font-bold text-amber-600">{monthName}</span>،
-                                        وتقديراً لتفوقه وتميزه الدراسي والسلوكي.
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-600 mt-4">
-                                        متمنين له مزيداً من التقدم والنجاح.
-                                    </p>
-                                </div>
-
-                                {/* التوقيعات (مع التبديل والختم) */}
-                                <div className="flex justify-between items-end px-8 mt-auto relative z-10">
-                                    {/* ✅ اليمين: المعلم */}
-                                    <div className="text-center w-1/3">
-                                        <p className="text-xs font-bold text-slate-500 mb-2">المعلم/ة</p>
-                                        <p className="text-sm font-black text-[#446A8D]">{teacherInfo?.name || '....................'}</p>
-                                    </div>
-
-                                    {/* ✅ الوسط: ختم المدرسة */}
-                                    <div className="text-center w-1/3 flex justify-center">
-                                        <div className="w-20 h-20 opacity-80 rotate-[-10deg]">
-                                            {teacherInfo?.stamp ? (
-                                                <img src={teacherInfo.stamp} alt="الختم" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                                {/* ✅ المحتوى الداخلي للشهادة (تقليل الهوامش لتناسب الصفحة الواحدة) */}
+                                <div className="relative z-10 flex flex-col h-full justify-between" style={{ padding: '20mm 25mm' }}>
+                                    
+                                    {/* الترويسة العلوية */}
+                                    <div className="flex justify-between items-start">
+                                        {/* اليمين: الوزارة */}
+                                        <div className="text-right text-sm font-bold leading-relaxed text-[#1a365d]">
+                                            <p>سلطنة عمان</p>
+                                            <p>وزارة التربية والتعليم</p>
+                                            <p>{teacherInfo?.governorate || 'المديرية العامة...'}</p>
+                                            <p>{teacherInfo?.school || 'المدرسة...'}</p>
+                                        </div>
+                                        
+                                        {/* الوسط: شعار الوزارة أو التاج */}
+                                        <div className="w-24 h-24 opacity-90">
+                                            {teacherInfo?.ministryLogo ? (
+                                                <img src={teacherInfo.ministryLogo} alt="الشعار" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                             ) : (
-                                                <div className="w-16 h-16 mb-2 mx-auto opacity-10">
-                                                    <Award className="w-full h-full text-[#446A8D]" />
+                                                <div className="w-full h-full bg-white rounded-full flex items-center justify-center border-2 border-[#d4af37] shadow-sm">
+                                                    <Crown className="w-12 h-12 text-[#d4af37]" />
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* اليسار: التاريخ */}
+                                        <div className="text-left text-sm font-bold leading-relaxed text-[#1a365d]">
+                                            <p>التاريخ: <span dir="ltr">{new Date().toLocaleDateString('ar-EG')}</span></p>
+                                            <p>العام الدراسي: {new Date().getFullYear()}</p>
+                                        </div>
                                     </div>
 
-                                    {/* ✅ اليسار: مدير المدرسة */}
-                                    <div className="text-center w-1/3">
-                                        <p className="text-xs font-bold text-slate-500 mb-2">مدير/ة المدرسة</p>
-                                        <p className="text-sm font-black text-[#446A8D]">....................</p>
+                                    {/* العنوان الرئيسي */}
+                                    <div className="text-center flex flex-col items-center -mt-4">
+                                        <h1 className="text-5xl font-black text-[#1a365d] mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>
+                                            شهادة شكر وتقدير
+                                        </h1>
+                                        <div className="flex items-center gap-3 w-1/3">
+                                            <div className="h-px bg-[#d4af37] flex-1"></div>
+                                            <Medal className="w-6 h-6 text-[#d4af37]" />
+                                            <div className="h-px bg-[#d4af37] flex-1"></div>
+                                        </div>
                                     </div>
+
+                                    {/* ✅ نص الشهادة الفخم والذكي لغوياً (مع تصغير المسافات) */}
+                                    <div className="flex flex-col justify-center px-8 text-center -mt-2">
+                                        <p className="text-2xl font-bold leading-relaxed text-slate-800 mb-4">
+                                            يُسعدنا بكل فخر واعتزاز أن نُتوِّج {isFemale ? 'الفارسة المتألقة' : 'الفارس المِقدام'}
+                                        </p>
+                                        <p className="mb-4">
+                                            <span className="text-[#1a365d] text-4xl font-black border-b-2 border-[#d4af37] px-8 pb-2 mx-2 inline-block">
+                                                {certificateStudent.name}
+                                            </span>
+                                        </p>
+                                        <p className="text-xl font-bold text-slate-700 mb-4">
+                                            {isFemale ? 'المقيدة' : 'المقيد'} بالصف: <span className="text-[#1a365d] font-black px-3">{certificateStudent.classes[0]}</span>
+                                        </p>
+                                        <p className="text-xl font-medium leading-relaxed text-slate-700 max-w-4xl mx-auto mb-4">
+                                            بوسام التميز والصدارة، تقديراً {isFemale ? 'لجهودها العظيمة واعتلائها صدارة فارسات' : 'لجهوده العظيمة واعتلائه صدارة فرسان'} شهر <span className="font-black text-[#d4af37] text-2xl mx-1">{monthName}</span> في تطبيق راصد، {isFemale ? 'وانضباطها المثالي الذي أضاء' : 'وانضباطه المثالي الذي أضاء'} سماء الفصل.
+                                        </p>
+                                        <p className="text-xl font-bold text-[#1a365d]" style={{ fontFamily: 'Times New Roman, serif' }}>
+                                            متمنين {isFemale ? 'لها دوام التألق والنجاح في مسيرتها' : 'له دوام التألق والنجاح في مسيرته'} العلمية.
+                                        </p>
+                                    </div>
+
+                                    {/* التوقيعات والأختام في الأسفل */}
+                                    <div className="flex justify-between items-end px-12 z-20">
+                                        {/* اليمين: المعلم */}
+                                        <div className="text-center w-1/3">
+                                            <p className="text-lg font-bold text-[#1a365d] mb-4">معلم/ة المادة</p>
+                                            <p className="text-xl font-black text-slate-800 border-b border-dashed border-slate-400 inline-block px-8 pb-1" style={{ fontFamily: 'Times New Roman, serif' }}>{teacherInfo?.name || '....................'}</p>
+                                        </div>
+
+                                        {/* الوسط: الختم */}
+                                        <div className="text-center w-1/3 flex justify-center">
+                                            <div className="w-24 h-24 opacity-80 rotate-[-10deg]">
+                                                {teacherInfo?.stamp ? (
+                                                    <img src={teacherInfo.stamp} alt="الختم" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                                                ) : (
+                                                    <div className="w-20 h-20 mb-1 mx-auto opacity-10 flex items-center justify-center">
+                                                        <span className="border-2 border-slate-800 rounded-full w-16 h-16 flex items-center justify-center text-xs font-bold rotate-12">ختم المدرسة</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* اليسار: المدير */}
+                                        <div className="text-center w-1/3">
+                                            <p className="text-lg font-bold text-[#1a365d] mb-4">مدير/ة المدرسة</p>
+                                            <p className="text-xl font-black text-slate-800 border-b border-dashed border-slate-400 inline-block px-8 pb-1" style={{ fontFamily: 'Times New Roman, serif' }}>....................</p>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
 
-                        {/* زر الحفظ */}
-                        <div className="p-4 border-t border-slate-100 flex gap-3 bg-white">
+                        {/* زر الحفظ للطباعة */}
+                        <div className="p-4 border-t border-slate-100 flex gap-3 bg-white shrink-0">
                             <button 
                                 onClick={handleDownloadPDF} 
                                 disabled={isGeneratingPdf}
-                                className="flex-1 py-3 bg-[#446A8D] text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="flex-1 py-4 bg-[#d4af37] text-[#1a365d] rounded-xl font-black text-lg shadow-lg hover:bg-[#cba35c] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {isGeneratingPdf ? (
                                     <>
-                                        <Loader2 size={18} className="animate-spin" /> جاري إنشاء الشهادة...
+                                        <Loader2 size={24} className="animate-spin" /> جاري تجهيز الوسام المَلَكي للطباعة...
                                     </>
                                 ) : (
                                     <>
-                                        <Download size={18} /> حفظ / مشاركة PDF
+                                        <Download size={24} /> حفظ / مشاركة الشهادة (A4 PDF)
                                     </>
                                 )}
                             </button>

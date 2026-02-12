@@ -101,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             setEditGender(teacherInfo.gender || 'male');
             setEditSemester(currentSemester);
         }
-    }, [showEditModal]); // Removed teacherInfo dependency to prevent overwrite during editing
+    }, [showEditModal, teacherInfo]); 
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -185,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             subject: editSubject.trim(),
             governorate: editGovernorate.trim(),
             academicYear: editAcademicYear.trim(),
-            avatar: editAvatar,
+            avatar: editAvatar, // حفظ الصورة الحالية (سواء كانت قديمة أو جديدة)
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
             gender: editGender
@@ -254,7 +254,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 const sizeInKB = (compressedBase64.length * 3) / 4 / 1024;
                 console.log(`📏 حجم الصورة بعد الضغط: ${sizeInKB.toFixed(2)} KB`);
 
-                if (sizeInKB > 500) {
+                // رفع الحد إلى 1 ميجابايت لضمان الحفظ
+                if (sizeInKB > 1024) {
                     alert('⚠️ الصورة كبيرة جداً. يرجى اختيار صورة أصغر.');
                     return;
                 }
@@ -484,12 +485,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                         const time = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
                         const isActive = isToday && checkActivePeriod(time.startTime, time.endTime);
 
+                        // ✅ إصلاح الأيقونات: استخدام مادة المعلم إذا وجدت، أو مادة الجدول
+                        const displaySubject = teacherInfo.subject && teacherInfo.subject.trim().length > 0 
+                            ? teacherInfo.subject 
+                            : subject;
+
                         return (
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#446A8D] text-white border-[#446A8D] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* ✅ عرض الأيقونة */}
-                                        {getSubjectIcon(subject) || (idx + 1)}
+                                        {/* ✅ عرض الأيقونة بناءً على مادة المعلم أو الجدول */}
+                                        {getSubjectIcon(displaySubject) || getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
