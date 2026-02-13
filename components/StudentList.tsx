@@ -4,7 +4,7 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, 
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, 
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles 
+    Sparkles, Phone, Send 
 } from 'lucide-react';
 import Modal from './Modal';
 import ExcelImport from './ExcelImport';
@@ -72,7 +72,7 @@ const StudentList: React.FC<StudentListProps> = ({
     currentSemester, 
     onDeleteClass 
 }) => {
-    const { defaultStudentGender, setDefaultStudentGender, setStudents } = useApp();
+    const { defaultStudentGender, setDefaultStudentGender, setStudents, teacherInfo } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
     
     // ✅ 1. التعديل السحري: استدعاء القيم المحفوظة في ذاكرة الجلسة
@@ -238,7 +238,6 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const handleBehavior = (student: Student, type: BehaviorType) => {
         setSelectedStudentForBehavior(student);
-        // تصفير الحقول اليدوية عند الفتح
         setCustomPositiveReason('');
         setCustomNegativeReason('');
         
@@ -249,17 +248,64 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    // ✅ دالة إرسال تقرير الواتساب
-    const handleSendWhatsAppReport = async (student: Student) => {
+    // ✅ دالة إرسال التقرير الذكي (الأخضر - درجات وتميز)
+    const handleSendSmartReport = (student: Student) => {
         if (!student.parentPhone) {
-            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي أمر هذا الطالب.\nيرجى تعديل بيانات الطالب وإضافة الرقم أولاً.');
+            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي الأمر.');
+            return;
+        }
+
+        // 1. حساب المجموع
+        const currentGrades = (student.grades || []).filter(g => (g.semester || '1') === currentSemester);
+        const totalScore = currentGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
+
+        // 2. أفضل سلوك
+        const positiveBehaviors = (student.behaviors || []).filter(b => b.type === 'positive');
+        const topBehavior = positiveBehaviors.length > 0 
+            ? positiveBehaviors[0].description 
+            : (student.gender === 'female' ? 'انضباطها وتميزها العام' : 'انضباطه وتميزه العام');
+
+        // 3. الصيغة (مذكر/مؤنث)
+        const isFemale = student.gender === 'female';
+        const childTitle = isFemale ? 'ابنتكم الطالبة' : 'ابنكم الطالب';
+        const scoreText = isFemale ? 'حصلت على مجموع' : 'حصل على مجموع';
+        const behaviorText = isFemale ? 'وتميزت في' : 'وتميز في';
+        const teacherTitle = teacherInfo?.gender === 'female' ? 'المعلمة' : 'المعلم';
+
+        // 4. الرسالة
+        const message = `السلام عليكم ورحمة الله، ولي أمر ${childTitle} (${student.name}) المحترم.
+
+يسرنا إعلامكم بأن ${childTitle} ${scoreText} (${totalScore}) درجة في مادة ${teacherInfo?.subject || '...'}، ${behaviorText}: "${topBehavior}".
+
+شاكرين لكم حسن متابعتكم.
+إدارة تطبيق راصد - ${teacherTitle}: ${teacherInfo?.name || ''}`;
+
+        // 5. الإرسال (بنفس منطق الويندوز/الموبايل القوي)
+        const msg = encodeURIComponent(message);
+        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+
+        if ((window as any).electron) { 
+            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
+        } else { 
+            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
+            window.open(universalUrl, '_blank'); 
+        }
+    };
+
+    // ✅ دالة إرسال تقرير السلوك السلبي (الأحمر - إنذار) - (موجودة سابقاً وتم الحفاظ عليها)
+    const handleSendNegativeReport = async (student: Student) => {
+        if (!student.parentPhone) {
+            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي الأمر.');
             return;
         }
 
         const negativeBehaviors = (student.behaviors || []).filter(b => b.type === 'negative');
 
         if (negativeBehaviors.length === 0) {
-            alert('🎉 هذا الطالب متميز! لا توجد لديه سلوكيات سلبية مسجلة لإرسالها.');
+            alert('🎉 هذا الطالب متميز! لا توجد لديه سلوكيات سلبية مسجلة.');
             return;
         }
 
@@ -275,14 +321,9 @@ const StudentList: React.FC<StudentListProps> = ({
         });
 
         message += `\nنأمل منكم التكرم بمتابعة الطالب وتوجيهه.\nشكراً لتعاونكم.\n*إدارة المدرسة*`;
+        
         const msg = encodeURIComponent(message);
-
-        // ✅ المنطق المنسوخ من صفحة الحضور والغياب للتوافق مع الويندوز والموبايل
         let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-        if (!cleanPhone || cleanPhone.length < 5) {
-            alert('⚠️ رقم الهاتف غير صحيح أو قصير جداً.');
-            return;
-        }
         
         if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
         if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
@@ -292,15 +333,7 @@ const StudentList: React.FC<StudentListProps> = ({
             (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
         } else { 
             const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
-            try { 
-                if (Capacitor.isNativePlatform()) { 
-                    await Browser.open({ url: universalUrl }); 
-                } else { 
-                    window.open(universalUrl, '_blank'); 
-                } 
-            } catch (e) { 
-                window.open(universalUrl, '_blank'); 
-            } 
+            window.open(universalUrl, '_blank'); 
         }
     };
 
@@ -431,9 +464,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
     return (
     <div className="flex flex-col h-full overflow-hidden">
-        {/* التعديل السحري هنا */}
-            
-            {/* Header */}
+        {/* Header (Same as before) */}
             <header className="fixed md:sticky top-0 z-40 md:z-30 bg-[#446A8D] text-white shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-300 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
@@ -477,22 +508,22 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                                 <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in zoom-in-95 origin-top-left">
                                     <div className="p-1">
-                                        <button onClick={handleQuietAndDiscipline} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors w-full text-right text-xs font-bold text-slate-700 border-b border-slate-50">
-                                            <Sparkles className="w-4 h-4 text-purple-600" /> مكافأة الانضباط (هدوء)
-                                        </button>
-                                        <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                            <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
-                                        </button>
-                                        <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> استيراد من Excel
-                                        </button>
-                                        <div className="my-1 border-t border-slate-100"></div>
-                                        <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                            <LayoutGrid className="w-4 h-4 text-amber-600" /> إضافة فصل جديد
-                                        </button>
-                                        <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
-                                            <Settings className="w-4 h-4 text-slate-500" /> إدارة الفصول
-                                        </button>
+                                            <button onClick={handleQuietAndDiscipline} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors w-full text-right text-xs font-bold text-slate-700 border-b border-slate-50">
+                                                <Sparkles className="w-4 h-4 text-purple-600" /> مكافأة الانضباط (هدوء)
+                                            </button>
+                                            <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                                <UserPlus className="w-4 h-4 text-indigo-600" /> إضافة طالب يدوياً
+                                            </button>
+                                            <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> استيراد من Excel
+                                            </button>
+                                            <div className="my-1 border-t border-slate-100"></div>
+                                            <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                                <LayoutGrid className="w-4 h-4 text-amber-600" /> إضافة فصل جديد
+                                            </button>
+                                            <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors w-full text-right text-xs font-bold text-slate-700">
+                                                <Settings className="w-4 h-4 text-slate-500" /> إدارة الفصول
+                                            </button>
                                     </div>
                                 </div>
                             </>
@@ -543,6 +574,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
                             <div className="w-full h-px bg-slate-100"></div>
 
+                            {/* أزرار الإجراءات (5 أزرار الآن) */}
                             <div className="flex w-full divide-x divide-x-reverse divide-slate-100">
                                 <button onClick={() => handleBehavior(student, 'positive')} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group" title="تعزيز إيجابي">
                                     <ThumbsUp className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
@@ -552,8 +584,14 @@ const StudentList: React.FC<StudentListProps> = ({
                                     <ThumbsDown className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
                                 </button>
 
-                                <button onClick={() => handleSendWhatsAppReport(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-green-50 active:bg-green-100 transition-colors group" title="إرسال تقرير واتساب">
-                                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:scale-110 transition-transform" />
+                                {/* زر الواتساب الذكي (أخضر - للدرجات) */}
+                                <button onClick={() => handleSendSmartReport(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-emerald-50 active:bg-emerald-100 transition-colors group" title="تقرير الدرجات والتميز">
+                                    <MessageCircle className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                                </button>
+
+                                {/* زر الواتساب الإنذاري (أحمر/برتقالي - للسلوك) */}
+                                <button onClick={() => handleSendNegativeReport(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-amber-50 active:bg-amber-100 transition-colors group" title="تقرير سلوكي (إنذار)">
+                                    <Send className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
                                 </button>
                                 
                                 <button onClick={() => setEditingStudent(student)} className="flex-1 py-3 flex flex-col items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors group" title="تعديل">
@@ -571,7 +609,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* Modals (نفس المودالات السابقة) */}
             <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className="max-w-md rounded-[2rem]">
                  <div className="text-center">
                     <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-500">

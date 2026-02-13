@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ScheduleDay, PeriodTime } from '../types';
 import { 
   Bell, Clock, Settings, Edit3,
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
-  X, Calendar, BellOff, Save
+  X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -88,6 +88,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
+    // حالة شريط التنبيه (لإمكانية إغلاقه)
+    const [showAlertBar, setShowAlertBar] = useState(true);
+
     useEffect(() => {
         if(showEditModal) {
             setEditName(teacherInfo.name || '');
@@ -120,64 +123,26 @@ const Dashboard: React.FC<DashboardProps> = ({
         return null;
     };
 
-    // ✅ دالة محسّنة لأيقونات المواد (أكثر مرونة)
+    // ✅ دالة أيقونات المواد
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
-        
         const name = subjectName.trim().toLowerCase();
-        
-        // تنظيف النص من الأحرف الخاصة
         const cleanName = name.replace(/[^\u0600-\u06FFa-z0-9\s]/g, '');
-        
-        // ✅ التربية الإسلامية والقرآن
-        if (cleanName.match(/اسلام|قران|قرآن|دين|توحيد|فقه|تربية اسلامية|حديث|تفسير/)) 
-            return <span className="text-2xl">🕌</span>;
-        
-        // ✅ اللغة العربية
-        if (cleanName.match(/عربي|لغتي|نحو|ادب|أدب|لغة عربية|بلاغة|عروض/)) 
-            return <span className="text-2xl">📜</span>;
-        
-        // ✅ الرياضيات
-        if (cleanName.match(/رياضيات|حساب|جبر|هندسة|رياضة|math/)) 
-            return <span className="text-2xl">📐</span>;
-        
-        // ✅ العلوم
-        if (cleanName.match(/علوم|فيزياء|كيمياء|احياء|أحياء|biology|science/)) 
-            return <span className="text-2xl">🧪</span>;
-        
-        // ✅ الإنجليزي
-        if (cleanName.match(/انجليزي|انقليزي|english|لغة انجليزية/)) 
-            return <span className="text-2xl">🅰️</span>;
-        
-        // ✅ الحاسوب
-        if (cleanName.match(/حاسوب|تقنية|رقمية|برمجة|كمبيوتر|computer/)) 
-            return <span className="text-2xl">💻</span>;
-        
-        // ✅ الاجتماعيات
-        if (cleanName.match(/اجتماعيات|تاريخ|جغرافيا|جغرافية|وطنية|دراسات|social/)) 
-            return <span className="text-2xl">🌍</span>;
-        
-        // ✅ الرياضة
-        if (cleanName.match(/رياضة|بدنية|تربية بدنية|sport/)) 
-            return <span className="text-2xl">⚽</span>;
-        
-        // ✅ الفنون
-        if (cleanName.match(/فن|فنون|رسم|تربية فنية|موسيقى|موسيقي/)) 
-            return <span className="text-2xl">🎨</span>;
-        
-        // ✅ التفكير الناقد
-        if (cleanName.match(/تفكير|ناقد|منطق/)) 
-            return <span className="text-2xl">🧠</span>;
-        
-        // ✅ المهارات الحياتية
-        if (cleanName.match(/مهارات|حياتية|مهارة/)) 
-            return <span className="text-2xl">🤝</span>;
-        
-        // ✅ افتراضي (إذا لم يطابق أي شيء)
+        if (cleanName.match(/اسلام|قران|قرآن|دين|توحيد|فقه|تربية اسلامية|حديث|تفسير/)) return <span className="text-2xl">🕌</span>;
+        if (cleanName.match(/عربي|لغتي|نحو|ادب|أدب|لغة عربية|بلاغة|عروض/)) return <span className="text-2xl">📜</span>;
+        if (cleanName.match(/رياضيات|حساب|جبر|هندسة|رياضة|math/)) return <span className="text-2xl">📐</span>;
+        if (cleanName.match(/علوم|فيزياء|كيمياء|احياء|أحياء|biology|science/)) return <span className="text-2xl">🧪</span>;
+        if (cleanName.match(/انجليزي|انقليزي|english|لغة انجليزية/)) return <span className="text-2xl">🅰️</span>;
+        if (cleanName.match(/حاسوب|تقنية|رقمية|برمجة|كمبيوتر|computer/)) return <span className="text-2xl">💻</span>;
+        if (cleanName.match(/اجتماعيات|تاريخ|جغرافيا|جغرافية|وطنية|دراسات|social/)) return <span className="text-2xl">🌍</span>;
+        if (cleanName.match(/رياضة|بدنية|تربية بدنية|sport/)) return <span className="text-2xl">⚽</span>;
+        if (cleanName.match(/فن|فنون|رسم|تربية فنية|موسيقى|موسيقي/)) return <span className="text-2xl">🎨</span>;
+        if (cleanName.match(/تفكير|ناقد|منطق/)) return <span className="text-2xl">🧠</span>;
+        if (cleanName.match(/مهارات|حياتية|مهارة/)) return <span className="text-2xl">🤝</span>;
         return <span className="text-xl opacity-50">📚</span>;
     };
 
-    // ✅ دالة حفظ بيانات المعلم (محدثة)
+    // ✅ دالة حفظ البيانات
     const handleSaveInfo = () => {
         const updatedInfo = {
             name: editName.trim(),
@@ -185,24 +150,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             subject: editSubject.trim(),
             governorate: editGovernorate.trim(),
             academicYear: editAcademicYear.trim(),
-            avatar: editAvatar, // حفظ الصورة الحالية (سواء كانت قديمة أو جديدة)
+            avatar: editAvatar,
             stamp: editStamp,
             ministryLogo: editMinistryLogo,
             gender: editGender
         };
-
-        console.log('💾 حفظ البيانات:', updatedInfo);
-        
-        // ✅ حفظ بيانات المعلم
         onUpdateTeacherInfo(updatedInfo);
-        
-        // ✅ حفظ الفصل الدراسي
         onSemesterChange(editSemester);
-        
-        // إغلاق النافذة
         setShowEditModal(false);
-        
-        // رسالة تأكيد
         alert('✅ تم حفظ البيانات بنجاح');
     };
 
@@ -212,60 +167,31 @@ const Dashboard: React.FC<DashboardProps> = ({
         setShowScheduleModal(false);
     };
 
-    // ✅ دالة ضغط الصور قبل الحفظ (لتجنب تجاوز حد localStorage)
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | undefined) => void) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onloadend = () => {
             const img = new Image();
             img.onload = () => {
-                // إنشاء Canvas لضغط الصورة
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
-
-                // ✅ تحديد الحجم الأقصى (400x400 بكسل)
                 const MAX_SIZE = 400;
                 let width = img.width;
                 let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height = (height * MAX_SIZE) / width;
-                        width = MAX_SIZE;
-                    }
-                } else {
-                    if (height > MAX_SIZE) {
-                        width = (width * MAX_SIZE) / height;
-                        height = MAX_SIZE;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
+                if (width > height) { if (width > MAX_SIZE) { height = (height * MAX_SIZE) / width; width = MAX_SIZE; } } 
+                else { if (height > MAX_SIZE) { width = (width * MAX_SIZE) / height; height = MAX_SIZE; } }
+                canvas.width = width; canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
-
-                // ✅ تحويل إلى Base64 بجودة 70%
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                
-                // التحقق من الحجم النهائي
                 const sizeInKB = (compressedBase64.length * 3) / 4 / 1024;
-                console.log(`📏 حجم الصورة بعد الضغط: ${sizeInKB.toFixed(2)} KB`);
-
-                // رفع الحد إلى 1 ميجابايت لضمان الحفظ
-                if (sizeInKB > 1024) {
-                    alert('⚠️ الصورة كبيرة جداً. يرجى اختيار صورة أصغر.');
-                    return;
-                }
-
+                if (sizeInKB > 1024) { alert('⚠️ الصورة كبيرة جداً.'); return; }
                 setter(compressedBase64);
             };
             img.src = reader.result as string;
         };
         reader.readAsDataURL(file);
-        // Reset input to allow re-selecting same file
         e.target.value = '';
     };
 
@@ -292,10 +218,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
             const newSchedule: ScheduleDay[] = [
-                { dayName: 'الأحد', periods: Array(8).fill('') },
-                { dayName: 'الاثنين', periods: Array(8).fill('') },
-                { dayName: 'الثلاثاء', periods: Array(8).fill('') },
-                { dayName: 'الأربعاء', periods: Array(8).fill('') },
+                { dayName: 'الأحد', periods: Array(8).fill('') }, { dayName: 'الاثنين', periods: Array(8).fill('') },
+                { dayName: 'الثلاثاء', periods: Array(8).fill('') }, { dayName: 'الأربعاء', periods: Array(8).fill('') },
                 { dayName: 'الخميس', periods: Array(8).fill('') }
             ];
             jsonData.forEach(row => {
@@ -303,21 +227,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 const firstCell = String(row[0]).trim();
                 const dayIndex = newSchedule.findIndex(d => d.dayName === firstCell || firstCell.includes(d.dayName));
                 if (dayIndex !== -1) {
-                    for (let i = 1; i <= 8; i++) {
-                        if (row[i]) newSchedule[dayIndex].periods[i-1] = String(row[i]).trim();
-                    }
+                    for (let i = 1; i <= 8; i++) { if (row[i]) newSchedule[dayIndex].periods[i-1] = String(row[i]).trim(); }
                 }
             });
             onUpdateSchedule(newSchedule);
             alert('تم استيراد الجدول بنجاح');
-        } catch (error) {
-            console.error(error);
-            alert('حدث خطأ أثناء استيراد الجدول.');
-        } finally {
-            setIsImportingSchedule(false);
-            if (e.target) e.target.value = '';
-            setShowSettingsDropdown(false);
-        }
+        } catch (error) { alert('حدث خطأ أثناء استيراد الجدول.'); } 
+        finally { setIsImportingSchedule(false); if (e.target) e.target.value = ''; setShowSettingsDropdown(false); }
     };
 
     const handleImportPeriodTimes = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,41 +245,25 @@ const Dashboard: React.FC<DashboardProps> = ({
             const workbook = XLSX.read(data, { type: 'array' });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-            
             const newPeriodTimes = [...tempPeriodTimes];
             let updatesCount = 0;
-
             jsonData.forEach((row) => {
                 if (row.length < 2) return;
                 const firstCol = String(row[0] || '');
                 const periodNumMatch = firstCol.match(/\d+/);
-                
                 if (periodNumMatch) {
                     const pIndex = parseInt(periodNumMatch[0]) - 1; 
                     if (pIndex >= 0 && pIndex < 8) {
-                        const startVal = row[1];
-                        const endVal = row[2];
-                        const parsedStart = parseExcelTime(startVal);
-                        const parsedEnd = parseExcelTime(endVal);
-
+                        const parsedStart = parseExcelTime(row[1]);
+                        const parsedEnd = parseExcelTime(row[2]);
                         if (parsedStart && newPeriodTimes[pIndex]) newPeriodTimes[pIndex].startTime = parsedStart;
                         if (parsedEnd && newPeriodTimes[pIndex]) newPeriodTimes[pIndex].endTime = parsedEnd;
                         if(parsedStart || parsedEnd) updatesCount++;
                     }
                 }
             });
-
-            if (updatesCount > 0) {
-                setTempPeriodTimes(newPeriodTimes);
-                alert(`تم تحديث توقيت ${updatesCount} حصص`);
-            }
-        } catch (error) {
-            console.error(error);
-            alert('خطأ في الملف');
-        } finally {
-            setIsImportingPeriods(false);
-            if (e.target) e.target.value = '';
-        }
+            if (updatesCount > 0) { setTempPeriodTimes(newPeriodTimes); alert(`تم تحديث توقيت ${updatesCount} حصص`); }
+        } catch (error) { alert('خطأ في الملف'); } finally { setIsImportingPeriods(false); if (e.target) e.target.value = ''; }
     };
 
     const checkActivePeriod = (start: string, end: string) => {
@@ -390,10 +290,19 @@ const Dashboard: React.FC<DashboardProps> = ({
     const todaySchedule = schedule ? schedule[dayIndex] : { dayName: 'اليوم', periods: [] };
     const isToday = todayRaw === dayIndex;
 
+    // --- خطة التقويم المستمر ---
+    const assessmentPlan = [
+        { monthIndex: 2, monthName: 'مارس', tasks: ['العرض الشفوي (بدء)', 'التقرير (بدء)', 'السؤال القصير 1', 'الاختبار القصير 1'] },
+        { monthIndex: 3, monthName: 'أبريل', tasks: ['استكمال العرض الشفوي', 'استكمال التقرير', 'السؤال القصير 2'] },
+        { monthIndex: 4, monthName: 'مايو', tasks: ['تسليم العرض الشفوي', 'تسليم التقرير', 'الاختبار القصير 2'] }
+    ];
+    const currentMonthIndex = new Date().getMonth();
+    const currentTasks = assessmentPlan.find(p => p.monthIndex === currentMonthIndex)?.tasks || [];
+
     return (
-        <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+        <div className="space-y-6 pb-28 animate-in fade-in duration-500 relative min-h-screen">
             
-            {/* ✅ 1. الهيدر الكبير */}
+            {/* 1️⃣ الهيدر الكبير */}
             <header className="bg-[#446A8D] text-white pt-10 pb-8 px-4 md:pt-16 md:pb-12 md:px-6 shadow-xl relative z-20 -mx-4 -mt-4">
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-3 md:gap-5">
@@ -403,11 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     <img src={teacherInfo.avatar} className="w-full h-full object-cover" alt="Teacher" onError={(e) => e.currentTarget.style.display='none'} />
                                 ) : <DefaultAvatarSVG gender={teacherInfo.gender || 'male'} />}
                             </div>
-                            <button 
-                                onClick={() => setShowEditModal(true)} 
-                                className="absolute -bottom-2 -right-2 bg-white text-[#446A8D] p-1.5 md:p-2 rounded-full shadow-lg border-2 border-[#446A8D] hover:scale-110 transition-transform"
-                                title="تعديل البيانات"
-                            >
+                            <button onClick={() => setShowEditModal(true)} className="absolute -bottom-2 -right-2 bg-white text-[#446A8D] p-1.5 md:p-2 rounded-full shadow-lg border-2 border-[#446A8D] hover:scale-110 transition-transform" title="تعديل البيانات">
                                 <Edit3 size={12} className="md:w-3.5 md:h-3.5" strokeWidth={3} />
                             </button>
                         </div>
@@ -468,7 +373,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* ✅ 3. الجدول */}
+            {/* 2️⃣ الجدول (في مكانه كما طلبت) */}
             <div className="px-4 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -484,17 +389,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                         if (!subject) return null;
                         const time = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
                         const isActive = isToday && checkActivePeriod(time.startTime, time.endTime);
-
-                        // ✅ إصلاح الأيقونات: استخدام مادة المعلم إذا وجدت، أو مادة الجدول
-                        const displaySubject = teacherInfo.subject && teacherInfo.subject.trim().length > 0 
-                            ? teacherInfo.subject 
-                            : subject;
+                        const displaySubject = teacherInfo.subject && teacherInfo.subject.trim().length > 0 ? teacherInfo.subject : subject;
 
                         return (
                             <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'bg-[#446A8D] text-white border-[#446A8D] shadow-xl shadow-blue-200 scale-105 z-10' : 'bg-white border-slate-100 text-slate-600 hover:shadow-md'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        {/* ✅ عرض الأيقونة بناءً على مادة المعلم أو الجدول */}
                                         {getSubjectIcon(displaySubject) || getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
@@ -526,7 +426,58 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* Modal: Edit Identity */}
+            {/* 3️⃣ خطة التقويم المستمر (تأتي بعد الجدول) */}
+            <div className="px-4 mt-6">
+                <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-amber-50 text-amber-500 rounded-xl"><CalendarDays size={18}/></div>
+                        <h2 className="text-base font-black text-slate-800">خطة التقويم المستمر</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {assessmentPlan.map((plan) => {
+                            const isCurrent = currentMonthIndex === plan.monthIndex;
+                            const isPast = currentMonthIndex > plan.monthIndex;
+                            return (
+                                <div key={plan.monthIndex} className={`p-4 rounded-2xl border transition-all ${isCurrent ? 'bg-indigo-50/50 border-indigo-200 shadow-sm' : isPast ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-slate-100'}`}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className={`text-xs font-black ${isCurrent ? 'text-indigo-700' : 'text-slate-600'}`}>شهر {plan.monthName}</span>
+                                        {isCurrent && <span className="bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse">الحالي</span>}
+                                        {isPast && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                                    </div>
+                                    <ul className="space-y-1.5">
+                                        {plan.tasks.map((task, idx) => (
+                                            <li key={idx} className="flex items-start gap-2 text-[10px] font-bold text-slate-500">
+                                                <div className={`w-1 h-1 rounded-full mt-1.5 shrink-0 ${isCurrent ? 'bg-indigo-400' : 'bg-slate-300'}`}></div>
+                                                <span className={isPast ? 'line-through' : ''}>{task}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* 4️⃣ شريط التنبيه السفلي (الجديد كلياً) */}
+            {showAlertBar && currentTasks.length > 0 && (
+                <div className="fixed bottom-[80px] left-4 right-4 bg-indigo-900/95 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl z-30 flex items-start gap-3 animate-in slide-in-from-bottom-10 duration-500 border border-indigo-800">
+                    <div className="p-2 bg-indigo-700 rounded-xl shrink-0 animate-pulse">
+                        <AlertTriangle size={20} className="text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                        <h4 className="font-black text-sm mb-1 text-amber-300">تذكير بمهام شهر {assessmentPlan.find(p=>p.monthIndex === currentMonthIndex)?.monthName}</h4>
+                        <p className="text-[10px] opacity-90 leading-relaxed font-bold">
+                            عليك تنفيذ: {currentTasks.slice(0, 2).join('، ')} {currentTasks.length > 2 && '...'}
+                        </p>
+                    </div>
+                    <button onClick={() => setShowAlertBar(false)} className="p-1 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
+
+            {/* Modal: Edit Identity (كما هو) */}
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="max-w-md rounded-[2rem]">
                 <div className="text-center">
                     <h3 className="font-black text-lg mb-4 text-slate-800">الهوية الرسمية</h3>
@@ -571,7 +522,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </Modal>
 
-            {/* Modal: Schedule & Timing */}
+            {/* Modal: Schedule & Timing (كما هو) */}
             <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)} className="max-w-md rounded-[2rem] h-[80vh]">
                 <div className="flex flex-col h-full">
                     <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-50">

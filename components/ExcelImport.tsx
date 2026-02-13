@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Student } from '../types';
-import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, Info, LayoutGrid, Check } from 'lucide-react';
+import { FileUp, CheckCircle2, FileSpreadsheet, Loader2, Info, LayoutGrid, Check, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ExcelImportProps {
@@ -16,6 +15,26 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
   const [targetClass, setTargetClass] = useState<string>('');
   const [newClassInput, setNewClassInput] = useState('');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // ✅ ميزة جديدة: تحميل القالب الجاهز
+  const handleDownloadTemplate = () => {
+    // 1. تجهيز الأعمدة (الاسم، الهاتف، الجنس)
+    const headers = ['اسم الطالب', 'رقم ولي الأمر', 'النوع (ذكر/أنثى)'];
+    
+    // 2. إضافة صف مثال توضيحي (ليعرف المعلم الصيغة الصحيحة)
+    const sampleRow = ['محمد أحمد العماني', '91234567', 'ذكر'];
+    const sampleRow2 = ['سارة علي', '99887766', 'أنثى'];
+
+    // 3. إنشاء الملف
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow, sampleRow2]);
+
+    // 4. تنسيق عرض الأعمدة ليكون مريحاً
+    ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, "قالب_الطلاب");
+    XLSX.writeFile(wb, "قالب_ادخال_الطلاب.xlsx");
+  };
 
   const cleanHeader = (header: string): string => {
       if (!header) return '';
@@ -46,95 +65,116 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
     
     setIsImporting(true);
     setImportStatus('idle');
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false }) as any[];
 
-      if (jsonData.length === 0) throw new Error('الملف فارغ');
+    setTimeout(async () => {
+        try {
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data, { type: 'array' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false }) as any[];
 
-      if (isCreatingNew && finalTargetClass) {
-          onAddClass(finalTargetClass);
-      }
+          if (jsonData.length === 0) throw new Error('الملف فارغ');
 
-      const headers = Object.keys(jsonData[0]);
-      
-      const nameKeywords = ['الاسم', 'اسم الطالب', 'اسم', 'name', 'student', 'full name', 'المتعلم'];
-      const phoneKeywords = ['جوال', 'هاتف', 'phone', 'mobile', 'contact', 'تواصل', 'ولي', 'parent', 'رقم', 'cell'];
-      const gradeKeywords = ['الصف', 'صف', 'grade', 'level', 'المرحلة'];
+          if (isCreatingNew && finalTargetClass) {
+              onAddClass(finalTargetClass);
+          }
 
-      let nameKey = headers.find(h => nameKeywords.some(kw => cleanHeader(h).includes(kw)));
-      let phoneKey = headers.find(h => phoneKeywords.some(kw => cleanHeader(h).includes(kw)));
-      const gradeKey = headers.find(h => gradeKeywords.some(kw => cleanHeader(h).includes(kw)));
+          const headers = Object.keys(jsonData[0]);
+          
+          const nameKeywords = ['الاسم', 'اسم الطالب', 'اسم', 'name', 'student', 'full name', 'المتعلم'];
+          const phoneKeywords = ['جوال', 'هاتف', 'phone', 'mobile', 'contact', ' تواصل', 'ولي امر','ولي أمر', 'parent', 'رقم', 'cell'];
+          const genderKeywords = ['النوع', 'الجنس', 'gender', 'sex', 'type'];
 
-      if (!nameKey) nameKey = headers[0];
+          let nameKey = headers.find(h => nameKeywords.some(kw => cleanHeader(h).includes(kw)));
+          let phoneKey = headers.find(h => phoneKeywords.some(kw => cleanHeader(h).includes(kw)));
+          let genderKey = headers.find(h => genderKeywords.some(kw => cleanHeader(h).includes(kw)));
 
-      if (!phoneKey) {
-          for (const header of headers) {
-              if (header === nameKey) continue;
-              let matchCount = 0;
-              let checkLimit = Math.min(jsonData.length, 10);
-              for (let i = 0; i < checkLimit; i++) {
-                  if (looksLikeAPhoneNumber(jsonData[i][header])) matchCount++;
-              }
-              if (matchCount >= checkLimit * 0.3) {
-                  phoneKey = header;
-                  break;
+          if (!nameKey) nameKey = headers[0];
+
+          // محاولة استنتاج عمود الهاتف إذا لم يوجد اسم صريح
+          if (!phoneKey) {
+              for (const header of headers) {
+                  if (header === nameKey) continue;
+                  let matchCount = 0;
+                  let checkLimit = Math.min(jsonData.length, 10);
+                  for (let i = 0; i < checkLimit; i++) {
+                      if (looksLikeAPhoneNumber(jsonData[i][header])) matchCount++;
+                  }
+                  if (matchCount >= checkLimit * 0.3) {
+                      phoneKey = header;
+                      break;
+                  }
               }
           }
-          if (!phoneKey && nameKey) {
-              const nameIndex = headers.indexOf(nameKey);
-              if (nameIndex !== -1 && nameIndex + 1 < headers.length) {
-                  phoneKey = headers[nameIndex + 1];
+
+          const mappedStudents: Student[] = jsonData
+            .map((row, idx): Student | null => {
+              const studentName = String(row[nameKey!] || '').trim();
+              
+              // تجاهل صفوف الأمثلة إذا قام المعلم برفع القالب كما هو
+              if (studentName.includes('مثال:') || studentName === 'يكتب اسم الطالب ' || studentName === 'يكتب اسم الطالبه') return null;
+
+              let parentPhone = '';
+              if (phoneKey) parentPhone = cleanPhoneNumber(row[phoneKey]);
+              if (!studentName || nameKeywords.includes(cleanHeader(studentName))) return null;
+
+              // معالجة الجنس
+              let gender: 'male' | 'female' = 'male'; // افتراضي
+              if (genderKey && row[genderKey]) {
+                  const val = String(row[genderKey]).toLowerCase().trim();
+                  if (val.includes('انثى') || val.includes('أنثى') || val.includes('بنت') || val === 'f' || val === 'female') {
+                      gender = 'female';
+                  }
               }
+
+              return {
+                id: Math.random().toString(36).substr(2, 9),
+                name: studentName,
+                grade: '', // الصف يتم تحديده من القائمة المختارة وليس من الملف
+                classes: [finalTargetClass],
+                attendance: [],
+                behaviors: [],
+                grades: [],
+                parentPhone: parentPhone,
+                gender: gender 
+              };
+            })
+            .filter((student): student is Student => student !== null);
+
+          if (mappedStudents.length === 0) {
+            alert('لم يتم العثور على بيانات صالحة. تأكد من صحة الملف.');
+            setImportStatus('error');
+            return;
           }
-      }
 
-      const mappedStudents: Student[] = jsonData
-        .map((row, idx): Student | null => {
-          const studentName = String(row[nameKey!] || '').trim();
-          let parentPhone = '';
-          if (phoneKey) parentPhone = cleanPhoneNumber(row[phoneKey]);
-          if (!studentName || nameKeywords.includes(cleanHeader(studentName))) return null;
-
-          return {
-            id: Math.random().toString(36).substr(2, 9),
-            name: studentName,
-            grade: gradeKey ? String(row[gradeKey]).trim() : '',
-            classes: [finalTargetClass],
-            attendance: [],
-            behaviors: [],
-            grades: [],
-            parentPhone: parentPhone
-          };
-        })
-        .filter((student): student is Student => student !== null);
-
-      if (mappedStudents.length === 0) {
-        alert('لم يتم العثور على بيانات صالحة. تأكد من صحة الملف.');
-        setImportStatus('error');
-        return;
-      }
-
-      onImport(mappedStudents);
-      setImportStatus('success');
-      setTimeout(() => setImportStatus('idle'), 3000);
-      setNewClassInput('');
-      setTargetClass('');
-    } catch (error) {
-      console.error(error);
-      setImportStatus('error');
-      alert('حدث خطأ أثناء قراءة الملف. تأكد من أن الملف سليم.');
-    } finally {
-      setIsImporting(false);
-      if (e.target) e.target.value = '';
-    }
+          onImport(mappedStudents);
+          setImportStatus('success');
+          setTimeout(() => setImportStatus('idle'), 3000);
+          setNewClassInput('');
+          setTargetClass('');
+        } catch (error) {
+          console.error(error);
+          setImportStatus('error');
+          alert('حدث خطأ أثناء قراءة الملف. تأكد من أن الملف سليم.');
+        } finally {
+          setIsImporting(false);
+          if (e.target) e.target.value = '';
+        }
+    }, 100);
   };
 
   return (
     <div className="space-y-4 text-slate-900">
-      <div className="glass-card p-4 rounded-2xl border border-gray-200 space-y-4 bg-white">
+      
+      {/* 1. زر تحميل القالب (الميزة الجديدة) */}
+      <button 
+        onClick={handleDownloadTemplate}
+        className="w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-100 transition-colors shadow-sm mb-2"
+      >
+        <Download size={16} /> تحميل ملف إكسل فارغ (جاهز للتعبئة)
+      </button>
+
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-slate-900 flex items-center gap-2">
                 <LayoutGrid className="w-4 h-4 text-indigo-500" />
@@ -157,7 +197,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                 <input 
                   type="text" 
                   placeholder="اكتب اسم الفصل الجديد (مثال: 4/ب)" 
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-bold focus:border-indigo-500 outline-none text-slate-900 placeholder:text-gray-400"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold focus:border-indigo-500 outline-none text-slate-900 placeholder:text-gray-400"
                   value={newClassInput}
                   onChange={(e) => setNewClassInput(e.target.value)}
                   autoFocus
@@ -169,7 +209,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
                     <button
                         key={cls}
                         onClick={() => setTargetClass(cls)}
-                        className={`p-3 rounded-xl text-[10px] font-black transition-all border flex items-center justify-between ${targetClass === cls ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-gray-50 text-slate-600 border-gray-200 hover:bg-gray-100'}`}
+                        className={`p-3 rounded-xl text-[10px] font-black transition-all border flex items-center justify-between ${targetClass === cls ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
                     >
                         {cls}
                         {targetClass === cls && <Check className="w-3 h-3" />}
@@ -179,7 +219,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
         )}
       </div>
 
-      <div className={`glass-card p-6 rounded-2xl border-2 border-dashed flex flex-col items-center text-center shadow-sm relative overflow-hidden transition-all bg-white ${ (isCreatingNew ? newClassInput : targetClass) ? 'border-indigo-300 bg-indigo-50/30' : 'border-gray-200'}`}>
+      <div className={`p-6 rounded-2xl border-2 border-dashed flex flex-col items-center text-center shadow-sm relative overflow-hidden transition-all bg-white ${ (isCreatingNew ? newClassInput : targetClass) ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-200'}`}>
         <div className="w-14 h-14 bg-indigo-50 rounded-2xl shadow-sm flex items-center justify-center mb-3 relative z-10 border border-indigo-100">
           {isImporting ? <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" /> : <FileSpreadsheet className="w-6 h-6 text-indigo-500" />}
         </div>
@@ -201,7 +241,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
             onChange={handleFileChange} 
             disabled={isImporting || !(isCreatingNew ? newClassInput : targetClass)} 
           />
-          <div className={`w-full py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-lg ${isImporting || !(isCreatingNew ? newClassInput : targetClass) ? 'bg-gray-100 text-gray-400 shadow-none border border-gray-200' : 'bg-indigo-600 text-white shadow-indigo-200 active:scale-95'}`}>
+          <div className={`w-full py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-lg ${isImporting || !(isCreatingNew ? newClassInput : targetClass) ? 'bg-slate-100 text-gray-400 shadow-none border border-slate-200' : 'bg-indigo-600 text-white shadow-indigo-200 active:scale-95'}`}>
             <FileUp className="w-4 h-4" /> اختر الملف الآن
           </div>
         </label>
@@ -222,7 +262,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
           <div className="flex gap-2 items-start">
               <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div className="text-[9px] text-amber-800 font-bold leading-relaxed text-right">
-                  <p>تأكد من احتواء الملف على أعمدة "الاسم" و"الهاتف" لضمان استيراد البيانات بشكل صحيح.</p>
+                  <p>لأفضل النتائج، استخدم القالب الجاهز أعلاه (يحتوي على الاسم ورقم الهاتف فقط).</p>
               </div>
           </div>
       </div>
