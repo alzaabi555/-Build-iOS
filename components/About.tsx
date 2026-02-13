@@ -14,7 +14,7 @@ const About: React.FC = () => {
       </div>
       
       <h1 className="text-5xl font-black mb-2 tracking-tighter text-slate-800">تطبيق راصد</h1>
-      <p className="glass-card px-6 py-2 rounded-full text-slate-500 font-black text-xs mb-10 border-none shadow-sm bg-white">V 3.7.9 • الإصدار الملكي</p>
+      <p className="glass-card px-6 py-2 rounded-full text-slate-500 font-black text-xs mb-10 border-none shadow-sm bg-white">V 4.0.2 • الإصدار الملكي</p>
       
       <div className="glass-heavy border border-white/20 rounded-[3rem] p-10 max-w-md w-full text-center shadow-xl bg-white/80 backdrop-blur-xl">
           <h2 className="text-xl font-black text-slate-800 mb-8 relative inline-block">
