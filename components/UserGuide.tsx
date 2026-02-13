@@ -105,7 +105,7 @@ const UserGuide: React.FC = () => {
     <div style="max-width: 800px; margin: 0 auto;">
         ${content}
         <div style="text-align: center; margin-top: 50px; color: #64748b; font-size: 12px;">
-            <p>تم استخراج هذا الدليل من تطبيق راصد - الإصدار 3.6.0</p>
+            <p>تم استخراج هذا الدليل من تطبيق راصد - الإصدار 4.0.2</p>
         </div>
     </div>
 </body>
