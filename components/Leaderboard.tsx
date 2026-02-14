@@ -147,7 +147,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden">
-            <<header className="fixed md:sticky top-0 left-0 right-0 z-40 bg-[#446A8D] text-white shadow-lg px-4 pt-8 pb-6 transition-all w-full">
+            <header className="fixed md:sticky top-0 left-0 right-0 z-40 bg-[#446A8D] text-white shadow-lg px-4 pt-8 pb-6 transition-all w-full">
                 <div className="flex flex-col items-center text-center relative w-full">
                     {/* زر إعدادات نوع المدرسة */}
                     <div className="absolute left-0 top-0 flex gap-2">
