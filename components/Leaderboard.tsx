@@ -148,7 +148,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     return (
         <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden">
             <header className="fixed md:sticky top-0 z-40 bg-[#446A8D] text-white shadow-lg px-4 pt-8 pb-6 transition-all w-full">
-                <div className="flex flex-col items-center text-center relative">
+                <div className="flex flex-col items-center text-center relative w-full">
                     {/* زر إعدادات نوع المدرسة */}
                     <div className="absolute left-0 top-0 flex gap-2">
                         <select 
@@ -173,9 +173,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl py-2 pr-10 text-xs font-bold text-white outline-none" />
                     </div>
 
-                    {/* ✅ التعديل هنا: استخدام mx-auto لتوسيط الحاوية مع الحفاظ على overflow للأزرار */}
+                    {/* ✅ التعديل هنا: تمت إزالة mx-auto لضمان المحاذاة الصحيحة في الجوال */}
                     <div className="w-full overflow-x-auto no-scrollbar pb-2 flex justify-start md:justify-center">
-                        <div className="flex gap-2 mx-auto">
+                        <div className="flex gap-2 px-1">
                             <button onClick={() => setSelectedClass('all')} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border ${selectedClass === 'all' ? 'bg-white text-[#1e3a8a]' : 'bg-white/10 text-blue-100'}`}>الكل</button>
                             {classes.map(c => (
                                 <button key={c} onClick={() => setSelectedClass(c)} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border ${selectedClass === c ? 'bg-white text-[#1e3a8a]' : 'bg-white/10 text-blue-100'}`}>{c}</button>
