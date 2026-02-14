@@ -258,7 +258,7 @@ const AppContent: React.FC = () => {
             <div className="absolute inset-x-0 bottom-0 h-16 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100"></div>
             
             {/* عناصر التنقل */}
-            <div className="relative flex justify-around items-end pb-safe h-20 px-2">
+            <div className="relative flex justify-around items-end h-20 px-2">
                 {mobileNavItems.map((item) => {
                     const isActive = activeTab === item.id;
                     return (
