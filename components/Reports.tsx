@@ -372,7 +372,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
                                 </div>
                                 <div>
                                     {teacherInfo?.ministryLogo ? (
-                                        <img src={teacherInfo.ministryLogo} style={{height:'80px', objectFit:'contain'}} alt="Logo" />
+                                        <img src={teacherInfo.ministryLogo} style={{height:'80px', objectFit:'contain', backgroundColor:'transparent'}} alt="Logo" />
                                     ) : (
                                         <div style={{height:'80px', width:'80px', border:'2px dashed #ccc', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px'}}>شعار</div>
                                     )}
@@ -393,7 +393,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
                                     <p style={{fontWeight:'900', fontSize:'22px', color:'#000'}}>{teacherInfo?.name}</p>
                                 </div>
                                 <div style={{textAlign:'center'}}>
-                                    {teacherInfo?.stamp && <img src={teacherInfo.stamp} style={{width:'140px', opacity:0.8, mixBlendMode:'multiply', transform:'rotate(-5deg)'}} alt="Stamp" />}
+                                    {teacherInfo?.stamp && <img src={teacherInfo.stamp} style={{width:'140px', opacity:0.8, transform:'rotate(-5deg)', backgroundColor:'transparent'}} alt="Stamp" />}
                                 </div>
                                 <div style={{textAlign:'center'}}>
                                     <p style={{fontWeight:'bold', fontSize:'18px', marginBottom:'50px', color:'#000'}}>مدير المدرسة</p>
@@ -408,6 +408,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
     );
 };
 
+
 const SummonTemplate = ({ student, teacherInfo, data }: any) => {
     if (!student) return <div className="p-10 text-center text-black">خطأ: بيانات الطالب غير متوفرة</div>;
     const safeData = data || {};
@@ -416,7 +417,7 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
         <div className="w-full text-black bg-white p-16 font-serif text-right h-full" dir="rtl">
             <div className="text-center mb-12 border-b-2 border-black pb-6">
                 <div className="flex justify-center mb-4">
-                    {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <div className="w-20 h-20 bg-slate-100 rounded-full border"></div>}
+                    {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" style={{backgroundColor:'transparent'}} /> : <div className="w-20 h-20 bg-slate-100 rounded-full border"></div>}
                 </div>
                 <h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التعليم</h3>
                 <h3 className="font-bold text-lg">مدرسة {teacherInfo?.school || '................'}</h3>
@@ -448,12 +449,13 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
             <p className="text-xl mt-12 mb-20 text-center font-bold">شاكرين لكم حسن تعاونكم واهتمامكم بمصلحة الطالب.</p>
             <div className="flex justify-between items-end px-10 mt-auto">
                 <div className="text-center"><p className="font-bold text-xl mb-8">معلم المادة</p><p className="text-2xl font-black">{teacherInfo?.name}</p></div>
-                <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-40 opacity-80 mix-blend-multiply" />}</div>
+                <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-40 opacity-80" style={{backgroundColor:'transparent'}} />}</div>
                 <div className="text-center"><p className="font-bold text-xl mb-8">مدير المدرسة</p><p className="text-2xl font-black">....................</p></div>
             </div>
         </div>
     );
 };
+
 
 // ✅ تم إصلاح هذا القالب لمنع الشاشة البيضاء (Null Safety)
 const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools }: any) => { 
@@ -521,10 +523,11 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                             <div className="flex-1 border-2 border-slate-200 p-4 rounded-xl text-center"><p className="text-sm font-bold text-slate-500 mb-1">مرات التسرب</p><p className="text-3xl font-black text-purple-600">{truantCount}</p></div>
                         </div>
                         <div className="flex justify-between items-end px-12 mt-auto">
-                            <div className="text-center"><p className="font-bold text-base mb-8">معلم المادة</p><p className="text-2xl font-bold">{teacherInfo?.name}</p></div>
-                            <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80 mix-blend-multiply" />}</div>
-                            <div className="text-center"><p className="font-bold text-base mb-8">مدير المدرسة</p><p className="font-bold text-lg">........................</p></div>
-                        </div>
+    <div className="text-center"><p className="font-bold text-base mb-8">معلم المادة</p><p className="text-2xl font-bold">{teacherInfo?.name}</p></div>
+    <div className="text-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80" style={{backgroundColor:'transparent'}} />}</div>
+    <div className="text-center"><p className="font-bold text-base mb-8">مدير المدرسة</p><p className="font-bold text-lg">........................</p></div>
+</div>
+
                     </div>
                 ); 
             })}
