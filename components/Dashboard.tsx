@@ -5,7 +5,7 @@ import {
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
   X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
-  AlertTriangle
+  AlertTriangle, Moon, PartyPopper, BookHeart, Plus, Trash2, RefreshCcw // ✅ أضفنا أيقونات التعديل
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -41,6 +41,14 @@ interface DashboardProps {
 
 const BELL_SOUND_URL = alarmSound;
 
+// ✅ تعريف نوع بيانات الخطة
+interface AssessmentMonth {
+    id: string;
+    monthIndex: number;
+    monthName: string;
+    tasks: string[];
+}
+
 const Dashboard: React.FC<DashboardProps> = ({
     teacherInfo,
     onUpdateTeacherInfo,
@@ -56,7 +64,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
     if (!teacherInfo) return <div className="flex items-center justify-center h-screen">جاري التحميل...</div>;
 
-    const { classes } = useApp();
+    const { classes, setSelectedClass } = useApp();
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
@@ -88,8 +97,61 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPeriodTimes, setTempPeriodTimes] = useState<PeriodTime[]>([]);
     const [tempSchedule, setTempSchedule] = useState<ScheduleDay[]>([]);
 
-    // حالة شريط التنبيه (لإمكانية إغلاقه)
     const [showAlertBar, setShowAlertBar] = useState(true);
+    const [occasionGreeting, setOccasionGreeting] = useState<'ramadan' | 'eid' | 'teacher' | null>(null);
+
+    // ✅ حالة جديدة لخطة التقويم المستمر (ديناميكية)
+    const [assessmentPlan, setAssessmentPlan] = useState<AssessmentMonth[]>(() => {
+        const saved = localStorage.getItem('rased_assessment_plan');
+        if (saved) return JSON.parse(saved);
+        // القيمة الافتراضية
+        return [
+            { id: 'm1', monthIndex: 2, monthName: 'مارس', tasks: ['العرض الشفوي (بدء)', 'التقرير (بدء)', 'السؤال القصير 1', 'الاختبار القصير 1'] },
+            { id: 'm2', monthIndex: 3, monthName: 'أبريل', tasks: ['استكمال العرض الشفوي', 'استكمال التقرير', 'السؤال القصير 2'] },
+            { id: 'm3', monthIndex: 4, monthName: 'مايو', tasks: ['تسليم العرض الشفوي', 'تسليم التقرير', 'الاختبار القصير 2'] }
+        ];
+    });
+
+    // ✅ حالة لنافذة تعديل الخطة
+    const [showPlanSettingsModal, setShowPlanSettingsModal] = useState(false);
+    const [tempPlan, setTempPlan] = useState<AssessmentMonth[]>([]);
+
+    useEffect(() => {
+        const checkOccasion = () => {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            const storageKey = `rased_greeting_${todayString}`;
+            const hasSeen = localStorage.getItem(storageKey);
+
+            if (hasSeen) return;
+
+            if (today.getMonth() === 1 && today.getDate() === 24) {
+                setOccasionGreeting('teacher');
+                localStorage.setItem(storageKey, 'true');
+                return;
+            }
+
+            try {
+                const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { day: 'numeric', month: 'numeric' });
+                const parts = hijriFormatter.formatToParts(today);
+                const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+                const hDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+
+                if (hMonth === 9 && hDay <= 3) {
+                    setOccasionGreeting('ramadan');
+                    localStorage.setItem(storageKey, 'true');
+                    return;
+                }
+                if (hMonth === 10 && hDay <= 3) {
+                    setOccasionGreeting('eid');
+                    localStorage.setItem(storageKey, 'true');
+                    return;
+                }
+            } catch (e) { console.error("Hijri Date Error", e); }
+        };
+        const timer = setTimeout(checkOccasion, 1500);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         if(showEditModal) {
@@ -118,12 +180,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showScheduleModal, periodTimes, schedule]);
 
+    // ✅ عند فتح مودال الخطة، نأخذ نسخة للتعديل
+    useEffect(() => {
+        if (showPlanSettingsModal) {
+            setTempPlan(JSON.parse(JSON.stringify(assessmentPlan)));
+        }
+    }, [showPlanSettingsModal, assessmentPlan]);
+
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && avatar.length > 50) return avatar;
         return null;
     };
 
-    // ✅ دالة أيقونات المواد
     const getSubjectIcon = (subjectName: string) => {
         if (!subjectName) return null;
         const name = subjectName.trim().toLowerCase();
@@ -142,7 +210,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return <span className="text-xl opacity-50">📚</span>;
     };
 
-    // ✅ دالة حفظ البيانات
     const handleSaveInfo = () => {
         const updatedInfo = {
             name: editName.trim(),
@@ -165,6 +232,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         setPeriodTimes(tempPeriodTimes);
         onUpdateSchedule(tempSchedule);
         setShowScheduleModal(false);
+    };
+
+    // ✅ دالة حفظ خطة التقويم
+    const handleSavePlanSettings = () => {
+        setAssessmentPlan(tempPlan);
+        localStorage.setItem('rased_assessment_plan', JSON.stringify(tempPlan));
+        setShowPlanSettingsModal(false);
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | undefined) => void) => {
@@ -290,14 +364,13 @@ const Dashboard: React.FC<DashboardProps> = ({
     const todaySchedule = schedule ? schedule[dayIndex] : { dayName: 'اليوم', periods: [] };
     const isToday = todayRaw === dayIndex;
 
-    // --- خطة التقويم المستمر ---
-    const assessmentPlan = [
-        { monthIndex: 2, monthName: 'مارس', tasks: ['العرض الشفوي (بدء)', 'التقرير (بدء)', 'السؤال القصير 1', 'الاختبار القصير 1'] },
-        { monthIndex: 3, monthName: 'أبريل', tasks: ['استكمال العرض الشفوي', 'استكمال التقرير', 'السؤال القصير 2'] },
-        { monthIndex: 4, monthName: 'مايو', tasks: ['تسليم العرض الشفوي', 'تسليم التقرير', 'الاختبار القصير 2'] }
-    ];
     const currentMonthIndex = new Date().getMonth();
     const currentTasks = assessmentPlan.find(p => p.monthIndex === currentMonthIndex)?.tasks || [];
+
+    const monthNames = [
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    ];
 
     return (
         <div className="space-y-6 pb-28 animate-in fade-in duration-500 relative min-h-screen">
@@ -373,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </header>
 
-            {/* 2️⃣ الجدول (في مكانه كما طلبت) */}
+            {/* 2️⃣ الجدول */}
             <div className="px-4 mt-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -408,7 +481,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     </div>
                                 </div>
                                 {isActive ? (
-                                    <button onClick={() => onNavigate('attendance')} className="bg-white text-[#446A8D] px-3 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center gap-1 active:scale-95">
+                                    <button 
+                                        onClick={() => {
+                                            if (setSelectedClass) setSelectedClass(subject);
+                                            onNavigate('attendance');
+                                        }} 
+                                        className="bg-white text-[#446A8D] px-3 py-2 rounded-lg font-bold text-xs shadow-lg flex items-center gap-1 active:scale-95"
+                                    >
                                         تحضير <ChevronLeft size={14} />
                                     </button>
                                 ) : (
@@ -426,19 +505,25 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* 3️⃣ خطة التقويم المستمر (تأتي بعد الجدول) */}
+            {/* 3️⃣ خطة التقويم المستمر (المعدلة والديناميكية) */}
             <div className="px-4 mt-6">
                 <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-100">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-amber-50 text-amber-500 rounded-xl"><CalendarDays size={18}/></div>
-                        <h2 className="text-base font-black text-slate-800">خطة التقويم المستمر</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-50 text-amber-500 rounded-xl"><CalendarDays size={18}/></div>
+                            <h2 className="text-base font-black text-slate-800">خطة التقويم المستمر</h2>
+                        </div>
+                        {/* ✅ زر إعدادات الخطة الجديد */}
+                        <button onClick={() => setShowPlanSettingsModal(true)} className="p-2 bg-slate-50 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors">
+                            <Settings size={18} />
+                        </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {assessmentPlan.map((plan) => {
                             const isCurrent = currentMonthIndex === plan.monthIndex;
                             const isPast = currentMonthIndex > plan.monthIndex;
                             return (
-                                <div key={plan.monthIndex} className={`p-4 rounded-2xl border transition-all ${isCurrent ? 'bg-indigo-50/50 border-indigo-200 shadow-sm' : isPast ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-slate-100'}`}>
+                                <div key={plan.id} className={`p-4 rounded-2xl border transition-all ${isCurrent ? 'bg-indigo-50/50 border-indigo-200 shadow-sm' : isPast ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-slate-100'}`}>
                                     <div className="flex justify-between items-center mb-2">
                                         <span className={`text-xs font-black ${isCurrent ? 'text-indigo-700' : 'text-slate-600'}`}>شهر {plan.monthName}</span>
                                         {isCurrent && <span className="bg-indigo-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse">الحالي</span>}
@@ -459,7 +544,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* 4️⃣ شريط التنبيه السفلي (الجديد كلياً) */}
+            {/* 4️⃣ شريط التنبيه السفلي */}
             {showAlertBar && currentTasks.length > 0 && (
                 <div className="fixed bottom-[80px] left-4 right-4 bg-indigo-900/95 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl z-30 flex items-start gap-3 animate-in slide-in-from-bottom-10 duration-500 border border-indigo-800">
                     <div className="p-2 bg-indigo-700 rounded-xl shrink-0 animate-pulse">
@@ -476,6 +561,138 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                 </div>
             )}
+
+            {/* 5️⃣ مودال المناسبات */}
+            {occasionGreeting && (
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-500 px-4">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+                        <div className={`h-40 relative flex items-center justify-center ${occasionGreeting === 'ramadan' ? 'bg-[#1e1b4b]' : occasionGreeting === 'eid' ? 'bg-[#701a75]' : 'bg-[#1e3a8a]'}`}>
+                            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')]"></div>
+                            <div className="relative z-10 p-6 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-lg animate-bounce">
+                                {occasionGreeting === 'ramadan' && <Moon size={48} className="text-amber-300 fill-amber-300" />}
+                                {occasionGreeting === 'eid' && <PartyPopper size={48} className="text-pink-300" />}
+                                {occasionGreeting === 'teacher' && <BookHeart size={48} className="text-blue-200" />}
+                            </div>
+                        </div>
+                        <div className="p-8 text-center space-y-4">
+                            <h2 className="text-2xl font-black text-slate-800">
+                                {occasionGreeting === 'ramadan' && 'مبارك عليكم الشهر 🌙'}
+                                {occasionGreeting === 'eid' && 'عيدكم مبارك 🎉'}
+                                {occasionGreeting === 'teacher' && 'يوم معلم سعيد 👨‍🏫'}
+                            </h2>
+                            <p className="text-sm font-bold text-slate-500 leading-relaxed">
+                                {occasionGreeting === 'ramadan' && 'نسأل الله أن يعيننا وإياكم على صيامه وقيامه، وأن يتقبل منا ومنكم صالح الأعمال.'}
+                                {occasionGreeting === 'eid' && 'كل عام وأنتم بخير، أعاده الله علينا وعليكم باليمن والبركات.'}
+                                {occasionGreeting === 'teacher' && 'شكراً لك يا صانع الأجيال، جهودك عظيمة وأثرك لا يُنسى. كل عام وأنت منارة للعلم.'}
+                            </p>
+                            <button onClick={() => setOccasionGreeting(null)} className={`w-full py-3.5 rounded-xl font-black text-white text-sm shadow-lg transition-transform active:scale-95 mt-4 ${occasionGreeting === 'ramadan' ? 'bg-[#1e1b4b] hover:bg-[#312e81]' : occasionGreeting === 'eid' ? 'bg-[#701a75] hover:bg-[#86198f]' : 'bg-[#1e3a8a] hover:bg-[#1e40af]'}`}>شكراً لكم ❤️</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ✅ 6️⃣ مودال تعديل خطة التقويم (الجديد) */}
+            <Modal isOpen={showPlanSettingsModal} onClose={() => setShowPlanSettingsModal(false)} className="max-w-md rounded-[2rem] h-[80vh]">
+                <div className="flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-50">
+                        <h3 className="font-black text-lg text-slate-800">تخصيص خطة التقويم</h3>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => {
+                                    if(window.confirm('هل تريد استعادة الخطة الافتراضية؟')) {
+                                        setTempPlan([
+                                            { id: 'm1', monthIndex: 2, monthName: 'مارس', tasks: ['العرض الشفوي (بدء)', 'التقرير (بدء)', 'السؤال القصير 1', 'الاختبار القصير 1'] },
+                                            { id: 'm2', monthIndex: 3, monthName: 'أبريل', tasks: ['استكمال العرض الشفوي', 'استكمال التقرير', 'السؤال القصير 2'] },
+                                            { id: 'm3', monthIndex: 4, monthName: 'مايو', tasks: ['تسليم العرض الشفوي', 'تسليم التقرير', 'الاختبار القصير 2'] }
+                                        ]);
+                                    }
+                                }}
+                                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800"
+                                title="استعادة الافتراضي"
+                            >
+                                <RefreshCcw size={16} />
+                            </button>
+                            <button 
+                                onClick={() => setTempPlan([...tempPlan, { id: `new_${Date.now()}`, monthIndex: new Date().getMonth(), monthName: 'شهر جديد', tasks: [] }])}
+                                className="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-indigo-100"
+                            >
+                                <Plus size={14}/> إضافة شهر
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-1">
+                        {tempPlan.map((month, idx) => (
+                            <div key={month.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                <div className="flex gap-2 mb-3">
+                                    <select 
+                                        value={month.monthIndex} 
+                                        onChange={(e) => {
+                                            const n = [...tempPlan];
+                                            n[idx].monthIndex = parseInt(e.target.value);
+                                            n[idx].monthName = monthNames[parseInt(e.target.value)];
+                                            setTempPlan(n);
+                                        }}
+                                        className="bg-white border border-slate-200 rounded-lg text-xs font-bold p-2 outline-none flex-1"
+                                    >
+                                        {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                                    </select>
+                                    <button 
+                                        onClick={() => {
+                                            if(window.confirm('حذف هذا الشهر؟')) {
+                                                setTempPlan(tempPlan.filter((_, i) => i !== idx));
+                                            }
+                                        }}
+                                        className="p-2 bg-rose-100 text-rose-500 rounded-lg"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    {month.tasks.map((task, tIdx) => (
+                                        <div key={tIdx} className="flex gap-2">
+                                            <input 
+                                                value={task} 
+                                                onChange={(e) => {
+                                                    const n = [...tempPlan];
+                                                    n[idx].tasks[tIdx] = e.target.value;
+                                                    setTempPlan(n);
+                                                }}
+                                                className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500"
+                                            />
+                                            <button 
+                                                onClick={() => {
+                                                    const n = [...tempPlan];
+                                                    n[idx].tasks = n[idx].tasks.filter((_, ti) => ti !== tIdx);
+                                                    setTempPlan(n);
+                                                }}
+                                                className="text-rose-400 hover:text-rose-600"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button 
+                                        onClick={() => {
+                                            const n = [...tempPlan];
+                                            n[idx].tasks.push('مهمة جديدة');
+                                            setTempPlan(n);
+                                        }}
+                                        className="w-full py-2 bg-white border border-dashed border-slate-300 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-indigo-500"
+                                    >
+                                        + إضافة مهمة
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="pt-4 mt-auto border-t border-slate-100">
+                        <button onClick={handleSavePlanSettings} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-slate-800 flex items-center justify-center gap-2"><Save size={16} /> حفظ التغييرات</button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Modal: Edit Identity (كما هو) */}
             <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="max-w-md rounded-[2rem]">
