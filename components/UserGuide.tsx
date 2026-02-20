@@ -206,7 +206,7 @@ const UserGuide: React.FC = () => {
 
             <header id="hero" className="relative pt-20 pb-16 px-6 text-center border-b border-slate-900 bg-slate-950">
               <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold mb-6">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> الإصدار الشامل V4.0
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> الإصدار الشامل V4.2.2
               </div>
               <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
                 دليل المستخدم <span className="text-indigo-500">الشامل</span>
