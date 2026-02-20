@@ -65,13 +65,6 @@ export interface AssessmentTool {
   id: string;
   name: string;
   maxScore: number;
-  isFinal?: boolean; // تحديد هل هي أداة الامتحان النهائي
-}
-
-export interface GradeSettings {
-  totalScore: number;
-  finalExamScore: number;
-  finalExamName: string;
 }
 
 export interface CertificateSettings {

@@ -1,11 +1,10 @@
+
 {
   "appId": "com.madrasati.app",
   "appName": "راصد",
   "webDir": "www",
-  "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https",
-    "iosScheme": "https",
     "cleartext": true,
     "allowNavigation": [
       "*"
@@ -14,27 +13,16 @@
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
-    },
-    "LocalNotifications": {
-      "smallIcon": "ic_stat_icon_config_sample",
-      "iconColor": "#446A8D",
-      "sound": "beep.wav"
-    },
-    "Filesystem": {
-      "enabled": true
     }
   },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
-    "backgroundColor": "#F3F4F6",
-    "buildOptions": {
-      "releaseType": "bundle"
-    }
+    "backgroundColor": "#111827"
   },
   "ios": {
     "contentInset": "automatic",
-    "backgroundColor": "#F3F4F6",
+    "backgroundColor": "#F2F2F7",
     "allowsBackForwardNavigationGestures": true
   }
 }
