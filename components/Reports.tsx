@@ -842,22 +842,15 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
     isOpen: false, title: '', content: null
   });
 
-  // 🌙 المستشعر الرمضاني لواجهة التقارير
-  const [isRamadan, setIsRamadan] = useState(false);
-
-  useEffect(() => {
+  // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
       try {
-          const todayDate = new Date();
-          const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-          const parts = hijriFormatter.formatToParts(todayDate);
-          const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          if (hMonth === 9) {
-              setIsRamadan(true);
-          }
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
       } catch(e) {
-          console.error("Hijri Date parsing skipped.");
+          return false;
       }
-  }, []);
+  });
 
   const availableGrades = useMemo(() => {
     const grades = new Set<string>();
