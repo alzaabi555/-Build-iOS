@@ -23,7 +23,7 @@ const About: React.FC = () => {
       </div>
       
       <h1 className={`text-5xl font-black mb-2 tracking-tighter transition-colors ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق راصد</h1>
-      <p className={`px-6 py-2 rounded-full font-black text-xs mb-10 border-none shadow-sm backdrop-blur-md transition-colors ${isRamadan ? 'text-indigo-200 bg-white/10' : 'text-slate-500 bg-white'}`}>V 3.8.8 • الإصدار الملكي</p>
+      <p className={`px-6 py-2 rounded-full font-black text-xs mb-10 border-none shadow-sm backdrop-blur-md transition-colors ${isRamadan ? 'text-indigo-200 bg-white/10' : 'text-slate-500 bg-white'}`}>V 4.2.2 • الإصدار الملكي</p>
       
       <div className={`border rounded-[3rem] p-10 max-w-md w-full text-center transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white/80 backdrop-blur-xl border-white/20 shadow-xl'}`}>
           <h2 className={`text-xl font-black mb-8 relative inline-block transition-colors ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
