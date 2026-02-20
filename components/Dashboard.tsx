@@ -98,8 +98,15 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [occasionGreeting, setOccasionGreeting] = useState<'ramadan' | 'eid' | 'teacher' | null>(null);
     const [cloudMessage, setCloudMessage] = useState<any>(null);
 
-    // 🌙 المستشعر الرمضاني للداشبورد لتغيير البطاقات والنوافذ المنبثقة
-    const [isRamadan, setIsRamadan] = useState(false);
+    // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+    const [isRamadan] = useState(() => {
+        try {
+            const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+            return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
+        } catch(e) {
+            return false;
+        }
+    });
 
     const [assessmentPlan, setAssessmentPlan] = useState<AssessmentMonth[]>(() => {
         try {
@@ -118,19 +125,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [tempPlan, setTempPlan] = useState<AssessmentMonth[]>([]);
 
     useEffect(() => {
-        // تشغيل الرادار الهجري بأسلوب آمن
-        try {
-            const today = new Date();
-            const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-            const parts = hijriFormatter.formatToParts(today);
-            const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-            if (hMonth === 9) {
-                setIsRamadan(true);
-            }
-        } catch(e) {
-            console.error("Hijri Date parsing skipped.");
-        }
-
         const checkAnnouncements = async () => {
             try {
                 // 🔴 ضع الرابط الفعلي لملف الـ JSON الخاص بك هنا
