@@ -80,22 +80,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [bulkScore, setBulkScore] = useState('');
   const [activeToolId, setActiveToolId] = useState<string>('');
 
-  // 🌙 المستشعر الرمضاني للبطاقات والهيدر
-  const [isRamadan, setIsRamadan] = useState(false);
-
-  useEffect(() => {
+ // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
       try {
-          const today = new Date();
-          const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-          const parts = hijriFormatter.formatToParts(today);
-          const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          if (hMonth === 9) {
-              setIsRamadan(true);
-          }
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
       } catch(e) {
-          console.error("Hijri Date parsing skipped.");
+          return false;
       }
-  }, []);
+  });
 
   useEffect(() => {
     if (tools.length > 0 && !activeToolId) {
