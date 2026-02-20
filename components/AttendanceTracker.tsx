@@ -28,22 +28,15 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
   // 🌙 المستشعر الرمضاني للبطاقات
-  const [isRamadan, setIsRamadan] = useState(false);
-
-  useEffect(() => {
-      // تشغيل الرادار الهجري بأسلوب آمن
+ // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
       try {
-          const todayDate = new Date();
-          const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-          const parts = hijriFormatter.formatToParts(todayDate);
-          const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          if (hMonth === 9) {
-              setIsRamadan(true);
-          }
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
       } catch(e) {
-          console.error("Hijri Date parsing skipped.");
+          return false;
       }
-  }, []);
+  });
 
   // ✅ [اللمسة السحرية] حفظ الفلاتر عند تغييرها لمزامنتها مع باقي الصفحات
   useEffect(() => {
