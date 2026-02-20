@@ -3,21 +3,15 @@ import { Users, Phone } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 
 const About: React.FC = () => {
-  const [isRamadan, setIsRamadan] = useState(false);
-
-  useEffect(() => {
+ // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
       try {
-          const todayDate = new Date();
-          const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-          const parts = hijriFormatter.formatToParts(todayDate);
-          const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          if (hMonth === 9) {
-              setIsRamadan(true);
-          }
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
       } catch(e) {
-          console.error("Hijri Date parsing skipped.");
+          return false;
       }
-  }, []);
+  });
 
   return (
     <div className={`flex flex-col items-center justify-center min-h-full p-6 animate-in fade-in zoom-in duration-500 relative z-10 transition-colors ${isRamadan ? 'text-white' : 'text-slate-900'}`}>
