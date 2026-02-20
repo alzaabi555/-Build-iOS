@@ -51,22 +51,15 @@ const Settings = () => {
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🌙 المستشعر الرمضاني
-  const [isRamadan, setIsRamadan] = useState(false);
-
-  useEffect(() => {
+  // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
       try {
-          const todayDate = new Date();
-          const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-          const parts = hijriFormatter.formatToParts(todayDate);
-          const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-          if (hMonth === 9) {
-              setIsRamadan(true);
-          }
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
       } catch(e) {
-          console.error("Hijri Date parsing skipped.");
+          return false;
       }
-  }, []);
+  });
 
   useEffect(() => {
       setName(teacherInfo?.name || '');
@@ -204,13 +197,18 @@ const Settings = () => {
   return (
     <div className={`flex flex-col h-full pb-24 text-right px-6 pt-12 transition-colors duration-500 relative z-10 ${isRamadan ? 'text-white' : 'bg-[#fcfdfe] text-slate-800'}`} dir="rtl">
       
-      {/* العنوان الرئيسي */}
-      <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
-        <h1 className={`text-4xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>الإعدادات</h1>
-        <p className={`text-sm font-bold mt-2 flex items-center gap-2 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>
-            <span className={`w-8 h-1 rounded-full inline-block ${isRamadan ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
-            تخصيص الهوية وإدارة الأمان المحلي
-        </p>
+      {/* العنوان الرئيسي (تمت إضافة md:pl-40 والسحب) */}
+      <div 
+          className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700 md:pl-40" 
+          style={{ WebkitAppRegion: 'drag' } as any}
+      >
+        <div style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <h1 className={`text-4xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>الإعدادات</h1>
+            <p className={`text-sm font-bold mt-2 flex items-center gap-2 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>
+                <span className={`w-8 h-1 rounded-full inline-block ${isRamadan ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
+                تخصيص الهوية وإدارة الأمان المحلي
+            </p>
+        </div>
       </div>
 
       <div className="space-y-8 max-w-4xl relative z-10">

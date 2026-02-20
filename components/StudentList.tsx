@@ -472,20 +472,25 @@ const StudentList: React.FC<StudentListProps> = ({
 
     return (
     <div className={`flex flex-col h-full overflow-hidden ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
-        {/* Header */}
-            <header className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-500 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}>
+        
+        {/* ================= FIXED HEADER ================= */}
+        {/* 🌙 الهيدر السحري مع الحماية والسحب */}
+            <header 
+                className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 md:pl-40 transition-all duration-500 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+                style={{ WebkitAppRegion: 'drag' } as any}
+            >
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
                             <Users className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black tracking-wide">الطلاب</h1>
+                            <h1 className="text-xl md:text-2xl font-black tracking-wide">الطلاب</h1>
                             <p className={`text-[10px] font-bold opacity-80 ${isRamadan ? 'text-indigo-200' : 'text-blue-200'}`}>{safeStudents.length} طالب مسجل</p>
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
                         <div className="relative">
                             <button 
                                 onClick={() => setShowTimerModal(true)} 
@@ -540,7 +545,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 </div>
 
-                <div className="space-y-3 relative z-10">
+                <div className="space-y-3 relative z-10" style={{ WebkitAppRegion: 'no-drag' } as any}>
                     <div className="relative">
                         <Search className="absolute right-4 top-3.5 w-5 h-5 text-blue-200" />
                         <input 
@@ -579,10 +584,10 @@ const StudentList: React.FC<StudentListProps> = ({
                                         className={`w-16 h-16 ${isRamadan ? 'opacity-90' : ''}`}
                                     />
                                     {totalPoints !== 0 && (
-                                        <div className={`absolute -top-2 -right-2 flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm border-2 ${isRamadan ? 'border-amber-500/30 bg-amber-500/20 text-amber-300' : 'border-white bg-amber-100 text-amber-600'}`}>
-                                            <Star size={10} className={isRamadan ? "fill-amber-400 text-amber-400" : "fill-amber-500 text-amber-500"} />
-                                            {totalPoints}
-                                        </div>
+                                       <div className={`absolute -top-3 -right-5 z-10 flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm border-2 ${isRamadan ? 'border-amber-500/30 bg-amber-500/20 text-amber-300' : 'border-white bg-amber-100 text-amber-600'}`}>
+    <Star size={10} className={isRamadan ? "fill-amber-400 text-amber-400" : "fill-amber-500 text-amber-500"} />
+    {totalPoints}
+</div>
                                     )}
                                 </div>
 

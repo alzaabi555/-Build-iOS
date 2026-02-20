@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { Check, X, Clock, Calendar, MessageCircle, ChevronDown, Loader2, Share2, DoorOpen, UserCircle2, Filter, ChevronLeft, ChevronRight, CalendarCheck, Search } from 'lucide-react';
+import { MessageCircle, Loader2, Share2, DoorOpen, UserCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import Modal from './Modal';
@@ -19,7 +19,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today.toLocaleDateString('en-CA'));
   
-  // ✅ [اللمسة السحرية] استعادة الفلاتر المحفوظة من ذاكرة الجلسة
+  // ✅ استعادة الفلاتر المحفوظة من ذاكرة الجلسة
   const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
   const [classFilter, setClassFilter] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
   
@@ -27,8 +27,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
-  // 🌙 المستشعر الرمضاني للبطاقات
- // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
   const [isRamadan] = useState(() => {
       try {
           const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
@@ -38,7 +37,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       }
   });
 
-  // ✅ [اللمسة السحرية] حفظ الفلاتر عند تغييرها لمزامنتها مع باقي الصفحات
+  // ✅ حفظ الفلاتر عند تغييرها لمزامنتها مع باقي الصفحات
   useEffect(() => {
       sessionStorage.setItem('rased_grade', selectedGrade);
       sessionStorage.setItem('rased_class', classFilter);
@@ -203,70 +202,77 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   };
 
   return (
-    // ✅ [تحسين الأداء] إزالة كلاسات animate-in fade-in لفتح الصفحة فوراً
     <div className={`flex flex-col h-full relative ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
         
         {/* ================= FIXED HEADER ================= */}
-        <div className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-500 w-full left-0 right-0 ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}>
-            
-            <div className="flex justify-between items-center mb-6 mt-2 gap-3">
-                <div className="flex items-center gap-3 shrink-0">
-                    <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
-                        <CalendarCheck className="w-5 h-5 text-white" />
+        {/* 🌙 الهيدر السحري مع خاصية السحب وحماية الأزرار */}
+            <header 
+                className={`pt-10 pb-6 px-4 md:pt-14 md:pb-8 md:px-6 md:pl-40 shadow-xl relative z-20 -mx-4 -mt-4 transition-all duration-500 ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+                style={{ WebkitAppRegion: 'drag' } as any}
+            >
+                <div className="flex justify-between items-center gap-3 mb-5">
+                    <h1 className="text-xl md:text-2xl font-black tracking-wide shrink-0">سجل الغياب</h1>
+                    
+                    {/* حقل البحث (محمي من السحب) */}
+                    <div className="flex-1 relative group" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200" />
+                        <input 
+                            type="text" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="بحث عن طالب..." 
+                            className="w-full bg-white/10 border border-white/20 rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold text-white placeholder:text-blue-200/70 outline-none focus:bg-white/20 transition-all"
+                        />
                     </div>
-                    <h1 className="text-2xl font-black tracking-wide">سجل الغياب</h1>
+
+                    {/* زر التصدير (محمي من السحب) */}
+                    <button 
+                        onClick={handleExportDailyExcel} 
+                        disabled={isExportingExcel} 
+                        className="w-10 h-10 shrink-0 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center active:scale-95 transition-all hover:bg-white/20"
+                        style={{ WebkitAppRegion: 'no-drag' } as any}
+                        title="تصدير السجل"
+                    >
+                         {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
+                    </button>
                 </div>
 
-                <div className="flex-1 mx-2 relative group">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200" />
-                    <input 
-                        type="text" 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="بحث عن طالب..." 
-                        className="w-full bg-white/10 border border-white/20 rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold text-white placeholder:text-blue-200/70 outline-none focus:bg-white/20 transition-all"
-                    />
+                {/* شريط التواريخ (محمي من السحب) */}
+                <div className="flex items-center justify-between gap-1 mb-4 bg-white/10 p-2 rounded-2xl border border-white/10 shadow-inner" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
+                    <div className="flex flex-1 justify-between gap-1 text-center">
+                        {weekDates.map((date, idx) => {
+                            const isSelected = date.toLocaleDateString('en-CA') === selectedDate;
+                            const isToday = date.toLocaleDateString('en-CA') === today.toLocaleDateString('en-CA');
+                            return (
+                                <button 
+                                    key={idx} 
+                                    onClick={() => setSelectedDate(date.toLocaleDateString('en-CA'))}
+                                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl flex-1 transition-all ${isSelected ? (isRamadan ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 shadow-md scale-105' : 'bg-white text-[#1e3a8a] shadow-md scale-105') : 'text-blue-100 hover:bg-white/5'}`}
+                                >
+                                    <span className={`text-[9px] font-bold mb-0.5 ${isSelected ? (isRamadan ? 'text-amber-200' : 'text-[#1e3a8a]/70') : 'text-blue-200'}`}>{date.toLocaleDateString('ar-EG', { weekday: 'short' })}</span>
+                                    <span className="text-sm font-black">{date.getDate()}</span>
+                                    {isToday && !isSelected && <div className="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
                 </div>
 
-                <button onClick={handleExportDailyExcel} disabled={isExportingExcel} className="w-10 h-10 shrink-0 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center active:scale-95 transition-all">
-                     {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
-                </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-1 mb-4 bg-white/10 p-2 rounded-2xl border border-white/10 shadow-inner">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
-                <div className="flex flex-1 justify-between gap-1 text-center">
-                    {weekDates.map((date, idx) => {
-                        const isSelected = date.toLocaleDateString('en-CA') === selectedDate;
-                        const isToday = date.toLocaleDateString('en-CA') === today.toLocaleDateString('en-CA');
-                        return (
-                            <button 
-                                key={idx} 
-                                onClick={() => setSelectedDate(date.toLocaleDateString('en-CA'))}
-                                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl flex-1 transition-all ${isSelected ? (isRamadan ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 shadow-md scale-105' : 'bg-white text-[#1e3a8a] shadow-md scale-105') : 'text-blue-100 hover:bg-white/5'}`}
-                            >
-                                <span className={`text-[9px] font-bold mb-0.5 ${isSelected ? (isRamadan ? 'text-amber-200' : 'text-[#1e3a8a]/70') : 'text-blue-200'}`}>{date.toLocaleDateString('ar-EG', { weekday: 'short' })}</span>
-                                <span className="text-sm font-black">{date.getDate()}</span>
-                                {isToday && !isSelected && <div className="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>}
-                            </button>
-                        );
-                    })}
+                {/* الفلاتر (محمية من السحب) */}
+                <div className="space-y-2 mb-1 px-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
+                        {availableGrades.map(g => (
+                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
+                        ))}
+                        {visibleClasses.map(c => (
+                            <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
+                        ))}
+                    </div>
                 </div>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
-            </div>
-
-            <div className="space-y-2 mb-1 px-1">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                    <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
-                    {availableGrades.map(g => (
-                        <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
-                    ))}
-                    {visibleClasses.map(c => (
-                        <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
-                    ))}
-                </div>
-            </div>
-        </div>
+            </header>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
@@ -308,23 +314,33 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 font-bold ${isRamadan ? 'bg-white/10 text-indigo-200' : 'bg-slate-100 text-slate-400'}`}>{student.classes[0]}</span>
                                     </div>
 
+                                    {/* ✅ تم التعديل هنا: ترتيب الأزرار (حضور، غياب، تأخر، تسرب) */}
                                     <div className={`flex w-full border-t divide-x divide-x-reverse ${isRamadan ? 'border-white/10 divide-white/10' : 'border-slate-100 divide-slate-100'}`}>
-                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
-                                            <span className="text-[10px] font-bold">غياب</span>
-                                        </button>
-                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <DoorOpen className={`w-4 h-4 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
-                                            <span className="text-[10px] font-bold">تسرب</span>
-                                        </button>
-                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`text-xs opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
-                                            <span className="text-[10px] font-bold">تأخر</span>
-                                        </button>
+                                        
+                                        {/* 1. حضور */}
                                         <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? (isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
                                             <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-emerald-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✓</div>
                                             <span className="text-[10px] font-bold">حضور</span>
                                         </button>
+
+                                        {/* 2. غياب */}
+                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
+                                            <span className="text-[10px] font-bold">غياب</span>
+                                        </button>
+
+                                        {/* 3. تأخر */}
+                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`text-xs opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
+                                            <span className="text-[10px] font-bold">تأخر</span>
+                                        </button>
+
+                                        {/* 4. تسرب */}
+                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <DoorOpen className={`w-4 h-4 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
+                                            <span className="text-[10px] font-bold">تسرب</span>
+                                        </button>
+
                                     </div>
                                 </div>
                             );
