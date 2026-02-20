@@ -128,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         const checkAnnouncements = async () => {
             try {
                 // 🔴 ضع الرابط الفعلي لملف الـ JSON الخاص بك هنا
-                const CLOUD_JSON_URL = "https://raw.githubusercontent.com/alzaabi555/desktop-build/refs/heads/main/message.json";
+                const CLOUD_JSON_URL = "https://raw.githubusercontent.com/alzaabi555/-Build-iOS/refs/heads/main/message.json";
                 const response = await fetch(CLOUD_JSON_URL + "?t=" + new Date().getTime());
                 if (response.ok) {
                     const data = await response.json();
