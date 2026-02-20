@@ -60,6 +60,23 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const certificateRef = useRef<HTMLDivElement>(null);
+
+    // 🌙 المستشعر الرمضاني للبطاقات
+    const [isRamadan, setIsRamadan] = useState(false);
+
+    useEffect(() => {
+        try {
+            const todayDate = new Date();
+            const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
+            const parts = hijriFormatter.formatToParts(todayDate);
+            const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+            if (hMonth === 9) {
+                setIsRamadan(true);
+            }
+        } catch(e) {
+            console.error("Hijri Date parsing skipped.");
+        }
+    }, []);
     
     const rankedStudents = useMemo(() => {
         let filtered = students;
@@ -146,19 +163,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     };
 
     return (
-        <div className="flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden">
-            <header className="fixed md:sticky top-0 left-0 right-0 z-40 bg-[#446A8D] text-white shadow-lg px-4 pt-8 pb-6 transition-all w-full">
-                <div className="flex flex-col items-center text-center relative w-full">
+        <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+            <header className={`fixed md:sticky top-0 z-40 shadow-lg px-4 pt-8 pb-6 transition-all duration-500 w-full ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}>
+                <div className="flex flex-col items-center text-center relative">
                     {/* زر إعدادات نوع المدرسة */}
                     <div className="absolute left-0 top-0 flex gap-2">
                         <select 
                             value={schoolType} 
                             onChange={(e) => setSchoolType(e.target.value as any)}
-                            className="bg-white/10 border border-white/20 rounded-lg text-[10px] p-1 outline-none font-bold cursor-pointer hover:bg-white/20"
+                            className={`border rounded-lg text-[10px] p-1 outline-none font-bold cursor-pointer transition-colors ${isRamadan ? 'bg-[#1e1b4b]/80 border-indigo-500/30 text-indigo-100 hover:bg-[#1e1b4b]' : 'bg-white/10 border-white/20 hover:bg-white/20'}`}
                         >
-                            <option value="mixed" className="text-slate-800">مدرسة مختلطة</option>
-                            <option value="boys" className="text-slate-800">مدرسة ذكور</option>
-                            <option value="girls" className="text-slate-800">مدرسة إناث</option>
+                            <option value="mixed" className={isRamadan ? 'bg-slate-900 text-white' : 'text-slate-800'}>مدرسة مختلطة</option>
+                            <option value="boys" className={isRamadan ? 'bg-slate-900 text-white' : 'text-slate-800'}>مدرسة ذكور</option>
+                            <option value="girls" className={isRamadan ? 'bg-slate-900 text-white' : 'text-slate-800'}>مدرسة إناث</option>
                         </select>
                     </div>
 
@@ -170,22 +187,20 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     
                     <div className="relative w-full max-w-sm my-4">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300" />
-                        <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl py-2 pr-10 text-xs font-bold text-white outline-none" />
+                        <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl py-2 pr-10 text-xs font-bold text-white outline-none focus:bg-white/20 transition-all" />
                     </div>
 
-                    {/* ✅ التعديل هنا: تمت إزالة mx-auto لضمان المحاذاة الصحيحة في الجوال */}
-                    <div className="w-full overflow-x-auto no-scrollbar pb-2 flex justify-start md:justify-center">
-                        <div className="flex gap-2 px-1">
-                            <button onClick={() => setSelectedClass('all')} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border ${selectedClass === 'all' ? 'bg-white text-[#1e3a8a]' : 'bg-white/10 text-blue-100'}`}>الكل</button>
-                            {classes.map(c => (
-                                <button key={c} onClick={() => setSelectedClass(c)} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border ${selectedClass === c ? 'bg-white text-[#1e3a8a]' : 'bg-white/10 text-blue-100'}`}>{c}</button>
-                            ))}
-                        </div>
+                    {/* ✅ التعديل هنا: تمت إزالة justify-center وإضافة no-scrollbar و shrink-0 */}
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 w-full justify-start md:justify-center">
+                        <button onClick={() => setSelectedClass('all')} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border transition-all ${selectedClass === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-blue-100'}`}>الكل</button>
+                        {classes.map(c => (
+                            <button key={c} onClick={() => setSelectedClass(c)} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border transition-all ${selectedClass === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-blue-100'}`}>{c}</button>
+                        ))}
                     </div>
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-4 custom-scrollbar pt-64 md:pt-2">
+            <div className="flex-1 overflow-y-auto px-4 custom-scrollbar pt-64 md:pt-2 relative z-10">
                 {/* منصة التتويج */}
                 {topThree.length > 0 && (
                     <div className="flex justify-center items-end gap-2 md:gap-6 py-4">
@@ -198,16 +213,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                     </div>
                                 </div>
                                 {/* ✅ تعديل خط منصة التتويج والاسم المزدوج */}
-                                <div className="bg-white/90 backdrop-blur px-3 py-2 rounded-xl text-center border shadow-sm w-28 md:w-36">
-                                    <h3 className="font-black text-xs md:text-sm text-slate-800 truncate" title={s.name}>{getShortName(s.name)}</h3>
-                                    <span className="text-amber-600 font-bold text-xs">{s.monthlyPoints} نقطة</span>
+                                <div className={`px-3 py-2 rounded-xl text-center border shadow-sm w-28 md:w-36 transition-colors ${isRamadan ? 'bg-white/10 backdrop-blur-xl border-white/20' : 'bg-white/90 backdrop-blur border-slate-200'}`}>
+                                    <h3 className={`font-black text-xs md:text-sm truncate ${isRamadan ? 'text-white' : 'text-slate-800'}`} title={s.name}>{getShortName(s.name)}</h3>
+                                    <span className="text-amber-500 font-bold text-xs">{s.monthlyPoints} نقطة</span>
                                 </div>
                                 {/* ✅ أزرار الشهادة والخصم */}
                                 <div className="flex gap-1 mt-2">
-                                    <button onClick={() => setCertificateStudent(s)} className="text-[10px] bg-slate-700 text-white px-2 py-1 rounded-lg flex items-center gap-1 shadow-md hover:bg-slate-800">
+                                    <button onClick={() => setCertificateStudent(s)} className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 shadow-md transition-colors ${isRamadan ? 'bg-white/20 text-white hover:bg-white/30 border border-white/10' : 'bg-slate-700 text-white hover:bg-slate-800'}`}>
                                         <Award size={12} /> شهادة
                                     </button>
-                                    <button onClick={() => handleDeductPoint(s)} className="text-[10px] bg-rose-100 text-rose-500 px-2 py-1 rounded-lg shadow-sm hover:bg-rose-200" title="خصم نقطة">
+                                    <button onClick={() => handleDeductPoint(s)} className={`text-[10px] px-2 py-1 rounded-lg shadow-sm transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30' : 'bg-rose-100 text-rose-500 hover:bg-rose-200'}`} title="خصم نقطة">
                                         <MinusCircle size={12} />
                                     </button>
                                 </div>
@@ -219,27 +234,27 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 {/* باقي الطلاب */}
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mt-8 pb-20">
                     {restOfStudents.map((s, index) => (
-                        <div key={s.id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col items-center relative active:scale-95 transition-all">
-                            <div className="absolute top-1 right-1 bg-indigo-50 text-indigo-600 font-bold w-5 h-5 rounded flex items-center justify-center text-[9px]">{index + 4}</div>
-                            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md overflow-hidden mb-2 cursor-pointer" onClick={() => handleAddPoints(s)}>
+                        <div key={s.id} className={`rounded-2xl p-3 shadow-sm border flex flex-col items-center relative active:scale-95 transition-all duration-300 ${isRamadan ? 'bg-white/5 backdrop-blur-xl border-white/10 hover:bg-white/10' : 'bg-white border-slate-100'}`}>
+                            <div className={`absolute top-1 right-1 font-bold w-5 h-5 rounded flex items-center justify-center text-[9px] ${isRamadan ? 'bg-white/10 text-indigo-200' : 'bg-indigo-50 text-indigo-600'}`}>{index + 4}</div>
+                            <div className={`w-12 h-12 rounded-full border-2 shadow-md overflow-hidden mb-2 cursor-pointer ${isRamadan ? 'border-white/20' : 'border-white'}`} onClick={() => handleAddPoints(s)}>
                                 <StudentAvatar gender={s.gender} className="w-full h-full" />
                             </div>
                             {/* ✅ تعديل خط القائمة العادية والاسم المزدوج */}
-                            <h3 className="font-black text-slate-800 text-[11px] truncate w-full text-center" title={s.name}>{getShortName(s.name)}</h3>
-                            <span className="text-amber-600 font-bold text-[10px] mt-0.5">{s.monthlyPoints} نقطة</span>
+                            <h3 className={`font-black text-[11px] truncate w-full text-center ${isRamadan ? 'text-white' : 'text-slate-800'}`} title={s.name}>{getShortName(s.name)}</h3>
+                            <span className={`font-bold text-[10px] mt-0.5 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`}>{s.monthlyPoints} نقطة</span>
                             
                             <div className="flex gap-1 w-full mt-2">
-                                <button onClick={() => setCertificateStudent(s)} className="flex-1 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold rounded-md border border-slate-100">شهادة</button>
+                                <button onClick={() => setCertificateStudent(s)} className={`flex-1 py-1 text-[10px] font-bold rounded-md border transition-colors ${isRamadan ? 'bg-white/10 text-indigo-200 border-white/10 hover:bg-white/20' : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100'}`}>شهادة</button>
                                 {/* ✅ زر الخصم لباقي القائمة */}
-                                <button onClick={() => handleDeductPoint(s)} className="px-2 py-1 bg-rose-50 text-rose-500 text-[10px] font-bold rounded-md border border-rose-100"><MinusCircle size={12} /></button>
+                                <button onClick={() => handleDeductPoint(s)} className={`px-2 py-1 text-[10px] font-bold rounded-md border transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-500 border-rose-100 hover:bg-rose-100'}`}><MinusCircle size={12} /></button>
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* الشهادة */}
-            <Modal isOpen={!!certificateStudent} onClose={() => !isGeneratingPdf && setCertificateStudent(null)} className="max-w-4xl w-[95vw] p-0 overflow-hidden">
+            {/* الشهادة (بقيت صلبة وبيضاء لتكون قابلة للطباعة PDF بشكل سليم) */}
+            <Modal isOpen={!!certificateStudent} onClose={() => !isGeneratingPdf && setCertificateStudent(null)} className="max-w-4xl w-[95vw] p-0 overflow-hidden bg-white">
                 {certificateStudent && (
                     <div className="flex flex-col bg-white">
                         <div className="flex justify-between items-center p-4 bg-slate-50 border-b">
