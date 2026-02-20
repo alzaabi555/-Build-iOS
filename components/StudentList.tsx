@@ -76,22 +76,15 @@ const StudentList: React.FC<StudentListProps> = ({
     const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
     const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
 
-    // 🌙 المستشعر الرمضاني للبطاقات والهيدر
-    const [isRamadan, setIsRamadan] = useState(false);
-
-    useEffect(() => {
-        try {
-            const todayDate = new Date();
-            const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-            const parts = hijriFormatter.formatToParts(todayDate);
-            const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-            if (hMonth === 9) {
-                setIsRamadan(true);
-            }
-        } catch(e) {
-            console.error("Hijri Date parsing skipped.");
-        }
-    }, []);
+    // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
+  const [isRamadan] = useState(() => {
+      try {
+          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
+      } catch(e) {
+          return false;
+      }
+  });
 
     useEffect(() => {
         sessionStorage.setItem('rased_grade', selectedGrade);
