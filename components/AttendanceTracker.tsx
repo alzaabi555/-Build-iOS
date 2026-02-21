@@ -143,7 +143,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       let statusText = '';
       if (type === 'absent') statusText = 'غائب'; 
       else if (type === 'late') statusText = 'متأخر'; 
-      else if (type === 'truant') statusText = 'تسرب من الحصة (هروب)';
+      else if (type === 'truant') statusText = 'تسرب من الحصة';
       
       const dateText = new Date().toLocaleDateString('ar-EG');
       const msg = encodeURIComponent(`السلام عليكم، نود إشعاركم بأن الطالب ${student.name} تم تسجيل حالة: *${statusText}* اليوم (${dateText}). نرجو المتابعة.`);
@@ -276,7 +276,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
-            <div className="w-full h-[200px] shrink-0 md:h-0"></div>
+            <div className="w-full h-[170px] shrink-0 md:h-0"></div>
 
             <div className="-mt-4 relative z-10 px-2">
                 <div className="mb-4">
