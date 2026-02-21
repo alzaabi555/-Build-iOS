@@ -276,7 +276,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
-            <div className="w-full h-[170px] shrink-0 md:h-0"></div>
+            <div className="w-full h-[140px] shrink-0 md:h-0"></div>
 
             <div className="-mt-4 relative z-10 px-2">
                 <div className="mb-4">
