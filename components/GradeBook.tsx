@@ -3,7 +3,7 @@ import { Student, GradeRecord, AssessmentTool } from '../types';
 import { 
   Plus, X, Trash2, Settings, Check, Loader2, Edit2, 
   FileSpreadsheet, FileUp, Wand2, BarChart3, SlidersHorizontal, 
-  FileDown, PieChart, AlertTriangle, Download 
+  FileDown, PieChart, AlertTriangle, Download, Copy 
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -50,7 +50,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     localStorage.setItem('rased_grading_settings', JSON.stringify(gradingSettings));
   }, [gradingSettings]);
 
-  // ✅ ذاكرة الجلسة للفلاتر
   const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
   const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
 
@@ -59,7 +58,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
       sessionStorage.setItem('rased_class', selectedClass);
   }, [selectedGrade, selectedClass]);
 
-  // States للمودالات والإدارة
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +69,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [editToolName, setEditToolName] = useState('');
   const [showDistModal, setShowDistModal] = useState(false);
   
-  // بيانات توزيع الدرجات المؤقتة
   const [distTotal, setDistTotal] = useState<number>(gradingSettings.totalScore || 100);
   const [distFinalScore, setDistFinalScore] = useState<number>(gradingSettings.finalExamWeight || 40);
   const [distFinalName, setDistFinalName] = useState<string>(gradingSettings.finalExamName || 'الامتحان النهائي');
@@ -80,7 +77,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [bulkScore, setBulkScore] = useState('');
   const [activeToolId, setActiveToolId] = useState<string>('');
 
- // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
   const [isRamadan] = useState(() => {
       try {
           const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
@@ -96,7 +92,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   }, [tools, activeToolId]);
 
-  // --- دوال مساعدة للاستيراد والتصدير ---
   const cleanText = (text: string) => text ? String(text).trim() : '';
   const normalizeText = (text: string) => text ? String(text).trim().toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ـ]/g, '') : '';
   
@@ -108,7 +103,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return isNaN(num) || cleanNum === '' ? null : num;
   };
 
-  // دالة استخراج التقدير
   const getGradeSymbol = (score: number) => {
     const percentage = (score / gradingSettings.totalScore) * 100;
     if (percentage >= 90) return 'أ';
@@ -159,7 +153,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     });
   }, [students, selectedClass, selectedGrade]);
 
-  // ✅ ميزة جديدة: تحميل قالب إكسل جاهز
   const handleDownloadTemplate = async () => {
     try {
       const headers = ['الاسم', 'الصف', ...tools.map(t => t.name)];
@@ -186,7 +179,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // ✅ دالة الاستيراد من Excel
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -261,7 +253,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // ✅ دالة تصدير التقرير
   const handleExportExcel = async () => {
     if (filteredStudents.length === 0) return alert('لا يوجد طلاب لتصدير درجاتهم');
     setIsExporting(true);
@@ -308,7 +299,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // دالة الرصد اليدوي
   const handleGradeChange = (studentId: string, value: string) => {
     if (!activeToolId) return alert('الرجاء اختيار أداة تقويم أولاً');
     const activeTool = tools.find(t => t.id === activeToolId);
@@ -345,7 +335,31 @@ const GradeBook: React.FC<GradeBookProps> = ({
     return grade ? grade.score.toString() : '';
   };
 
-  // إدارة أدوات التقويم
+  const handleCopyContinuousTotal = () => {
+    const gradesList = filteredStudents.map(student => {
+        const semGrades = getSemesterGrades(student, currentSemester);
+        let continuousTotal = 0;
+        let hasAnyGrade = false;
+        
+        tools.forEach(tool => {
+            if (!tool.isFinal) { 
+                const g = semGrades.find(grade => grade.category.trim() === tool.name.trim());
+                if (g && g.score !== null && g.score !== undefined && g.score !== '') {
+                    continuousTotal += Number(g.score);
+                    hasAnyGrade = true;
+                }
+            }
+        });
+        
+        return hasAnyGrade ? continuousTotal.toString() : ''; 
+    });
+    
+    const textToCopy = gradesList.join('\n');
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        alert('✅ تم نسخ (مجموع التقويم المستمر) بنجاح!\n\nاذهب للبوابة والصقه في الإضافة الخاصة بك.');
+    }).catch(() => alert('❌ حدث خطأ أثناء النسخ.'));
+  };
+
   const handleAddTool = () => {
     if (newToolName.trim()) {
       if (tools.some(t => t.name === newToolName.trim())) return alert('موجودة مسبقاً');
@@ -419,30 +433,37 @@ const GradeBook: React.FC<GradeBookProps> = ({
   return (
     <div className={`flex flex-col h-full overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
       
-      {/* Header */}
-      <header className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 transition-all duration-500 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto ${isRamadan ? 'bg-white/5 backdrop-blur-3xl border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}>
+      <header 
+          className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-4 pt-[env(safe-area-inset-top)] pb-6 md:pl-40 transition-all duration-500 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto ${isRamadan ? 'bg-white/5 border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+          style={{ WebkitAppRegion: 'drag' } as any}
+      >
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+            <div className="bg-white/10 p-2 rounded-xl border border-white/20">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-2xl font-black tracking-wide">سجل الدرجات</h1>
-            <button onClick={() => setShowToolsManager(true)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-white/10" title="إدارة الأدوات">
+            <h1 className="text-xl md:text-2xl font-black tracking-wide">سجل الدرجات</h1>
+            <button 
+                onClick={() => setShowToolsManager(true)} 
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95 border border-white/10 cursor-pointer relative z-50" 
+                title="إدارة الأدوات"
+                style={{ WebkitAppRegion: 'no-drag' } as any}
+            >
               <Settings className="w-4 h-4 text-white" />
             </button>
           </div>
           
-          <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} className={`bg:white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 active:scale-95 transition-all ${showMenu ? (isRamadan ? 'bg-white/20 text-white' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-white'}`}>
+          <div className="relative z-[9999]" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <button onClick={() => setShowMenu(!showMenu)} className={`cursor-pointer relative z-50 p-2.5 rounded-xl border border-white/20 active:scale-95 transition-all ${showMenu ? (isRamadan ? 'bg-white/20 text-white' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-white'}`}>
               <SlidersHorizontal className="w-5 h-5" />
             </button>
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                <div className={`absolute left-0 top-full mt-2 w-64 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+                {/* ✅ القائمة المنسدلة أصبحت بلون صلب لكي تظهر النصوص */}
+                <div className={`absolute left-0 top-full mt-2 w-64 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
                   <div className="p-1">
-                    {/* زر توزيع الدرجات */}
-                    <button onClick={() => { setShowDistModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right border-b ${isRamadan ? 'hover:bg-white/10 border-white/10' : 'hover:bg-slate-50 border-slate-50'}`}>
+                    <button onClick={() => { setShowDistModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right border-b ${isRamadan ? 'hover:bg-white/5 border-white/10' : 'hover:bg-slate-50 border-slate-50'}`}>
                       <PieChart className={`w-4 h-4 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
                       <div className="flex flex-col items-start text-xs font-bold">
                         <span className={isRamadan ? 'text-indigo-100' : 'text-slate-800'}>إعدادات توزيع الدرجات</span>
@@ -450,26 +471,22 @@ const GradeBook: React.FC<GradeBookProps> = ({
                       </div>
                     </button>
 
-                    {/* زر تحميل القالب */}
-                    <button onClick={handleDownloadTemplate} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right border-b ${isRamadan ? 'hover:bg-white/10 border-white/10' : 'hover:bg-slate-50 border-slate-50'}`}>
+                    <button onClick={handleDownloadTemplate} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right border-b ${isRamadan ? 'hover:bg-white/5 border-white/10' : 'hover:bg-slate-50 border-slate-50'}`}>
                       <FileSpreadsheet className={`w-4 h-4 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`} />
                       <span className={`text-xs font-bold ${isRamadan ? 'text-indigo-100' : 'text-slate-700'}`}>تحميل قالب إكسل فارغ</span>
                     </button>
 
-                    {/* زر استيراد Excel */}
-                    <button onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right ${isRamadan ? 'hover:bg-white/10' : 'hover:bg-slate-50'}`}>
+                    <button onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right ${isRamadan ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
                       {isImporting ? <Loader2 className={`w-4 h-4 animate-spin ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} /> : <FileUp className={`w-4 h-4 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />}
                       <span className={`text-xs font-bold ${isRamadan ? 'text-indigo-100' : 'text-slate-700'}`}>استيراد من Excel</span>
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
 
-                    {/* زر تصدير التقرير */}
-                    <button onClick={handleExportExcel} disabled={isExporting} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right ${isRamadan ? 'hover:bg-white/10' : 'hover:bg-slate-50'}`}>
+                    <button onClick={handleExportExcel} disabled={isExporting} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right ${isRamadan ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
                       {isExporting ? <Loader2 className={`w-4 h-4 animate-spin ${isRamadan ? 'text-blue-400' : 'text-blue-600'}`} /> : <FileDown className={`w-4 h-4 ${isRamadan ? 'text-blue-400' : 'text-blue-600'}`} />}
                       <span className={`text-xs font-bold ${isRamadan ? 'text-indigo-100' : 'text-slate-700'}`}>تصدير التقرير</span>
                     </button>
 
-                    {/* زر تصفير الدرجات */}
                     <button onClick={handleClearGrades} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full text-right border-t ${isRamadan ? 'hover:bg-rose-500/20 text-rose-400 border-white/10' : 'hover:bg-red-50 text-red-600 border-slate-50'}`}>
                       <Trash2 className="w-4 h-4" />
                       <span className="text-xs font-bold">تصفير درجات الفصل</span>
@@ -481,21 +498,21 @@ const GradeBook: React.FC<GradeBookProps> = ({
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="space-y-4 relative z-50" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <div className="flex flex-wrap gap-2 pt-1 pb-2">
             <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>كل المراحل</button>
             {availableGrades.map(g => (
               <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>صف {g}</button>
             ))}
           </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex flex-wrap gap-2 pb-1">
             <button onClick={() => setSelectedClass('all')} className={`px-5 py-2.5 text-xs font-bold whitespace-nowrap transition-all rounded-xl border shadow-sm ${selectedClass === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>الكل</button>
             {visibleClasses.map(c => (
               <button key={c} onClick={() => setSelectedClass(c)} className={`px-5 py-2.5 text-xs font-bold whitespace-nowrap transition-all rounded-xl border shadow-sm ${selectedClass === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>{c}</button>
             ))}
           </div>
           
-          <div className="overflow-x-auto no-scrollbar flex gap-2 pt-1 pb-1">
+          <div className="flex flex-wrap gap-2 pt-1 pb-1">
             {tools.map(tool => (
                 <button key={tool.id} onClick={() => setActiveToolId(tool.id)} className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap border flex items-center gap-1.5 active:scale-95 shadow-sm transition-all ${activeToolId === tool.id ? (isRamadan ? 'bg-white/20 text-amber-300 border-amber-400/50 shadow-md' : 'bg-white text-[#1e3a8a] border-white shadow-md') : 'bg-white/10 hover:bg-white/20 text-white border-white/20'} ${tool.isFinal ? 'border-amber-400/50' : ''}`}>
                   {activeToolId === tool.id && <Check className="w-3 h-3" />}
@@ -503,16 +520,50 @@ const GradeBook: React.FC<GradeBookProps> = ({
                   {tool.name}
                 </button>
             ))}
-            {activeToolId && (
-              <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`px-3 py-2 text-white rounded-xl text-[10px] font-bold ml-auto flex items-center gap-1 shadow-md active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600/80 hover:bg-indigo-500' : 'bg-indigo-500 hover:bg-indigo-600'}`}>
-                <Wand2 className="w-3 h-3" /> رصد جماعي
-              </button>
-            )}
+            
+            <div className="flex gap-2 ml-auto">
+              {tools.length > 0 && (
+                <button 
+                  onClick={handleCopyContinuousTotal} 
+                  className={`px-3 py-2 text-white rounded-xl text-[10px] font-bold flex items-center gap-1 shadow-md active:scale-95 transition-colors ${isRamadan ? 'bg-amber-600/80 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'}`}
+                  title="نسخ مجموع التقويم المستمر (بدون الامتحان النهائي)"
+                >
+                  <Copy className="w-3 h-3" /> التقويم المستمر
+                </button>
+              )}
+
+              {activeToolId && (
+                <>
+                  <button 
+                    onClick={() => {
+                      const tool = tools.find(t => t.id === activeToolId);
+                      if (!tool) return;
+                      
+                      const gradesList = filteredStudents.map(student => {
+                        const grade = getStudentGradeForActiveTool(student);
+                        return grade !== '' ? grade : ''; 
+                      });
+                      
+                      const textToCopy = gradesList.join('\n');
+                      navigator.clipboard.writeText(textToCopy).then(() => {
+                        alert(`✅ تم نسخ عمود درجات (${tool.name}) بنجاح!\n\nاذهب الآن لمتصفحك، افتح إضافة الراصد السريع، واضغط (لصق أو Ctrl+V).`);
+                      }).catch(() => alert('❌ حدث خطأ أثناء محاولة النسخ.'));
+                    }} 
+                    className={`px-3 py-2 text-white rounded-xl text-[10px] font-bold flex items-center gap-1 shadow-md active:scale-95 transition-colors ${isRamadan ? 'bg-emerald-600/80 hover:bg-emerald-500' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                  >
+                    <Copy className="w-3 h-3" /> نسخ الأداة
+                  </button>
+
+                  <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`px-3 py-2 text-white rounded-xl text-[10px] font-bold flex items-center gap-1 shadow-md active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600/80 hover:bg-indigo-500' : 'bg-indigo-500 hover:bg-indigo-600'}`}>
+                    <Wand2 className="w-3 h-3" /> رصد جماعي
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Student List Grid */}
       <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2">
         <div className="grid grid-cols-2 gap-3">
           {filteredStudents.map(student => {
@@ -522,7 +573,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             const symbolColor = getSymbolColor(totalScore, isRamadan);
 
             return (
-              <div key={student.id} className={`rounded-[1.5rem] p-4 shadow-sm border flex flex-col items-center relative transition-colors ${isRamadan ? 'bg-white/5 backdrop-blur-xl border-white/10' : 'bg-white border-slate-100'}`}>
+              <div key={student.id} className={`rounded-[1.5rem] p-4 shadow-sm border flex flex-col items-center relative transition-colors ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-100 hover:shadow-md'}`}>
                 <StudentAvatar gender={student.gender} className={`w-16 h-16 mb-3 border-4 shadow-sm ${isRamadan ? 'border-indigo-900/50' : 'border-white'}`} />
                 <h3 className={`font-bold text-xs text-center line-clamp-1 mb-3 w-full ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{student.name}</h3>
                 
@@ -538,7 +589,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
                         value={currentGrade} 
                         onChange={e => handleGradeChange(student.id, e.target.value)} 
                         placeholder="-" 
-                        className={`w-full h-10 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 focus:border-amber-400 text-white placeholder:text-slate-600' : 'bg-white border-slate-200 focus:border-indigo-400 text-slate-800'}`} 
+                        className={`w-full h-10 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${isRamadan ? 'bg-[#1e293b] border-white/20 focus:border-amber-400 text-white placeholder:text-slate-500' : 'bg-white border-slate-200 focus:border-indigo-400 text-slate-800'}`} 
                     />
                 </div>
               </div>
@@ -547,9 +598,9 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </div>
 
-      {/* 1. مودال إدارة الأدوات */}
+      {/* ✅ النوافذ المنبثقة للون الصلب */}
       <Modal isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-         <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 text-white shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white text-slate-900 border-transparent'}`}>
+         <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-black text-lg">أدوات التقويم</h3>
             <button onClick={() => { setShowToolsManager(false); setIsAddingTool(false); }} className={`p-2 rounded-full transition-colors ${isRamadan ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X className={`w-5 h-5 ${isRamadan ? 'text-slate-400' : 'text-gray-500'}`} /></button>
@@ -560,7 +611,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
               <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
                 {tools.length > 0 ? (
                   tools.map(tool => (
-                    <div key={tool.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm group transition-colors ${isRamadan ? 'bg-white/5 border-white/10 hover:border-indigo-400/50' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                    <div key={tool.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm group transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-white border-slate-200'}`}>
                       <div className="flex items-center gap-2">
                         {tool.isFinal && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>نهائي</span>}
                         <span className={`text-xs font-bold ${isRamadan ? 'text-indigo-100' : 'text-slate-700'}`}>{tool.name}</span>
@@ -575,7 +626,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
             </>
           ) : (
             <div className="animate-in fade-in zoom-in duration-200">
-              <input autoFocus placeholder="اسم الأداة (مثال: اختبار قصير 1)" value={newToolName} onChange={e => setNewToolName(e.target.value)} className={`w-full p-4 rounded-2xl mb-4 font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} />
+              <input autoFocus placeholder="اسم الأداة (مثال: اختبار قصير 1)" value={newToolName} onChange={e => setNewToolName(e.target.value)} className={`w-full p-4 rounded-2xl mb-4 font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} />
               <div className="flex gap-2">
                 <button onClick={() => setIsAddingTool(false)} className={`flex-1 py-3 font-bold text-xs rounded-xl transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-gray-100 text-slate-500 hover:bg-gray-200'}`}>إلغاء</button>
                 <button onClick={handleAddTool} className={`flex-[2] py-3 font-black text-xs rounded-xl shadow-lg transition-colors ${isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>حفظ الأداة</button>
@@ -585,25 +636,24 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </Modal>
 
-      {/* 2. مودال توزيع الدرجات */}
       <Modal isOpen={showDistModal} onClose={() => setShowDistModal(false)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-        <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 text-white shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white text-slate-900 border-transparent'}`}>
+        <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
           <h3 className={`font-black text-xl mb-6 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>إعدادات توزيع الدرجات</h3>
           <div className="space-y-6">
-            <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               <label className={`block text-right text-xs font-black mb-2 ${isRamadan ? 'text-indigo-200' : 'text-slate-700'}`}>1. الدرجة الكلية للمادة</label>
-              <input type="number" value={distTotal} onChange={e => setDistTotal(Number(e.target.value))} className={`w-full p-3 border rounded-xl text-center font-black text-lg outline-none transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} />
+              <input type="number" value={distTotal} onChange={e => setDistTotal(Number(e.target.value))} className={`w-full p-3 border rounded-xl text-center font-black text-lg outline-none transition-colors ${isRamadan ? 'bg-[#0f172a] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} />
             </div>
-             <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+             <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               <label className={`block text-right text-xs font-black mb-2 ${isRamadan ? 'text-indigo-200' : 'text-slate-700'}`}>2. درجة الامتحان النهائي (أو المشروع)</label>
-              <input type="number" value={distFinalScore} onChange={e => setDistFinalScore(Number(e.target.value))} className={`w-full p-3 border rounded-xl text-center font-black text-lg outline-none transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} />
+              <input type="number" value={distFinalScore} onChange={e => setDistFinalScore(Number(e.target.value))} className={`w-full p-3 border rounded-xl text-center font-black text-lg outline-none transition-colors ${isRamadan ? 'bg-[#0f172a] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} />
               <p className={`text-[10px] mt-2 font-bold text-right ${isRamadan ? 'text-slate-400' : 'text-gray-400'}`}>* ضع 0 إذا كانت المادة تقويم مستمر 100%</p>
             </div>
-             <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+             <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               <label className={`block text-right text-xs font-black mb-2 ${isRamadan ? 'text-indigo-200' : 'text-slate-700'}`}>3. مسمى الامتحان النهائي</label>
-              <input type="text" value={distFinalName} onChange={e => setDistFinalName(e.target.value)} className={`w-full p-3 border rounded-xl text-center font-bold text-sm outline-none transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} placeholder="مثال: الامتحان النهائي" />
+              <input type="text" value={distFinalName} onChange={e => setDistFinalName(e.target.value)} className={`w-full p-3 border rounded-xl text-center font-bold text-sm outline-none transition-colors ${isRamadan ? 'bg-[#0f172a] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} placeholder="مثال: الامتحان النهائي" />
             </div>
-            <div className={`flex items-center justify-between p-4 rounded-xl border ${isRamadan ? 'bg-blue-900/20 border-blue-500/30' : 'bg-blue-50 border-blue-100'}`}>
+            <div className={`flex items-center justify-between p-4 rounded-xl border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-blue-50 border-blue-100'}`}>
               <div className="text-center flex-1"><span className={`block text-xs font-bold mb-1 ${isRamadan ? 'text-blue-300' : 'text-blue-600'}`}>التقويم المستمر</span><span className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{distTotal - distFinalScore}</span></div>
               <div className={`text-xl font-black mx-2 ${isRamadan ? 'text-slate-600' : 'text-slate-300'}`}>+</div>
               <div className="text-center flex-1"><span className={`block text-xs font-bold mb-1 ${isRamadan ? 'text-blue-300' : 'text-blue-600'}`}>النهائي</span><span className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{distFinalScore}</span></div>
@@ -615,14 +665,13 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </Modal>
 
-      {/* 3. مودال الرصد الجماعي */}
       <Modal isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} className={`max-w-xs rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
          {bulkFillTool && (
-          <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 text-white shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white text-slate-900 border-transparent'}`}>
+          <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
             <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 border ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-indigo-100'}`}><Wand2 className="w-7 h-7" /></div>
             <h3 className={`font-black text-lg mb-1 ${isRamadan ? 'text-white' : 'text-slate-900'}`}>رصد جماعي</h3>
             <p className={`text-xs font-bold mb-4 inline-block px-3 py-1 rounded-lg ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>{bulkFillTool.name}</p>
-            <input type="number" autoFocus placeholder="الدرجة" className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border mb-4 transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} value={bulkScore} onChange={e => setBulkScore(e.target.value)} />
+            <input type="number" autoFocus placeholder="الدرجة" className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border mb-4 transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10 focus:border-indigo-400 text-white' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} value={bulkScore} onChange={e => setBulkScore(e.target.value)} />
             <button onClick={handleBulkFill} className={`w-full py-3.5 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>تطبيق الرصد</button>
           </div>
         )}

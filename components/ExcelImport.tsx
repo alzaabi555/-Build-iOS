@@ -16,24 +16,24 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
   const [newClassInput, setNewClassInput] = useState('');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
 
-  // ✅ ميزة جديدة: تحميل القالب الجاهز
+  // ✅ ميزة محدثة: تحميل القالب الجاهز متضمناً الرقم المدني
   const handleDownloadTemplate = () => {
-    // 1. تجهيز الأعمدة (الاسم، الهاتف، الجنس)
-    const headers = ['اسم الطالب', 'رقم ولي الأمر', 'النوع (ذكر/أنثى)'];
+    // 1. تجهيز الأعمدة (الرقم المدني، الاسم، الهاتف، الجنس)
+    const headers = ['الرقم المدني', 'اسم الطالب', 'رقم ولي الأمر', 'النوع (ذكر/أنثى)'];
     
     // 2. إضافة صف مثال توضيحي (ليعرف المعلم الصيغة الصحيحة)
-    const sampleRow = ['محمد أحمد العماني', '91234567', 'ذكر'];
-    const sampleRow2 = ['سارة علي', '99887766', 'أنثى'];
+    const sampleRow = ['1234567890', 'محمد أحمد العماني', '91234567', 'ذكر'];
+    const sampleRow2 = ['0987654321', 'سارة علي', '99887766', 'أنثى'];
 
     // 3. إنشاء الملف
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow, sampleRow2]);
 
     // 4. تنسيق عرض الأعمدة ليكون مريحاً
-    ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }];
+    ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }];
 
     XLSX.utils.book_append_sheet(wb, ws, "قالب_الطلاب");
-    XLSX.writeFile(wb, "قالب_ادخال_الطلاب.xlsx");
+    XLSX.writeFile(wb, "قالب_ادخال_الطلاب_الجديد.xlsx");
   };
 
   const cleanHeader = (header: string): string => {
@@ -81,20 +81,23 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
 
           const headers = Object.keys(jsonData[0]);
           
+          // ✅ الكلمات المفتاحية للبحث عن الأعمدة
+          const civilIdKeywords = ['الرقم المدني', 'رقم الهوية', 'الرقم', 'civil id', 'id'];
           const nameKeywords = ['الاسم', 'اسم الطالب', 'اسم', 'name', 'student', 'full name', 'المتعلم'];
           const phoneKeywords = ['جوال', 'هاتف', 'phone', 'mobile', 'contact', ' تواصل', 'ولي امر','ولي أمر', 'parent', 'رقم', 'cell'];
           const genderKeywords = ['النوع', 'الجنس', 'gender', 'sex', 'type'];
 
+          let civilIdKey = headers.find(h => civilIdKeywords.some(kw => cleanHeader(h).includes(kw)));
           let nameKey = headers.find(h => nameKeywords.some(kw => cleanHeader(h).includes(kw)));
           let phoneKey = headers.find(h => phoneKeywords.some(kw => cleanHeader(h).includes(kw)));
           let genderKey = headers.find(h => genderKeywords.some(kw => cleanHeader(h).includes(kw)));
 
-          if (!nameKey) nameKey = headers[0];
+          if (!nameKey) nameKey = headers[0]; // افتراض أن العمود الأول هو الاسم إذا فشل البحث
 
           // محاولة استنتاج عمود الهاتف إذا لم يوجد اسم صريح
           if (!phoneKey) {
               for (const header of headers) {
-                  if (header === nameKey) continue;
+                  if (header === nameKey || header === civilIdKey) continue;
                   let matchCount = 0;
                   let checkLimit = Math.min(jsonData.length, 10);
                   for (let i = 0; i < checkLimit; i++) {
@@ -113,10 +116,16 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
               
               // تجاهل صفوف الأمثلة إذا قام المعلم برفع القالب كما هو
               if (studentName.includes('مثال:') || studentName === 'يكتب اسم الطالب ' || studentName === 'يكتب اسم الطالبه') return null;
+              if (!studentName || nameKeywords.includes(cleanHeader(studentName))) return null;
 
               let parentPhone = '';
               if (phoneKey) parentPhone = cleanPhoneNumber(row[phoneKey]);
-              if (!studentName || nameKeywords.includes(cleanHeader(studentName))) return null;
+
+              // ✅ استخراج الرقم المدني
+              let civilID = '';
+              if (civilIdKey && row[civilIdKey]) {
+                  civilID = String(row[civilIdKey]).trim();
+              }
 
               // معالجة الجنس
               let gender: 'male' | 'female' = 'male'; // افتراضي
@@ -129,6 +138,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
 
               return {
                 id: Math.random().toString(36).substr(2, 9),
+                parentCode: civilID, // ✅ حفظ الرقم المدني هنا مباشرة
                 name: studentName,
                 grade: '', // الصف يتم تحديده من القائمة المختارة وليس من الملف
                 classes: [finalTargetClass],
@@ -171,7 +181,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
         onClick={handleDownloadTemplate}
         className="w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-100 transition-colors shadow-sm mb-2"
       >
-        <Download size={16} /> تحميل ملف إكسل فارغ (جاهز للتعبئة)
+        <Download size={16} /> تحميل قالب الإكسل (متضمن الرقم المدني)
       </button>
 
       <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
@@ -262,7 +272,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ existingClasses, onImport, on
           <div className="flex gap-2 items-start">
               <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div className="text-[9px] text-amber-800 font-bold leading-relaxed text-right">
-                  <p>لأفضل النتائج، استخدم القالب الجاهز أعلاه (يحتوي على الاسم ورقم الهاتف فقط).</p>
+                  <p>لأفضل النتائج، قم بتحميل واستخدام القالب الجاهز أعلاه (يحتوي على الرقم المدني، الاسم، ورقم الهاتف).</p>
               </div>
           </div>
       </div>
