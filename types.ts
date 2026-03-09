@@ -1,4 +1,3 @@
-
 export interface Student {
   id: string;
   ministryId?: string; // معرف الوزارة للمزامنة
@@ -14,6 +13,7 @@ export interface Student {
   spentCoins?: number; 
   groupId?: string | null; // معرف الفريق (ديناميكي)
   examPapers?: ExamPaper[];
+  parentCode?: string; // ✅ الكود السري الخاص بتطبيق ولي الأمر
 }
 
 export interface Group {
@@ -110,6 +110,27 @@ export interface ExamPaper {
   gradingData?: GradingData;
   totalScore?: number;
   maxScore?: number;
+}
+
+// ============================================================================
+// ✅ نظام المجموعات التفاعلية (Interactive Student Groups)
+// ============================================================================
+
+// 1. واجهة المجموعة الفرعية (مثلاً: مجموعة العباقرة، مجموعة الأبطال)
+export interface SubGroup {
+  id: string;
+  name: string;          // اسم المجموعة الذي يختاره المعلم بحرية
+  color: string;         // لون مميز للمجموعة (سنوفره للمعلم كخيارات بصرية)
+  studentIds: string[];  // قائمة بأرقام هويات الطلاب (id) المنضمين لهذه المجموعة
+}
+
+// 2. واجهة التقسيمة الكبرى (مثلاً: مشروع العلوم، مسابقة الإملاء)
+export interface GroupCategorization {
+  id: string;
+  title: string;         // اسم التقسيمة العامة الذي يكتبه المعلم
+  classId: string;       // الفصل المرتبط بهذه التقسيمة (مثلاً: سابع / 1)
+  createdAt: string;     // تاريخ الإنشاء
+  groups: SubGroup[];    // المجموعات الفرعية التي تندرج تحت هذه التقسيمة
 }
 
 // --- تعريف الجسر الإلكتروني (Electron Bridge) ---

@@ -3,7 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
-  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, Network // تمت إضافة Network للمجموعات
 } from 'lucide-react';
 
 import { App as CapacitorApp } from '@capacitor/app';
@@ -21,6 +21,7 @@ import About from './components/About';
 import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
+import StudentGroups from './components/StudentGroups'; // ✅ تم استيراد مكون المجموعات
 import { useSchoolBell } from './hooks/useSchoolBell';
 
 // 🌙 استدعاء الثيم الخارجي المستقل
@@ -81,7 +82,7 @@ const AppContent: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [appVersion, setAppVersion] = useState('3.8.6');
+  const [appVersion, setAppVersion] = useState('4.3.0');
   
   // المستشعر الذكي لشهر رمضان
   const [isRamadan, setIsRamadan] = useState(false);
@@ -181,6 +182,7 @@ const AppContent: React.FC = () => {
           onDeleteStudent={(id) => setStudents(prev => prev.filter(s => s.id !== id))} onViewReport={(s) => { }}
           currentSemester={currentSemester} onSemesterChange={setCurrentSemester} onDeleteClass={handleDeleteClass}
         />;
+      case 'groups': return <StudentGroups />; // ✅ توجيه لصفحة المجموعات الجديدة
       case 'grades':
         return <GradeBook
           students={students} classes={classes} onUpdateStudent={handleUpdateStudent} setStudents={setStudents}
@@ -202,10 +204,12 @@ const AppContent: React.FC = () => {
     { id: 'grades', label: 'الدرجات', IconComponent: Grades3D },
   ];
   
+  // ✅ تم إضافة المجموعات للقائمة الجانبية في الكمبيوتر
   const desktopNavItems = [
     { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'attendance', label: 'الحضور', icon: CalendarCheck },
     { id: 'students', label: 'الطلاب', icon: Users },
+    { id: 'groups', label: 'المجموعات', icon: Network }, // 👈 تمت إضافتها هنا
     { id: 'grades', label: 'الدرجات', icon: BarChart3 },
     { id: 'leaderboard', label: 'فرسان الشهر', icon: Medal },
     { id: 'reports', label: 'التقارير', icon: FileText },
@@ -222,7 +226,7 @@ const AppContent: React.FC = () => {
       {/* 🌙 الثيم الرمضاني يغطي الشاشة بالكامل من الخلف */}
       <RamadanTheme />
 
-      {/* Sidebar (Desktop) - تأثير زجاجي في رمضان */}
+      {/* Sidebar (Desktop) - تأثير زجاجي في رمضان مع قسم التوثيق */}
       <aside className={`hidden md:flex w-72 flex-col z-50 shadow-sm h-full relative transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-l border-white/10' : 'bg-white border-l border-slate-200'}`}>
         <div className="p-8 flex items-center gap-4 relative z-10">
           <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
@@ -252,12 +256,32 @@ const AppContent: React.FC = () => {
             </button>
           ))}
         </nav>
-        <div className={`p-6 text-center border-t relative z-10 ${isRamadan ? 'border-white/10' : 'border-slate-200'}`}>
-          <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/40' : 'text-gray-400'}`}>الإصدار {appVersion}</p>
+
+        {/* 🛡️ قسم التوثيق الشخصي (البصمة الملكية) */}
+        <div className={`p-6 border-t relative z-10 space-y-4 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
+            <div className="flex items-center gap-3 group transition-all duration-300">
+                <div className={`w-11 h-11 rounded-full border-2 p-0.5 transition-all duration-500 group-hover:rotate-[360deg] shadow-lg ${isRamadan ? 'border-amber-400/50 bg-white/5 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'border-indigo-100 bg-white'}`}>
+                    <img 
+                        src={require('./assets/my-signature-logo.png')} 
+                        alt="شعار محمد الزعابي" 
+                        className="w-full h-full rounded-full object-contain"
+                        onError={(e) => { (e.target as any).src = 'https://ui-avatars.com/api/?name=MZ&background=6366f1&color=fff'; }}
+                    />
+                </div>
+                <div className="flex flex-col text-right">
+                    <span className={`text-[9px] font-black uppercase tracking-widest opacity-60 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>تطوير وإعداد</span>
+                    <span className={`text-xs font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>أ. محمد الزعابي</span>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+                <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/40' : 'text-gray-400'}`}>الإصدار {appVersion}</p>
+                {isRamadan && <span className="text-[12px] animate-pulse">🌙</span>}
+            </div>
         </div>
       </aside>
 
-      {/* Main Container - شفاف ليظهر الثيم من خلفه */}
+      {/* Main Container */}
       <main className={`flex-1 flex flex-col h-full overflow-hidden relative z-10 ${isRamadan ? 'bg-transparent' : 'bg-[#f3f4f6]'}`}>
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe relative z-10">
           <div className="max-w-5xl mx-auto w-full min-h-full">
@@ -266,14 +290,13 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* Bottom Nav (Mobile) - تأثير زجاجي في رمضان */}
+      {/* Bottom Nav (Mobile) */}
       <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-slate-200/60'}`}>
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className="relative w-full h-full flex flex-col items-center justify-end pb-1 touch-manipulation active:scale-90 transition-transform">
               <div className={`absolute top-0 transition-all duration-500 ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
-                {/* 🌙 تمرير مستشعر رمضان للأيقونات لكي تغير ألوانها */}
                 <div className="w-11 h-11"><item.IconComponent active={isActive} isRamadan={isRamadan} /></div>
               </div>
               <span className={`text-[10px] font-black transition-all ${isActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{item.label}</span>
@@ -288,9 +311,14 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
-      {/* More Menu Modal - 🌙 أصبحت تتزين برمضان أيضاً */}
+      {/* More Menu Modal (Mobile) */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className={`max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] ${isRamadan ? 'bg-transparent' : ''}`}>
         <div className={`grid grid-cols-3 gap-3 p-4 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-transparent'}`}>
+          {/* ✅ تم إضافة زر المجموعات في قائمة المزيد للجوال */}
+          <button onClick={() => handleNavigate('groups')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-emerald-50 border-emerald-200'}`}>
+            <Network className={`w-7 h-7 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
+            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>المجموعات</span>
+          </button>
           <button onClick={() => handleNavigate('leaderboard')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-amber-50 border-amber-200'}`}>
             <Medal className={`w-7 h-7 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`} />
             <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>فرسان الشهر</span>
