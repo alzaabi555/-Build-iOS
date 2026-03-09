@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings } from '../types';
+// ✅ تم إضافة GroupCategorization في سطر الاستيراد
+import type { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings, GroupCategorization } from '../types';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
@@ -41,6 +42,10 @@ interface AppContextType {
   isDataLoaded: boolean;
   defaultStudentGender: 'male' | 'female';
   setDefaultStudentGender: React.Dispatch<React.SetStateAction<'male' | 'female'>>;
+  
+  // ✅ إضافة نظام المجموعات الجديد للواجهة
+  categorizations: GroupCategorization[];
+  setCategorizations: React.Dispatch<React.SetStateAction<GroupCategorization[]>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -60,12 +65,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [classes, setClasses] = useState<string[]>([]);
   const [hiddenClasses, setHiddenClasses] = useState<string[]>([]);
 
+  // المجموعات القديمة (يمكن إزالتها لاحقاً إذا اعتمدت كلياً على النظام الجديد)
   const [groups, setGroups] = useState<Group[]>([
     { id: 'g1', name: 'الصقور', color: 'emerald' },
     { id: 'g2', name: 'النمور', color: 'orange' },
     { id: 'g3', name: 'النجوم', color: 'purple' },
     { id: 'g4', name: 'الرواد', color: 'blue' },
   ]);
+
+  // ✅ حالة نظام التقسيمات والمجموعات الجديد
+  const [categorizations, setCategorizations] = useState<GroupCategorization[]>([]);
 
   const [schedule, setSchedule] = useState<ScheduleDay[]>([
     { dayName: 'الأحد', periods: Array(8).fill('') },
@@ -140,6 +149,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               classes: JSON.parse(localStorage.getItem('classesData') || '[]'),
               hiddenClasses: JSON.parse(localStorage.getItem('hiddenClasses') || '[]'),
               groups: JSON.parse(localStorage.getItem('groupsData') || '[]'),
+              // ✅ استرجاع التقسيمات من localStorage كخيار احتياطي
+              categorizations: JSON.parse(localStorage.getItem('categorizationsData') || '[]'),
               schedule: JSON.parse(localStorage.getItem('scheduleData') || '[]'),
               periodTimes: JSON.parse(localStorage.getItem('periodTimes') || '[]'),
               assessmentTools: JSON.parse(localStorage.getItem('assessmentTools') || '[]'),
@@ -167,6 +178,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.classes) setClasses(data.classes);
           if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
           if (data.groups) setGroups(data.groups);
+          // ✅ ضبط حالة التقسيمات عند التحميل
+          if (data.categorizations) setCategorizations(data.categorizations);
           if (data.schedule) setSchedule(data.schedule);
           if (data.periodTimes) setPeriodTimes(data.periodTimes);
           if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
@@ -187,6 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // --- 2. حفظ البيانات تلقائياً عند التغيير ---
+  // ✅ أضفنا categorizations لمصفوفة الاعتماديات (Dependencies)
   useEffect(() => {
     if (isInitialLoad.current) return;
 
@@ -198,7 +212,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: new Date().toISOString(),
         students, classes, hiddenClasses, groups, schedule, periodTimes,
         teacherInfo, currentSemester, assessmentTools, gradeSettings,
-        certificateSettings, defaultStudentGender
+        certificateSettings, defaultStudentGender,
+        categorizations // ✅ إضافة التقسيمات للحفظ في نظام الملفات الرئيسي
       };
 
       const isHeavy = isHeavyEnvironment();
@@ -231,6 +246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('studentData', JSON.stringify(students));
             localStorage.setItem('classesData', JSON.stringify(classes));
             localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
+            localStorage.setItem('categorizationsData', JSON.stringify(categorizations)); // ✅ احتياطي للويب
         }
       } catch (e) {
         console.error('LocalStorage Save Error:', e);
@@ -238,7 +254,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 2000); 
 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender]);
+  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender, categorizations]);
 
   return (
     <AppContext.Provider
@@ -248,7 +264,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         teacherInfo, setTeacherInfo, currentSemester, setCurrentSemester,
         assessmentTools, setAssessmentTools, gradeSettings, setGradeSettings,
         certificateSettings, setCertificateSettings, isDataLoaded,
-        defaultStudentGender, setDefaultStudentGender
+        defaultStudentGender, setDefaultStudentGender,
+        // ✅ توفير المجموعات الجديدة لجميع صفحات التطبيق
+        categorizations, setCategorizations
       }}
     >
       {children}
