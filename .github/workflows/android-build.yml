@@ -13,12 +13,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Install Dependencies
@@ -54,6 +54,15 @@ jobs:
           echo "Syncing Capacitor..."
           npx cap sync android
 
+      - name: Force API 35 for Google Play
+        run: |
+          echo "💉 Injecting API 35 requirement..."
+          if [ -f "android/variables.gradle" ]; then
+            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 35/g' android/variables.gradle
+            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 35/g' android/variables.gradle
+            echo "✅ API successfully upgraded to 35!"
+          fi
+
       - name: Create Dummy google-services.json
         run: |
           if [ ! -f "android/app/google-services.json" ]; then
@@ -69,7 +78,6 @@ jobs:
       - name: Generate App Icons
         run: npx capacitor-assets generate --android
 
-      # استخراج حزمة المتجر AAB
       - name: Build Android Release Bundle (AAB)
         run: |
           cd android
@@ -81,7 +89,6 @@ jobs:
             gradle bundleRelease --stacktrace
           fi
 
-      # توقيع الحزمة بالختم الرقمي باستخدام الأسرار
       - name: Sign AAB
         uses: r0adkll/sign-android-release@v1
         id: sign_app
@@ -92,7 +99,6 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      # رفع الملف النهائي لتقوم بتحميله
       - name: Upload Signed AAB
         uses: actions/upload-artifact@v4
         with:
