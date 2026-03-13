@@ -54,14 +54,18 @@ jobs:
           echo "Syncing Capacitor..."
           npx cap sync android
 
-      - name: Force API 35 for Google Play
+      - name: Force API 35 and Increment Version Code
         run: |
-          echo "💉 Injecting API 35 requirement..."
+          echo "💉 Injecting API 35 and Version Code 2..."
           if [ -f "android/variables.gradle" ]; then
             sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 35/g' android/variables.gradle
             sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 35/g' android/variables.gradle
-            echo "✅ API successfully upgraded to 35!"
           fi
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
+            sed -i 's/versionName "1.0"/versionName "1.0.1"/g' android/app/build.gradle
+          fi
+          echo "✅ API and Version updated!"
 
       - name: Create Dummy google-services.json
         run: |
