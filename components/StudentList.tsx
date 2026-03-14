@@ -48,11 +48,11 @@ const NEGATIVE_BEHAVIORS = [
 ];
 
 const POSITIVE_BEHAVIORS = [
-    { id: 'p1', title: 'مشاركة فعالة', points: 12 },
+    { id: 'p1', title: 'إجابة متميزة', points: 2 },
     { id: 'p2', title: 'إجابة صحيحة', points: 1 },
     { id: 'p3', title: 'واجب مميز', points: 2 },
     { id: 'p4', title: 'مساعدة الزملاء', points: 2 },
-    { id: 'p5', title: 'مشاركة متميزة', points: 5 },
+    { id: 'p5', title: 'مشاركة صفية متميزة', points: 5 },
     { id: 'p6', title: 'إبداع وتميز', points: 3 },
 ];
 
@@ -127,6 +127,19 @@ const StudentList: React.FC<StudentListProps> = ({
     const [isMessagesModalOpen, setIsMessagesModalOpen] = useState(false);
     const [isFetchingMsgs, setIsFetchingMsgs] = useState(false);
 
+    // 🔔 عداد الرسائل المقروءة (ذاكرة لحل مشكلة الإشعارات المزعجة)
+    const [readMessagesCount, setReadMessagesCount] = useState<number>(() => {
+        return parseInt(localStorage.getItem('rased_read_messages_count') || '0', 10);
+    });
+
+    // 🔔 تحديث العداد الذكي بمجرد فتح الصندوق
+    useEffect(() => {
+        if (isMessagesModalOpen && messages.length > 0) {
+            setReadMessagesCount(messages.length);
+            localStorage.setItem('rased_read_messages_count', messages.length.toString());
+        }
+    }, [isMessagesModalOpen, messages.length]);
+
     // 📥 دالة جلب الرسائل من السحابة
     const fetchParentMessages = async () => {
         if (!teacherInfo?.school || !teacherInfo?.subject) return;
@@ -145,6 +158,38 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
+    // 💬 دالة الرد المباشر على رسالة ولي الأمر عبر الواتساب
+    const handleReplyToMessage = (msg: any) => {
+        // [التعديل الجراحي هنا]: تحويل كلا الرقمين إلى نصوص وتنظيفهما من أي مسافات لضمان التطابق 100%
+        const student = students.find(s => 
+            String(s.parentCode || '').trim() === String(msg.civilID || '').trim()
+        );
+        
+        if (!student) {
+            alert('⚠️ لم يتم العثور على طالب بهذا الرقم المدني في القائمة الحالية.');
+            return;
+        }
+        if (!student.parentPhone) {
+            alert(`⚠️ لا يوجد رقم هاتف مسجل لولي أمر الطالب: ${student.name}`);
+            return;
+        }
+
+        const truncatedMsg = msg.message.length > 60 ? msg.message.substring(0, 60) + '...' : msg.message;
+        const replyText = `أهلاً بك ولي أمر الطالب "${student.name}"،\nبخصوص استفساركم: "${truncatedMsg}"\n\nنود إفادتكم بـ: `;
+        const encodedText = encodeURIComponent(replyText);
+
+        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+
+        if ((window as any).electron) { 
+            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${encodedText}`); 
+        } else { 
+            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`; 
+            window.open(universalUrl, '_blank'); 
+        }
+    };
     // جلب الرسائل تلقائياً عند فتح التطبيق
     useEffect(() => {
         fetchParentMessages();
@@ -341,6 +386,85 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
+    // ================= دمج دوال إرسال الواتساب (الإيجابي والسلبي) =================
+    const handleSendSmartReport = (student: Student) => {
+        if (!student.parentPhone) {
+            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي الأمر.');
+            return;
+        }
+
+        const currentGrades = (student.grades || []).filter(g => (g.semester || '1') === currentSemester);
+        const totalScore = currentGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
+
+        const positiveBehaviors = (student.behaviors || []).filter(b => b.type === 'positive');
+        const topBehavior = positiveBehaviors.length > 0 
+            ? positiveBehaviors[0].description 
+            : (student.gender === 'female' ? 'انضباطها وتميزها العام' : 'انضباطه وتميزه العام');
+
+        const isFemale = student.gender === 'female';
+        const childTitle = isFemale ? 'ابنتكم الطالبة' : 'ابنكم الطالب';
+        const scoreText = isFemale ? 'حصلت على مجموع' : 'حصل على مجموع';
+        const behaviorText = isFemale ? 'وتميزت في' : 'وتميز في';
+        const teacherTitle = teacherInfo?.gender === 'female' ? 'المعلمة' : 'المعلم';
+
+        const message = `السلام عليكم ورحمة الله، ولي أمر ${childTitle} (${student.name}) المحترم.\n\nيسرنا إعلامكم بأن ${childTitle} ${scoreText} (${totalScore}) درجة في مادة ${teacherInfo?.subject || '...'}، ${behaviorText}: "${topBehavior}".\n\nشاكرين لكم حسن متابعتكم.\nإدارة تطبيق راصد - ${teacherTitle}: ${teacherInfo?.name || ''}`;
+
+        const msg = encodeURIComponent(message);
+        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+
+        if ((window as any).electron) { 
+            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
+        } else { 
+            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
+            window.open(universalUrl, '_blank'); 
+        }
+    };
+
+    const handleSendNegativeReport = async (student: Student) => {
+        if (!student.parentPhone) {
+            alert('⚠️ عذراً، لا يوجد رقم هاتف مسجل لولي الأمر.');
+            return;
+        }
+
+        const negativeBehaviors = (student.behaviors || []).filter(b => b.type === 'negative');
+
+        if (negativeBehaviors.length === 0) {
+            alert('🎉 هذا الطالب متميز! لا توجد لديه سلوكيات سلبية مسجلة.');
+            return;
+        }
+
+        let message = `السلام عليكم، ولي أمر الطالب *${student.name}* المحترم.\n`;
+        message += `تحية طيبة،\nنود إشعاركم بتقرير بالملاحظات السلوكية المسجلة على الطالب مؤخراً:\n\n`;
+
+        negativeBehaviors.slice(0, 5).forEach(b => {
+            const dateObj = new Date(b.date);
+            const date = dateObj.toLocaleDateString('ar-EG');
+            const time = dateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+            
+            message += `🔴 *${b.description}*\n📅 ${date} - ⏰ ${time}\n─────────────────\n`;
+        });
+
+        message += `\nنأمل منكم التكرم بمتابعة الطالب وتوجيهه.\nشكراً لتعاونكم.\n*إدارة المدرسة*`;
+        
+        const msg = encodeURIComponent(message);
+        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
+        
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+
+        if ((window as any).electron) { 
+            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
+        } else { 
+            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
+            window.open(universalUrl, '_blank'); 
+        }
+    };
+    // =======================================================================
+
     const confirmPositiveBehavior = (title: string, points: number) => {
         if (!selectedStudentForBehavior) return;
         playSound('positive');
@@ -495,9 +619,9 @@ const StudentList: React.FC<StudentListProps> = ({
                     >
                         <Mail className="w-5 h-5" />
                         <span className="hidden md:inline text-xs font-black">الوارد</span>
-                        {messages.length > 0 && (
+                        {messages.length > readMessagesCount && (
                             <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce border border-white">
-                                {messages.length}
+                                {messages.length - readMessagesCount}
                             </span>
                         )}
                     </button>
@@ -623,6 +747,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
                         {/* أزرار الإجراءات */}
                         <div className={`flex w-full divide-x divide-x-reverse ${isRamadan ? 'divide-white/10' : 'divide-slate-100'}`}>
+                            
                             <button onClick={() => handleBehavior(student, 'positive')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-emerald-500/20 active:bg-emerald-500/30' : 'hover:bg-emerald-50 active:bg-emerald-100'}`} title="تعزيز إيجابي">
                                 <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-emerald-400' : 'text-emerald-500'}`} />
                             </button>
@@ -630,10 +755,19 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button onClick={() => handleBehavior(student, 'negative')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-rose-500/20 active:bg-rose-500/30' : 'hover:bg-rose-50 active:bg-rose-100'}`} title="سلوك سلبي">
                                 <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-rose-400' : 'text-rose-500'}`} />
                             </button>
+
+                            <button onClick={() => handleSendSmartReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-blue-500/20 active:bg-blue-500/30' : 'hover:bg-blue-50 active:bg-blue-100'}`} title="تقرير الدرجات والتميز (واتساب)">
+                                <MessageCircle className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-blue-400' : 'text-blue-500'}`} />
+                            </button>
+
+                            <button onClick={() => handleSendNegativeReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-amber-500/20 active:bg-amber-500/30' : 'hover:bg-amber-50 active:bg-amber-100'}`} title="تقرير سلوكي إنذار (واتساب)">
+                                <Send className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`} />
+                            </button>
                             
                             <button onClick={() => setEditingStudent(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-slate-50 active:bg-slate-100'}`} title="تعديل">
                                 <Edit2 className={`w-4 h-4 transition-colors ${isRamadan ? 'text-slate-400 group-hover:text-indigo-300' : 'text-slate-400 group-hover:text-indigo-500'}`} />
                             </button>
+                            
                         </div>
                     </div>
                 )}) : (
@@ -692,6 +826,16 @@ const StudentList: React.FC<StudentListProps> = ({
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 text-sm font-bold text-slate-700 leading-relaxed shadow-inner">
                                     {msg.message}
+                                </div>
+                                {/* 💬 زر الرد عبر الواتساب الجديد */}
+                                <div className="mt-3 flex justify-end">
+                                    <button 
+                                        onClick={() => handleReplyToMessage(msg)}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black shadow-sm active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100'}`}
+                                    >
+                                        <MessageCircle size={14} />
+                                        رد عبر الواتساب
+                                    </button>
                                 </div>
                             </div>
                         ))
