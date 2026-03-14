@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Users, Plus, Trash2, X, Edit2, Check, UserMinus, FolderPlus, ArrowRight, UserPlus } from 'lucide-react';
+import { Users, Plus, Trash2, X, Edit2, Check, UserMinus, FolderPlus, ArrowRight, UserPlus, CheckCircle2 } from 'lucide-react';
 
 interface StudentGroupsProps {
   onBack?: () => void;
@@ -86,7 +86,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       if (cat.id === activeCatId) {
         return {
           ...cat,
-          groups: [...cat.groups, { id: Math.random().toString(36).substring(2, 9), name: newGroupName.trim(), color: selectedColor.id, studentIds: [] }]
+          // ✅ إضافة حقل isCompleted افتراضياً بقيمة false للمجموعات الجديدة
+          groups: [...cat.groups, { id: Math.random().toString(36).substring(2, 9), name: newGroupName.trim(), color: selectedColor.id, studentIds: [], isCompleted: false }]
         };
       }
       return cat;
@@ -103,7 +104,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     }
   };
 
-  // إزالة سريعة لطالب من المجموعة من الواجهة مباشرة
   const removeStudentFromGroup = (studentId: string, groupId: string) => {
     setCategorizations(prev => prev.map(cat => {
       if (cat.id === activeCatId) {
@@ -116,13 +116,26 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     }));
   };
 
+  // ✅ دالة تحديد اكتمال المجموعة (تغيير حالة الإنجاز)
+  const toggleGroupCompletion = (groupId: string) => {
+    setCategorizations(prev => prev.map(cat => {
+      if (cat.id === activeCatId) {
+        return {
+          ...cat,
+          groups: cat.groups.map(g => g.id === groupId ? { ...g, isCompleted: !g.isCompleted } : g)
+        };
+      }
+      return cat;
+    }));
+  };
+
   // ================= دوال التوزيع الجماعي =================
 
   const openAssignModal = (groupId: string) => {
     if (!activeCat) return;
     const group = activeCat.groups.find(g => g.id === groupId);
     if (group) {
-      setSelectedStudentIds(new Set(group.studentIds)); // تعبئة النافذة بالطلاب الموجودين أصلاً
+      setSelectedStudentIds(new Set(group.studentIds)); 
       setAssigningToGroup({ catId: activeCat.id, groupId });
     }
   };
@@ -139,7 +152,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     
     setCategorizations(prev => prev.map(cat => {
       if (cat.id === assigningToGroup.catId) {
-        // سحب الطلاب من المجموعات الأخرى وإضافتهم للمجموعة الهدف
         const updatedGroups = cat.groups.map(g => {
           if (g.id === assigningToGroup.groupId) {
             return { ...g, studentIds: Array.from(selectedStudentIds) };
@@ -321,43 +333,70 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                   {activeCat.groups.map(group => {
                     const groupColor = groupColors.find(c => c.id === group.color) || groupColors[0];
                     const groupStudents = students.filter(s => group.studentIds.includes(s.id));
+                    
+                    // ✅ تغيير التصميم إذا كانت المجموعة مكتملة الإنجاز
+                    const isCompleted = group.isCompleted;
+                    const containerStyle = isCompleted 
+                        ? `bg-emerald-50/60 border-emerald-300 opacity-80 scale-[0.98]` // تأثير الإنجاز
+                        : (isRamadan ? `bg-white/5 ${groupColor.border}` : `bg-white ${groupColor.border} shadow-sm`); // التصميم العادي
+
+                    const headerStyle = isCompleted 
+                        ? `bg-emerald-100/50 border-inherit` 
+                        : (isRamadan ? 'bg-white/10 border-inherit' : `${groupColor.bg} border-inherit`);
 
                     return (
-                      <div key={group.id} className={`rounded-2xl border-2 flex flex-col overflow-hidden ${isRamadan ? `bg-white/5 ${groupColor.border}` : `bg-white ${groupColor.border} shadow-sm`}`}>
-                        <div className={`p-3 border-b flex justify-between items-center ${isRamadan ? 'bg-white/10 border-inherit' : `${groupColor.bg} border-inherit`}`}>
-                          <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : groupColor.text}`}>{group.name}</h3>
+                      <div key={group.id} className={`rounded-2xl border-2 flex flex-col overflow-hidden transition-all duration-300 ${containerStyle}`}>
+                        <div className={`p-3 border-b flex justify-between items-center ${headerStyle}`}>
+                          <div className="flex items-center gap-2">
+                              {/* ✅ زر الإنجاز (علامة الصح) المدمج بجوار العنوان */}
+                              <button 
+                                onClick={() => toggleGroupCompletion(group.id)} 
+                                title={isCompleted ? "تراجع عن الإنجاز" : "تحديد كمكتملة"}
+                                className={`p-1.5 rounded-lg border-2 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 'bg-white/50 border-slate-300 text-slate-300 hover:border-emerald-400 hover:text-emerald-500'}`}
+                              >
+                                  <CheckCircle2 size={16} className={isCompleted ? "animate-in zoom-in" : ""} />
+                              </button>
+                              <h3 className={`font-black text-lg ${isCompleted ? 'text-emerald-800' : (isRamadan ? 'text-white' : groupColor.text)}`}>
+                                  {group.name}
+                              </h3>
+                          </div>
+
                           <div className="flex items-center gap-1">
-                            <span className={`text-xs font-bold px-2 py-1 rounded-lg bg-white/50 backdrop-blur-sm ${isRamadan ? 'text-slate-800' : groupColor.text}`}>
-                              {groupStudents.length} طلاب
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded-lg bg-white/50 backdrop-blur-sm ${isCompleted ? 'text-emerald-700' : (isRamadan ? 'text-slate-800' : groupColor.text)}`}>
+                              {groupStudents.length}
                             </span>
-                            <button onClick={() => handleDeleteGroup(group.id)} className="p-1.5 hover:bg-white/50 rounded-lg text-rose-600 transition-colors">
+                            <button onClick={() => handleDeleteGroup(group.id)} className="p-1.5 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors" title="حذف المجموعة">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
 
-                        <div className="p-3 flex-1 min-h-[150px] bg-slate-50/30">
+                        <div className={`p-3 flex-1 min-h-[150px] ${isCompleted ? 'bg-emerald-50/30' : 'bg-slate-50/30'}`}>
                           <div className="flex flex-col gap-2">
                             {groupStudents.map(s => (
-                              <div key={s.id} className={`p-2 rounded-xl text-xs font-bold border flex justify-between items-center group/item transition-all ${isRamadan ? 'bg-white/10 border-white/10' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                              <div key={s.id} className={`p-2 rounded-xl text-xs font-bold border flex justify-between items-center group/item transition-all ${isCompleted ? 'bg-white/40 border-emerald-200/50 text-emerald-900/60 line-through' : (isRamadan ? 'bg-white/10 border-white/10' : 'bg-white border-slate-200 hover:border-slate-300')}`}>
                                 <span>{getShortName(s.name)}</span>
-                                <button onClick={() => removeStudentFromGroup(s.id, group.id)} className="p-1 rounded-md text-rose-500 opacity-0 group-hover/item:opacity-100 hover:bg-rose-100 transition-all" title="إزالة من المجموعة">
-                                  <UserMinus className="w-3 h-3" />
-                                </button>
+                                {!isCompleted && (
+                                    <button onClick={() => removeStudentFromGroup(s.id, group.id)} className="p-1 rounded-md text-rose-500 opacity-0 group-hover/item:opacity-100 hover:bg-rose-100 transition-all" title="إزالة من المجموعة">
+                                      <UserMinus className="w-3 h-3" />
+                                    </button>
+                                )}
                               </div>
                             ))}
                           </div>
                         </div>
                         
-                        {/* زر فتح الإضافة الجماعية */}
-                        <div className="p-3 border-t bg-white">
-                          <button 
-                            onClick={() => openAssignModal(group.id)}
-                            className={`w-full py-2.5 rounded-xl border-2 border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-colors ${isRamadan ? 'border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400'}`}
-                          >
-                            <UserPlus className="w-4 h-4" /> إضافة طلاب للمجموعة
-                          </button>
-                        </div>
+                        {/* زر فتح الإضافة الجماعية يختفي إذا اكتملت المهمة لتجنب التعديل العشوائي */}
+                        {!isCompleted && (
+                            <div className="p-3 border-t bg-white">
+                              <button 
+                                onClick={() => openAssignModal(group.id)}
+                                className={`w-full py-2.5 rounded-xl border-2 border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-colors ${isRamadan ? 'border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400'}`}
+                              >
+                                <UserPlus className="w-4 h-4" /> إضافة طلاب
+                              </button>
+                            </div>
+                        )}
                       </div>
                     );
                   })}
