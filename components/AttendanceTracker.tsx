@@ -207,7 +207,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         {/* ================= FIXED HEADER ================= */}
         {/* 🚀 إضافة الشفافية الزجاجية (iOS Style) للهيدر بدون Blur */}
             <header 
-                className={`pt-10 pb-6 px-4 md:pt-14 md:pb-8 md:px-6 md:pl-40 shadow-lg relative z-20 -mx-4 -mt-4 transition-all duration-500 ${isRamadan ? 'bg-white/5 border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+                className={`fixed top-0 left-0 right-0 pt-10 pb-4 px-4 md:pt-14 md:pb-8 md:px-6 md:pl-40 shadow-lg z-20 transition-all duration-500 ${isRamadan ? 'bg-[#0f172a] border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
                 style={{ WebkitAppRegion: 'drag' } as any}
             >
                 <div className="flex justify-between items-center gap-3 mb-5">
@@ -258,23 +258,23 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 </div>
 
                 <div className="space-y-2 mb-1 px-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-2">
-                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-1">
+                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
                         {availableGrades.map(g => (
-                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
+                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
                         ))}
                         {visibleClasses.map(c => (
-                            <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
+                            <button key={c} onClick={() => setClassFilter(c)} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
                         ))}
                     </div>
                 </div>
             </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
-            <div className="w-full h-[280px] shrink-0 md:h-0"></div>
+        {/* تم تعديل pt لتجنب التداخل مع الهيدر وتقليل الفراغ العلوي */}
+        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-[260px] md:pt-[280px]">
 
-            <div className="-mt-4 relative z-10 px-2">
+            <div className="relative z-10 px-2 mt-2">
                 <div className="mb-4">
                     <div className="flex justify-between items-center gap-2 text-center">
                         <button onClick={() => markAll('present')} className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500/10 border-emerald-400/30' : 'bg-emerald-50 border-emerald-100'}`}>
@@ -293,46 +293,45 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 </div>
 
                 {filteredStudents.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
+                    /* تم تغيير الشبكة لتكون 3 أعمدة (أو أكثر على الشاشات الكبيرة) */
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                         {filteredStudents.map(student => {
                             const status = getStatus(student);
                             return (
                                 /* 🚀 البطاقات الزجاجية الشفافة بدون Blur السريعة جداً */
-                                <div key={student.id} className={`rounded-[1.5rem] border-2 flex flex-col items-center overflow-hidden transition-all duration-200 ${isRamadan ? 'bg-white/5 hover:bg-white/10' : 'bg-white'} ${
+                                <div key={student.id} className={`rounded-2xl border flex flex-col items-center overflow-hidden transition-all duration-200 ${isRamadan ? 'bg-white/5 hover:bg-white/10' : 'bg-white'} ${
                                     status === 'present' ? (isRamadan ? 'border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.15)]' : 'border-emerald-400') : 
                                     status === 'absent' ? (isRamadan ? 'border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.15)]' : 'border-red-400') : 
                                     status === 'late' ? (isRamadan ? 'border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]' : 'border-amber-400') :
                                     status === 'truant' ? (isRamadan ? 'border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.15)]' : 'border-purple-400') :
-                                    (isRamadan ? 'border-white/10 shadow-sm' : 'border-transparent shadow-sm')
+                                    (isRamadan ? 'border-white/10 shadow-sm' : 'border-slate-200 shadow-sm')
                                 }`}>
-                                    <div className="p-4 flex flex-col items-center w-full">
-                                        <StudentAvatar gender={student.gender} className="w-16 h-16" />
-                                        <h3 className={`font-bold text-sm text-center line-clamp-1 w-full mt-3 ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{student.name}</h3>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 font-bold ${isRamadan ? 'bg-white/5 text-indigo-200 border border-white/10' : 'bg-slate-100 text-slate-400'}`}>{student.classes[0]}</span>
+                                    <div className="p-2 flex flex-col items-center w-full">
+                                        <StudentAvatar gender={student.gender} className="w-12 h-12 border-2 border-white/10" />
+                                        
+                                        {/* ✅ تم حذف line-clamp-1 وإضافة break-words والسماح بالالتفاف مع تصغير الخط */}
+                                        <h3 className={`font-bold text-[10px] leading-[1.2] text-center break-words w-full mt-2 min-h-[25px] flex items-center justify-center ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{student.name}</h3>
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-md mt-1 font-bold ${isRamadan ? 'bg-white/5 text-indigo-200 border border-white/10' : 'bg-slate-100 text-slate-500'}`}>{student.classes[0]}</span>
                                     </div>
 
                                     <div className={`flex w-full border-t divide-x divide-x-reverse ${isRamadan ? 'border-white/10 divide-white/10' : 'border-slate-100 divide-slate-100'}`}>
                                         
-                                        <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? (isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-emerald-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✓</div>
-                                            <span className="text-[10px] font-bold">حضور</span>
+                                        <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? (isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-emerald-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✓</div>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
-                                            <span className="text-[10px] font-bold">غياب</span>
+                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`text-xs opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
-                                            <span className="text-[10px] font-bold">تأخر</span>
+                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`text-[10px] opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-6 h-6 flex items-center justify-center`}>
-                                                <DoorOpen className={`w-4 h-4 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
+                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-5 h-5 flex items-center justify-center`}>
+                                                <DoorOpen className={`w-3.5 h-3.5 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
                                             </div>
-                                            <span className="text-[10px] font-bold">تسرب</span>
                                         </button>
 
                                     </div>
