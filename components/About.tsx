@@ -24,7 +24,7 @@ const About: React.FC = () => {
       
       <h1 className={`text-4xl font-black mb-1 tracking-tighter transition-colors ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق راصد</h1>
       <p className={`px-4 py-1 rounded-full font-black text-[10px] mb-8 border-none shadow-sm transition-colors ${isRamadan ? 'text-indigo-200 bg-white/10' : 'text-slate-500 bg-white'}`}>
-        V 4.3.2 • الإصدار الرسمي المعتمد
+        V 4.4.1 • الإصدار الرسمي المعتمد
       </p>
       
       <div className="max-w-2xl w-full space-y-6">
