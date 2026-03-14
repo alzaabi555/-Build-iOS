@@ -50,12 +50,43 @@ body {
 }
 
 /* --- SCROLLBARS --- */
-.custom-scrollbar { overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+/* ================= إعدادات التمرير الأساسية (لا تغيير هنا) ================= */
+.custom-scrollbar { 
+  overflow-y: auto; 
+  touch-action: pan-y; 
+  -webkit-overflow-scrolling: touch; 
+}
+
+/* ================= 1. تكبير المساحة الفعلية (السر هنا) ================= */
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 14px; /* كبرنا المساحة التي يلتقطها الماوس لتكون مريحة جداً */
+  height: 14px; 
+}
+
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+
+/* ================= 2. شكل الشريط (الخدعة البصرية) ================= */
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background-color: #cbd5e1; 
+  border-radius: 10px; 
+  /* نصنع إطاراً شفافاً حول اللون ليظل يبدو نحيفاً للعين (حوالي 6px) رغم أن مساحة النقر 14px */
+  border: 4px solid transparent; 
+  background-clip: padding-box; 
+}
+
+/* ================= 3. تأثير التفاعل عند لمس الماوس ================= */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background-color: #94a3b8; 
+  /* نقلل الإطار الشفاف قليلاً لينتفخ اللون ويشعر المستخدم أنه أمسك به */
+  border: 3px solid transparent; 
+}
+
+/* إخفاء الشريط بالكامل للقوائم الأفقية (لا تغيير هنا) */
+.no-scrollbar::-webkit-scrollbar { 
+  display: none; 
+}
 
 /* --- SOFT GLASS CARDS (Minimalist style) --- */
 .glass-heavy {
