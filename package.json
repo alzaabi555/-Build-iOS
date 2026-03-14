@@ -1,8 +1,8 @@
 {
   "name": "student-manager-app",
-  "version": "4.1.9",
+  "version": "4.4.1",
   "homepage": "./",
-  "description": "تطبيق راصد لإدارة حضور وغياب الطلاب - نسخة الوندوز المستقلة",
+  "description": "تطبيق راصد لإدارة حضور وغياب الطلاب - نسخة الاندرويد والايفون المستقلة",
   "author": "Mohammed Al-Zaabi",
   "main": "electron/main.js",
   "repository": {
@@ -56,7 +56,7 @@
   },
   "build": {
     "appId": "com.madrasati.app",
-    "productName": "راصد",
+    "productName": "تطبيق راصد",
     "npmRebuild": false,
     "directories": {
       "output": "dist"
@@ -68,16 +68,34 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "icon.png",
-      "requestedExecutionLevel": "asInvoker"
+      "target": [
+        "nsis",
+        "appx"
+      ],
+      "icon": "icon.png"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "راصد"
+      "shortcutName": "راصد",
+      "language": "1025",
+      "displayLanguageSelector": false,
+      "installerSidebar":"assets/sidebar.bmp",
+      "uninstallerSidebar":"assets/sidebar.bmp",
+      "artifactName": "Rased-Setup.${ext}"
+    },
+    "appx": {
+      "applicationId": "RasedApp",
+      "identityName": "alzaabi555.Rased555",
+      "publisher": "CN=83F2A458-642A-4D83-9CE8-5F30B93D4CC3",
+      "publisherDisplayName": "alzaabi555",
+      "languages": [
+        "ar-SA",
+        "en-US"
+      ]
     },
     "protocols": [
       {
@@ -91,7 +109,7 @@
       {
         "provider": "github",
         "owner": "alzaabi555",
-        "repo": "desktop-build",
+        "repo": "desktop-build-555",
         "releaseType": "release"
       }
     ]
