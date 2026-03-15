@@ -280,7 +280,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 else { if (height > MAX_SIZE) { width = (width * MAX_SIZE) / height; height = MAX_SIZE; } }
                 canvas.width = width; canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                const compressedBase64 = canvas.toDataURL('image/png');
                 setter(compressedBase64);
             };
             img.src = reader.result as string;
