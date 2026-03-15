@@ -234,6 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // الحفظ في localStorage للإعدادات الخفيفة فقط
       try {
+        localStorage.setItem('lastLocalUpdate', Date.now().toString()); // 👈 ✅ تم زرع الختم الزمني هنا!
         localStorage.setItem('teacherName', teacherInfo.name || '');
         localStorage.setItem('schoolName', teacherInfo.school || '');
         localStorage.setItem('subjectName', teacherInfo.subject || '');
