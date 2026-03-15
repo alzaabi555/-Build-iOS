@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Save, AlertTriangle, FileJson, Trash2, 
-  Download, RefreshCw, Loader2, Zap, Database, ArrowRight, Cloud, CheckCircle, XCircle 
+  Download, RefreshCw, Loader2, Zap, Database, ArrowRight, Cloud, CloudUpload, CloudDownload, CheckCircle, XCircle 
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import Modal from './Modal';
 
 // ⚠️ الرابط السري الخاص بك
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
@@ -67,8 +66,9 @@ const Settings = () => {
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  // حالات أزرار المزامنة المنفصلة
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const [isRamadan] = useState(() => {
       try {
@@ -83,65 +83,85 @@ const Settings = () => {
   }, [teacherInfo]);
 
   // ==========================================
-  // 🚀 محرك المزامنة السحابية (إصدار الحمولات الثقيلة + الختم 0)
+  // 🚀 1. زر رفع البيانات إلى السحابة (Force Push)
   // ==========================================
-  const handleCloudSync = async () => {
-    setIsSyncing(true);
-    setSyncStatus('idle');
-
+  const handleUploadToCloud = async () => {
+    if (!teacherInfo.name) return alert("يرجى إدخال اسم المعلم أولاً في الملف الشخصي.");
+    if (!confirm("هل أنت متأكد أنك تريد رفع بيانات هذا الجهاز ليتم استبدالها في السحابة؟")) return;
+    
+    setIsUploading(true);
     try {
-      if (!teacherInfo.name) {
-        alert("يرجى إدخال اسم المعلم أولاً في الملف الشخصي ليتم استخدامه كمعرف للمزامنة.");
-        setIsSyncing(false);
-        return;
-      }
-
       const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
-
-      let localLastUpdated = Number(localStorage.getItem('lastLocalUpdate'));
-      if (!localLastUpdated) {
-        localLastUpdated = 0; 
-      }
+      // استخدام توقيت جديد جداً لإجبار السيرفر على قبوله
+      const forceTimestamp = Date.now(); 
 
       const recordsToSync = [
-        { id: "tools_data", type: "Tools", data: JSON.stringify(assessmentTools), lastUpdated: localLastUpdated },
-        { id: "groups_data", type: "Groups", data: JSON.stringify(groups || []), lastUpdated: localLastUpdated },
-        { id: "categorizations_data", type: "Categorizations", data: JSON.stringify(categorizations || []), lastUpdated: localLastUpdated },
-        { id: "gradeSettings_data", type: "GradeSettings", data: JSON.stringify(gradeSettings), lastUpdated: localLastUpdated },
-        { id: "classes_data", type: "Classes", data: JSON.stringify(classes), lastUpdated: localLastUpdated },
-        { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: localLastUpdated },
+        { id: "tools_data", type: "Tools", data: JSON.stringify(assessmentTools), lastUpdated: forceTimestamp },
+        { id: "groups_data", type: "Groups", data: JSON.stringify(groups || []), lastUpdated: forceTimestamp },
+        { id: "categorizations_data", type: "Categorizations", data: JSON.stringify(categorizations || []), lastUpdated: forceTimestamp },
+        { id: "gradeSettings_data", type: "GradeSettings", data: JSON.stringify(gradeSettings), lastUpdated: forceTimestamp },
+        { id: "classes_data", type: "Classes", data: JSON.stringify(classes), lastUpdated: forceTimestamp },
+        { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: forceTimestamp },
       ];
 
-      const CHUNK_SIZE = 100;
-      for (let i = 0; i < students.length; i += CHUNK_SIZE) {
-        recordsToSync.push({
-          id: `students_chunk_${i}`, 
-          type: "StudentsChunk", 
-          data: JSON.stringify(students.slice(i, i + CHUNK_SIZE)), 
-          lastUpdated: localLastUpdated 
-        });
+      // تقسيم الطلاب لكتل
+      if (!students || students.length === 0) {
+          recordsToSync.push({ id: "students_chunk_0", type: "StudentsChunk", data: "[]", lastUpdated: forceTimestamp });
+      } else {
+          const CHUNK_SIZE = 100;
+          for (let i = 0; i < students.length; i += CHUNK_SIZE) {
+            recordsToSync.push({
+              id: `students_chunk_${i}`, 
+              type: "StudentsChunk", 
+              data: JSON.stringify(students.slice(i, i + CHUNK_SIZE)), 
+              lastUpdated: forceTimestamp 
+            });
+          }
       }
 
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'sync',
-          teacherPhone: teacherId,
-          records: recordsToSync
-        })
+        body: JSON.stringify({ action: 'sync', teacherPhone: teacherId, records: recordsToSync })
+      });
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert("✅ تم رفع بياناتك إلى السحابة بنجاح!");
+      } else { throw new Error("Server Error"); }
+    } catch (error) {
+      alert("❌ خطأ في الاتصال بالسحابة. تأكد من الإنترنت.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // ==========================================
+  // 📥 2. زر جلب البيانات من السحابة (Force Pull)
+  // ==========================================
+  const handleDownloadFromCloud = async () => {
+    if (!teacherInfo.name) return alert("يرجى إدخال اسم المعلم أولاً للبحث عن بياناته.");
+    if (!confirm("تحذير: جلب البيانات سيقوم باستبدال كافة البيانات في هذا الجهاز ببيانات السحابة. هل أنت متأكد؟")) return;
+
+    setIsDownloading(true);
+    try {
+      const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
+
+      // نرسل مصفوفة فارغة للسيرفر، لكي لا نعدل أي شيء في السحابة، فقط نطلب البيانات
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'sync', teacherPhone: teacherId, records: [] }) // مصفوفة فارغة!
       });
 
       const result = await response.json();
 
-      if (result.status === 'success') {
-        let updatedLocally = false;
-        let shouldUpdateStudents = false;
-        let newStudentsList: any[] = [];
+      if (result.status === 'success' && result.records && result.records.length > 0) {
+        let incomingChunks: any[] = [];
+        let hasData = false;
 
         result.records.forEach((serverRec: any) => {
-          if (serverRec.lastUpdated > localLastUpdated) {
-            updatedLocally = true;
+            hasData = true;
             const parsedData = JSON.parse(serverRec.data);
             
             if (serverRec.id === "tools_data") setAssessmentTools(parsedData);
@@ -151,68 +171,57 @@ const Settings = () => {
             if (serverRec.id === "classes_data") setClasses(parsedData);
             if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
             
-            if (serverRec.type === "StudentsChunk") shouldUpdateStudents = true;
-          }
+            if (serverRec.type === "StudentsChunk") {
+              incomingChunks.push({id: serverRec.id, data: parsedData});
+            }
         });
 
-        if (shouldUpdateStudents) {
-            result.records.forEach((serverRec: any) => {
-                if (serverRec.type === "StudentsChunk") {
-                    newStudentsList = newStudentsList.concat(JSON.parse(serverRec.data));
-                }
-            });
-            setStudents(newStudentsList);
+        if (incomingChunks.length > 0) {
+            incomingChunks.sort((a, b) => a.id.localeCompare(b.id));
+            const mergedStudents = incomingChunks.reduce((acc, chunk) => acc.concat(chunk.data), []);
+            setStudents(mergedStudents);
+        } else if (hasData) {
+            setStudents([]); // إذا كانت السحابة فارغة من الطلاب
         }
 
-        if (updatedLocally) {
-             const maxServerTime = Math.max(...result.records.map((r: any) => r.lastUpdated));
-             localStorage.setItem('lastLocalUpdate', maxServerTime.toString());
+        if (hasData) {
+            alert("✅ تم جلب البيانات من السحابة بنجاح! سيتم تحديث الشاشة.");
+            // حفظ فوري محلي
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            alert("ℹ️ لا توجد بيانات محفوظة في السحابة بهذا الاسم.");
         }
-        
-        setSyncStatus('success');
-        alert(updatedLocally ? "✅ تمت المزامنة بنجاح! تم سحب التحديثات من السحابة." : "✅ تمت المزامنة! بياناتك الحالية هي الأحدث.");
-      } else { throw new Error("فشل المزامنة"); }
+      } else { 
+        alert("ℹ️ لا توجد بيانات في السحابة لهذا المعلم."); 
+      }
     } catch (error) {
-      setSyncStatus('error');
-      alert("❌ حدث خطأ أثناء المزامنة.");
+      alert("❌ خطأ في الاتصال بالسحابة أو السحابة فارغة.");
     } finally {
-      setIsSyncing(false);
-      setTimeout(() => setSyncStatus('idle'), 3000);
+      setIsDownloading(false);
     }
   };
 
+
+  // ✅ الدوال الأساسية للنسخ الاحتياطي
   const handleBackup = async () => {
     setLoading('backup');
     try {
       const dataToSave = {
-        version: '3.8.7',
-        timestamp: new Date().toISOString(),
-        students, classes, hiddenClasses, groups,
-        schedule, periodTimes, teacherInfo,
-        assessmentTools, certificateSettings, categorizations
+        version: '3.8.7', timestamp: new Date().toISOString(),
+        students, classes, hiddenClasses, groups, schedule, periodTimes, 
+        teacherInfo, assessmentTools, certificateSettings, categorizations
       };
-
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
       const jsonString = JSON.stringify(dataToSave, null, 2);
 
       if (Capacitor.isNativePlatform()) {
-        const result = await Filesystem.writeFile({
-          path: fileName,
-          data: jsonString,
-          directory: Directory.Cache,
-          encoding: Encoding.UTF8,
-        });
+        const result = await Filesystem.writeFile({ path: fileName, data: jsonString, directory: Directory.Cache, encoding: Encoding.UTF8 });
         await Share.share({ title: 'نسخة احتياطية - راصد', url: result.uri });
       } else {
         const blob = new Blob([jsonString], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const link = document.createElement('a'); link.href = url; link.download = fileName;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
       }
       alert("✅ تم تصدير النسخة الاحتياطية بنجاح");
     } catch (error) { alert("❌ خطأ في التصدير"); } finally { setLoading(null); }
@@ -221,17 +230,13 @@ const Settings = () => {
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !confirm('سيتم استبدال البيانات الحالية بالملف المختار. هل أنت متأكد؟')) return;
-
     setLoading('restore');
     const reader = new FileReader();
     reader.onload = async (event) => {
         try {
-            const jsonString = event.target?.result as string;
-            const data = JSON.parse(jsonString);
-
+            const data = JSON.parse(event.target?.result as string);
             if (data.students) {
-                setStudents(data.students);
-                setClasses(data.classes || []);
+                setStudents(data.students); setClasses(data.classes || []);
                 if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
                 if(data.groups) setGroups(data.groups);
                 if(data.categorizations) setCategorizations(data.categorizations);
@@ -241,15 +246,8 @@ const Settings = () => {
                 if(data.assessmentTools) setAssessmentTools(data.assessmentTools);
                 if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
                 
-                localStorage.setItem('lastLocalUpdate', Date.now().toString());
-
                 if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
-                    await Filesystem.writeFile({
-                        path: 'raseddatabasev2.json',
-                        data: jsonString,
-                        directory: Directory.Data,
-                        encoding: Encoding.UTF8
-                    });
+                    await Filesystem.writeFile({ path: 'raseddatabasev2.json', data: event.target?.result as string, directory: Directory.Data, encoding: Encoding.UTF8 });
                 }
                 alert("✅ تم الاستعادة بنجاح! سيتم إعادة تشغيل التطبيق.");
                 setTimeout(() => window.location.reload(), 1000);
@@ -260,7 +258,7 @@ const Settings = () => {
   };
 
   const handleFactoryReset = async () => {
-      if (!confirm('⚠️ تحذير: سيتم حذف كل شيء نهائياً. هل تريد الاستمرار؟')) return;
+      if (!confirm('⚠️ تحذير نهائي: سيتم حذف كل شيء نهائياً. هل تريد الاستمرار؟')) return;
       setLoading('reset');
       try {
           localStorage.clear();
@@ -275,6 +273,7 @@ const Settings = () => {
   return (
     <div className={`flex flex-col h-full pb-24 text-right px-6 pt-12 transition-colors duration-500 relative z-10 ${isRamadan ? 'text-white' : 'bg-[#fcfdfe] text-slate-800'}`} dir="rtl">
       
+      {/* العنوان */}
       <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700 md:pl-40" style={{ WebkitAppRegion: 'drag' } as any}>
         <div style={{ WebkitAppRegion: 'no-drag' } as any}>
             <h1 className={`text-4xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>الإعدادات</h1>
@@ -287,44 +286,68 @@ const Settings = () => {
 
       <div className="space-y-8 max-w-4xl relative z-10 pb-10">
         
-        {/* بطاقة الملف الشخصي - تمت إعادة الحقول هنا */}
-        <div className={`rounded-[2.5rem] p-8 transition-all duration-300 hover:scale-[1.01] border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
+        {/* بطاقة الملف الشخصي */}
+        <div className={`rounded-[2.5rem] p-8 transition-all duration-300 border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
           <div className="flex items-center gap-5 mb-6">
             <Icon3DProfile isRamadan={isRamadan} />
             <div>
                 <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>الملف الشخصي</h2>
-                <p className={`text-xs font-bold ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>تعديل بيانات المعلم في التقارير والشهادات</p>
+                <p className={`text-xs font-bold ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>بيانات المعلم المطبوعة في الشهادات والتقارير</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>اسم المعلم</label>
-                <input value={name} onChange={e => setName(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 focus:border-amber-500 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-100 focus:ring-4 focus:ring-blue-500/5 text-slate-800'}`} placeholder="اسمك الكريم" />
+                <input value={name} onChange={e => setName(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-100 text-slate-800'}`} placeholder="اسمك الكريم" />
             </div>
             <div className="space-y-2">
                 <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>اسم المدرسة</label>
-                <input value={school} onChange={e => setSchool(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 focus:border-amber-500 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-100 focus:ring-4 focus:ring-blue-500/5 text-slate-800'}`} placeholder="اسم المدرسة" />
+                <input value={school} onChange={e => setSchool(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-100 text-slate-800'}`} placeholder="اسم المدرسة" />
             </div>
           </div>
-          <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-900/50' : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-xl shadow-blue-200'}`}>
+          <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-amber-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-xl shadow-blue-200'}`}>
             <Save size={18} /> حفظ البيانات الشخصية
           </button>
         </div>
 
-        {/* 🚀 بطاقة المزامنة السحابية */}
+        {/* 🚀 بطاقة المزامنة السحابية (نظام الزرين المنفصلين) */}
         <div className={`rounded-[2.5rem] p-8 relative overflow-hidden border transition-colors ${isRamadan ? 'bg-[#1e1b4b]/80 border-indigo-500/30 shadow-[0_0_50px_rgba(79,70,229,0.2)]' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 shadow-[0_10px_40px_-15px_rgba(79,70,229,0.15)]'}`}>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+          <div className={`absolute top-0 right-0 w-40 h-40 rounded-full -mr-20 -mt-20 blur-3xl ${isRamadan ? 'bg-indigo-500/20' : 'bg-indigo-400/20'}`}></div>
+          <div className="flex flex-col items-start gap-6 relative z-10">
             <div className="flex items-center gap-5">
               <Icon3DSync isRamadan={isRamadan} />
               <div>
-                <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-indigo-900'}`}>المزامنة السحابية الذكية</h2>
-                <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-indigo-200' : 'text-indigo-600/70'}`}>مزامنة بياناتك بين والاجهزة الاخرى والويندوز بضغطة زر</p>
+                <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-indigo-900'}`}>المزامنة السحابية اليدوية</h2>
+                <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-indigo-200' : 'text-indigo-600/70'}`}>تحكم كامل في إرسال واستقبال بياناتك</p>
               </div>
             </div>
-            <button onClick={handleCloudSync} disabled={isSyncing} className={`w-full md:w-auto px-8 py-4 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${syncStatus === 'success' ? 'bg-emerald-500' : syncStatus === 'error' ? 'bg-rose-500' : 'bg-indigo-600 text-white shadow-indigo-200'}`}>
-              {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : syncStatus === 'success' ? <CheckCircle className="w-5 h-5" /> : syncStatus === 'error' ? <XCircle className="w-5 h-5" /> : <Cloud className="w-5 h-5" />}
-              {isSyncing ? 'جاري المزامنة...' : syncStatus === 'success' ? 'تمت المزامنة بنجاح' : syncStatus === 'error' ? 'فشل الاتصال' : 'مزامنة البيانات الآن'}
-            </button>
+            
+            {/* أزرار التحكم المنفصلة */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+              {/* زر الرفع */}
+              <button 
+                onClick={handleUploadToCloud} 
+                disabled={isUploading || isDownloading} 
+                className={`w-full px-6 py-5 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}
+              >
+                {isUploading ? <Loader2 className="animate-spin w-5 h-5" /> : <CloudUpload className="w-5 h-5" />}
+                {isUploading ? 'جاري الرفع...' : 'رفع البيانات للسحابة (Push)'}
+              </button>
+
+              {/* زر الجلب */}
+              <button 
+                onClick={handleDownloadFromCloud} 
+                disabled={isUploading || isDownloading} 
+                className={`w-full px-6 py-5 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${isRamadan ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200'}`}
+              >
+                {isDownloading ? <Loader2 className="animate-spin w-5 h-5" /> : <CloudDownload className="w-5 h-5" />}
+                {isDownloading ? 'جاري السحب...' : 'جلب البيانات من السحابة (Pull)'}
+              </button>
+            </div>
+            <div className={`text-[10px] font-bold px-2 ${isRamadan ? 'text-indigo-300' : 'text-indigo-700/60'}`}>
+              * استخدم (رفع البيانات) في الجهاز الذي يحتوي على أحدث التعديلات.<br/>
+              * استخدم (جلب البيانات) في الجهاز الذي تريد تحديثه.
+            </div>
           </div>
         </div>
 
@@ -342,7 +365,7 @@ const Settings = () => {
               <Database className="w-9 h-9 mb-3" /> إنشاء نسخة احتياطية
             </button>
             <button onClick={() => fileInputRef.current?.click()} className="group flex flex-col items-center justify-center p-7 rounded-[2.2rem] border-2 border-emerald-100 text-emerald-700 font-black hover:bg-emerald-50 transition-all">
-              <RefreshCw className="w-9 h-9 mb-3" /> استيراد ملف
+              <RefreshCw className="w-9 h-9 mb-3" /> استيراد من ملف
             </button>
           </div>
           <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
@@ -350,8 +373,8 @@ const Settings = () => {
 
         {/* منطقة الخطر */}
         <div className={`rounded-[2.5rem] p-8 border ${isRamadan ? 'bg-rose-950/20 border-rose-900/50' : 'bg-rose-50/30 border-rose-100'}`}>
-          <button onClick={handleFactoryReset} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-2xl font-black hover:bg-rose-50 shadow-sm transition-all">
-            <Trash2 className="w-4 h-4 inline-block ml-2" /> إعادة ضبط المصنع (حذف كل شيء)
+          <button onClick={handleFactoryReset} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-2xl font-black hover:bg-rose-50 shadow-sm transition-all flex items-center justify-center gap-2">
+            <Trash2 size={16} /> إعادة ضبط المصنع (حذف كل شيء)
           </button>
         </div>
 
