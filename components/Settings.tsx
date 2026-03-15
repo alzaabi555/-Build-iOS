@@ -9,7 +9,7 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import Modal from './Modal';
 
-// ⚠️ استبدل هذا الرابط برابط الـ API السري الخاص بك
+// ⚠️ الرابط السري الخاص بك
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
 // ✅ أيقونات 3D فخمة
@@ -83,7 +83,7 @@ const Settings = () => {
   }, [teacherInfo]);
 
   // ==========================================
-  // 🚀 محرك المزامنة السحابية (Heavy Payload Version)
+  // 🚀 محرك المزامنة السحابية (إصدار الحمولات الثقيلة + الختم 0)
   // ==========================================
   const handleCloudSync = async () => {
     setIsSyncing(true);
@@ -98,13 +98,11 @@ const Settings = () => {
 
       const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
 
-      // 2. جلب التوقيت المحلي (التعديل: 0 للأجهزة الجديدة)
       let localLastUpdated = Number(localStorage.getItem('lastLocalUpdate'));
       if (!localLastUpdated) {
         localLastUpdated = 0; 
       }
 
-      // 3. تجهيز الكبسولات الأساسية
       const recordsToSync = [
         { id: "tools_data", type: "Tools", data: JSON.stringify(assessmentTools), lastUpdated: localLastUpdated },
         { id: "groups_data", type: "Groups", data: JSON.stringify(groups || []), lastUpdated: localLastUpdated },
@@ -114,7 +112,6 @@ const Settings = () => {
         { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: localLastUpdated },
       ];
 
-      // 🚀 4. تقسيم الطلاب لكتل (Chunks) - كل 100 طالب في صف مستقل
       const CHUNK_SIZE = 100;
       for (let i = 0; i < students.length; i += CHUNK_SIZE) {
         recordsToSync.push({
@@ -173,7 +170,7 @@ const Settings = () => {
         }
         
         setSyncStatus('success');
-        alert(updatedLocally ? "✅ تمت المزامنة بنجاح! تم تحديث بياناتك من السحابة." : "✅ تمت المزامنة! بياناتك الحالية هي الأحدث.");
+        alert(updatedLocally ? "✅ تمت المزامنة بنجاح! تم سحب التحديثات من السحابة." : "✅ تمت المزامنة! بياناتك الحالية هي الأحدث.");
       } else { throw new Error("فشل المزامنة"); }
     } catch (error) {
       setSyncStatus('error');
@@ -184,9 +181,183 @@ const Settings = () => {
     }
   };
 
-  // ... (بقية دوال handleBackup و handleRestore و handleFactoryReset كما هي لديك)
+  const handleBackup = async () => {
+    setLoading('backup');
+    try {
+      const dataToSave = {
+        version: '3.8.7',
+        timestamp: new Date().toISOString(),
+        students, classes, hiddenClasses, groups,
+        schedule, periodTimes, teacherInfo,
+        assessmentTools, certificateSettings, categorizations
+      };
+
+      const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      const jsonString = JSON.stringify(dataToSave, null, 2);
+
+      if (Capacitor.isNativePlatform()) {
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: jsonString,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+        await Share.share({ title: 'نسخة احتياطية - راصد', url: result.uri });
+      } else {
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      alert("✅ تم تصدير النسخة الاحتياطية بنجاح");
+    } catch (error) { alert("❌ خطأ في التصدير"); } finally { setLoading(null); }
+  };
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !confirm('سيتم استبدال البيانات الحالية بالملف المختار. هل أنت متأكد؟')) return;
+
+    setLoading('restore');
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const jsonString = event.target?.result as string;
+            const data = JSON.parse(jsonString);
+
+            if (data.students) {
+                setStudents(data.students);
+                setClasses(data.classes || []);
+                if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
+                if(data.groups) setGroups(data.groups);
+                if(data.categorizations) setCategorizations(data.categorizations);
+                if(data.schedule) setSchedule(data.schedule);
+                if(data.periodTimes) setPeriodTimes(data.periodTimes);
+                if(data.teacherInfo) setTeacherInfo(data.teacherInfo);
+                if(data.assessmentTools) setAssessmentTools(data.assessmentTools);
+                if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
+                
+                localStorage.setItem('lastLocalUpdate', Date.now().toString());
+
+                if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
+                    await Filesystem.writeFile({
+                        path: 'raseddatabasev2.json',
+                        data: jsonString,
+                        directory: Directory.Data,
+                        encoding: Encoding.UTF8
+                    });
+                }
+                alert("✅ تم الاستعادة بنجاح! سيتم إعادة تشغيل التطبيق.");
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        } catch (error) { alert("❌ الملف غير صالح"); } finally { setLoading(null); }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleFactoryReset = async () => {
+      if (!confirm('⚠️ تحذير: سيتم حذف كل شيء نهائياً. هل تريد الاستمرار؟')) return;
+      setLoading('reset');
+      try {
+          localStorage.clear();
+          if (Capacitor.isNativePlatform() || (window as any).electron) {
+              await Filesystem.deleteFile({ path: 'raseddatabasev2.json', directory: Directory.Data }).catch(() => {});
+          }
+          alert('تم مسح البيانات بنجاح 🚀');
+          window.location.reload();
+      } catch (e) { alert('خطأ في مسح البيانات'); } finally { setLoading(null); }
+  };
 
   return (
-    // ... (نفس الـ JSX الجميل الذي صممناه سابقاً)
+    <div className={`flex flex-col h-full pb-24 text-right px-6 pt-12 transition-colors duration-500 relative z-10 ${isRamadan ? 'text-white' : 'bg-[#fcfdfe] text-slate-800'}`} dir="rtl">
+      
+      <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700 md:pl-40" style={{ WebkitAppRegion: 'drag' } as any}>
+        <div style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <h1 className={`text-4xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>الإعدادات</h1>
+            <p className={`text-sm font-bold mt-2 flex items-center gap-2 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>
+                <span className={`w-8 h-1 rounded-full inline-block ${isRamadan ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
+                تخصيص الهوية وإدارة البيانات السحابية والمحلية
+            </p>
+        </div>
+      </div>
+
+      <div className="space-y-8 max-w-4xl relative z-10 pb-10">
+        
+        {/* بطاقة الملف الشخصي - تمت إعادة الحقول هنا */}
+        <div className={`rounded-[2.5rem] p-8 transition-all duration-300 hover:scale-[1.01] border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
+          <div className="flex items-center gap-5 mb-6">
+            <Icon3DProfile isRamadan={isRamadan} />
+            <div>
+                <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>الملف الشخصي</h2>
+                <p className={`text-xs font-bold ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>تعديل بيانات المعلم في التقارير والشهادات</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>اسم المعلم</label>
+                <input value={name} onChange={e => setName(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 focus:border-amber-500 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-100 focus:ring-4 focus:ring-blue-500/5 text-slate-800'}`} placeholder="اسمك الكريم" />
+            </div>
+            <div className="space-y-2">
+                <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>اسم المدرسة</label>
+                <input value={school} onChange={e => setSchool(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 focus:border-amber-500 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-100 focus:ring-4 focus:ring-blue-500/5 text-slate-800'}`} placeholder="اسم المدرسة" />
+            </div>
+          </div>
+          <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-900/50' : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-xl shadow-blue-200'}`}>
+            <Save size={18} /> حفظ البيانات الشخصية
+          </button>
+        </div>
+
+        {/* 🚀 بطاقة المزامنة السحابية */}
+        <div className={`rounded-[2.5rem] p-8 relative overflow-hidden border transition-colors ${isRamadan ? 'bg-[#1e1b4b]/80 border-indigo-500/30 shadow-[0_0_50px_rgba(79,70,229,0.2)]' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 shadow-[0_10px_40px_-15px_rgba(79,70,229,0.15)]'}`}>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-5">
+              <Icon3DSync isRamadan={isRamadan} />
+              <div>
+                <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-indigo-900'}`}>المزامنة السحابية الذكية</h2>
+                <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-indigo-200' : 'text-indigo-600/70'}`}>مزامنة بياناتك بين والاجهزة الاخرى والويندوز بضغطة زر</p>
+              </div>
+            </div>
+            <button onClick={handleCloudSync} disabled={isSyncing} className={`w-full md:w-auto px-8 py-4 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${syncStatus === 'success' ? 'bg-emerald-500' : syncStatus === 'error' ? 'bg-rose-500' : 'bg-indigo-600 text-white shadow-indigo-200'}`}>
+              {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : syncStatus === 'success' ? <CheckCircle className="w-5 h-5" /> : syncStatus === 'error' ? <XCircle className="w-5 h-5" /> : <Cloud className="w-5 h-5" />}
+              {isSyncing ? 'جاري المزامنة...' : syncStatus === 'success' ? 'تمت المزامنة بنجاح' : syncStatus === 'error' ? 'فشل الاتصال' : 'مزامنة البيانات الآن'}
+            </button>
+          </div>
+        </div>
+
+        {/* بطاقة النسخ المحلي */}
+        <div className={`rounded-[2.5rem] p-8 border ${isRamadan ? 'bg-[#0f172a]/60 border-white/10' : 'bg-white border-emerald-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
+          <div className="flex items-center gap-5 mb-8">
+            <Icon3DDatabase isRamadan={isRamadan} />
+            <div>
+              <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>النسخ الاحتياطي المحلي</h2>
+              <p className={`text-xs font-bold px-2 py-1 rounded-lg mt-1 inline-block ${isRamadan ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>حفظ واستعادة البيانات يدوياً (JSON)</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <button onClick={handleBackup} className="group flex flex-col items-center justify-center p-7 rounded-[2.2rem] bg-gradient-to-br from-emerald-500 to-emerald-700 text-white font-black shadow-lg">
+              <Database className="w-9 h-9 mb-3" /> إنشاء نسخة احتياطية
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="group flex flex-col items-center justify-center p-7 rounded-[2.2rem] border-2 border-emerald-100 text-emerald-700 font-black hover:bg-emerald-50 transition-all">
+              <RefreshCw className="w-9 h-9 mb-3" /> استيراد ملف
+            </button>
+          </div>
+          <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+        </div>
+
+        {/* منطقة الخطر */}
+        <div className={`rounded-[2.5rem] p-8 border ${isRamadan ? 'bg-rose-950/20 border-rose-900/50' : 'bg-rose-50/30 border-rose-100'}`}>
+          <button onClick={handleFactoryReset} className="w-full py-4 border-2 border-rose-100 text-rose-500 rounded-2xl font-black hover:bg-rose-50 shadow-sm transition-all">
+            <Trash2 className="w-4 h-4 inline-block ml-2" /> إعادة ضبط المصنع (حذف كل شيء)
+          </button>
+        </div>
+
+      </div>
+    </div>
   );
 };
+
+export default Settings;
