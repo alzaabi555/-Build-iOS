@@ -105,11 +105,10 @@ const Settings = () => {
       // 1. المعرف الفريد للمعلم (استخدمنا اسم المعلم أو رقمه إن وجد)
       const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
 
-      // 2. جلب التوقيت المحلي لآخر تعديل
+      // 2. جلب التوقيت المحلي لآخر تعديل (تعديل: إذا لم يوجد ختم، نضعه 0 للسماح بالسحب)
       let localLastUpdated = Number(localStorage.getItem('lastLocalUpdate'));
       if (!localLastUpdated) {
-        localLastUpdated = Date.now();
-        localStorage.setItem('lastLocalUpdate', localLastUpdated.toString());
+        localLastUpdated = 0; // ✅ التعديل المطلوب: البدء من الصفر للأجهزة الجديدة
       }
 
       // 3. تغليف البيانات في الكبسولات السحابية (DataJSON)
