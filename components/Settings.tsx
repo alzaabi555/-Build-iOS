@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Save, AlertTriangle, FileJson, Trash2, 
-  Download, RefreshCw, Loader2, Zap, Database, ArrowRight 
+  Download, RefreshCw, Loader2, Zap, Database, ArrowRight, Cloud, CheckCircle, XCircle 
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import Modal from './Modal';
+
+// ⚠️ استبدل هذا الرابط برابط الـ API السري الذي حصلت عليه من Google Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
 // ✅ أيقونات 3D فخمة بتدرجات محسنة تستشعر رمضان
 const Icon3DProfile = ({ isRamadan }: { isRamadan?: boolean }) => (
@@ -37,19 +40,38 @@ const Icon3DDatabase = ({ isRamadan }: { isRamadan?: boolean }) => (
   </svg>
 );
 
+// ✅ مكون المزامنة السحابية (مدمج كأيقونة 3D)
+const Icon3DSync = ({ isRamadan }: { isRamadan?: boolean }) => (
+  <svg viewBox="0 0 100 100" className="w-12 h-12">
+    <defs>
+      <linearGradient id="gradS" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor={isRamadan ? "#c084fc" : "#8b5cf6"} />
+        <stop offset="100%" stopColor={isRamadan ? "#581c87" : "#4c1d95"} />
+      </linearGradient>
+    </defs>
+    <path d="M10 50 Q30 20 50 30 T90 50 Q70 80 50 70 T10 50 Z" fill="url(#gradS)" filter="url(#glow)" />
+    <circle cx="50" cy="50" r="15" fill="#fff" fillOpacity="0.2" />
+  </svg>
+);
+
+
 const Settings = () => {
   const { 
     teacherInfo, setTeacherInfo, students, setStudents, 
     classes, setClasses, schedule, setSchedule, 
     periodTimes, setPeriodTimes, assessmentTools, setAssessmentTools,
     certificateSettings, setCertificateSettings, hiddenClasses, setHiddenClasses,
-    groups, setGroups
+    groups, setGroups, categorizations, setCategorizations, gradeSettings, setGradeSettings
   } = useApp();
 
   const [name, setName] = useState(teacherInfo?.name || '');
   const [school, setSchool] = useState(teacherInfo?.school || '');
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // حالات المزامنة السحابية
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
   const [isRamadan] = useState(() => {
@@ -66,7 +88,95 @@ const Settings = () => {
       setSchool(teacherInfo?.school || '');
   }, [teacherInfo]);
 
-  // ✅ 1. إنشاء نسخة احتياطية
+  // ==========================================
+  // 🚀 محرك المزامنة السحابية (The Cloud Sync Engine)
+  // ==========================================
+  const handleCloudSync = async () => {
+    setIsSyncing(true);
+    setSyncStatus('idle');
+
+    try {
+      if (!teacherInfo.name) {
+        alert("يرجى إدخال اسم المعلم أولاً في الملف الشخصي ليتم استخدامه كمعرف للمزامنة.");
+        setIsSyncing(false);
+        return;
+      }
+
+      // 1. المعرف الفريد للمعلم (استخدمنا اسم المعلم أو رقمه إن وجد)
+      const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
+
+      // 2. جلب التوقيت المحلي لآخر تعديل
+      let localLastUpdated = Number(localStorage.getItem('lastLocalUpdate'));
+      if (!localLastUpdated) {
+        localLastUpdated = Date.now();
+        localStorage.setItem('lastLocalUpdate', localLastUpdated.toString());
+      }
+
+      // 3. تغليف البيانات في الكبسولات السحابية (DataJSON)
+      const recordsToSync = [
+        { id: "students_data", type: "Students", data: JSON.stringify(students), lastUpdated: localLastUpdated },
+        { id: "tools_data", type: "Tools", data: JSON.stringify(assessmentTools), lastUpdated: localLastUpdated },
+        { id: "groups_data", type: "Groups", data: JSON.stringify(groups || []), lastUpdated: localLastUpdated },
+        { id: "categorizations_data", type: "Categorizations", data: JSON.stringify(categorizations || []), lastUpdated: localLastUpdated },
+        { id: "gradeSettings_data", type: "GradeSettings", data: JSON.stringify(gradeSettings), lastUpdated: localLastUpdated },
+        { id: "classes_data", type: "Classes", data: JSON.stringify(classes), lastUpdated: localLastUpdated },
+        { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: localLastUpdated },
+      ];
+
+      // 4. إرسال الكبسولات إلى جوجل شيت
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'sync',
+          teacherPhone: teacherId,
+          records: recordsToSync
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        // 5. استقبال البيانات من السحابة وفك تشفيرها
+        let updatedLocally = false;
+
+        result.records.forEach((serverRec: any) => {
+          // "الأحدث يفوز": إذا كانت السحابة تحمل نسخة أحدث من جهازك، قم بتحديث جهازك!
+          if (serverRec.lastUpdated > localLastUpdated) {
+            const parsedData = JSON.parse(serverRec.data);
+            
+            if (serverRec.id === "students_data") setStudents(parsedData);
+            if (serverRec.id === "tools_data") setAssessmentTools(parsedData);
+            if (serverRec.id === "groups_data") setGroups(parsedData);
+            if (serverRec.id === "categorizations_data") setCategorizations(parsedData);
+            if (serverRec.id === "gradeSettings_data") setGradeSettings(parsedData);
+            if (serverRec.id === "classes_data") setClasses(parsedData);
+            if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
+            
+            // تحديث التوقيت المحلي ليتطابق مع السحابة
+            localStorage.setItem('lastLocalUpdate', serverRec.lastUpdated.toString());
+            updatedLocally = true;
+          }
+        });
+        
+        setSyncStatus('success');
+        alert(updatedLocally ? "✅ تمت المزامنة بنجاح! تم سحب التحديثات من السحابة إلى جهازك." : "✅ تمت المزامنة! بياناتك الحالية هي الأحدث ورفعت للسحابة.");
+      } else {
+        throw new Error("فشل المزامنة من السيرفر");
+      }
+
+    } catch (error) {
+      console.error("Sync Error:", error);
+      setSyncStatus('error');
+      alert("❌ حدث خطأ أثناء المزامنة. تأكد من اتصالك بالإنترنت ومن صحة رابط السكربت.");
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    }
+  };
+
+
+  // ✅ 1. إنشاء نسخة احتياطية محلية
   const handleBackup = async () => {
     setLoading('backup');
     try {
@@ -75,7 +185,7 @@ const Settings = () => {
         timestamp: new Date().toISOString(),
         students, classes, hiddenClasses, groups,
         schedule, periodTimes, teacherInfo,
-        assessmentTools, certificateSettings
+        assessmentTools, certificateSettings, categorizations
       };
 
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -109,7 +219,7 @@ const Settings = () => {
     }
   };
 
-  // ✅ 2. استعادة البيانات
+  // ✅ 2. استعادة البيانات محلياً
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -133,11 +243,15 @@ const Settings = () => {
                 setClasses(data.classes || []);
                 if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
                 if(data.groups) setGroups(data.groups);
+                if(data.categorizations) setCategorizations(data.categorizations);
                 if(data.schedule) setSchedule(data.schedule);
                 if(data.periodTimes) setPeriodTimes(data.periodTimes);
                 if(data.teacherInfo) setTeacherInfo(data.teacherInfo);
                 if(data.assessmentTools) setAssessmentTools(data.assessmentTools);
                 if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
+                
+                // تحديث الختم الزمني ليعتبر هذا التحديث هو الأحدث للسحابة
+                localStorage.setItem('lastLocalUpdate', Date.now().toString());
 
                 // 2. الحفظ الفوري في ملف النظام
                 const isHeavyEnvironment = Capacitor.isNativePlatform() || (window as any).electron !== undefined;
@@ -206,12 +320,12 @@ const Settings = () => {
             <h1 className={`text-4xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>الإعدادات</h1>
             <p className={`text-sm font-bold mt-2 flex items-center gap-2 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>
                 <span className={`w-8 h-1 rounded-full inline-block ${isRamadan ? 'bg-amber-500' : 'bg-blue-500'}`}></span>
-                تخصيص الهوية وإدارة الأمان المحلي
+                تخصيص الهوية وإدارة البيانات السحابية والمحلية
             </p>
         </div>
       </div>
 
-      <div className="space-y-8 max-w-4xl relative z-10">
+      <div className="space-y-8 max-w-4xl relative z-10 pb-10">
         
         {/* بطاقة الملف الشخصي */}
         <div className={`rounded-[2.5rem] p-8 transition-all duration-300 hover:scale-[1.01] border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
@@ -238,18 +352,51 @@ const Settings = () => {
           </button>
         </div>
 
-        {/* بطاقة إدارة البيانات */}
-        <div className={`rounded-[2.5rem] p-8 relative overflow-hidden border transition-colors ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-emerald-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
-          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 blur-3xl ${isRamadan ? 'bg-emerald-500/10' : 'bg-emerald-50/50'}`}></div>
-          <div className="flex items-center gap-5 mb-8 relative z-10">
+
+        {/* 🚀 بطاقة المزامنة السحابية (جديد) */}
+        <div className={`rounded-[2.5rem] p-8 relative overflow-hidden border transition-colors ${isRamadan ? 'bg-[#1e1b4b]/80 backdrop-blur-2xl border-indigo-500/30 shadow-[0_0_50px_rgba(79,70,229,0.2)]' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 shadow-[0_10px_40px_-15px_rgba(79,70,229,0.15)]'}`}>
+          <div className={`absolute top-0 right-0 w-40 h-40 rounded-full -mr-20 -mt-20 blur-3xl ${isRamadan ? 'bg-indigo-500/20' : 'bg-indigo-400/20'}`}></div>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-5">
+              <Icon3DSync isRamadan={isRamadan} />
+              <div>
+                <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-indigo-900'}`}>المزامنة السحابية الذكية</h2>
+                <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-indigo-200' : 'text-indigo-600/70'}`}>مزامنة بياناتك بين الأندرويد والويندوز بضغطة زر</p>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleCloudSync} 
+              disabled={isSyncing}
+              className={`w-full md:w-auto px-8 py-4 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${
+                syncStatus === 'success' ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/30' :
+                syncStatus === 'error' ? 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/30' :
+                isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-900/50' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+              }`}
+            >
+              {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+               syncStatus === 'success' ? <CheckCircle className="w-5 h-5" /> :
+               syncStatus === 'error' ? <XCircle className="w-5 h-5" /> :
+               <Cloud className="w-5 h-5" />}
+              {isSyncing ? 'جاري الاتصال بالسحابة...' : 
+               syncStatus === 'success' ? 'تمت المزامنة بنجاح' :
+               syncStatus === 'error' ? 'فشل الاتصال حاول مجدداً' : 'مزامنة البيانات الآن'}
+            </button>
+          </div>
+        </div>
+
+
+        {/* بطاقة النسخ المحلي */}
+        <div className={`rounded-[2.5rem] p-8 border transition-colors ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-emerald-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
+          <div className="flex items-center gap-5 mb-8">
             <Icon3DDatabase isRamadan={isRamadan} />
             <div>
-              <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>إدارة قاعدة البيانات</h2>
-              <p className={`text-xs font-bold px-2 py-1 rounded-lg mt-1 inline-block ${isRamadan ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>حفظ واستعادة البيانات يدوياً (JSON)</p>
+              <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>النسخ الاحتياطي المحلي</h2>
+              <p className={`text-xs font-bold px-2 py-1 rounded-lg mt-1 inline-block ${isRamadan ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600'}`}>حفظ واستعادة البيانات يدوياً (ملف JSON)</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <button onClick={handleBackup} disabled={loading !== null} className={`group flex flex-col items-center justify-center p-7 rounded-[2.2rem] text-white active:scale-95 transition-all ${isRamadan ? 'bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-lg shadow-emerald-900/50' : 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-2xl shadow-emerald-200'}`}>
               {loading === 'backup' ? <Loader2 className="w-9 h-9 animate-spin mb-3" /> : <Database className="w-9 h-9 mb-3" />}
               <span className="font-black text-sm">إنشاء نسخة احتياطية</span>
