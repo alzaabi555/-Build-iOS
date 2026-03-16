@@ -63,10 +63,12 @@ const Settings = () => {
 
   const [name, setName] = useState(teacherInfo?.name || '');
   const [school, setSchool] = useState(teacherInfo?.school || '');
+  // ✅ إضافة حالة الرقم المدني
+  const [civilId, setCivilId] = useState(teacherInfo?.civilId || ''); 
+  
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // حالات أزرار المزامنة المنفصلة
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -80,19 +82,22 @@ const Settings = () => {
   useEffect(() => {
       setName(teacherInfo?.name || '');
       setSchool(teacherInfo?.school || '');
+      setCivilId(teacherInfo?.civilId || '');
   }, [teacherInfo]);
 
   // ==========================================
-  // 🚀 1. زر رفع البيانات إلى السحابة (Force Push)
+  // 🚀 1. زر الرفع المباشر (اعتماداً على الرقم المدني)
   // ==========================================
   const handleUploadToCloud = async () => {
-    if (!teacherInfo.name) return alert("يرجى إدخال اسم المعلم أولاً في الملف الشخصي.");
+    // ✅ الفحص الآن على الرقم المدني
+    if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً في الملف الشخصي وحفظه.");
     if (!confirm("هل أنت متأكد أنك تريد رفع بيانات هذا الجهاز ليتم استبدالها في السحابة؟")) return;
     
     setIsUploading(true);
     try {
-      const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
-      // استخدام توقيت جديد جداً لإجبار السيرفر على قبوله
+      // ✅ استخدام الرقم المدني كمعرف فريد ومطلق
+      const cleanId = teacherInfo.civilId.trim();
+      const teacherUniqueId = "id_" + cleanId;
       const forceTimestamp = Date.now(); 
 
       const recordsToSync = [
@@ -104,7 +109,6 @@ const Settings = () => {
         { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: forceTimestamp },
       ];
 
-      // تقسيم الطلاب لكتل
       if (!students || students.length === 0) {
           recordsToSync.push({ id: "students_chunk_0", type: "StudentsChunk", data: "[]", lastUpdated: forceTimestamp });
       } else {
@@ -122,7 +126,7 @@ const Settings = () => {
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'sync', teacherPhone: teacherId, records: recordsToSync })
+        body: JSON.stringify({ action: 'sync', teacherPhone: teacherUniqueId, records: recordsToSync })
       });
 
       const result = await response.json();
@@ -137,21 +141,23 @@ const Settings = () => {
   };
 
   // ==========================================
-  // 📥 2. زر جلب البيانات من السحابة (Force Pull)
+  // 📥 2. زر الجلب المباشر (اعتماداً على الرقم المدني)
   // ==========================================
   const handleDownloadFromCloud = async () => {
-    if (!teacherInfo.name) return alert("يرجى إدخال اسم المعلم أولاً للبحث عن بياناته.");
+    // ✅ الفحص الآن على الرقم المدني
+    if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً وحفظه للبحث عن بياناتك.");
     if (!confirm("تحذير: جلب البيانات سيقوم باستبدال كافة البيانات في هذا الجهاز ببيانات السحابة. هل أنت متأكد؟")) return;
 
     setIsDownloading(true);
     try {
-      const teacherId = "teacher_" + teacherInfo.name.replace(/\s+/g, '_');
+      // ✅ استخدام الرقم المدني للبحث في السحابة
+      const cleanId = teacherInfo.civilId.trim();
+      const teacherUniqueId = "id_" + cleanId;
 
-      // نرسل مصفوفة فارغة للسيرفر، لكي لا نعدل أي شيء في السحابة، فقط نطلب البيانات
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'sync', teacherPhone: teacherId, records: [] }) // مصفوفة فارغة!
+        body: JSON.stringify({ action: 'sync', teacherPhone: teacherUniqueId, records: [] }) 
       });
 
       const result = await response.json();
@@ -162,37 +168,41 @@ const Settings = () => {
 
         result.records.forEach((serverRec: any) => {
             hasData = true;
-            const parsedData = JSON.parse(serverRec.data);
-            
-            if (serverRec.id === "tools_data") setAssessmentTools(parsedData);
-            if (serverRec.id === "groups_data") setGroups(parsedData);
-            if (serverRec.id === "categorizations_data") setCategorizations(parsedData);
-            if (serverRec.id === "gradeSettings_data") setGradeSettings(parsedData);
-            if (serverRec.id === "classes_data") setClasses(parsedData);
-            if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
-            
-            if (serverRec.type === "StudentsChunk") {
-              incomingChunks.push({id: serverRec.id, data: parsedData});
-            }
+            try {
+                const parsedData = JSON.parse(serverRec.data);
+                
+                if (serverRec.id === "tools_data") setAssessmentTools(parsedData);
+                if (serverRec.id === "groups_data") setGroups(parsedData);
+                if (serverRec.id === "categorizations_data") setCategorizations(parsedData);
+                if (serverRec.id === "gradeSettings_data") setGradeSettings(parsedData);
+                if (serverRec.id === "classes_data") setClasses(parsedData);
+                if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
+                
+                if (serverRec.type === "StudentsChunk") {
+                  incomingChunks.push({id: serverRec.id, data: parsedData});
+                }
+            } catch (e) { console.error("Error parsing", e); }
         });
 
         if (incomingChunks.length > 0) {
-            incomingChunks.sort((a, b) => a.id.localeCompare(b.id));
+            incomingChunks.sort((a, b) => {
+                const numA = parseInt(a.id.replace('students_chunk_', ''));
+                const numB = parseInt(b.id.replace('students_chunk_', ''));
+                return numA - numB;
+            });
             const mergedStudents = incomingChunks.reduce((acc, chunk) => acc.concat(chunk.data), []);
             setStudents(mergedStudents);
         } else if (hasData) {
-            setStudents([]); // إذا كانت السحابة فارغة من الطلاب
+            setStudents([]); 
         }
 
         if (hasData) {
-            alert("✅ تم جلب البيانات من السحابة بنجاح! سيتم تحديث الشاشة.");
-            // حفظ فوري محلي
-            setTimeout(() => window.location.reload(), 1500);
+            alert("✅ تم جلب البيانات من السحابة بنجاح! تم تحديث الشاشة.");
         } else {
-            alert("ℹ️ لا توجد بيانات محفوظة في السحابة بهذا الاسم.");
+            alert("ℹ️ لا توجد بيانات محفوظة في السحابة بهذا الرقم.");
         }
       } else { 
-        alert("ℹ️ لا توجد بيانات في السحابة لهذا المعلم."); 
+        alert("ℹ️ لا توجد بيانات في السحابة مرتبطة بهذا الرقم المدني."); 
       }
     } catch (error) {
       alert("❌ خطأ في الاتصال بالسحابة أو السحابة فارغة.");
@@ -200,7 +210,6 @@ const Settings = () => {
       setIsDownloading(false);
     }
   };
-
 
   // ✅ الدوال الأساسية للنسخ الاحتياطي
   const handleBackup = async () => {
@@ -286,16 +295,21 @@ const Settings = () => {
 
       <div className="space-y-8 max-w-4xl relative z-10 pb-10">
         
-        {/* بطاقة الملف الشخصي */}
+        {/* بطاقة الملف الشخصي - تحديث لتشمل 3 حقول */}
         <div className={`rounded-[2.5rem] p-8 transition-all duration-300 border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
           <div className="flex items-center gap-5 mb-6">
             <Icon3DProfile isRamadan={isRamadan} />
             <div>
                 <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>الملف الشخصي</h2>
-                <p className={`text-xs font-bold ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>بيانات المعلم المطبوعة في الشهادات والتقارير</p>
+                <p className={`text-xs font-bold ${isRamadan ? 'text-indigo-200/70' : 'text-slate-400'}`}>الرقم المدني هو مفتاحك السري للمزامنة السحابية</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+                <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>الرقم المدني / الوظيفي 🔑</label>
+                <input type="text" value={civilId} onChange={e => setCivilId(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-black transition-all ${isRamadan ? 'bg-indigo-900/50 border-indigo-500/50 text-white placeholder:text-indigo-300 focus:border-amber-400' : 'bg-indigo-50 border-indigo-200 text-indigo-900 focus:ring-4 focus:ring-indigo-500/10'}`} placeholder="أدخل رقمك المميز" />
+            </div>
             <div className="space-y-2">
                 <label className={`text-[10px] font-black mr-2 uppercase ${isRamadan ? 'text-indigo-300' : 'text-slate-400'}`}>اسم المعلم</label>
                 <input value={name} onChange={e => setName(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-100 text-slate-800'}`} placeholder="اسمك الكريم" />
@@ -305,7 +319,8 @@ const Settings = () => {
                 <input value={school} onChange={e => setSchool(e.target.value)} className={`w-full rounded-2xl px-5 py-4 border outline-none text-sm font-bold transition-all ${isRamadan ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-100 text-slate-800'}`} placeholder="اسم المدرسة" />
             </div>
           </div>
-          <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-amber-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-xl shadow-blue-200'}`}>
+
+          <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school, civilId })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-amber-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-xl shadow-blue-200'}`}>
             <Save size={18} /> حفظ البيانات الشخصية
           </button>
         </div>
@@ -322,7 +337,6 @@ const Settings = () => {
               </div>
             </div>
             
-            {/* أزرار التحكم المنفصلة */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
               {/* زر الرفع */}
               <button 
