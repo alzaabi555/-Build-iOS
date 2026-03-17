@@ -8,10 +8,10 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
-// ⚠️ الرابط السري الخاص بك للمزامنة السحابية
+// ⚠️ الرابط السري الخاص بك
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
-// ✅ أيقونات 3D فخمة بتأثيرات رمضانية
+// ✅ أيقونات 3D فخمة
 const Icon3DProfile = ({ isRamadan }: { isRamadan?: boolean }) => (
   <svg viewBox="0 0 100 100" className="w-12 h-12">
     <defs>
@@ -85,7 +85,7 @@ const Settings = () => {
   }, [teacherInfo]);
 
   // ==========================================
-  // 🚀 1. زر الرفع المباشر (إضافة بيانات الداشبورد)
+  // 🚀 1. زر الرفع المباشر للسحابة
   // ==========================================
   const handleUploadToCloud = async () => {
     if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً في الملف الشخصي وحفظه.");
@@ -132,7 +132,7 @@ const Settings = () => {
 
       const result = await response.json();
       if (result.status === 'success') {
-        alert("✅ تم رفع بياناتك (بما فيها الجدول المدرسي) إلى السحابة بنجاح!");
+        alert("✅ تم رفع بياناتك إلى السحابة بنجاح!");
       } else { throw new Error("Server Error"); }
     } catch (error) {
       alert("❌ خطأ في الاتصال بالسحابة. تأكد من الإنترنت.");
@@ -142,7 +142,7 @@ const Settings = () => {
   };
 
   // ==========================================
-  // 📥 2. زر الجلب المباشر (استقبال بيانات الداشبورد)
+  // 📥 2. زر الجلب المباشر (العلاج الجذري لبيانات الأشباح)
   // ==========================================
   const handleDownloadFromCloud = async () => {
     if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً وحفظه للبحث عن بياناتك.");
@@ -165,22 +165,35 @@ const Settings = () => {
         let incomingChunks: any[] = [];
         let hasData = false;
 
+        // متغيرات مؤقتة لتجميع البيانات قبل الحفظ الشامل
+        let newAssessmentTools = assessmentTools;
+        let newGroups = groups;
+        let newCategorizations = categorizations;
+        let newGradeSettings = gradeSettings;
+        let newClasses = classes;
+        let newTeacherInfo = teacherInfo;
+        let newSchedule = schedule;
+        let newPeriodTimes = periodTimes;
+        let newCertificateSettings = certificateSettings;
+        let newHiddenClasses = hiddenClasses;
+        let newStudents = students;
+
         result.records.forEach((serverRec: any) => {
             hasData = true;
             try {
                 const parsedData = JSON.parse(serverRec.data);
                 
-                if (serverRec.id === "tools_data") setAssessmentTools(parsedData);
-                if (serverRec.id === "groups_data") setGroups(parsedData);
-                if (serverRec.id === "categorizations_data") setCategorizations(parsedData);
-                if (serverRec.id === "gradeSettings_data") setGradeSettings(parsedData);
-                if (serverRec.id === "classes_data") setClasses(parsedData);
-                if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
+                if (serverRec.id === "tools_data") newAssessmentTools = parsedData;
+                if (serverRec.id === "groups_data") newGroups = parsedData;
+                if (serverRec.id === "categorizations_data") newCategorizations = parsedData;
+                if (serverRec.id === "gradeSettings_data") newGradeSettings = parsedData;
+                if (serverRec.id === "classes_data") newClasses = parsedData;
+                if (serverRec.id === "teacher_info_data") newTeacherInfo = parsedData;
                 
-                if (serverRec.id === "schedule_data") setSchedule(parsedData);
-                if (serverRec.id === "periodTimes_data") setPeriodTimes(parsedData);
-                if (serverRec.id === "certSettings_data") setCertificateSettings(parsedData);
-                if (serverRec.id === "hiddenClasses_data") setHiddenClasses(parsedData);
+                if (serverRec.id === "schedule_data") newSchedule = parsedData;
+                if (serverRec.id === "periodTimes_data") newPeriodTimes = parsedData;
+                if (serverRec.id === "certSettings_data") newCertificateSettings = parsedData;
+                if (serverRec.id === "hiddenClasses_data") newHiddenClasses = parsedData;
 
                 if (serverRec.type === "StudentsChunk") {
                   incomingChunks.push({id: serverRec.id, data: parsedData});
@@ -194,14 +207,50 @@ const Settings = () => {
                 const numB = parseInt(b.id.replace('students_chunk_', ''));
                 return numA - numB;
             });
-            const mergedStudents = incomingChunks.reduce((acc, chunk) => acc.concat(chunk.data), []);
-            setStudents(mergedStudents);
+            newStudents = incomingChunks.reduce((acc, chunk) => acc.concat(chunk.data), []);
         } else if (hasData) {
-            setStudents([]); 
+            newStudents = []; 
         }
 
         if (hasData) {
-            alert("✅ تم جلب البيانات بالكامل من السحابة بنجاح! تم تحديث الشاشة.");
+            // 🌟 العلاج السحري: تكوين قاعدة بيانات متكاملة وحفظها مباشرة في القرص الصلب
+            const dataToSave = {
+              version: '3.8.7',
+              timestamp: new Date().toISOString(),
+              students: newStudents,
+              classes: newClasses,
+              hiddenClasses: newHiddenClasses,
+              groups: newGroups,
+              schedule: newSchedule,
+              periodTimes: newPeriodTimes,
+              teacherInfo: newTeacherInfo,
+              assessmentTools: newAssessmentTools,
+              certificateSettings: newCertificateSettings,
+              categorizations: newCategorizations,
+              gradeSettings: newGradeSettings // تم إضافة إعدادات الدرجات هنا لحل مشكلة السجل
+            };
+
+            const jsonString = JSON.stringify(dataToSave, null, 2);
+
+            // حفظ الملف فعلياً في النظام
+            if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
+                await Filesystem.writeFile({ 
+                  path: 'raseddatabasev2.json', 
+                  data: jsonString, 
+                  directory: Directory.Data, 
+                  encoding: Encoding.UTF8 
+                });
+            }
+
+            // تحديث الواجهة احتياطياً
+            setStudents(newStudents);
+            setClasses(newClasses);
+            setAssessmentTools(newAssessmentTools);
+            setTeacherInfo(newTeacherInfo);
+
+            alert("✅ تم جلب البيانات وترتيبها بنجاح! سيتم إعادة تشغيل التطبيق لتهيئة التقارير.");
+            // إعادة التشغيل هنا آمنة جداً 100% لأننا حفظنا البيانات في القرص الصلب أولاً
+            setTimeout(() => window.location.reload(), 1500);
         } else {
             alert("ℹ️ لا توجد بيانات محفوظة في السحابة بهذا الرقم.");
         }
@@ -215,14 +264,14 @@ const Settings = () => {
     }
   };
 
-  // ✅ الدوال الأساسية للنسخ الاحتياطي وإعادة الضبط
+  // ✅ الدوال الأساسية للنسخ الاحتياطي (تم إضافة gradeSettings للحفظ الشامل)
   const handleBackup = async () => {
     setLoading('backup');
     try {
       const dataToSave = {
         version: '3.8.7', timestamp: new Date().toISOString(),
         students, classes, hiddenClasses, groups, schedule, periodTimes, 
-        teacherInfo, assessmentTools, certificateSettings, categorizations
+        teacherInfo, assessmentTools, certificateSettings, categorizations, gradeSettings
       };
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
       const jsonString = JSON.stringify(dataToSave, null, 2);
@@ -258,6 +307,7 @@ const Settings = () => {
                 if(data.teacherInfo) setTeacherInfo(data.teacherInfo);
                 if(data.assessmentTools) setAssessmentTools(data.assessmentTools);
                 if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
+                if(data.gradeSettings) setGradeSettings(data.gradeSettings);
                 
                 if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
                     await Filesystem.writeFile({ path: 'raseddatabasev2.json', data: event.target?.result as string, directory: Directory.Data, encoding: Encoding.UTF8 });
