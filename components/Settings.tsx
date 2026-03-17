@@ -8,10 +8,10 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
-// ⚠️ الرابط السري الخاص بك
+// ⚠️ الرابط السري الخاص بك للمزامنة السحابية
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
-// ✅ أيقونات 3D فخمة
+// ✅ أيقونات 3D فخمة بتأثيرات رمضانية
 const Icon3DProfile = ({ isRamadan }: { isRamadan?: boolean }) => (
   <svg viewBox="0 0 100 100" className="w-12 h-12">
     <defs>
@@ -63,7 +63,6 @@ const Settings = () => {
 
   const [name, setName] = useState(teacherInfo?.name || '');
   const [school, setSchool] = useState(teacherInfo?.school || '');
-  // ✅ إضافة حالة الرقم المدني
   const [civilId, setCivilId] = useState(teacherInfo?.civilId || ''); 
   
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
@@ -86,16 +85,14 @@ const Settings = () => {
   }, [teacherInfo]);
 
   // ==========================================
-  // 🚀 1. زر الرفع المباشر (اعتماداً على الرقم المدني)
+  // 🚀 1. زر الرفع المباشر (إضافة بيانات الداشبورد)
   // ==========================================
   const handleUploadToCloud = async () => {
-    // ✅ الفحص الآن على الرقم المدني
     if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً في الملف الشخصي وحفظه.");
     if (!confirm("هل أنت متأكد أنك تريد رفع بيانات هذا الجهاز ليتم استبدالها في السحابة؟")) return;
     
     setIsUploading(true);
     try {
-      // ✅ استخدام الرقم المدني كمعرف فريد ومطلق
       const cleanId = teacherInfo.civilId.trim();
       const teacherUniqueId = "id_" + cleanId;
       const forceTimestamp = Date.now(); 
@@ -107,6 +104,10 @@ const Settings = () => {
         { id: "gradeSettings_data", type: "GradeSettings", data: JSON.stringify(gradeSettings), lastUpdated: forceTimestamp },
         { id: "classes_data", type: "Classes", data: JSON.stringify(classes), lastUpdated: forceTimestamp },
         { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: forceTimestamp },
+        { id: "schedule_data", type: "Schedule", data: JSON.stringify(schedule || {}), lastUpdated: forceTimestamp },
+        { id: "periodTimes_data", type: "PeriodTimes", data: JSON.stringify(periodTimes || []), lastUpdated: forceTimestamp },
+        { id: "certSettings_data", type: "CertSettings", data: JSON.stringify(certificateSettings || {}), lastUpdated: forceTimestamp },
+        { id: "hiddenClasses_data", type: "HiddenClasses", data: JSON.stringify(hiddenClasses || []), lastUpdated: forceTimestamp },
       ];
 
       if (!students || students.length === 0) {
@@ -131,7 +132,7 @@ const Settings = () => {
 
       const result = await response.json();
       if (result.status === 'success') {
-        alert("✅ تم رفع بياناتك إلى السحابة بنجاح!");
+        alert("✅ تم رفع بياناتك (بما فيها الجدول المدرسي) إلى السحابة بنجاح!");
       } else { throw new Error("Server Error"); }
     } catch (error) {
       alert("❌ خطأ في الاتصال بالسحابة. تأكد من الإنترنت.");
@@ -141,16 +142,14 @@ const Settings = () => {
   };
 
   // ==========================================
-  // 📥 2. زر الجلب المباشر (اعتماداً على الرقم المدني)
+  // 📥 2. زر الجلب المباشر (استقبال بيانات الداشبورد)
   // ==========================================
   const handleDownloadFromCloud = async () => {
-    // ✅ الفحص الآن على الرقم المدني
     if (!teacherInfo.civilId) return alert("يرجى إدخال (الرقم المدني/الوظيفي) أولاً وحفظه للبحث عن بياناتك.");
     if (!confirm("تحذير: جلب البيانات سيقوم باستبدال كافة البيانات في هذا الجهاز ببيانات السحابة. هل أنت متأكد؟")) return;
 
     setIsDownloading(true);
     try {
-      // ✅ استخدام الرقم المدني للبحث في السحابة
       const cleanId = teacherInfo.civilId.trim();
       const teacherUniqueId = "id_" + cleanId;
 
@@ -178,6 +177,11 @@ const Settings = () => {
                 if (serverRec.id === "classes_data") setClasses(parsedData);
                 if (serverRec.id === "teacher_info_data") setTeacherInfo(parsedData);
                 
+                if (serverRec.id === "schedule_data") setSchedule(parsedData);
+                if (serverRec.id === "periodTimes_data") setPeriodTimes(parsedData);
+                if (serverRec.id === "certSettings_data") setCertificateSettings(parsedData);
+                if (serverRec.id === "hiddenClasses_data") setHiddenClasses(parsedData);
+
                 if (serverRec.type === "StudentsChunk") {
                   incomingChunks.push({id: serverRec.id, data: parsedData});
                 }
@@ -197,7 +201,7 @@ const Settings = () => {
         }
 
         if (hasData) {
-            alert("✅ تم جلب البيانات من السحابة بنجاح! تم تحديث الشاشة.");
+            alert("✅ تم جلب البيانات بالكامل من السحابة بنجاح! تم تحديث الشاشة.");
         } else {
             alert("ℹ️ لا توجد بيانات محفوظة في السحابة بهذا الرقم.");
         }
@@ -211,7 +215,7 @@ const Settings = () => {
     }
   };
 
-  // ✅ الدوال الأساسية للنسخ الاحتياطي
+  // ✅ الدوال الأساسية للنسخ الاحتياطي وإعادة الضبط
   const handleBackup = async () => {
     setLoading('backup');
     try {
@@ -295,7 +299,7 @@ const Settings = () => {
 
       <div className="space-y-8 max-w-4xl relative z-10 pb-10">
         
-        {/* بطاقة الملف الشخصي - تحديث لتشمل 3 حقول */}
+        {/* بطاقة الملف الشخصي */}
         <div className={`rounded-[2.5rem] p-8 transition-all duration-300 border ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]'}`}>
           <div className="flex items-center gap-5 mb-6">
             <Icon3DProfile isRamadan={isRamadan} />
