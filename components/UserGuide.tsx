@@ -1,18 +1,16 @@
 import React, { useState, useMemo } from 'react';
-// ✅ تم استخدام أيقونات آمنة (Standard Icons) لمنع الأخطاء والشاشة البيضاء
 import {
   Home, Users, Calendar, BarChart, Award, Settings, BookOpen, 
   Download, Menu, X, WifiOff, MessageCircle, FileText, Shield, 
   CheckCircle, PenTool, PieChart, Printer, Save, RefreshCw, 
   Trash2, Share2, MousePointer, User, Bell, File, Clock, Star
 } from 'lucide-react';
-
-// ✅ استيراد آمن للمكتبة لمنع أخطاء التصدير
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { useApp } from '../context/AppContext'; // 🌍 استيراد محرك اللغات
 
 // --- Components ---
 
@@ -49,22 +47,23 @@ const DetailCard: React.FC<DetailCardProps> = ({ icon: Icon, title, desc, detail
 );
 
 const UserGuide: React.FC = () => {
+  const { t, dir } = useApp(); // 🌍 محرك اللغات
   const [activeSection, setActiveSection] = useState('hero');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // ✅ استخدام useMemo للأيقونات الآمنة
+  // 🌍 تحديث الـ Menu Items ليقرأ من الترجمة الديناميكية
   const menuItems = useMemo(
     () => [
-      { id: 'dashboard', label: '1. لوحة القيادة', icon: Home },
-      { id: 'attendance', label: '2. الحضور والغياب', icon: Calendar },
-      { id: 'students', label: '3. إدارة الطلاب', icon: Users },
-      { id: 'grades', label: '4. سجل الدرجات', icon: BarChart },
-      { id: 'knights', label: '5. الفرسان', icon: Award },
-      { id: 'reports', label: '6. التقارير', icon: Printer },
-      { id: 'settings', label: '7. الإعدادات', icon: Settings },
+      { id: 'dashboard', label: t('dashboardMenu'), icon: Home },
+      { id: 'attendance', label: t('attendanceMenu'), icon: Calendar },
+      { id: 'students', label: t('studentsMenu'), icon: Users },
+      { id: 'grades', label: t('gradesMenu'), icon: BarChart },
+      { id: 'knights', label: t('knightsMenu'), icon: Award },
+      { id: 'reports', label: t('reportsMenu'), icon: Printer },
+      { id: 'settings', label: t('settingsMenu'), icon: Settings },
     ],
-    []
+    [t]
   );
 
   const scrollToSection = (id: string) => {
@@ -78,11 +77,10 @@ const UserGuide: React.FC = () => {
     try {
       setIsExporting(true);
 
-      // ✅ تحديد العنصر الداخلي الذي يحتوي على النصوص (وليس الحاوية الخارجية) لضمان تصوير كل شيء
       const element = document.getElementById('guide-content-inner');
       
       if (!element) {
-        alert('لم يتم العثور على محتوى الدليل!');
+        alert(t('alertNoContentFound'));
         return;
       }
 
@@ -93,19 +91,16 @@ const UserGuide: React.FC = () => {
         html2canvas: { 
             scale: 2, 
             useCORS: true, 
-            backgroundColor: '#0f172a', // الخلفية الداكنة
-            scrollY: 0 // مهم جداً لتصوير المحتوى الطويل المخفي
+            backgroundColor: '#0f172a',
+            scrollY: 0 
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       };
 
-      // ✅ استدعاء آمن للمكتبة
       const worker = html2pdf().set(opt).from(element);
 
       if (Capacitor.isNativePlatform()) {
         const pdfBase64 = await worker.output('datauristring');
-        
-        // تنظيف البيانات (إزالة الـ Prefix)
         const base64Data = pdfBase64.split(',')[1];
 
         const result = await Filesystem.writeFile({
@@ -115,30 +110,30 @@ const UserGuide: React.FC = () => {
         });
         
         await Share.share({ 
-            title: 'دليل راصد الشامل', 
+            title: t('exportPdfTitle'), 
             url: result.uri,
-            dialogTitle: 'مشاركة الدليل PDF'
+            dialogTitle: t('exportPdfDialogTitle')
         });
       } else {
-        // للويب
         worker.save();
       }
     } catch (e) {
       console.error("PDF Export Error:", e);
-      alert('حدث خطأ أثناء التصدير. حاول مرة أخرى.');
+      alert(t('pdfErrorMsg'));
     } finally {
       setIsExporting(false);
     }
   };
 
+  // 🌍 التحكم في اتجاه التطبيق بالكامل والانزلاقات
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className={`flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
       {/* Sidebar Navigation */}
       <aside
         className={`
-          fixed inset-y-0 right-0 z-50 w-72 bg-slate-900 border-l border-slate-800 shadow-2xl transform transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 lg:static
+          fixed inset-y-0 ${dir === 'rtl' ? 'right-0 border-l' : 'left-0 border-r'} z-50 w-72 bg-slate-900 border-slate-800 shadow-2xl transform transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : (dir === 'rtl' ? 'translate-x-full' : '-translate-x-full')} lg:translate-x-0 lg:static
         `}
       >
         <div className="h-full flex flex-col">
@@ -147,7 +142,7 @@ const UserGuide: React.FC = () => {
               <div className="bg-indigo-600 p-2 rounded-xl">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <span className="font-black text-xl">دليل راصد</span>
+              <span className="font-black text-xl">{t('rasedGuideTitle')}</span>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white">
               <X size={20} />
@@ -162,7 +157,7 @@ const UserGuide: React.FC = () => {
                 className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-bold transition-all duration-200
                   ${
                     activeSection === item.id
-                      ? 'bg-indigo-600 text-white shadow-lg translate-x-[-4px]'
+                      ? `bg-indigo-600 text-white shadow-lg ${dir === 'rtl' ? 'translate-x-[-4px]' : 'translate-x-[4px]'}`
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
               >
@@ -179,10 +174,10 @@ const UserGuide: React.FC = () => {
               className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-60"
             >
               {isExporting ? (
-                <span className="animate-pulse">جاري الحفظ...</span>
+                <span className="animate-pulse">{t('savingStatus')}</span>
               ) : (
                 <>
-                  <Download size={16} /> تحميل الدليل PDF
+                  <Download size={16} /> {t('downloadPdfBtn')}
                 </>
               )}
             </button>
@@ -193,26 +188,25 @@ const UserGuide: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative scroll-smooth bg-slate-950">
         
-        {/* زر القائمة للموبايل */}
+        {/* Mobile Menu Button */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed top-4 right-4 z-40 p-3 bg-slate-800/80 backdrop-blur rounded-xl text-white shadow-lg lg:hidden border border-slate-700"
+          className={`fixed top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} z-40 p-3 bg-slate-800/80 backdrop-blur rounded-xl text-white shadow-lg lg:hidden border border-slate-700`}
         >
           <Menu size={24} />
         </button>
 
-        {/* ✅ هذا هو الـ ID المهم جداً للتصدير: يجب أن يغلف المحتوى الداخلي فقط */}
-        <div id="guide-content-inner" className="w-full">
+        <div id="guide-content-inner" className="w-full" dir={dir}>
 
             <header id="hero" className="relative pt-20 pb-16 px-6 text-center border-b border-slate-900 bg-slate-950">
               <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold mb-6">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> الإصدار الشامل V4.4.1
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> {t('versionTag')}
               </div>
               <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
-                دليل المستخدم <span className="text-indigo-500">الشامل</span>
+                {t('userGuideComprehensive')} <span className="text-indigo-500">{t('comprehensiveText')}</span>
               </h1>
               <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                كل ما تحتاج معرفته لاحتراف تطبيق راصد. تم تجميع كل التفاصيل الدقيقة والميزات المخفية في هذا المرجع.
+                {t('heroDescription')}
               </p>
             </header>
 
@@ -224,53 +218,37 @@ const UserGuide: React.FC = () => {
                   <div className="bg-indigo-600 p-3 rounded-2xl">
                     <Home className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">1. لوحة القيادة (Dashboard)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec1Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={User}
                     colorClass="bg-indigo-600"
-                    title="الهوية الرسمية (Profile)"
-                    desc="اضغط على صورتك الشخصية في الأعلى لفتح نافذة التعديل."
-                    details={[
-                      'إضافة صورة شخصية: تظهر في الواجهة.',
-                      'إضافة توقيعك (صورة): يظهر تلقائياً في أسفل الشهادات والتقارير.',
-                      'إضافة ختم المدرسة: لتوثيق الشهادات رسمياً.',
-                      'شعار الوزارة: يمكنك رفعه ليظهر في ترويسة التقارير.',
-                    ]}
+                    title={t('sec1Card1Title')}
+                    desc={t('sec1Card1Desc')}
+                    details={[t('sec1Card1Det1'), t('sec1Card1Det2'), t('sec1Card1Det3'), t('sec1Card1Det4')]}
                   />
                   <DetailCard
                     icon={Calendar}
                     colorClass="bg-amber-600"
-                    title="الجدول والخطة (Timeline)"
-                    desc="إدارة وقتك ومهامك بذكاء."
-                    details={[
-                      'الجدول اليومي: يعرض حصص اليوم فقط. الحصة الحالية تظهر بلون مميز مع كلمة (الآن).',
-                      'زر التحضير السريع: بجوار الحصة الحالية يوجد زر ينقلك مباشرة لصفحة الغياب.',
-                      'خطة التقويم: بطاقات شهرية تعرض المهام المطلوبة. الشهر الحالي يظهر بوضوح.',
-                    ]}
+                    title={t('sec1Card2Title')}
+                    desc={t('sec1Card2Desc')}
+                    details={[t('sec1Card2Det1'), t('sec1Card2Det2'), t('sec1Card2Det3')]}
                   />
                   <DetailCard
                     icon={Bell}
                     colorClass="bg-rose-600"
-                    title="شريط التنبيهات (Alert Bar)"
-                    desc="شريط يظهر تلقائياً أسفل الشاشة."
-                    details={[
-                      'يظهر فقط إذا كان هناك مهام تقويم في الشهر الحالي.',
-                      'يذكرك بالمهام العاجلة (مثل: اختبار قصير 1).',
-                      'يمكن إغلاقه يدوياً لجلسة العمل الحالية.',
-                    ]}
+                    title={t('sec1Card3Title')}
+                    desc={t('sec1Card3Desc')}
+                    details={[t('sec1Card3Det1'), t('sec1Card3Det2'), t('sec1Card3Det3')]}
                   />
                   <DetailCard
                     icon={Clock}
                     colorClass="bg-emerald-600"
-                    title="استيراد الجدول (Import)"
-                    desc="من أيقونة الساعة في أعلى الجدول."
-                    details={[
-                      'يمكنك رفع ملف Excel يحتوي على جدولك.',
-                      'أو تعديل توقيت الحصص يدوياً لضبط بداية ونهاية كل حصة.',
-                    ]}
+                    title={t('sec1Card4Title')}
+                    desc={t('sec1Card4Desc')}
+                    details={[t('sec1Card4Det1'), t('sec1Card4Det2')]}
                   />
                 </div>
               </section>
@@ -281,52 +259,33 @@ const UserGuide: React.FC = () => {
                   <div className="bg-emerald-600 p-3 rounded-2xl">
                     <Calendar className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">2. الحضور والغياب (Attendance)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec2Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={CheckCircle}
-                    title="التحضير الجماعي (Bulk Actions)"
-                    desc="ثلاثة أزرار علوية ضخمة تنجز المهمة في ثوانٍ."
-                    details={[
-                      'حضور الكل ✅: يضع علامة حاضر لجميع الطلاب بلمسة واحدة.',
-                      'غياب الكل ❌: مفيد في الأيام التي يغيب فيها الفصل بالكامل.',
-                      'تصفير: لإلغاء التحضير والبدء من جديد.',
-                      'عداد حي: يعرض عدد (الحاضرين، الغائبين، المتأخرين) يتحدث لحظياً.',
-                    ]}
+                    title={t('sec2Card1Title')}
+                    desc={t('sec2Card1Desc')}
+                    details={[t('sec2Card1Det1'), t('sec2Card1Det2'), t('sec2Card1Det3'), t('sec2Card1Det4')]}
                   />
                   <DetailCard
                     icon={MousePointer}
-                    title="بطاقات الطلاب التفاعلية"
-                    desc="كل طالب يظهر في بطاقة مستقلة تتلون بالكامل."
-                    details={[
-                      'إطار أخضر 🟢 = حاضر.',
-                      'إطار أحمر 🔴 = غائب.',
-                      'إطار برتقالي 🟠 = متأخر.',
-                      'إطار بنفسجي 🟣 = تسرب (هروب من الحصة).',
-                      'أزرار تحكم سريعة داخل كل بطاقة لتغيير الحالة بلمسة.',
-                    ]}
+                    title={t('sec2Card2Title')}
+                    desc={t('sec2Card2Desc')}
+                    details={[t('sec2Card2Det1'), t('sec2Card2Det2'), t('sec2Card2Det3'), t('sec2Card2Det4'), t('sec2Card2Det5')]}
                   />
                   <DetailCard
                     icon={MessageCircle}
-                    title="الإشعار الفوري (Smart Notify)"
-                    desc="نظام ذكي يربط الغياب بالتواصل."
-                    details={[
-                      "بمجرد ضغط 'غياب' أو 'تأخر'، يسألك التطبيق: (هل تريد إشعار ولي الأمر؟).",
-                      'زر واتساب: يفتح المحادثة ويرسل رسالة جاهزة.',
-                      'زر SMS: للحالات التي لا تملك واتساب.',
-                    ]}
+                    title={t('sec2Card3Title')}
+                    desc={t('sec2Card3Desc')}
+                    details={[t('sec2Card3Det1'), t('sec2Card3Det2'), t('sec2Card3Det3')]}
                   />
                   <DetailCard
                     icon={Share2}
-                    title="تصدير السجل (Excel)"
-                    desc="زر المشاركة في الأعلى."
-                    details={[
-                      'يولد ملف Excel احترافي لشهر كامل.',
-                      'يحتوي على أيام الشهر وحالة الطالب في كل يوم.',
-                      'يحتوي على إحصائية نهائية لكل طالب.',
-                    ]}
+                    title={t('sec2Card4Title')}
+                    desc={t('sec2Card4Desc')}
+                    details={[t('sec2Card4Det1'), t('sec2Card4Det2'), t('sec2Card4Det3')]}
                   />
                 </div>
               </section>
@@ -337,48 +296,33 @@ const UserGuide: React.FC = () => {
                   <div className="bg-pink-600 p-3 rounded-2xl">
                     <Users className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">3. إدارة الطلاب (Students)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec3Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={Award}
-                    title="القرعة العشوائية (Random Picker)"
-                    desc="أداة لكسر الجمود وضمان العدالة."
-                    details={[
-                      'تختار طالباً عشوائياً من (الحاضرين فقط) وتتجاهل الغائبين.',
-                      'مؤثرات بصرية عند اختيار الفائز.',
-                      'أزرار مباشرة لمنحه درجات أو نقاط تعزيز.',
-                    ]}
+                    title={t('sec3Card1Title')}
+                    desc={t('sec3Card1Desc')}
+                    details={[t('sec3Card1Det1'), t('sec3Card1Det2'), t('sec3Card1Det3')]}
                   />
                   <DetailCard
                     icon={Clock}
-                    title="المؤقت الصفي (Timer)"
-                    desc="لإدارة وقت الأنشطة والامتحانات القصيرة."
-                    details={[
-                      'خيارات جاهزة (1، 3، 5، 10 دقائق).',
-                      'الشاشة يتغير لونها عند اقتراب النهاية.',
-                      'تنبيه عند انتهاء الوقت.',
-                    ]}
+                    title={t('sec3Card2Title')}
+                    desc={t('sec3Card2Desc')}
+                    details={[t('sec3Card2Det1'), t('sec3Card2Det2'), t('sec3Card2Det3')]}
                   />
                   <DetailCard
                     icon={File}
-                    title="الاستيراد الذكي (Import)"
-                    desc="لإضافة مئات الطلاب دفعة واحدة."
-                    details={[
-                      'تحميل قالب Excel منظم.',
-                      'نسخ الأسماء والأرقام إلى القالب.',
-                      'رفع الملف لإنشاء الطلاب تلقائياً.',
-                    ]}
+                    title={t('sec3Card3Title')}
+                    desc={t('sec3Card3Desc')}
+                    details={[t('sec3Card3Det1'), t('sec3Card3Det2'), t('sec3Card3Det3')]}
                   />
                   <DetailCard
                     icon={Star}
-                    title="مكافأة الانضباط (Group Reward)"
-                    desc="زر سحري في قائمة الخيارات."
-                    details={[
-                      'يمنح نقاطًا لجميع الطلاب الحاضرين دفعة واحدة.',
-                      'مفيد لتحفيز الفصل على الهدوء والانضباط.',
-                    ]}
+                    title={t('sec3Card4Title')}
+                    desc={t('sec3Card4Desc')}
+                    details={[t('sec3Card4Det1'), t('sec3Card4Det2')]}
                   />
                 </div>
               </section>
@@ -389,33 +333,33 @@ const UserGuide: React.FC = () => {
                   <div className="bg-blue-600 p-3 rounded-2xl">
                     <BarChart className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">4. سجل الدرجات (Grades)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec4Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={PenTool}
-                    title="الرصد السحري (Magic Fill)"
-                    desc="أداة لتوفير الوقت عند رصد الدرجات."
-                    details={['تطبيق درجة موحدة للجميع ثم تعديل من نقصت درجته فقط.']}
+                    title={t('sec4Card1Title')}
+                    desc={t('sec4Card1Desc')}
+                    details={[t('sec4Card1Det1')]}
                   />
                   <DetailCard
                     icon={Settings}
-                    title="أدوات التقويم (Tools Setup)"
-                    desc="تخصيص أعمدة السجل."
-                    details={['إضافة/حذف أدوات، وتحديد الامتحان النهائي بنجمة ★.']}
+                    title={t('sec4Card2Title')}
+                    desc={t('sec4Card2Desc')}
+                    details={[t('sec4Card2Det1')]}
                   />
                   <DetailCard
                     icon={PieChart}
-                    title="التلوين التلقائي والتحليل"
-                    desc="فهم مستوى الطالب بمجرد النظر."
-                    details={['تلوين النتيجة النهائية حسب الأداء وحساب التقدير.']}
+                    title={t('sec4Card3Title')}
+                    desc={t('sec4Card3Desc')}
+                    details={[t('sec4Card3Det1')]}
                   />
                   <DetailCard
                     icon={FileText}
-                    title="تصدير السجل (Export)"
-                    desc="تحويل السجل الرقمي لملف ورقي."
-                    details={['Excel منظم: أسماء + درجات + مجموع + تقدير.']}
+                    title={t('sec4Card4Title')}
+                    desc={t('sec4Card4Desc')}
+                    details={[t('sec4Card4Det1')]}
                   />
                 </div>
               </section>
@@ -426,27 +370,27 @@ const UserGuide: React.FC = () => {
                   <div className="bg-amber-600 p-3 rounded-2xl">
                     <Award className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">5. لوحة الفرسان (Leaderboard)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec5Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={Award}
-                    title="منصة الأبطال (The Podium)"
-                    desc="عرض تنافسي للطلاب الثلاثة الأوائل."
-                    details={['المركز الأول في المنتصف، وبقية الطلاب في قائمة مرتبة.']}
+                    title={t('sec5Card1Title')}
+                    desc={t('sec5Card1Desc')}
+                    details={[t('sec5Card1Det1')]}
                   />
                   <DetailCard
                     icon={FileText}
-                    title="نافذة الشهادات (Certificates)"
-                    desc="معاينة شهادة فخمة جاهزة."
-                    details={['زر تحميل PDF لحفظها وطباعتها.']}
+                    title={t('sec5Card2Title')}
+                    desc={t('sec5Card2Desc')}
+                    details={[t('sec5Card2Det1')]}
                   />
                   <DetailCard
                     icon={Users}
-                    title="تخصيص نوع المدرسة"
-                    desc="من القائمة العلوية."
-                    details={['اختيار (ذكور/إناث/مختلط) وتغيير العناوين تلقائياً.']}
+                    title={t('sec5Card3Title')}
+                    desc={t('sec5Card3Desc')}
+                    details={[t('sec5Card3Det1')]}
                   />
                 </div>
               </section>
@@ -457,27 +401,27 @@ const UserGuide: React.FC = () => {
                   <div className="bg-indigo-600 p-3 rounded-2xl">
                     <Printer className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">6. مركز التقارير (Report Center)</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec6Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
                   <DetailCard
                     icon={FileText}
-                    title="تقرير الطالب الشامل (Student Profile)"
-                    desc="الوثيقة الأهم لمقابلة ولي الأمر."
-                    details={['بيانات + درجات + سلوك + ميزات طباعة جماعية للفصل.']}
+                    title={t('sec6Card1Title')}
+                    desc={t('sec6Card1Desc')}
+                    details={[t('sec6Card1Det1')]}
                   />
                   <DetailCard
                     icon={Printer}
-                    title="طباعة الشهادات الجماعية"
-                    desc="وفر الورق والوقت."
-                    details={['دمج شهادات متعددة في PDF واحد للطباعة والقص.']}
+                    title={t('sec6Card2Title')}
+                    desc={t('sec6Card2Desc')}
+                    details={[t('sec6Card2Det1')]}
                   />
                   <DetailCard
                     icon={Shield}
-                    title="استدعاء ولي أمر (Summon Letter)"
-                    desc="خطاب رسمي منظم."
-                    details={['سبب الاستدعاء + موعد مقترح + مكان توقيع ولي الأمر.']}
+                    title={t('sec6Card3Title')}
+                    desc={t('sec6Card3Desc')}
+                    details={[t('sec6Card3Det1')]}
                   />
                 </div>
               </section>
@@ -488,44 +432,43 @@ const UserGuide: React.FC = () => {
                   <div className="bg-slate-700 p-3 rounded-2xl">
                     <Settings className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-3xl font-black text-white">7. الإعدادات والأمان</h2>
+                  <h2 className="text-3xl font-black text-white">{t('sec7Title')}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DetailCard
                     icon={Save}
-                    title="النسخ الاحتياطي (Backup)"
-                    desc="بياناتك هي أثمن ما تملك."
-                    details={['تصدير نسخة مشفرة وحفظها في مكان آمن.']}
+                    title={t('sec7Card1Title')}
+                    desc={t('sec7Card1Desc')}
+                    details={[t('sec7Card1Det1')]}
                   />
                   <DetailCard
                     icon={RefreshCw}
-                    title="استعادة البيانات (Restore)"
-                    desc="عند تغيير الهاتف."
-                    details={['اختر ملف النسخة الاحتياطية وسيعود التطبيق كما كان.']}
+                    title={t('sec7Card2Title')}
+                    desc={t('sec7Card2Desc')}
+                    details={[t('sec7Card2Det1')]}
                   />
                   <DetailCard
                     icon={Trash2}
-                    title="تصفير البيانات (Reset)"
-                    desc="لبدء عام جديد."
-                    details={['خيارات متعددة مع تأكيدات للحذف.']}
+                    title={t('sec7Card3Title')}
+                    desc={t('sec7Card3Desc')}
+                    details={[t('sec7Card3Det1')]}
                   />
                   <DetailCard
                     icon={WifiOff}
-                    title="العمل أوفلاين"
-                    desc="الخصوصية أولاً."
-                    details={['الإنترنت مطلوب فقط للواتساب/المشاركة.']}
+                    title={t('sec7Card4Title')}
+                    desc={t('sec7Card4Desc')}
+                    details={[t('sec7Card4Det1')]}
                   />
                 </div>
               </section>
             </div>
 
             <div className="text-center py-12 text-slate-500 text-sm font-medium border-t border-slate-900 bg-slate-950">
-              تم التطوير لخدمة المعلم العماني | جميع الحقوق محفوظة {new Date().getFullYear()}
+              {t('footerText1')} {new Date().getFullYear()}
             </div>
 
-        </div> {/* End of #guide-content-inner */}
-
+        </div> 
       </main>
     </div>
   );

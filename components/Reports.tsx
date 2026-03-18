@@ -13,7 +13,7 @@ import html2pdf from 'html2pdf.js';
 import ParentCardsTemplate from './ParentCardsTemplate';
 
 // =================================================================================
-// ✅ أيقونات 3D (بما فيها أيقونة البطاقات الجديدة)
+// ✅ أيقونات 3D 
 // =================================================================================
 
 const Icon3DParentCard = ({ className }: { className?: string }) => (
@@ -23,13 +23,8 @@ const Icon3DParentCard = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#f59e0b" />
         <stop offset="100%" stopColor="#d97706" />
       </linearGradient>
-      <filter id="shadowCard" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <rect x="15" y="30" width="70" height="40" rx="6" fill="url(#gradCard)" filter="url(#shadowCard)" />
+    <rect x="15" y="30" width="70" height="40" rx="6" fill="url(#gradCard)" />
     <circle cx="30" cy="50" r="8" fill="white" opacity="0.9" />
     <rect x="45" y="45" width="30" height="4" rx="2" fill="white" opacity="0.9" />
     <rect x="45" y="55" width="20" height="4" rx="2" fill="white" opacity="0.9" />
@@ -44,13 +39,8 @@ const Icon3DReportCenter = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#60a5fa" />
         <stop offset="100%" stopColor="#2563eb" />
       </linearGradient>
-      <filter id="shadowRep" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <rect x="20" y="15" width="60" height="70" rx="8" fill="url(#gradRep)" filter="url(#shadowRep)" />
+    <rect x="20" y="15" width="60" height="70" rx="8" fill="url(#gradRep)" />
     <rect x="30" y="30" width="40" height="5" rx="2" fill="white" opacity="0.8" />
     <rect x="30" y="45" width="40" height="5" rx="2" fill="white" opacity="0.8" />
     <rect x="30" y="60" width="25" height="5" rx="2" fill="white" opacity="0.8" />
@@ -65,14 +55,9 @@ const Icon3DStudent = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#818cf8" />
         <stop offset="100%" stopColor="#4f46e5" />
       </linearGradient>
-      <filter id="shadowUser" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <circle cx="50" cy="35" r="18" fill="url(#gradUser)" filter="url(#shadowUser)" />
-    <path d="M20 85 Q50 55 80 85" fill="url(#gradUser)" filter="url(#shadowUser)" />
+    <circle cx="50" cy="35" r="18" fill="url(#gradUser)" />
+    <path d="M20 85 Q50 55 80 85" fill="url(#gradUser)" />
   </svg>
 );
 
@@ -83,15 +68,10 @@ const Icon3DGrades = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#fbbf24" />
         <stop offset="100%" stopColor="#d97706" />
       </linearGradient>
-      <filter id="shadowChart" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="1" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <rect x="20" y="50" width="15" height="30" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
-    <rect x="42" y="30" width="15" height="50" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
-    <rect x="64" y="15" width="15" height="65" rx="3" fill="url(#gradChart)" filter="url(#shadowChart)" />
+    <rect x="20" y="50" width="15" height="30" rx="3" fill="url(#gradChart)" />
+    <rect x="42" y="30" width="15" height="50" rx="3" fill="url(#gradChart)" />
+    <rect x="64" y="15" width="15" height="65" rx="3" fill="url(#gradChart)" />
     <path d="M10 85 H90" stroke="#cbd5e1" strokeWidth="4" strokeLinecap="round" />
   </svg>
 );
@@ -103,13 +83,8 @@ const Icon3DCertificate = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#34d399" />
         <stop offset="100%" stopColor="#059669" />
       </linearGradient>
-      <filter id="shadowCert" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <circle cx="50" cy="40" r="25" fill="url(#gradCert)" filter="url(#shadowCert)" />
+    <circle cx="50" cy="40" r="25" fill="url(#gradCert)" />
     <circle cx="50" cy="40" r="18" fill="none" stroke="white" strokeWidth="3" strokeDasharray="4 2" />
     <path d="M35 60 L25 85 L40 75 L55 85 L45 60" fill="#f59e0b" stroke="white" strokeWidth="1" />
     <path d="M65 60 L75 85 L60 75 L45 85 L55 60" fill="#f59e0b" stroke="white" strokeWidth="1" />
@@ -123,13 +98,8 @@ const Icon3DSummon = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#f87171" />
         <stop offset="100%" stopColor="#dc2626" />
       </linearGradient>
-      <filter id="shadowWarn" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <path d="M50 15 L85 80 H15 Z" fill="url(#gradWarn)" filter="url(#shadowWarn)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M50 15 L85 80 H15 Z" fill="url(#gradWarn)" stroke="white" strokeWidth="3" strokeLinejoin="round" />
     <path d="M50 35 V60" stroke="white" strokeWidth="6" strokeLinecap="round" />
     <circle cx="50" cy="70" r="4" fill="white" />
   </svg>
@@ -142,13 +112,8 @@ const Icon3DPrint = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#94a3b8" />
         <stop offset="100%" stopColor="#475569" />
       </linearGradient>
-      <filter id="shadowPrint" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <rect x="25" y="40" width="50" height="30" rx="4" fill="url(#gradPrint)" filter="url(#shadowPrint)" />
+    <rect x="25" y="40" width="50" height="30" rx="4" fill="url(#gradPrint)" />
     <path d="M35 40 V25 H65 V40" fill="white" opacity="0.9" />
     <path d="M35 60 V75 H65 V60" fill="white" />
     <rect x="60" y="48" width="5" height="5" rx="1" fill="#4ade80" />
@@ -162,13 +127,8 @@ const Icon3DSettings = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#e2e8f0" />
         <stop offset="100%" stopColor="#94a3b8" />
       </linearGradient>
-      <filter id="shadowSet" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="1" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <circle cx="50" cy="50" r="25" fill="none" stroke="url(#gradSet)" strokeWidth="15" strokeDasharray="12 8" filter="url(#shadowSet)" />
+    <circle cx="50" cy="50" r="25" fill="none" stroke="url(#gradSet)" strokeWidth="15" strokeDasharray="12 8" />
     <circle cx="50" cy="50" r="12" fill="#64748b" />
   </svg>
 );
@@ -180,13 +140,8 @@ const Icon3DLayers = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#a78bfa" />
         <stop offset="100%" stopColor="#7c3aed" />
       </linearGradient>
-      <filter id="shadowLay" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <path d="M15 40 L50 20 L85 40 L50 60 Z" fill="url(#gradLay)" filter="url(#shadowLay)" />
+    <path d="M15 40 L50 20 L85 40 L50 60 Z" fill="url(#gradLay)" />
     <path d="M15 55 L50 75 L85 55" fill="none" stroke="url(#gradLay)" strokeWidth="5" strokeLinecap="round" />
   </svg>
 );
@@ -198,13 +153,8 @@ const Icon3DDocument = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#f472b6" />
         <stop offset="100%" stopColor="#db2777" />
       </linearGradient>
-      <filter id="shadowDoc" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <rect x="25" y="20" width="50" height="60" rx="5" fill="url(#gradDoc)" filter="url(#shadowDoc)" />
+    <rect x="25" y="20" width="50" height="60" rx="5" fill="url(#gradDoc)" />
     <path d="M35 35 H65 M35 45 H65 M35 55 H50" stroke="white" strokeWidth="4" strokeLinecap="round" />
   </svg>
 );
@@ -216,13 +166,8 @@ const Icon3DEye = ({ className }: { className?: string }) => (
         <stop offset="0%" stopColor="#38bdf8" />
         <stop offset="100%" stopColor="#0284c7" />
       </linearGradient>
-      <filter id="shadowEye" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-        <feOffset dx="1" dy="2" result="offsetblur" />
-        <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
     </defs>
-    <path d="M15 50 Q50 15 85 50 Q50 85 15 50" fill="white" filter="url(#shadowEye)" />
+    <path d="M15 50 Q50 15 85 50 Q50 85 15 50" fill="white" />
     <circle cx="50" cy="50" r="18" fill="url(#gradEye)" />
     <circle cx="55" cy="45" r="5" fill="white" opacity="0.6" />
   </svg>
@@ -234,19 +179,12 @@ interface ReportsProps {
   initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon';
 }
 
-const DEFAULT_CERT_SETTINGS = {
-  title: 'شهادة تقدير',
-  bodyText: 'وذلك لتميزه الدراسي وجهوده الواضحة ومشاركته الفعالة في الحصص الدراسية',
-  showDefaultDesign: true,
-  backgroundImage: ''
-};
-
 const getGradingSettings = () => {
   const saved = localStorage.getItem('rased_grading_settings');
-  return saved ? JSON.parse(saved) : { totalScore: 100, finalExamWeight: 40, finalExamName: 'الامتحان النهائي' };
+  return saved ? JSON.parse(saved) : null; 
 };
 
-// --- نافذة المعاينة (Print Preview Modal) المحدثة ---
+// --- نافذة المعاينة (Print Preview Modal) ---
 const PrintPreviewModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -254,6 +192,7 @@ const PrintPreviewModal: React.FC<{
   content: React.ReactNode;
   landscape?: boolean;
 }> = ({ isOpen, onClose, title, content, landscape }) => {
+  const { t, dir } = useApp(); 
   const [isPrinting, setIsPrinting] = useState(false);
 
   const handlePrint = async () => {
@@ -283,13 +222,13 @@ const PrintPreviewModal: React.FC<{
           data: pdfBase64.split(',')[1],
           directory: Directory.Cache
         });
-        await Share.share({ title: title, url: result.uri, dialogTitle: 'مشاركة التقرير' });
+        await Share.share({ title: title, url: result.uri, dialogTitle: t('shareReport') });
       } else {
         worker.save();
       }
     } catch (e) {
       console.error("Print Error:", e);
-      alert('حدث خطأ أثناء إنشاء ملف PDF.');
+      alert(t('pdfGenerationError'));
     } finally {
       setIsPrinting(false);
     }
@@ -298,7 +237,8 @@ const PrintPreviewModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-slate-900/95 backdrop-blur-sm md:pr-[18rem] flex flex-col">
+    // 🌟 الإزاحة الديناميكية لضمان عدم اختفاء زر الإغلاق تحت القائمة الجانبية
+    <div className={`fixed inset-0 z-[99999] bg-slate-900/95 backdrop-blur-sm ${dir === 'rtl' ? 'md:pr-[18rem]' : 'md:pl-[18rem]'} flex flex-col`} dir={dir}>
       <div id="preview-scroll-container" className="h-full overflow-auto p-4 md:p-8 custom-scrollbar">
         
         <div className="sticky top-0 z-50 bg-slate-800 text-white p-4 flex justify-between items-center border border-white/10 shadow-2xl rounded-2xl mb-6">
@@ -306,8 +246,8 @@ const PrintPreviewModal: React.FC<{
             onClick={onClose}
             className="bg-rose-600 hover:bg-rose-500 text-white px-4 md:px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg transition-all active:scale-95"
           >
-            <ArrowRight className="w-5 h-5" />
-            <span className="hidden sm:inline">إغلاق والعودة</span>
+            <ArrowRight className={`w-5 h-5 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+            <span className="hidden sm:inline">{t('closeAndReturn')}</span>
           </button>
 
           <div className="text-center flex-1 px-4">
@@ -321,7 +261,7 @@ const PrintPreviewModal: React.FC<{
             className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 md:px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all active:scale-95 pointer-events-auto"
           >
             {isPrinting ? <Loader2 className="animate-spin w-5 h-5" /> : <Icon3DPrint className="w-5 h-5" />}
-            <span className="hidden sm:inline">{isPrinting ? 'جاري المعالجة...' : 'تصدير للطباعة'}</span>
+            <span className="hidden sm:inline">{isPrinting ? t('processingPrint') : t('exportToPrint')}</span>
           </button>
         </div>
 
@@ -333,7 +273,7 @@ const PrintPreviewModal: React.FC<{
               width: landscape ? '297mm' : '210mm',
               minHeight: landscape ? '210mm' : '297mm',
               padding: '0',
-              direction: 'rtl',
+              direction: dir, 
               fontFamily: 'Tajawal, sans-serif',
               backgroundColor: '#ffffff',
               color: '#000000',
@@ -349,121 +289,164 @@ const PrintPreviewModal: React.FC<{
 };
 
 // =================================================================================
-// ✅ القوالب (TEMPLATES)
+// ✅ القوالب المحدثة (مترجمة ديناميكياً)
 // =================================================================================
 
 const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: any) => {
-  const settings = getGradingSettings();
-  const finalExamName = settings.finalExamName.trim();
+  const { t, dir } = useApp(); // 🌍 محرك اللغات
+
+  const settings = getGradingSettings() || { totalScore: 100, finalExamWeight: 40, finalExamName: '' };
+  
+  // 🌟 فلترة ذكية لاسم الامتحان النهائي القادم من الذاكرة
+  const savedFinalExamName = settings.finalExamName?.trim() || '';
+  const isDefaultExamName = savedFinalExamName === 'الامتحان النهائي' || savedFinalExamName === 'Final Exam' || savedFinalExamName === '';
+  const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : savedFinalExamName;
+
   const finalWeight = settings.finalExamWeight;
   const continuousWeight = settings.totalScore - finalWeight;
   const continuousTools = tools.filter((t: any) => t.name.trim() !== finalExamName);
 
+  const ROWS_PER_PAGE = 20;
+  const chunkedStudents = [];
+  for (let i = 0; i < students.length; i += ROWS_PER_PAGE) {
+    chunkedStudents.push(students.slice(i, i + ROWS_PER_PAGE));
+  }
+
   return (
-    <div className="w-full text-black bg-white p-10 print-content">
-      <div className="text-center mb-6 border-b-2 border-black pb-4">
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-right text-sm font-bold leading-relaxed">
-            <p>سلطنة عمان</p>
-            <p>وزارة التعليم</p>
+    <div className="w-full text-black bg-white" dir={dir}>
+      {chunkedStudents.map((chunk, pageIndex) => (
+        <React.Fragment key={pageIndex}>
+          <div className="p-8 w-full bg-white relative">
+            <div className="text-center mb-6 border-b-2 border-black pb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className={`text-${dir === 'rtl' ? 'right' : 'left'} text-sm font-bold leading-relaxed`}>
+                  <p>{t('sultanateOfOman')}</p>
+                  <p>{t('ministryOfEducation')}</p>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black underline">{t('studentGradesRecord')}</h1>
+                </div>
+                <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-sm font-bold leading-relaxed`}>
+                  <p>{t('subjectLabel')} {teacherInfo?.subject || '........'}</p>
+                  <p>{t('classLabelTemplate')} {gradeClass}</p>
+                </div>
+              </div>
+            </div>
+
+            <table className="w-full border-collapse border border-black text-[10px]">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border border-black p-1 w-8 text-center">{t('numLabel')}</th>
+                  <th className={`border border-black p-1 text-${dir === 'rtl' ? 'right' : 'left'} w-48`}>{t('nameLabel')}</th>
+                  {continuousTools.map((t: any) => (
+                    <th key={t.id} className="border border-black p-1 bg-orange-50 text-center">{t.name}</th>
+                  ))}
+                  <th className="border border-black p-1 bg-blue-100 text-center font-bold">{t('totalLabel')} ({continuousWeight})</th>
+                  {finalWeight > 0 && (
+                    <th className="border border-black p-1 bg-pink-100 text-center font-bold">{finalExamName} ({finalWeight})</th>
+                  )}
+                  <th className="border border-black p-1 bg-gray-300 text-center font-black">{t('overallLabel')} ({settings.totalScore})</th>
+                  <th className="border border-black p-1 text-center">{t('gradeSymbolLabel')}</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {chunk.map((s: any, i: number) => {
+                  const globalIndex = (pageIndex * ROWS_PER_PAGE) + i + 1;
+                  const semGrades = (s.grades || []).filter((g: any) => (g.semester || '1') === semester);
+                  let contSum = 0;
+
+                  const contCells = continuousTools.map((tool: any) => {
+                    const g = semGrades.find((r: any) => r.category.trim() === tool.name.trim());
+                    const val = g ? Number(g.score) : 0;
+                    contSum += val;
+                    return (
+                      <td key={tool.id} className="border border-black p-1 text-center font-medium">
+                        {g ? g.score : '-'}
+                      </td>
+                    );
+                  });
+
+                  let finalVal = 0;
+                  let finalCell = null;
+
+                  if (finalWeight > 0) {
+                    const finalG = semGrades.find((r: any) => r.category.trim() === finalExamName);
+                    finalVal = finalG ? Number(finalG.score) : 0;
+                    finalCell = (
+                      <td className="border border-black p-1 text-center font-bold bg-pink-50">
+                        {finalG ? finalG.score : '-'}
+                      </td>
+                    );
+                  }
+
+                  const total = contSum + finalVal;
+                  const getSymbol = (sc: number) => {
+                    const percent = (sc / settings.totalScore) * 100;
+                    if (dir === 'rtl') {
+                        if (percent >= 90) return 'أ';
+                        if (percent >= 80) return 'ب';
+                        if (percent >= 65) return 'ج';
+                        if (percent >= 50) return 'د';
+                        return 'هـ';
+                    } else {
+                        if (percent >= 90) return 'A';
+                        if (percent >= 80) return 'B';
+                        if (percent >= 65) return 'C';
+                        if (percent >= 50) return 'D';
+                        return 'F';
+                    }
+                  };
+
+                  return (
+                    <tr key={s.id}>
+                      <td className="border border-black p-1 text-center">{globalIndex}</td>
+                      <td className={`border border-black p-1 font-bold whitespace-nowrap text-${dir === 'rtl' ? 'right' : 'left'}`}>{s.name}</td>
+                      {contCells}
+                      <td className="border border-black p-1 text-center font-bold bg-blue-50">{contSum}</td>
+                      {finalWeight > 0 && finalCell}
+                      <td className="border border-black p-1 text-center font-black bg-gray-100">{total}</td>
+                      <td className="border border-black p-1 text-center font-bold">{getSymbol(total)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            
+            <div className="text-center text-[10px] text-gray-500 mt-4">
+                {t('pageWord')} {pageIndex + 1} {t('ofWord')} {chunkedStudents.length}
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black underline">سجل درجات الطلاب</h1>
-          </div>
-          <div className="text-left text-sm font-bold leading-relaxed">
-            <p>المادة: {teacherInfo?.subject || '........'}</p>
-            <p>الصف: {gradeClass}</p>
-          </div>
-        </div>
-      </div>
-
-      <table className="w-full border-collapse border border-black text-[10px]">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border border-black p-1 w-8 text-center">م</th>
-            <th className="border border-black p-1 text-right w-48">الاسم</th>
-            {continuousTools.map((t: any) => (
-              <th key={t.id} className="border border-black p-1 bg-orange-50 text-center">{t.name}</th>
-            ))}
-            <th className="border border-black p-1 bg-blue-100 text-center font-bold">المجموع ({continuousWeight})</th>
-            {finalWeight > 0 && (
-              <th className="border border-black p-1 bg-pink-100 text-center font-bold">{finalExamName} ({finalWeight})</th>
-            )}
-            <th className="border border-black p-1 bg-gray-300 text-center font-black">الكلي ({settings.totalScore})</th>
-            <th className="border border-black p-1 text-center">الرمز</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {students.map((s: any, i: number) => {
-            const semGrades = (s.grades || []).filter((g: any) => (g.semester || '1') === semester);
-            let contSum = 0;
-
-            const contCells = continuousTools.map((tool: any) => {
-              const g = semGrades.find((r: any) => r.category.trim() === tool.name.trim());
-              const val = g ? Number(g.score) : 0;
-              contSum += val;
-              return (
-                <td key={tool.id} className="border border-black p-1 text-center font-medium">
-                  {g ? g.score : '-'}
-                </td>
-              );
-            });
-
-            let finalVal = 0;
-            let finalCell = null;
-
-            if (finalWeight > 0) {
-              const finalG = semGrades.find((r: any) => r.category.trim() === finalExamName);
-              finalVal = finalG ? Number(finalG.score) : 0;
-              finalCell = (
-                <td className="border border-black p-1 text-center font-bold bg-pink-50">
-                  {finalG ? finalG.score : '-'}
-                </td>
-              );
-            }
-
-            const total = contSum + finalVal;
-            const getSymbol = (sc: number) => {
-              const percent = (sc / settings.totalScore) * 100;
-              if (percent >= 90) return 'أ';
-              if (percent >= 80) return 'ب';
-              if (percent >= 65) return 'ج';
-              if (percent >= 50) return 'د';
-              return 'هـ';
-            };
-
-            return (
-              <tr key={s.id} style={{ pageBreakInside: 'avoid' }}>
-                <td className="border border-black p-1 text-center">{i + 1}</td>
-                <td className="border border-black p-1 font-bold whitespace-nowrap">{s.name}</td>
-                {contCells}
-                <td className="border border-black p-1 text-center font-bold bg-blue-50">{contSum}</td>
-                {finalWeight > 0 && finalCell}
-                <td className="border border-black p-1 text-center font-black bg-gray-100">{total}</td>
-                <td className="border border-black p-1 text-center font-bold">{getSymbol(total)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          {pageIndex !== chunkedStudents.length - 1 && (
+            <div className="html2pdf__page-break" style={{ pageBreakBefore: 'always', height: 0, margin: 0, padding: 0, overflow: 'hidden' }}></div>
+          )}
+        </React.Fragment>
+      ))}
     </div>
   );
 };
 
 const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
-  const safeSettings = settings || DEFAULT_CERT_SETTINGS;
-  const title = safeSettings.title || 'شهادة شكر وتقدير';
-  const rawBody = safeSettings.bodyText || 'وذلك لتميزه الدراسي وجهوده الواضحة ومشاركته الفعالة في الحصص الدراسية';
+  const { t, dir, language } = useApp(); // 🌍 محرك اللغات
 
-  if (!students || students.length === 0) return <div className="p-10 text-center text-black">لا يوجد طلاب</div>;
+  const safeSettings = settings || {};
+  const titleRaw = safeSettings.title;
+  const bodyRaw = safeSettings.bodyText;
 
-  const date = new Date().toLocaleDateString('ar-EG');
-  const subject = teacherInfo?.subject || "المادة";
-  const schoolName = teacherInfo?.school || "مدرسة الابداع للبنين (5-8)";
+  const isDefaultTitle = !titleRaw || titleRaw === 'شهادة تقدير' || titleRaw === 'شهادة تميز' || titleRaw === 'Certificate of Excellence';
+  const isDefaultBody = !bodyRaw || bodyRaw.includes('وذلك لتميزه الدراسي') || bodyRaw.includes('تقديراً لجهوده العظيمة') || bodyRaw.includes('in appreciation of his great efforts');
+
+  const title = isDefaultTitle ? t('certificateOfExcellence') : titleRaw;
+  const rawBody = isDefaultBody ? t('knightAppreciationText') : bodyRaw;
+
+  if (!students || students.length === 0) return <div className="p-10 text-center text-black">{t('noStudentDataToDisplay')}</div>;
+
+  const date = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+  const subject = teacherInfo?.subject || t('subjectCol');
+  const schoolName = teacherInfo?.school || t('schoolPrefix');
 
   return (
-    <div className="w-full text-black bg-white">
+    <div className="w-full text-black bg-white" dir={dir}>
       {students.map((s: any, index: number) => {
         return (
           <div 
@@ -476,7 +459,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
               padding: '10mm',
               boxSizing: 'border-box',
               overflow: 'hidden',
-              direction: 'rtl'
+              direction: dir
             }}
           >
             <div className="w-full h-full border-[12px] border-double border-amber-400 p-2 relative z-10">
@@ -487,28 +470,28 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
                 </div>
 
                 <div className="w-full grid grid-cols-3 items-start relative z-10">
-                  <div className="text-right space-y-1">
-                    <h3 className="font-black text-[18px] text-[#1e3a8a]">سلطنة عُمان</h3>
-                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">وزارة التربية والتعليم</h3>
-                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">{teacherInfo?.governorate || 'المديرية العامة للتربية والتعليم'}</h3>
+                  <div className={`text-${dir === 'rtl' ? 'right' : 'left'} space-y-1`}>
+                    <h3 className="font-black text-[18px] text-[#1e3a8a]">{t('sultanateOfOman')}</h3>
+                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">{t('ministryOfEducation')}</h3>
+                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">{teacherInfo?.governorate || t('eduDirectoratePrefix')}</h3>
                     <h3 className="font-bold text-[16px] text-amber-600">{schoolName}</h3>
                   </div>
 
                   <div className="flex justify-center">
                     {teacherInfo?.ministryLogo ? (
-                      <img src={teacherInfo.ministryLogo} alt="شعار سلطنة عمان" className="w-24 h-24 object-contain" />
+                      <img src={teacherInfo.ministryLogo} alt="Logo" className="w-24 h-24 object-contain" />
                     ) : (
-                      <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#1e3a8a] flex items-center justify-center text-xs font-bold text-[#1e3a8a] bg-white">الشعار الرسمي</div>
+                      <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#1e3a8a] flex items-center justify-center text-xs font-bold text-[#1e3a8a] bg-white">Logo</div>
                     )}
                   </div>
 
-                  <div className="text-left space-y-3 border-r-2 border-amber-400 pr-4 justify-self-end w-full">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="font-bold text-[16px] text-gray-500">التاريخ:</span>
+                  <div className={`text-${dir === 'rtl' ? 'left' : 'right'} space-y-3 ${dir === 'rtl' ? 'border-r-2 pr-4' : 'border-l-2 pl-4'} border-amber-400 justify-self-end w-full`}>
+                    <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
+                      <span className="font-bold text-[16px] text-gray-500">{t('dateLabel')}</span>
                       <span className="font-black text-[18px] text-[#1e3a8a]" dir="ltr">{date}</span>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="font-bold text-[16px] text-gray-500">المادة:</span>
+                    <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
+                      <span className="font-bold text-[16px] text-gray-500">{t('subjectLabel').replace(':', '')}</span>
                       <span className="font-black text-[18px] text-[#1e3a8a]">{subject}</span>
                     </div>
                   </div>
@@ -520,11 +503,11 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
                   </h1>
                   
                   <div className="bg-amber-400 text-[#1e3a8a] px-10 py-2 rounded-full font-black text-xl mb-8 shadow-md">
-                    وسام الاستحقاق الطلابي
+                    {t('studentMeritMedal')}
                   </div>
 
                   <p className="text-xl font-bold text-gray-700 mb-4">
-                    تتقدم إدارة المدرسة ومعلم المادة بجزيل الشكر والتقدير للطالب:
+                    {t('thanksAndAppreciationToStudent')}
                   </p>
 
                   <div className="relative w-2/3 py-4 border-y-2 border-amber-300 bg-white/50 backdrop-blur-sm shadow-sm mb-5 rounded-2xl">
@@ -534,28 +517,28 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
                   </div>
 
                   <p className="text-xl font-bold text-gray-700 leading-relaxed max-w-3xl">
-                    المقيد بالصف <span className="text-amber-600 font-black text-2xl mx-2">({s.classes?.[0] || '-'})</span>، 
+                    {t('enrolledInClass')} <span className="text-amber-600 font-black text-2xl mx-2">({s.classes?.[0] || '-'})</span>
                     {rawBody}
                   </p>
                 </div>
 
                 <div className="w-full grid grid-cols-3 items-end relative z-10 pt-2 mt-auto">
-                  <div className="text-center justify-self-start w-64">
-                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">معلم المادة</h4>
+                  <div className={`text-center justify-self-${dir === 'rtl' ? 'start' : 'end'} w-64`}>
+                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('subjectTeacherLabel')}</h4>
                     <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
                     <h3 className="font-black text-lg text-gray-700">{teacherInfo?.name || '..........'}</h3>
                   </div>
 
                   <div className="flex justify-center translate-y-2">
                     {teacherInfo?.stamp ? (
-                      <img src={teacherInfo.stamp} alt="ختم المدرسة" className="w-32 h-32 object-contain opacity-90 mix-blend-multiply" />
+                      <img src={teacherInfo.stamp} alt="Stamp" className="w-32 h-32 object-contain opacity-90 mix-blend-multiply" />
                     ) : (
-                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-red-500 flex items-center justify-center text-xs font-bold text-red-500 opacity-50 rotate-[-15deg] bg-white">ختم المدرسة</div>
+                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-red-500 flex items-center justify-center text-xs font-bold text-red-500 opacity-50 rotate-[-15deg] bg-white">Stamp</div>
                     )}
                   </div>
 
-                  <div className="text-center justify-self-end w-64">
-                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">مدير/ة المدرسة</h4>
+                  <div className={`text-center justify-self-${dir === 'rtl' ? 'end' : 'start'} w-64`}>
+                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('schoolPrincipalLabel')}</h4>
                     <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
                     <h3 className="font-black text-xl text-gray-400 italic">..........................</h3>
                   </div>
@@ -575,38 +558,57 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
 };
 
 const SummonTemplate = ({ student, teacherInfo, data }: any) => {
-  if (!student) return <div className="p-10 text-center text-black">خطأ: بيانات الطالب غير متوفرة</div>;
+  const { t, dir } = useApp(); // 🌍 محرك اللغات
+
+  if (!student) return <div className="p-10 text-center text-black">{t('errorStudentDataUnavailable')}</div>;
 
   const safeData = data || {};
   const safeProcedures = Array.isArray(safeData.procedures) ? safeData.procedures : [];
 
+  // 🌟 فلترة ذكية للإجراءات المحفوظة
+  const getProcLabel = (procId: string) => {
+    const map: any = {
+        'procVerbalWarning': t('procVerbalWarning'),
+        'procWrittenPledge': t('procWrittenPledge'),
+        'procPhoneCall': t('procPhoneCall'),
+        'procWhatsappNotice': t('procWhatsappNotice'),
+        'procReferToSpecialist': t('procReferToSpecialist'),
+        'تنبيه شفوي': t('procVerbalWarning'),
+        'تعهد خطي': t('procWrittenPledge'),
+        'اتصال هاتفي': t('procPhoneCall'),
+        'إشعار واتساب': t('procWhatsappNotice'),
+        'تحويل أخصائي': t('procReferToSpecialist'),
+    };
+    return map[procId] || procId;
+  };
+
   return (
-    <div className="w-full text-black bg-white p-16 font-serif text-right h-full" dir="rtl">
+    <div className={`w-full text-black bg-white p-16 font-serif text-${dir === 'rtl' ? 'right' : 'left'} h-full`} dir={dir}>
       <div className="text-center mb-12 border-b-2 border-black pb-6">
         <div className="flex justify-center mb-4">
           {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} className="h-24 object-contain" /> : <div className="w-20 h-20 bg-slate-100 rounded-full border"></div>}
         </div>
-        <h3 className="font-bold text-lg mb-1">سلطنة عمان - وزارة التعليم</h3>
-        <h3 className="font-bold text-lg">مدرسة {teacherInfo?.school || '................'}</h3>
+        <h3 className="font-bold text-lg mb-1">{t('sultanateOfOman')} - {t('ministryOfEducation')}</h3>
+        <h3 className="font-bold text-lg">{t('schoolWord')} {teacherInfo?.school || '................'}</h3>
       </div>
 
       <div className="bg-gray-50 border border-black p-6 rounded-2xl mb-10 flex justify-between items-center shadow-sm">
         <div>
-          <p className="text-gray-500 text-sm font-bold mb-1">إلى الفاضل ولي أمر الطالب:</p>
+          <p className="text-gray-500 text-sm font-bold mb-1">{t('toTheRespectedParentOfStudent')}</p>
           <h2 className="text-2xl font-black text-slate-900">{student.name}</h2>
         </div>
-        <div className="text-left">
-          <p className="font-bold text-base">الصف: {safeData.className || '...'}</p>
-          <p className="font-bold text-base text-gray-500">التاريخ: {safeData.issueDate || '...'}</p>
+        <div className={`text-${dir === 'rtl' ? 'left' : 'right'}`}>
+          <p className="font-bold text-base">{t('classLabelTemplate')} {safeData.className || '...'}</p>
+          <p className="font-bold text-base text-gray-500">{t('dateLabel')} {safeData.issueDate || '...'}</p>
         </div>
       </div>
 
-      <h2 className="text-center text-4xl font-black underline mb-12">استدعاء ولي أمر</h2>
+      <h2 className="text-center text-4xl font-black underline mb-12">{t('summonParentTitle')}</h2>
 
       <div className="text-2xl leading-loose text-justify mb-10 px-4">
-        <p className="mb-4">السلام عليكم ورحمة الله وبركاته،،،</p>
+        <p className="mb-4">{t('greetingsText')}</p>
         <p>
-          نود إفادتكم بضرورة الحضور إلى المدرسة يوم <strong>{safeData.date || '...'}</strong> الساعة <strong>{safeData.time || '...'}</strong>، وذلك لمناقشة الأمر التالي:
+          {t('pleaseAttendSchoolOnDay')} <strong>{safeData.date || '...'}</strong> {t('atTime')} <strong>{safeData.time || '...'}</strong>، {t('toDiscussTheFollowingMatter')}
         </p>
       </div>
 
@@ -616,18 +618,18 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
 
       {safeProcedures.length > 0 && (
         <div className="mb-12 border border-dashed border-gray-400 p-6 rounded-xl bg-slate-50">
-          <p className="font-bold underline mb-4 text-xl">الإجراءات المتخذة مسبقاً:</p>
-          <ul className="list-disc pr-8 text-xl space-y-2">
-            {safeProcedures.map((p: any, i: number) => <li key={i}>{p}</li>)}
+          <p className="font-bold underline mb-4 text-xl">{t('previouslyTakenProcedures')}</p>
+          <ul className={`list-disc ${dir === 'rtl' ? 'pr-8' : 'pl-8'} text-xl space-y-2`}>
+            {safeProcedures.map((p: any, i: number) => <li key={i}>{getProcLabel(p)}</li>)}
           </ul>
         </div>
       )}
 
-      <p className="text-xl mt-12 mb-20 text-center font-bold">شاكرين لكم حسن تعاونكم واهتمامكم بمصلحة الطالب.</p>
+      <p className="text-xl mt-12 mb-20 text-center font-bold">{t('thanksForCooperation')}</p>
 
       <div className="flex justify-between items-end px-10 mt-auto">
         <div className="text-center">
-          <p className="font-bold text-xl mb-8">معلم المادة</p>
+          <p className="font-bold text-xl mb-8">{t('subjectTeacherLabel')}</p>
           <p className="text-2xl font-black">{teacherInfo?.name}</p>
         </div>
 
@@ -636,7 +638,7 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
         </div>
 
         <div className="text-center">
-          <p className="font-bold text-xl mb-8">مدير المدرسة</p>
+          <p className="font-bold text-xl mb-8">{t('schoolPrincipalMale')}</p>
           <p className="text-2xl font-black">....................</p>
         </div>
       </div>
@@ -645,24 +647,48 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
 };
 
 const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools }: any) => {
-  const settings = getGradingSettings();
-  const finalExamName = settings.finalExamName?.trim() || 'الامتحان النهائي';
+  const { t, dir, language } = useApp(); // 🌍 محرك اللغات
 
-  if (!students || students.length === 0) return <div className="text-black text-center p-10">لا توجد بيانات طلاب لعرضها</div>;
+  const settings = getGradingSettings();
+  const finalExamNameRaw = settings?.finalExamName?.trim() || '';
+  const isDefaultExamName = finalExamNameRaw === 'الامتحان النهائي' || finalExamNameRaw === 'Final Exam' || finalExamNameRaw === '';
+  const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : finalExamNameRaw;
+
+  if (!students || students.length === 0) return <div className="text-black text-center p-10">{t('noStudentDataToDisplay')}</div>;
 
   const safeTools = Array.isArray(assessmentTools) ? assessmentTools : [];
   const continuousTools = safeTools.filter((t: any) => t.name.trim() !== finalExamName);
   const finalTool = safeTools.find((t: any) => t.name.trim() === finalExamName);
 
+  // 🌟 فلترة ذكية للسلوكيات المحفوظة لكي تعود إنجليزية
+  const translateBehavior = (desc: string) => {
+    const map: any = {
+        'إجابة متميزة': t('behPos1'),
+        'إجابة صحيحة': t('behPos2'),
+        'واجب مميز': t('behPos3'),
+        'مساعدة الزملاء': t('behPos4'),
+        'مشاركة صفية متميزة': t('behPos5'),
+        'إبداع وتميز': t('behPos6'),
+        'إزعاج في الحصة': t('behNeg1'),
+        'عدم حل الواجب': t('behNeg2'),
+        'نسيان الكتاب والدفتر': t('behNeg3'),
+        'تأخر عن الحصة': t('behNeg4'),
+        'سلوك غير لائق': t('behNeg5'),
+        'النوم في الفصل': t('behNeg6'),
+        'هدوء وانضباط': t('rewardDiscipline'),
+    };
+    return map[desc] || desc; 
+  };
+
   return (
-    <div className="w-full text-black bg-white">
+    <div className="w-full text-black bg-white" dir={dir}>
       {students.map((student: any) => {
         const behaviors = (student.behaviors || []).filter((b: any) => !b.semester || b.semester === (semester || '1'));
         const grades = (student.grades || []).filter((g: any) => !g.semester || g.semester === (semester || '1'));
 
         const posBehaviors = behaviors.filter((b: any) => b.type === 'positive');
         const negBehaviors = behaviors.filter((b: any) => b.type === 'negative');
-
+        const displayPosBehaviors = posBehaviors.filter((b: any) => b.description !== 'هدوء وانضباط');
         let continuousSum = 0;
         continuousTools.forEach((tool: any) => {
           const g = grades.find((r: any) => r.category.trim() === tool.name.trim());
@@ -685,42 +711,42 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
           <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
             
             <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-4">
-              <div className="text-right w-1/3 text-sm font-bold">
-                <p>سلطنة عمان</p>
-                <p>وزارة التعليم</p>
-                <p>مدرسة {teacherInfo?.school}</p>
+              <div className={`text-${dir === 'rtl' ? 'right' : 'left'} w-1/3 text-sm font-bold`}>
+                <p>{t('sultanateOfOman')}</p>
+                <p>{t('ministryOfEducation')}</p>
+                <p>{t('schoolWord')} {teacherInfo?.school}</p>
               </div>
 
               <div className="text-center w-1/3">
                 {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-16 object-contain mx-auto" />}
-                <h2 className="text-xl font-black underline mt-2 text-black">تقرير مستوى طالب</h2>
+                <h2 className="text-xl font-black underline mt-2 text-black">{t('studentLevelReport')}</h2>
               </div>
 
-              <div className="text-left w-1/3 text-sm font-bold">
-                <p>العام: {teacherInfo?.academicYear}</p>
-                <p>الفصل: {semester === '1' ? 'الأول' : 'الثاني'}</p>
+              <div className={`text-${dir === 'rtl' ? 'left' : 'right'} w-1/3 text-sm font-bold`}>
+                <p>{t('yearLabel')} {teacherInfo?.academicYear}</p>
+                <p>{t('semesterLabel')} {semester === '1' ? t('firstSemesterWord') : t('secondSemesterWord')}</p>
               </div>
             </div>
 
             <div className="bg-slate-50 p-6 rounded-2xl border-2 border-black mb-8 flex justify-between items-center text-black">
               <div>
                 <h3 className="text-2xl font-black mb-1">{student.name}</h3>
-                <p className="text-base text-black font-bold">الصف: {student.classes[0]}</p>
+                <p className="text-base text-black font-bold">{t('classLabelTemplate')} {student.classes[0]}</p>
               </div>
               <div className="flex gap-4 text-xs font-bold">
-                <span className="bg-emerald-100 border border-black text-emerald-900 px-3 py-1 rounded">إيجابي: {totalPositive}</span>
-                <span className="bg-rose-100 border border-black text-rose-900 px-3 py-1 rounded">سلبي: {totalNegative}</span>
+                <span className="bg-emerald-100 border border-black text-emerald-900 px-3 py-1 rounded">{t('positiveLabel')} {totalPositive}</span>
+                <span className="bg-rose-100 border border-black text-rose-900 px-3 py-1 rounded">{t('negativeLabel')} {totalNegative}</span>
               </div>
             </div>
 
-            <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">التحصيل الدراسي</h3>
+            <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">{t('academicAchievement')}</h3>
 
             <table className="w-full border-collapse border border-black text-sm mb-8">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-black p-3 text-right">المادة</th>
-                  <th className="border border-black p-3 text-center">أداة التقويم</th>
-                  <th className="border border-black p-3 text-center w-24">الدرجة</th>
+                  <th className={`border border-black p-3 text-${dir === 'rtl' ? 'right' : 'left'}`}>{t('subjectCol')}</th>
+                  <th className="border border-black p-3 text-center">{t('assessmentTool')}</th>
+                  <th className="border border-black p-3 text-center w-24">{t('degreeLabel')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -728,7 +754,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                   const g = grades.find((r: any) => r.category.trim() === t.name.trim());
                   return (
                     <tr key={t.id}>
-                      <td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td>
+                      <td className={`border border-black p-3 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
                       <td className="border border-black p-3 text-center">{t.name}</td>
                       <td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td>
                     </tr>
@@ -738,14 +764,14 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                   const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim());
                   return (
                     <tr>
-                      <td className="border border-black p-3 font-bold">{teacherInfo?.subject}</td>
+                      <td className={`border border-black p-3 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
                       <td className="border border-black p-3 text-center bg-pink-50 font-bold">{finalTool.name}</td>
                       <td className="border border-black p-3 text-center font-black">{g ? g.score : '-'}</td>
                     </tr>
                   );
                 })()}
                 <tr className="bg-slate-200 font-bold">
-                  <td colSpan={2} className="border border-black p-3 text-right text-base">المجموع الكلي</td>
+                  <td colSpan={2} className={`border border-black p-3 text-${dir === 'rtl' ? 'right' : 'left'} text-base`}>{t('grandTotal')}</td>
                   <td className="border border-black p-3 text-center text-lg font-black">{totalScore}</td>
                 </tr>
               </tbody>
@@ -753,50 +779,52 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 
             <div className="flex gap-6 mb-8">
               <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
-                <p className="text-sm font-bold text-black mb-1">أيام الغياب</p>
+                <p className="text-sm font-bold text-black mb-1">{t('absenceDays')}</p>
                 <p className="text-3xl font-black text-rose-600">{absenceCount}</p>
               </div>
               <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
-                <p className="text-sm font-bold text-black mb-1">مرات التسرب</p>
+                <p className="text-sm font-bold text-black mb-1">{t('truancyTimes')}</p>
                 <p className="text-3xl font-black text-purple-600">{truantCount}</p>
               </div>
             </div>
 
             <div className="mb-12">
-                <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">سجل السلوك والمواظبة</h3>
+                <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block">{t('behaviorAndAttendanceRecord')}</h3>
                 <div className="flex gap-4 items-start">
                     
                     <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[150px]">
                         <div className="bg-green-100 p-2 text-center font-bold border-b-2 border-black text-green-900 text-sm">
-                            سلوكيات إيجابية ({posBehaviors.length})
+                            {t('notablePositiveBehaviors')} ({displayPosBehaviors.length})
                         </div>
                         <div className="p-2 space-y-2">
-                            {posBehaviors.length > 0 ? posBehaviors.map((b: any, idx: number) => (
+                            {displayPosBehaviors.length > 0 ? displayPosBehaviors.map((b: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center border-b border-black/50 pb-1 last:border-0 text-sm">
-                                    <span className="font-bold text-black">{b.description}</span>
-                                    <div className="text-left text-[10px] font-bold text-black flex flex-col items-end">
-                                        <span>{new Date(b.date).toLocaleDateString('en-GB')}</span>
-                                        {b.session && <span>حصة: {b.session}</span>}
+                                    {/* 🌟 ترجمة السلوك المحفوظ */}
+                                    <span className="font-bold text-black">{translateBehavior(b.description)}</span>
+                                    <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
+                                        <span>{new Date(b.date).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>
+                                        {b.session && <span>{t('sessionLabel')} {b.session}</span>}
                                     </div>
                                 </div>
-                            )) : <div className="text-center text-xs text-gray-500 py-4">- لا يوجد -</div>}
+                            )) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
                         </div>
                     </div>
 
                     <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[150px]">
                         <div className="bg-red-100 p-2 text-center font-bold border-b-2 border-black text-red-900 text-sm">
-                            سلوكيات سلبية ({negBehaviors.length})
+                            {t('negativeBehaviors')} ({negBehaviors.length})
                         </div>
                         <div className="p-2 space-y-2">
                             {negBehaviors.length > 0 ? negBehaviors.map((b: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center border-b border-black/50 pb-1 last:border-0 text-sm">
-                                    <span className="font-bold text-black">{b.description}</span>
-                                    <div className="text-left text-[10px] font-bold text-black flex flex-col items-end">
-                                        <span>{new Date(b.date).toLocaleDateString('en-GB')}</span>
-                                        {b.session && <span>حصة: {b.session}</span>}
+                                    {/* 🌟 ترجمة السلوك المحفوظ */}
+                                    <span className="font-bold text-black">{translateBehavior(b.description)}</span>
+                                    <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
+                                        <span>{new Date(b.date).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>
+                                        {b.session && <span>{t('sessionLabel')} {b.session}</span>}
                                     </div>
                                 </div>
-                            )) : <div className="text-center text-xs text-gray-500 py-4">- لا يوجد -</div>}
+                            )) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
                         </div>
                     </div>
 
@@ -805,14 +833,14 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 
             <div className="flex justify-between items-end px-12 mt-auto">
               <div className="text-center">
-                <p className="font-bold text-base mb-8 text-black">معلم المادة</p>
+                <p className="font-bold text-base mb-8 text-black">{t('subjectTeacherLabel')}</p>
                 <p className="text-2xl font-bold text-black">{teacherInfo?.name}</p>
               </div>
               <div className="text-center">
                 {teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80" style={{ backgroundColor: 'transparent' }} />}
               </div>
               <div className="text-center">
-                <p className="font-bold text-base mb-8 text-black">مدير المدرسة</p>
+                <p className="font-bold text-base mb-8 text-black">{t('schoolPrincipalMale')}</p>
                 <p className="font-bold text-lg text-black">........................</p>
               </div>
             </div>
@@ -827,7 +855,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 // 3. UI (Main Component)
 // =================================================================================
 const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
-  const { students, setStudents, classes, teacherInfo, currentSemester, assessmentTools, certificateSettings, setCertificateSettings } = useApp();
+  const { students, setStudents, classes, teacherInfo, currentSemester, assessmentTools, certificateSettings, setCertificateSettings, t, dir, language } = useApp(); // 🌍 محرك اللغات
   const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon'>(initialTab || 'student_report');
 
   const [stGrade, setStGrade] = useState<string>('all');
@@ -843,7 +871,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const [selectedCertStudents, setSelectedCertStudents] = useState<string[]>([]);
   const [showCertSettingsModal, setShowCertSettingsModal] = useState(false);
 
-  const [tempCertSettings, setTempCertSettings] = useState(certificateSettings || DEFAULT_CERT_SETTINGS);
+  const [tempCertSettings, setTempCertSettings] = useState(certificateSettings || { title: '', bodyText: '' });
 
   const [summonGrade, setSummonGrade] = useState<string>('all');
   const [summonClass, setSummonClass] = useState<string>('');
@@ -859,7 +887,6 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const [takenProcedures, setTakenProcedures] = useState<string[]>([]);
 
-  // ✅ حالات جديدة لبطاقات الآباء
   const [cardsGrade, setCardsGrade] = useState<string>('all');
   const [cardsClass, setCardsClass] = useState<string>('all');
 
@@ -914,7 +941,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   useEffect(() => { const cls = getClassesForGrade(stGrade); if (cls.length > 0) setStClass(cls[0]); }, [stGrade, classes]);
   useEffect(() => { const cls = getClassesForGrade(certGrade); if (cls.length > 0) setCertClass(cls[0]); }, [certGrade, classes]);
   useEffect(() => { const cls = getClassesForGrade(summonGrade); if (cls.length > 0) setSummonClass(cls[0]); }, [summonGrade, classes]);
-  useEffect(() => { const cls = getClassesForGrade(cardsGrade); if (cls.length > 0) setCardsClass('all'); }, [cardsGrade, classes]); // تعيين الكل كافتراضي
+  useEffect(() => { const cls = getClassesForGrade(cardsGrade); if (cls.length > 0) setCardsClass('all'); }, [cardsGrade, classes]); 
   useEffect(() => { if (certificateSettings) setTempCertSettings(certificateSettings); }, [certificateSettings]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
@@ -924,25 +951,33 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const getReasonText = () => {
     switch (summonData.reasonType) {
-      case 'absence': return 'تكرار الغياب عن المدرسة وتأثيره على المستوى الدراسي';
-      case 'truant': return 'التسرب المتكرر من الحصص الدراسية';
-      case 'behavior': return 'مناقشة بعض السلوكيات الصادرة من الطالب';
-      case 'level': return 'مناقشة تدني المستوى التحصيلي للطالب';
-      case 'other': return summonData.customReason || '................................';
+      case 'absence': return t('reasonAbsence');
+      case 'truant': return t('reasonTruancy');
+      case 'behavior': return t('reasonBehavior');
+      case 'level': return t('reasonLevel');
+      case 'other': return summonData.customReason || t('reasonOtherFallback');
       default: return '';
     }
   };
 
-  const availableProceduresList = ['تنبيه شفوي', 'تعهد خطي', 'اتصال هاتفي', 'إشعار واتساب', 'تحويل أخصائي'];
-  const toggleProcedure = (proc: string) => setTakenProcedures(prev => prev.includes(proc) ? prev.filter(p => p !== proc) : [...prev, proc]);
+  // 🌟 استخدام ID بدلاً من النص
+  const availableProceduresList = [
+    { id: 'procVerbalWarning', label: t('procVerbalWarning') }, 
+    { id: 'procWrittenPledge', label: t('procWrittenPledge') }, 
+    { id: 'procPhoneCall', label: t('procPhoneCall') }, 
+    { id: 'procWhatsappNotice', label: t('procWhatsappNotice') }, 
+    { id: 'procReferToSpecialist', label: t('procReferToSpecialist') }
+  ];
+  
+  const toggleProcedure = (procId: string) => setTakenProcedures(prev => prev.includes(procId) ? prev.filter(p => p !== procId) : [...prev, procId]);
 
   const openGradesPreview = () => {
-    if (filteredStudentsForGrades.length === 0) return alert('لا يوجد طلاب');
+    if (filteredStudentsForGrades.length === 0) return alert(t('noStudentsFound'));
     setPreviewData({
       isOpen: true,
-      title: 'سجل الدرجات',
+      title: t('gradesRecordTab'),
       landscape: true,
-      content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? 'الكل' : gradesClass} />
+      content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? t('allClassesInGrade').split(' ')[0] : gradesClass} />
     });
   };
 
@@ -951,39 +986,38 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
     if (targets.length === 0) return;
     setPreviewData({
       isOpen: true,
-      title: 'شهادات التقدير',
+      title: t('certificatesTab'),
       landscape: true,
-      content: <CertificatesTemplate students={targets} settings={certificateSettings || DEFAULT_CERT_SETTINGS} teacherInfo={teacherInfo} />
+      content: <CertificatesTemplate students={targets} settings={certificateSettings} teacherInfo={teacherInfo} />
     });
   };
 
   const openSummonPreview = () => {
     const s = availableStudentsForSummon.find(st => st.id === summonStudentId);
-    if (!s) return alert('اختر طالباً');
+    if (!s) return alert(t('selectStudentPlaceholder'));
     setPreviewData({
       isOpen: true,
-      title: `استدعاء - ${s.name}`,
+      title: `${t('summonTab')} - ${s.name}`,
       landscape: false,
       content: <SummonTemplate student={s} teacherInfo={teacherInfo} data={{ ...summonData, reason: getReasonText(), className: summonClass, procedures: takenProcedures, issueDate: summonData.issueDate }} />
     });
   };
 
   const openClassReportsPreview = () => {
-    if (filteredStudentsForStudentTab.length === 0) return alert('لا يوجد طلاب في هذا الفصل');
+    if (filteredStudentsForStudentTab.length === 0) return alert(t('noStudentsFound'));
     setPreviewData({
       isOpen: true,
-      title: `تقارير الصف ${stClass}`,
+      title: `${t('studentLevelReport')} - ${stClass}`,
       landscape: false,
       content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} semester={currentSemester} assessmentTools={assessmentTools} />
     });
   };
 
-  // ✅ فتح معاينة بطاقات الآباء
   const openParentCardsPreview = () => {
     setPreviewData({
       isOpen: true,
-      title: 'بطاقات دخول الآباء',
-      landscape: false, // الوضع الرأسي (A4) ليناسب التقطيع
+      title: t('parentLoginCards'),
+      landscape: false, 
       content: <ParentCardsTemplate students={students} schoolName={teacherInfo?.school} teacherName={teacherInfo?.name} selectedClass={cardsClass} />
     });
   };
@@ -1013,15 +1047,15 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   }
 
   const tabs = [
-    { id: 'student_report', label: 'تقرير طالب', icon: Icon3DStudent },
-    { id: 'grades_record', label: 'سجل الدرجات', icon: Icon3DGrades },
-    { id: 'certificates', label: 'الشهادات', icon: Icon3DCertificate },
-    { id: 'parent_cards', label: 'بطاقات الآباء', icon: Icon3DParentCard }, // 🎟️ التبويب الجديد
-    { id: 'summon', label: 'استدعاء', icon: Icon3DSummon },
+    { id: 'student_report', label: t('studentReportTab'), icon: Icon3DStudent },
+    { id: 'grades_record', label: t('gradesRecordTab'), icon: Icon3DGrades },
+    { id: 'certificates', label: t('certificatesTab'), icon: Icon3DCertificate },
+    { id: 'parent_cards', label: t('parentCardsTab'), icon: Icon3DParentCard }, 
+    { id: 'summon', label: t('summonTab'), icon: Icon3DSummon },
   ];
 
   return (
-    <div className={`flex flex-col h-full relative font-sans transition-colors duration-500 ${isRamadan ? 'text-white' : 'bg-[#f8fafc] text-slate-800'}`}>
+    <div className={`flex flex-col h-full relative font-sans transition-colors duration-500 ${isRamadan ? 'text-white' : 'bg-[#f8fafc] text-slate-800'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       <PrintPreviewModal
         isOpen={previewData.isOpen}
         onClose={() => setPreviewData({ ...previewData, isOpen: false })}
@@ -1037,8 +1071,8 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
             <Icon3DReportCenter className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-wide">مركز التقارير</h1>
-            <p className={`text-[10px] font-bold opacity-80 ${isRamadan ? 'text-indigo-200' : 'text-blue-200'}`}>طباعة الكشوفات والشهادات</p>
+            <h1 className="text-xl font-black tracking-wide">{t('reportsCenter')}</h1>
+            <p className={`text-[10px] font-bold opacity-80 ${isRamadan ? 'text-indigo-200' : 'text-blue-200'}`}>{t('printStatementsAndCertificates')}</p>
           </div>
         </div>
 
@@ -1069,7 +1103,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
             <div className="space-y-6">
               <div className={`flex items-center gap-3 border-b pb-4 mb-2 ${isRamadan ? 'border-white/10' : 'border-slate-50'}`}>
                 <div className={`p-2 rounded-xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}><Icon3DStudent className="w-5 h-5" /></div>
-                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تقرير الطالب الشامل</h3>
+                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('comprehensiveStudentReport')}</h3>
               </div>
 
               <div className="space-y-4">
@@ -1080,7 +1114,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                       onClick={() => setStGrade(g)}
                       className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${stGrade === g ? (isRamadan ? 'bg-indigo-500/40 text-indigo-200 border-indigo-400/50' : 'bg-indigo-600 text-white border-transparent') : (isRamadan ? 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-600 border-slate-200')}`}
                     >
-                      صف {g}
+                      {t('gradePrefix')} {g}
                     </button>
                   ))}
                 </div>
@@ -1091,7 +1125,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   </select>
 
                   <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} className={`w-full p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-indigo-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-500'}`}>
-                    <option value="" className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>اختر طالباً...</option>
+                    <option value="" className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>{t('selectStudentPlaceholder')}</option>
                     {filteredStudentsForStudentTab.map(s => <option key={s.id} value={s.id} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{s.name}</option>)}
                   </select>
                 </div>
@@ -1103,7 +1137,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   disabled={!stClass || filteredStudentsForStudentTab.length === 0}
                   className={`px-5 py-3.5 rounded-xl font-black text-xs shadow-lg flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center disabled:opacity-50 ${isRamadan ? 'bg-white/10 text-white hover:bg-white/20 border border-white/20' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                 >
-                  <Icon3DLayers className="w-4 h-4" /> طباعة الفصل كاملاً
+                  <Icon3DLayers className="w-4 h-4" /> {t('printEntireClass')}
                 </button>
 
                 <button
@@ -1116,7 +1150,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   disabled={!selectedStudentId}
                   className={`disabled:opacity-50 px-6 py-3.5 rounded-xl font-black text-xs shadow-lg flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                 >
-                  <Icon3DDocument className="w-4 h-4" /> معاينة فردية
+                  <Icon3DDocument className="w-4 h-4" /> {t('individualPreview')}
                 </button>
               </div>
             </div>
@@ -1126,7 +1160,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
             <div className="space-y-6">
               <div className={`flex items-center gap-3 border-b pb-4 mb-2 ${isRamadan ? 'border-white/10' : 'border-slate-50'}`}>
                 <div className={`p-2 rounded-xl ${isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600'}`}><Icon3DGrades className="w-5 h-5" /></div>
-                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>سجل الدرجات</h3>
+                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('gradesRecordTab')}</h3>
               </div>
 
               <div className="space-y-4">
@@ -1137,20 +1171,20 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                       onClick={() => { setGradesGrade(g); setGradesClass('all'); }}
                       className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${gradesGrade === g ? (isRamadan ? 'bg-amber-500/40 text-amber-200 border-amber-400/50' : 'bg-amber-600 text-white border-transparent') : (isRamadan ? 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-600 border-slate-200')}`}
                     >
-                      صف {g}
+                      {t('gradePrefix')} {g}
                     </button>
                   ))}
                 </div>
 
                 <select value={gradesClass} onChange={(e) => setGradesClass(e.target.value)} className={`w-full p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-amber-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-amber-500'}`}>
-                  <option value="all" className={isRamadan ? 'bg-slate-900 text-white' : ''}>الكل</option>
+                  <option value="all" className={isRamadan ? 'bg-slate-900 text-white' : ''}>{t('allClassesInGrade').split(' ')[0]}</option>
                   {getClassesForGrade(gradesGrade).map(c => <option key={c} value={c} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{c}</option>)}
                 </select>
               </div>
 
               <div className="flex justify-end pt-4">
                 <button onClick={openGradesPreview} className={`w-full text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'}`}>
-                  <Icon3DPrint className="w-5 h-5" /> معاينة وطباعة السجل
+                  <Icon3DPrint className="w-5 h-5" /> {t('previewAndPrintRecord')}
                 </button>
               </div>
             </div>
@@ -1161,7 +1195,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               <div className={`flex justify-between items-center pb-4 border-b mb-2 ${isRamadan ? 'border-white/10' : 'border-slate-50'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}><Icon3DCertificate className="w-5 h-5" /></div>
-                  <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>شهادات التقدير</h3>
+                  <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('certificatesTab')}</h3>
                 </div>
                 <button onClick={() => setShowCertSettingsModal(true)} className={`p-2 rounded-xl transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
                   <Icon3DSettings className="w-5 h-5" />
@@ -1176,21 +1210,21 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                       onClick={() => setCertGrade(g)}
                       className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${certGrade === g ? (isRamadan ? 'bg-emerald-500/40 text-emerald-200 border-emerald-400/50' : 'bg-emerald-600 text-white border-transparent') : (isRamadan ? 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-600 border-slate-200')}`}
                     >
-                      صف {g}
+                      {t('gradePrefix')} {g}
                     </button>
                   ))}
                 </div>
 
                 <select value={certClass} onChange={(e) => { setCertClass(e.target.value); setSelectedCertStudents([]); }} className={`w-full p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-emerald-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-emerald-500'}`}>
-                  <option value="" disabled className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>اختر الفصل</option>
+                  <option value="" disabled className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>{t('selectClassPlaceholder')}</option>
                   {getClassesForGrade(certGrade).map(c => <option key={c} value={c} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{c}</option>)}
                 </select>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between px-2">
-                  <label className={`text-xs font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>الطلاب ({selectedCertStudents.length})</label>
-                  <button onClick={selectAllCertStudents} className={`text-xs font-bold transition-colors ${isRamadan ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}>تحديد الكل</button>
+                  <label className={`text-xs font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('studentsLabel')} ({selectedCertStudents.length})</label>
+                  <button onClick={selectAllCertStudents} className={`text-xs font-bold transition-colors ${isRamadan ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}>{t('selectAll')}</button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1 custom-scrollbar">
@@ -1212,18 +1246,17 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   disabled={selectedCertStudents.length === 0}
                   className={`w-full disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 >
-                  <Icon3DPrint className="w-5 h-5" /> معاينة وطباعة الشهادات
+                  <Icon3DPrint className="w-5 h-5" /> {t('previewAndPrintCertificates')}
                 </button>
               </div>
             </div>
           )}
 
-          {/* ================= ✅ تبويب بطاقات الآباء الجديد ================= */}
           {activeTab === 'parent_cards' && (
             <div className="space-y-6">
               <div className={`flex items-center gap-3 border-b pb-4 mb-2 ${isRamadan ? 'border-white/10' : 'border-slate-50'}`}>
                 <div className={`p-2 rounded-xl ${isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600'}`}><Icon3DParentCard className="w-5 h-5" /></div>
-                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>بطاقات دخول أولياء الأمور</h3>
+                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('parentLoginCards')}</h3>
               </div>
 
               <div className="space-y-4">
@@ -1234,20 +1267,20 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                       onClick={() => { setCardsGrade(g); setCardsClass('all'); }}
                       className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${cardsGrade === g ? (isRamadan ? 'bg-amber-500/40 text-amber-200 border-amber-400/50' : 'bg-amber-600 text-white border-transparent') : (isRamadan ? 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-600 border-slate-200')}`}
                     >
-                      صف {g}
+                      {t('gradePrefix')} {g}
                     </button>
                   ))}
                 </div>
 
                 <select value={cardsClass} onChange={(e) => setCardsClass(e.target.value)} className={`w-full p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-amber-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-amber-500'}`}>
-                  <option value="all" className={isRamadan ? 'bg-slate-900 text-white' : ''}>الكل (جميع فصول هذا الصف)</option>
+                  <option value="all" className={isRamadan ? 'bg-slate-900 text-white' : ''}>{t('allClassesInGrade')}</option>
                   {getClassesForGrade(cardsGrade).map(c => <option key={c} value={c} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{c}</option>)}
                 </select>
               </div>
 
               <div className="flex justify-end pt-4">
                 <button onClick={openParentCardsPreview} className={`w-full text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'}`}>
-                  <Icon3DPrint className="w-5 h-5" /> معاينة وطباعة البطاقات 🎟️
+                  <Icon3DPrint className="w-5 h-5" /> {t('previewAndPrintCards')}
                 </button>
               </div>
             </div>
@@ -1257,17 +1290,17 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
             <div className="space-y-6">
               <div className={`flex items-center gap-3 border-b pb-4 mb-2 ${isRamadan ? 'border-white/10' : 'border-slate-50'}`}>
                 <div className={`p-2 rounded-xl ${isRamadan ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-50 text-rose-600'}`}><Icon3DSummon className="w-5 h-5" /></div>
-                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>استدعاء ولي أمر</h3>
+                <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('summonTab')}</h3>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <select value={summonClass} onChange={(e) => setSummonClass(e.target.value)} className={`p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-rose-500'}`}>
-                  <option value="" disabled className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>اختر الفصل</option>
+                  <option value="" disabled className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>{t('selectClassPlaceholder')}</option>
                   {getClassesForGrade(summonGrade).map(c => <option key={c} value={c} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{c}</option>)}
                 </select>
 
                 <select value={summonStudentId} onChange={(e) => setSummonStudentId(e.target.value)} className={`p-4 border rounded-2xl font-bold outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-rose-500'}`}>
-                  <option value="" className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>الطالب...</option>
+                  <option value="" className={isRamadan ? 'text-slate-500 bg-slate-900' : ''}>{t('studentPlaceholder')}</option>
                   {availableStudentsForSummon.map(s => <option key={s.id} value={s.id} className={isRamadan ? 'bg-slate-900 text-white' : ''}>{s.name}</option>)}
                 </select>
               </div>
@@ -1275,11 +1308,11 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: 'absence', label: 'غياب' },
-                    { id: 'truant', label: 'تسرب' },
-                    { id: 'behavior', label: 'سلوك' },
-                    { id: 'level', label: 'مستوى' },
-                    { id: 'other', label: 'أخرى' }
+                    { id: 'absence', label: t('absenceReason') },
+                    { id: 'truant', label: t('truantReason') },
+                    { id: 'behavior', label: t('behaviorReason') },
+                    { id: 'level', label: t('levelReason') },
+                    { id: 'other', label: t('otherReason') }
                   ].map((r) => (
                     <button
                       key={r.id}
@@ -1295,7 +1328,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   <textarea
                     value={summonData.customReason}
                     onChange={(e) => setSummonData({ ...summonData, customReason: e.target.value })}
-                    placeholder="اكتب سبب الاستدعاء هنا..."
+                    placeholder={t('writeSummonReasonHere')}
                     className={`w-full p-4 border rounded-2xl font-bold mt-2 h-20 resize-none outline-none transition-colors text-sm ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400 placeholder:text-slate-600' : 'bg-slate-50 border-slate-300 text-slate-800 focus:border-rose-500'}`}
                   />
                 )}
@@ -1304,28 +1337,28 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               <div className="grid grid-cols-2 gap-2">
                 {availableProceduresList.map(p => (
                   <button
-                    key={p}
-                    onClick={() => toggleProcedure(p)}
-                    className={`p-2 rounded-lg text-[10px] font-bold border transition-all ${takenProcedures.includes(p) ? (isRamadan ? 'bg-indigo-500/30 border-indigo-400 text-indigo-200' : 'bg-indigo-100 border-indigo-500 text-indigo-700') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50')}`}
+                    key={p.id}
+                    onClick={() => toggleProcedure(p.id)}
+                    className={`p-2 rounded-lg text-[10px] font-bold border transition-all ${takenProcedures.includes(p.id) ? (isRamadan ? 'bg-indigo-500/30 border-indigo-400 text-indigo-200' : 'bg-indigo-100 border-indigo-500 text-indigo-700') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50')}`}
                   >
-                    {p}
+                    {p.label}
                   </button>
                 ))}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>تاريخ الإصدار</label>
+                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('issueDateLabel')}</label>
                   <input type="date" value={summonData.issueDate} onChange={(e) => setSummonData({ ...summonData, issueDate: e.target.value })} className={`w-full p-3 border rounded-xl text-xs font-bold outline-none ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400' : 'bg-slate-50 border-slate-200 focus:border-rose-500'}`} />
                 </div>
 
                 <div className="space-y-1">
-                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>تاريخ الحضور</label>
+                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('attendanceDateLabel')}</label>
                   <input type="date" value={summonData.date} onChange={(e) => setSummonData({ ...summonData, date: e.target.value })} className={`w-full p-3 border rounded-xl text-xs font-bold outline-none ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400' : 'bg-slate-50 border-slate-200 focus:border-rose-500'}`} />
                 </div>
 
                 <div className="space-y-1">
-                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>الوقت</label>
+                  <label className={`text-[10px] font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('timeLabel')}</label>
                   <input type="time" value={summonData.time} onChange={(e) => setSummonData({ ...summonData, time: e.target.value })} className={`w-full p-3 border rounded-xl text-xs font-bold outline-none ${isRamadan ? 'bg-[#0f172a]/50 border-white/20 text-white focus:border-rose-400' : 'bg-slate-50 border-slate-200 focus:border-rose-500'}`} />
                 </div>
               </div>
@@ -1336,7 +1369,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   disabled={!summonStudentId}
                   className={`w-full disabled:opacity-50 text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-rose-600 hover:bg-rose-500' : 'bg-rose-600 hover:bg-rose-700'}`}
                 >
-                  <Icon3DEye className="w-5 h-5" /> معاينة الخطاب
+                  <Icon3DEye className="w-5 h-5" /> {t('previewLetter')}
                 </button>
               </div>
             </div>
@@ -1346,11 +1379,11 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
       <Modal isOpen={showCertSettingsModal} onClose={() => setShowCertSettingsModal(false)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
         <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 text-white shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-transparent text-slate-800'}`}>
-          <h3 className="font-black text-lg mb-4">إعدادات الشهادة</h3>
+          <h3 className="font-black text-lg mb-4">{t('certificateSettingsTitle')}</h3>
           <div className="space-y-3">
-            <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className={`w-full p-3 border rounded-xl font-bold outline-none transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 text-white focus:border-indigo-400' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'}`} placeholder="عنوان الشهادة" />
-            <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className={`w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 text-white focus:border-indigo-400' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'}`} placeholder="نص الشهادة" />
-            <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className={`w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>حفظ</button>
+            <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className={`w-full p-3 border rounded-xl font-bold outline-none transition-colors ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 text-white focus:border-indigo-400' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'}`} placeholder={t('certificateTitlePlaceholder')} />
+            <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className={`w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none ${isRamadan ? 'bg-[#1e1b4b]/50 border-indigo-500/30 text-white focus:border-indigo-400' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'}`} placeholder={t('certificateBodyPlaceholder')} />
+            <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className={`w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{t('saveBtn')}</button>
           </div>
         </div>
       </Modal>

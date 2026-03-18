@@ -8,6 +8,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { StudentAvatar } from './StudentAvatar';
+import { useApp } from '../context/AppContext'; // 🌍 استيراد السياق للغات
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -16,10 +17,12 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
+  // 🌍 استدعاء محرك الترجمة
+  const { t, dir, language } = useApp();
+
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today.toLocaleDateString('en-CA'));
   
-  // ✅ استعادة الفلاتر المحفوظة من ذاكرة الجلسة
   const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
   const [classFilter, setClassFilter] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
   
@@ -27,7 +30,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
-  // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
   const [isRamadan] = useState(() => {
       try {
           const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
@@ -37,13 +39,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       }
   });
 
-  // ✅ حفظ الفلاتر عند تغييرها لمزامنتها مع باقي الصفحات
   useEffect(() => {
       sessionStorage.setItem('rased_grade', selectedGrade);
       sessionStorage.setItem('rased_class', classFilter);
   }, [selectedGrade, classFilter]);
 
-  // شريط التواريخ (Week View)
   const [weekOffset, setWeekOffset] = useState(0);
   
   const weekDates = useMemo(() => {
@@ -132,21 +132,21 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   }, [filteredStudents, selectedDate]);
 
   const performNotification = async (method: 'whatsapp' | 'sms') => {
-      if(!notificationTarget || !notificationTarget.student.parentPhone) { alert('لا يوجد رقم هاتف مسجل'); return; }
+      if(!notificationTarget || !notificationTarget.student.parentPhone) { alert(t('noPhoneRegistered')); return; }
       const { student, type } = notificationTarget;
       let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-      if (!cleanPhone || cleanPhone.length < 5) return alert('رقم الهاتف غير صحيح');
+      if (!cleanPhone || cleanPhone.length < 5) return alert(t('invalidPhone'));
       if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
       if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
       else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
       
       let statusText = '';
-      if (type === 'absent') statusText = 'غائب'; 
-      else if (type === 'late') statusText = 'متأخر'; 
-      else if (type === 'truant') statusText = 'تسرب من الحصة (هروب)';
+      if (type === 'absent') statusText = t('statusAbsent'); 
+      else if (type === 'late') statusText = t('statusLate'); 
+      else if (type === 'truant') statusText = t('statusTruant');
       
-      const dateText = new Date().toLocaleDateString('ar-EG');
-      const msg = encodeURIComponent(`السلام عليكم، نود إشعاركم بأن الطالب ${student.name} تم تسجيل حالة: *${statusText}* اليوم (${dateText}). نرجو المتابعة.`);
+      const dateText = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+      const msg = encodeURIComponent(`${t('whatsappMsgPart1')} ${student.name} ${t('whatsappMsgPart2')}${statusText}${t('whatsappMsgPart3')}${dateText}${t('whatsappMsgPart4')}`);
       
       if (method === 'whatsapp') {
           if ((window as any).electron) { (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); } 
@@ -164,7 +164,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   };
 
   const handleExportDailyExcel = async () => {
-      if (filteredStudents.length === 0) return alert('لا يوجد طلاب');
+      if (filteredStudents.length === 0) return alert(t('noStudents'));
       setIsExportingExcel(true);
       try {
           const targetDate = new Date(selectedDate);
@@ -172,7 +172,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
           const month = targetDate.getMonth();
           const daysInMonth = new Date(year, month + 1, 0).getDate();
           const data = filteredStudents.map((s, idx) => {
-              const row: any = { 'م': idx + 1, 'اسم الطالب': s.name, 'الفصل': s.classes[0] || '' };
+              const row: any = { 
+                [t('excelNo')]: idx + 1, 
+                [t('excelStudentName')]: s.name, 
+                [t('excelClass')]: s.classes[0] || '' 
+              };
               let abs = 0, late = 0, truant = 0;
               for (let d = 1; d <= daysInMonth; d++) {
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -180,47 +184,49 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                   let symbol = '';
                   if (record) {
                       if (record.status === 'present') symbol = '✓';
-                      else if (record.status === 'absent') { symbol = 'غ'; abs++; }
-                      else if (record.status === 'late') { symbol = 'ت'; late++; }
-                      else if (record.status === 'truant') { symbol = 'س'; truant++; }
+                      else if (record.status === 'absent') { symbol = language === 'ar' ? 'غ' : 'A'; abs++; }
+                      else if (record.status === 'late') { symbol = language === 'ar' ? 'ت' : 'L'; late++; }
+                      else if (record.status === 'truant') { symbol = language === 'ar' ? 'س' : 'T'; truant++; }
                   }
                   row[`${d}`] = symbol;
               }
-              row['مجموع الغياب'] = abs; row['مجموع التأخير'] = late; row['مجموع التسرب'] = truant;
+              row[t('excelTotalAbsent')] = abs; 
+              row[t('excelTotalLate')] = late; 
+              row[t('excelTotalTruant')] = truant;
               return row;
           });
           const wb = XLSX.utils.book_new(); 
           const ws = XLSX.utils.json_to_sheet(data);
-          XLSX.utils.book_append_sheet(wb, ws, `شهر_${month + 1}`);
+          XLSX.utils.book_append_sheet(wb, ws, `${t('excelMonthPrefix')}${month + 1}`);
           const fileName = `Attendance_${month + 1}.xlsx`;
           if (Capacitor.isNativePlatform()) {
               const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
               const result = await Filesystem.writeFile({ path: fileName, data: wbout, directory: Directory.Cache });
-              await Share.share({ title: 'سجل الحضور', url: result.uri });
+              await Share.share({ title: t('attendanceRecord'), url: result.uri });
           } else { XLSX.writeFile(wb, fileName); }
-      } catch (error) { alert('خطأ في التصدير'); } finally { setIsExportingExcel(false); }
+      } catch (error) { alert(t('exportError')); } finally { setIsExportingExcel(false); }
   };
 
+  // 🌍 تطبيق اتجاه الصفحة بالكامل
   return (
-    <div className={`flex flex-col h-full relative ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+    <div className={`flex flex-col h-full relative ${isRamadan ? 'text-white' : 'text-slate-800'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
         
         {/* ================= FIXED HEADER ================= */}
-        {/* 🚀 إضافة الشفافية الزجاجية (iOS Style) للهيدر بدون Blur */}
             <header 
-                className={`fixed top-0 left-0 right-0 pt-10 pb-4 px-4 md:pt-14 md:pb-8 md:px-6 md:pl-40 shadow-lg z-20 transition-all duration-500 ${isRamadan ? 'bg-[#0f172a] border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+                className={`pt-10 pb-6 px-4 md:pt-14 md:pb-8 md:px-6 md:pl-40 shadow-lg relative z-20 -mx-4 -mt-4 transition-all duration-500 ${isRamadan ? 'bg-white/5 border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
                 style={{ WebkitAppRegion: 'drag' } as any}
             >
                 <div className="flex justify-between items-center gap-3 mb-5">
-                    <h1 className="text-xl md:text-2xl font-black tracking-wide shrink-0">سجل الغياب</h1>
+                    <h1 className="text-xl md:text-2xl font-black tracking-wide shrink-0">{t('attendanceTitle')}</h1>
                     
                     <div className="flex-1 relative group" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200" />
+                        <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-blue-200`} />
                         <input 
                             type="text" 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="بحث عن طالب..." 
-                            className={`w-full border rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold outline-none transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white placeholder:text-blue-200/70 focus:bg-white/20' : 'bg-white/20 border-white/30 text-white placeholder:text-blue-100 focus:bg-white/30'}`}
+                            placeholder={t('searchStudentPlaceholder')} 
+                            className={`w-full border rounded-xl py-2.5 ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} text-xs font-bold outline-none transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white placeholder:text-blue-200/70 focus:bg-white/20' : 'bg-white/20 border-white/30 text-white placeholder:text-blue-100 focus:bg-white/30'}`}
                         />
                     </div>
 
@@ -229,14 +235,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                         disabled={isExportingExcel} 
                         className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-white/20 border-white/30 text-white hover:bg-white/30'}`}
                         style={{ WebkitAppRegion: 'no-drag' } as any}
-                        title="تصدير السجل"
+                        title={t('exportRecord')}
                     >
                          {isExportingExcel ? <Loader2 className="w-5 h-5 animate-spin"/> : <Share2 className="w-5 h-5"/>}
                     </button>
                 </div>
 
                 <div className={`flex items-center justify-between gap-1 mb-4 p-2 rounded-2xl border shadow-inner ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/20'}`} style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className="w-5 h-5 rtl:rotate-180"/></button>
+                    <button onClick={() => setWeekOffset(prev => prev - 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronRight className={`w-5 h-5 ${dir === 'rtl' ? 'rotate-0' : 'rotate-180'}`}/></button>
                     <div className="flex flex-1 justify-between gap-1 text-center">
                         {weekDates.map((date, idx) => {
                             const isSelected = date.toLocaleDateString('en-CA') === selectedDate;
@@ -247,91 +253,91 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                     onClick={() => setSelectedDate(date.toLocaleDateString('en-CA'))}
                                     className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl flex-1 transition-all ${isSelected ? (isRamadan ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 shadow-md scale-105' : 'bg-white text-[#1e3a8a] shadow-md scale-105') : 'text-blue-100 hover:bg-white/5'}`}
                                 >
-                                    <span className={`text-[9px] font-bold mb-0.5 ${isSelected ? (isRamadan ? 'text-amber-200' : 'text-[#1e3a8a]/70') : 'text-blue-200'}`}>{date.toLocaleDateString('ar-EG', { weekday: 'short' })}</span>
+                                    <span className={`text-[9px] font-bold mb-0.5 ${isSelected ? (isRamadan ? 'text-amber-200' : 'text-[#1e3a8a]/70') : 'text-blue-200'}`}>{date.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short' })}</span>
                                     <span className="text-sm font-black">{date.getDate()}</span>
                                     {isToday && !isSelected && <div className="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>}
                                 </button>
                             );
                         })}
                     </div>
-                    <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className="w-5 h-5 rtl:rotate-180"/></button>
+                    <button onClick={() => setWeekOffset(prev => prev + 1)} className="p-1 text-white hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft className={`w-5 h-5 ${dir === 'rtl' ? 'rotate-0' : 'rotate-180'}`}/></button>
                 </div>
 
                 <div className="space-y-2 mb-1 px-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-1">
-                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>الكل</button>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-2">
+                        <button onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{t('all')}</button>
                         {availableGrades.map(g => (
-                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>صف {g}</button>
+                            <button key={g} onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{t('gradePrefix')} {g}</button>
                         ))}
                         {visibleClasses.map(c => (
-                            <button key={c} onClick={() => setClassFilter(c)} className={`shrink-0 px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
+                            <button key={c} onClick={() => setClassFilter(c)} className={`px-4 py-1.5 text-[10px] font-bold whitespace-nowrap rounded-xl transition-all border ${classFilter === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
                         ))}
                     </div>
                 </div>
             </header>
 
         {/* Content Area */}
-        {/* تم تعديل pt لتجنب التداخل مع الهيدر وتقليل الفراغ العلوي */}
-        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-[260px] md:pt-[280px]">
+        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
+            <div className="w-full h-[280px] shrink-0 md:h-0"></div>
 
-            <div className="relative z-10 px-2 mt-2">
+            <div className="-mt-4 relative z-10 px-2">
                 <div className="mb-4">
                     <div className="flex justify-between items-center gap-2 text-center">
                         <button onClick={() => markAll('present')} className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500/10 border-emerald-400/30' : 'bg-emerald-50 border-emerald-100'}`}>
-                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`}>حضور (الكل)</span>
+                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('presentAll')}</span>
                             <span className={`block text-xl font-black ${isRamadan ? 'text-emerald-300' : 'text-emerald-700'}`}>{stats.present}</span>
                         </button>
                         <button onClick={() => markAll('absent')} className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all ${isRamadan ? 'bg-rose-500/10 border-rose-400/30' : 'bg-rose-50 border-rose-100'}`}>
-                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`}>غياب (الكل)</span>
+                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`}>{t('absentAll')}</span>
                             <span className={`block text-xl font-black ${isRamadan ? 'text-rose-300' : 'text-rose-700'}`}>{stats.absent}</span>
                         </button>
                         <div className={`flex-1 rounded-2xl p-2.5 border shadow-sm ${isRamadan ? 'bg-amber-500/10 border-amber-400/30' : 'bg-amber-50 border-amber-100'}`}>
-                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`}>تأخير</span>
+                            <span className={`block text-[10px] font-bold mb-1 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`}>{t('lateAll')}</span>
                             <span className={`block text-xl font-black ${isRamadan ? 'text-amber-300' : 'text-amber-700'}`}>{stats.late}</span>
                         </div>
                     </div>
                 </div>
 
                 {filteredStudents.length > 0 ? (
-                    /* تم تغيير الشبكة لتكون 3 أعمدة (أو أكثر على الشاشات الكبيرة) */
-                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                         {filteredStudents.map(student => {
                             const status = getStatus(student);
                             return (
-                                /* 🚀 البطاقات الزجاجية الشفافة بدون Blur السريعة جداً */
-                                <div key={student.id} className={`rounded-2xl border flex flex-col items-center overflow-hidden transition-all duration-200 ${isRamadan ? 'bg-white/5 hover:bg-white/10' : 'bg-white'} ${
+                                <div key={student.id} className={`rounded-[1.5rem] border-2 flex flex-col items-center overflow-hidden transition-all duration-200 ${isRamadan ? 'bg-white/5 hover:bg-white/10' : 'bg-white'} ${
                                     status === 'present' ? (isRamadan ? 'border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.15)]' : 'border-emerald-400') : 
                                     status === 'absent' ? (isRamadan ? 'border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.15)]' : 'border-red-400') : 
                                     status === 'late' ? (isRamadan ? 'border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]' : 'border-amber-400') :
                                     status === 'truant' ? (isRamadan ? 'border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.15)]' : 'border-purple-400') :
-                                    (isRamadan ? 'border-white/10 shadow-sm' : 'border-slate-200 shadow-sm')
+                                    (isRamadan ? 'border-white/10 shadow-sm' : 'border-transparent shadow-sm')
                                 }`}>
-                                    <div className="p-2 flex flex-col items-center w-full">
-                                        <StudentAvatar gender={student.gender} className="w-12 h-12 border-2 border-white/10" />
-                                        
-                                        {/* ✅ تم حذف line-clamp-1 وإضافة break-words والسماح بالالتفاف مع تصغير الخط */}
-                                        <h3 className={`font-bold text-[10px] leading-[1.2] text-center break-words w-full mt-2 min-h-[25px] flex items-center justify-center ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{student.name}</h3>
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-md mt-1 font-bold ${isRamadan ? 'bg-white/5 text-indigo-200 border border-white/10' : 'bg-slate-100 text-slate-500'}`}>{student.classes[0]}</span>
+                                    <div className="p-4 flex flex-col items-center w-full">
+                                        <StudentAvatar gender={student.gender} className="w-16 h-16" />
+                                        <h3 className={`font-bold text-sm text-center line-clamp-1 w-full mt-3 ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{student.name}</h3>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 font-bold ${isRamadan ? 'bg-white/5 text-indigo-200 border border-white/10' : 'bg-slate-100 text-slate-400'}`}>{student.classes[0]}</span>
                                     </div>
 
-                                    <div className={`flex w-full border-t divide-x divide-x-reverse ${isRamadan ? 'border-white/10 divide-white/10' : 'border-slate-100 divide-slate-100'}`}>
+                                    <div className={`flex w-full border-t divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} ${isRamadan ? 'border-white/10 divide-white/10' : 'border-slate-100 divide-slate-100'}`}>
                                         
-                                        <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? (isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-emerald-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✓</div>
+                                        <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? (isRamadan ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-emerald-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✓</div>
+                                            <span className="text-[10px] font-bold">{t('present')}</span>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
+                                        <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? (isRamadan ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-red-500 text-white' : (isRamadan ? 'bg-white/10 text-white/40' : 'bg-slate-200 text-white')}`}>✕</div>
+                                            <span className="text-[10px] font-bold">{t('absent')}</span>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`text-[10px] opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
+                                        <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`text-xs opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
+                                            <span className="text-[10px] font-bold">{t('late')}</span>
                                         </button>
 
-                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-2 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
-                                            <div className={`w-5 h-5 flex items-center justify-center`}>
-                                                <DoorOpen className={`w-3.5 h-3.5 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
+                                        <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600') : (isRamadan ? 'text-slate-400 hover:bg-white/5' : 'text-slate-400 hover:bg-slate-50')}`}>
+                                            <div className={`w-6 h-6 flex items-center justify-center`}>
+                                                <DoorOpen className={`w-4 h-4 transition-colors ${status === 'truant' ? (isRamadan ? 'text-purple-400' : 'text-purple-600') : (isRamadan ? 'text-white/40' : 'text-slate-400')}`} />
                                             </div>
+                                            <span className="text-[10px] font-bold">{t('truant')}</span>
                                         </button>
 
                                     </div>
@@ -342,13 +348,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 ) : (
                     <div className={`flex flex-col items-center justify-center py-20 ${isRamadan ? 'opacity-70' : 'opacity-50'}`}>
                         <UserCircle2 className={`w-16 h-16 mb-4 ${isRamadan ? 'text-white/20' : 'text-gray-300'}`} />
-                        <p className={`text-sm font-bold ${isRamadan ? 'text-indigo-200/50' : 'text-gray-400'}`}>لا يوجد طلاب</p>
+                        <p className={`text-sm font-bold ${isRamadan ? 'text-indigo-200/50' : 'text-gray-400'}`}>{t('noStudents')}</p>
                     </div>
                 )}
             </div>
         </div>
 
-        {/* 🚀 نافذة إشعار ولي الأمر المصلحة - الإصدار 4.3.1 */}
+        {/* 🚀 نافذة إشعار ولي الأمر المصلحة */}
         <Modal 
             isOpen={!!notificationTarget} 
             onClose={() => setNotificationTarget(null)} 
@@ -361,7 +367,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     : 'bg-white border-gray-100 shadow-2xl'
                 }`}>
                     
-                    {/* أيقونة الحالة مع خلفية ملونة للوضوح */}
                     <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner ${
                         notificationTarget.type === 'absent' ? (isRamadan ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-600') : 
                         notificationTarget.type === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600') : 
@@ -371,18 +376,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     </div>
 
                     <h3 className={`font-black text-xl mb-3 ${isRamadan ? 'text-white' : 'text-[#1e293b]'}`}>
-                        إشعار ولي الأمر
+                        {t('parentNotification')}
                     </h3>
                     
                     <div className={`text-sm font-bold mb-8 leading-relaxed ${isRamadan ? 'text-indigo-200/80' : 'text-slate-500'}`}>
-                        هل ترغب في إرسال رسالة تنبيه لولي أمر الطالب:
+                        {t('sendAlertPrompt')}
                         <div className={`text-lg mt-2 font-black ${isRamadan ? 'text-amber-400' : 'text-[#4338ca]'}`}>
                             {notificationTarget.student.name}
                         </div>
                     </div>
 
                     <div className="space-y-3">
-                        {/* زر واتساب - تم تعديل اللون ليكون صريحاً وواضحاً */}
                         <button 
                             onClick={() => performNotification('whatsapp')} 
                             className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg ${
@@ -392,10 +396,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                             }`}
                         >
                             <MessageCircle className="w-5 h-5" />
-                            إرسال عبر واتساب
+                            {t('sendWhatsapp')}
                         </button>
 
-                        {/* زر SMS - تم إصلاح شفافيته ليكون مقروءاً */}
                         <button 
                             onClick={() => performNotification('sms')} 
                             className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border ${
@@ -404,17 +407,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                                 : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                             }`}
                         >
-                            إرسال رسالة SMS
+                            {t('sendSms')}
                         </button>
 
-                        {/* زر التراجع */}
                         <button 
                             onClick={() => setNotificationTarget(null)} 
                             className={`w-full py-3 font-bold text-xs transition-colors ${
                                 isRamadan ? 'text-white/40 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'
                             }`}
                         >
-                            تراجع عن الإجراء
+                            {t('cancelAction')}
                         </button>
                     </div>
                 </div>

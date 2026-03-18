@@ -7,8 +7,8 @@ interface StudentGroupsProps {
 }
 
 const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
-  // ✅ استخدام الحالة الجديدة categorizations التي زرعناها في AppContext
-  const { students, classes, categorizations, setCategorizations } = useApp();
+  // 🌍 استدعاء محرك اللغات
+  const { students, classes, categorizations, setCategorizations, t, dir } = useApp();
   
   const [selectedClass, setSelectedClass] = useState<string>(classes[0] || '');
   const [activeCatId, setActiveCatId] = useState<string>('');
@@ -16,11 +16,9 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   const [newCatTitle, setNewCatTitle] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   
-  // حالات التوزيع الجماعي (Bulk Assignment)
   const [assigningToGroup, setAssigningToGroup] = useState<{ catId: string; groupId: string } | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
-  // لوحة الألوان العصرية
   const groupColors = [
     { id: 'blue', bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-800' },
     { id: 'emerald', bg: 'bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-800' },
@@ -31,15 +29,12 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   ];
   const [selectedColor, setSelectedColor] = useState(groupColors[0]);
 
-  // المستشعر الرمضاني
   const [isRamadan] = useState(() => {
     try {
         const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
         return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
     } catch(e) { return false; }
   });
-
-  // ================= الدوال الحسابية الذكية =================
 
   const classCategorizations = useMemo(() => categorizations.filter(c => c.classId === selectedClass), [categorizations, selectedClass]);
   const activeCat = useMemo(() => classCategorizations.find(c => c.id === activeCatId) || null, [classCategorizations, activeCatId]);
@@ -57,8 +52,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1]}`;
   };
 
-  // ================= دوال الإجراءات =================
-
   const handleCreateCategorization = () => {
     if (!newCatTitle.trim() || !selectedClass) return;
     const newCat = {
@@ -74,7 +67,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleDeleteCategorization = (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذه التقسيمة بالكامل؟')) {
+    if (confirm(t('confirmDeleteCat'))) {
       setCategorizations(categorizations.filter(c => c.id !== id));
       if (activeCatId === id) setActiveCatId('');
     }
@@ -86,7 +79,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       if (cat.id === activeCatId) {
         return {
           ...cat,
-          // ✅ إضافة حقل isCompleted افتراضياً بقيمة false للمجموعات الجديدة
           groups: [...cat.groups, { id: Math.random().toString(36).substring(2, 9), name: newGroupName.trim(), color: selectedColor.id, studentIds: [], isCompleted: false }]
         };
       }
@@ -96,7 +88,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleDeleteGroup = (groupId: string) => {
-    if (confirm('هل أنت متأكد من حذف هذه المجموعة؟ سيعود طلابها لقائمة غير الموزعين.')) {
+    if (confirm(t('confirmDeleteGroup'))) {
       setCategorizations(prev => prev.map(cat => {
         if (cat.id === activeCatId) return { ...cat, groups: cat.groups.filter(g => g.id !== groupId) };
         return cat;
@@ -116,7 +108,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     }));
   };
 
-  // ✅ دالة تحديد اكتمال المجموعة (تغيير حالة الإنجاز)
   const toggleGroupCompletion = (groupId: string) => {
     setCategorizations(prev => prev.map(cat => {
       if (cat.id === activeCatId) {
@@ -128,8 +119,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       return cat;
     }));
   };
-
-  // ================= دوال التوزيع الجماعي =================
 
   const openAssignModal = (groupId: string) => {
     if (!activeCat) return;
@@ -167,34 +156,33 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setAssigningToGroup(null);
   };
 
-  // ================= واجهة المستخدم =================
-
   if (classes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
-        <Users className="w-16 h-16 mb-4 text-gray-300" />
-        <p className="text-lg font-medium">لا توجد فصول مضافة</p>
+      <div className={`flex flex-col items-center justify-center h-full p-6 ${isRamadan ? 'text-slate-400' : 'text-gray-500'}`} dir={dir}>
+        <Users className={`w-16 h-16 mb-4 ${isRamadan ? 'text-slate-600' : 'text-gray-300'}`} />
+        <p className="text-lg font-medium">{t('noClassesAdded')}</p>
       </div>
     );
   }
 
+  // 🌍 إضافة dir للحاوية الرئيسية لقلب الأعمدة
   return (
-    <div className={`flex flex-col h-full overflow-hidden ${isRamadan ? 'text-white' : 'text-slate-800 bg-[#f8fafc]'}`}>
+    <div className={`flex flex-col h-full overflow-hidden ${isRamadan ? 'text-white' : 'text-slate-800 bg-[#f8fafc]'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
       {/* 🌟 رأس الصفحة */}
       <div className={`p-6 shadow-sm border-b shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
         <div className="flex items-center gap-4">
           {onBack && (
             <button onClick={onBack} className={`p-2 rounded-full transition-colors ${isRamadan ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
-              <ArrowRight className="w-6 h-6" />
+              <ArrowRight className={`w-6 h-6 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
             </button>
           )}
           <div className={`p-3 rounded-2xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-black">إدارة المجموعات</h1>
-            <p className={`text-sm font-bold mt-1 ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>هندسة التوزيع للتعلم التعاوني</p>
+            <h1 className="text-2xl font-black">{t('manageGroupsTitle')}</h1>
+            <p className={`text-sm font-bold mt-1 ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('groupsSubtitle')}</p>
           </div>
         </div>
 
@@ -210,15 +198,16 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
         
         {/* ================= 🗂️ العمود الأيمن: التقسيمات ================= */}
-        <div className={`w-full md:w-1/3 flex flex-col border-l shrink-0 ${isRamadan ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}>
+        {/* 🌍 تعديل اتجاه الحدود بناءً على اللغة */}
+        <div className={`w-full md:w-1/3 flex flex-col shrink-0 ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}>
           <div className="p-5 border-b border-inherit">
             <h2 className="font-black text-lg mb-4 flex items-center gap-2">
-              <FolderPlus className="w-5 h-5 text-indigo-500" /> تقسيمات الصف
+              <FolderPlus className="w-5 h-5 text-indigo-500" /> {t('classCategorizations')}
             </h2>
             <div className="flex gap-2">
               <input 
                 type="text" 
-                placeholder="اسم التقسيمة (مثال: مشروع العلوم)" 
+                placeholder={t('catNamePlaceholder')} 
                 value={newCatTitle}
                 onChange={(e) => setNewCatTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateCategorization()}
@@ -236,8 +225,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {classCategorizations.length === 0 ? (
-              <div className={`text-center p-8 rounded-2xl border border-dashed ${isRamadan ? 'border-white/20 text-slate-400' : 'border-slate-300 text-slate-500'}`}>
-                لا توجد تقسيمات.<br/>أضف تقسيمة جديدة للبدء.
+              <div className={`text-center p-8 rounded-2xl border border-dashed ${isRamadan ? 'border-white/20 text-slate-400' : 'border-slate-300 text-slate-500'}`}
+                   dangerouslySetInnerHTML={{ __html: t('noCategorizations') }}>
               </div>
             ) : (
               classCategorizations.map(cat => (
@@ -249,7 +238,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                   <div>
                     <h3 className={`font-black text-lg ${activeCatId === cat.id ? (isRamadan ? 'text-indigo-300' : 'text-indigo-800') : ''}`}>{cat.title}</h3>
                     <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {cat.groups.length} مجموعات • {cat.groups.reduce((acc, g) => acc + g.studentIds.length, 0)} طالب
+                      {cat.groups.length} {t('groupsCount')} • {cat.groups.reduce((acc, g) => acc + g.studentIds.length, 0)} {t('studentsCountWord')}
                     </p>
                   </div>
                   <button 
@@ -269,7 +258,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
           {!activeCat ? (
             <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-50">
               <Users className="w-24 h-24 mb-6" />
-              <h2 className="text-2xl font-black">اختر تقسيمة لعرض المجموعات</h2>
+              <h2 className="text-2xl font-black">{t('selectCatToViewGroups')}</h2>
             </div>
           ) : (
             <>
@@ -287,7 +276,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                 <div className="flex gap-2 flex-1 min-w-[200px]">
                   <input 
                     type="text" 
-                    placeholder="اسم المجموعة (مثال: العباقرة)" 
+                    placeholder={t('groupNamePlaceholder')} 
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
@@ -298,7 +287,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                     disabled={!newGroupName.trim()}
                     className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 ${isRamadan ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                   >
-                    <Plus className="w-4 h-4" /> إضافة
+                    <Plus className="w-4 h-4" /> {t('addBtn')}
                   </button>
                 </div>
               </div>
@@ -308,14 +297,14 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                 {/* منطقة الطلاب غير الموزعين */}
                 <div className={`p-5 rounded-2xl border ${isRamadan ? 'bg-[#0f172a]/30 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
                   <h3 className="font-black text-sm mb-4 flex items-center justify-between">
-                    <span className="text-slate-500">الطلاب غير الموزعين</span>
+                    <span className={isRamadan ? 'text-slate-300' : 'text-slate-500'}>{t('unassignedStudents')}</span>
                     <span className={`text-xs px-3 py-1 rounded-lg font-bold ${isRamadan ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      المتبقي: {unassignedStudents.length}
+                      {t('remainingLabel')} {unassignedStudents.length}
                     </span>
                   </h3>
                   {unassignedStudents.length === 0 ? (
                     <div className="text-center p-3 text-emerald-500 font-bold text-sm bg-emerald-50/50 rounded-xl border border-emerald-100">
-                      🎉 تم توزيع جميع الطلاب!
+                      {t('allStudentsAssigned')}
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -334,11 +323,10 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                     const groupColor = groupColors.find(c => c.id === group.color) || groupColors[0];
                     const groupStudents = students.filter(s => group.studentIds.includes(s.id));
                     
-                    // ✅ تغيير التصميم إذا كانت المجموعة مكتملة الإنجاز
                     const isCompleted = group.isCompleted;
                     const containerStyle = isCompleted 
-                        ? `bg-emerald-50/60 border-emerald-300 opacity-80 scale-[0.98]` // تأثير الإنجاز
-                        : (isRamadan ? `bg-white/5 ${groupColor.border}` : `bg-white ${groupColor.border} shadow-sm`); // التصميم العادي
+                        ? `bg-emerald-50/60 border-emerald-300 opacity-80 scale-[0.98]`
+                        : (isRamadan ? `bg-white/5 ${groupColor.border}` : `bg-white ${groupColor.border} shadow-sm`);
 
                     const headerStyle = isCompleted 
                         ? `bg-emerald-100/50 border-inherit` 
@@ -348,10 +336,9 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                       <div key={group.id} className={`rounded-2xl border-2 flex flex-col overflow-hidden transition-all duration-300 ${containerStyle}`}>
                         <div className={`p-3 border-b flex justify-between items-center ${headerStyle}`}>
                           <div className="flex items-center gap-2">
-                              {/* ✅ زر الإنجاز (علامة الصح) المدمج بجوار العنوان */}
                               <button 
                                 onClick={() => toggleGroupCompletion(group.id)} 
-                                title={isCompleted ? "تراجع عن الإنجاز" : "تحديد كمكتملة"}
+                                title={isCompleted ? t('undoCompletion') : t('markAsCompleted')}
                                 className={`p-1.5 rounded-lg border-2 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 'bg-white/50 border-slate-300 text-slate-300 hover:border-emerald-400 hover:text-emerald-500'}`}
                               >
                                   <CheckCircle2 size={16} className={isCompleted ? "animate-in zoom-in" : ""} />
@@ -365,7 +352,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                             <span className={`text-[10px] font-bold px-2 py-1 rounded-lg bg-white/50 backdrop-blur-sm ${isCompleted ? 'text-emerald-700' : (isRamadan ? 'text-slate-800' : groupColor.text)}`}>
                               {groupStudents.length}
                             </span>
-                            <button onClick={() => handleDeleteGroup(group.id)} className="p-1.5 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors" title="حذف المجموعة">
+                            <button onClick={() => handleDeleteGroup(group.id)} className="p-1.5 hover:bg-rose-100 rounded-lg text-rose-500 transition-colors" title={t('deleteGroupBtn')}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -377,7 +364,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                               <div key={s.id} className={`p-2 rounded-xl text-xs font-bold border flex justify-between items-center group/item transition-all ${isCompleted ? 'bg-white/40 border-emerald-200/50 text-emerald-900/60 line-through' : (isRamadan ? 'bg-white/10 border-white/10' : 'bg-white border-slate-200 hover:border-slate-300')}`}>
                                 <span>{getShortName(s.name)}</span>
                                 {!isCompleted && (
-                                    <button onClick={() => removeStudentFromGroup(s.id, group.id)} className="p-1 rounded-md text-rose-500 opacity-0 group-hover/item:opacity-100 hover:bg-rose-100 transition-all" title="إزالة من المجموعة">
+                                    <button onClick={() => removeStudentFromGroup(s.id, group.id)} className="p-1 rounded-md text-rose-500 opacity-0 group-hover/item:opacity-100 hover:bg-rose-100 transition-all" title={t('removeFromGroupBtn')}>
                                       <UserMinus className="w-3 h-3" />
                                     </button>
                                 )}
@@ -386,14 +373,13 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                           </div>
                         </div>
                         
-                        {/* زر فتح الإضافة الجماعية يختفي إذا اكتملت المهمة لتجنب التعديل العشوائي */}
                         {!isCompleted && (
                             <div className="p-3 border-t bg-white">
                               <button 
                                 onClick={() => openAssignModal(group.id)}
                                 className={`w-full py-2.5 rounded-xl border-2 border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-colors ${isRamadan ? 'border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400'}`}
                               >
-                                <UserPlus className="w-4 h-4" /> إضافة طلاب
+                                <UserPlus className="w-4 h-4" /> {t('addStudentsToGroupBtn')}
                               </button>
                             </div>
                         )}
@@ -407,16 +393,16 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* ================= 🎯 نافذة التحديد الجماعي الذكية (Bulk Assign Modal) ================= */}
+      {/* ================= 🎯 نافذة التحديد الجماعي الذكية ================= */}
       {assigningToGroup && activeCat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className={`w-full max-w-xl rounded-[2rem] border shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 ${isRamadan ? 'bg-[#0f172a] border-white/20' : 'bg-white border-slate-100'}`}>
             
             <div className={`p-5 border-b flex justify-between items-center ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
               <div>
-                <h3 className="font-black text-xl">تحديد الطلاب</h3>
+                <h3 className="font-black text-xl">{t('selectStudentsTitle')}</h3>
                 <p className="text-sm font-bold text-indigo-500 mt-1">
-                  المجموعة: {activeCat.groups.find(g => g.id === assigningToGroup.groupId)?.name}
+                  {t('groupLabel')} {activeCat.groups.find(g => g.id === assigningToGroup.groupId)?.name}
                 </p>
               </div>
               <button onClick={() => setAssigningToGroup(null)} className="p-2 bg-slate-200 rounded-full hover:bg-slate-300 text-slate-600 transition-colors">
@@ -428,7 +414,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {classStudents.map(student => {
                   const isSelected = selectedStudentIds.has(student.id);
-                  // فحص ذكي: هل الطالب موجود في مجموعة أخرى داخل نفس التقسيمة؟
                   const otherGroup = activeCat.groups.find(g => g.id !== assigningToGroup.groupId && g.studentIds.includes(student.id));
                   
                   return (
@@ -441,7 +426,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                           : (isRamadan ? 'border-white/10 hover:bg-white/5' : 'border-slate-100 hover:border-indigo-200 hover:bg-slate-50')
                       }`}
                     >
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 ml-3 shrink-0 transition-colors ${
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 ${dir === 'rtl' ? 'ml-3' : 'mr-3'} shrink-0 transition-colors ${
                         isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-transparent'
                       }`}>
                         {isSelected && <Check className="w-4 h-4" />}
@@ -453,7 +438,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                         </p>
                         {otherGroup && !isSelected && (
                           <p className="text-[10px] font-bold text-amber-500 mt-0.5 truncate">
-                            موزع في: {otherGroup.name}
+                            {t('assignedToGroupLabel')} {otherGroup.name}
                           </p>
                         )}
                       </div>
@@ -465,7 +450,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
             
             <div className={`p-4 border-t flex gap-3 ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
               <button onClick={saveBulkAssignment} className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-black text-lg hover:bg-indigo-700 transition-colors shadow-lg">
-                اعتماد وتوزيع ({selectedStudentIds.size})
+                {t('confirmAndAssignBtn')} ({selectedStudentIds.size})
               </button>
             </div>
             
