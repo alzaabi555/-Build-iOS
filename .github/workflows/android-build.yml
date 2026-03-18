@@ -56,14 +56,14 @@ jobs:
 
       - name: Force API 35 and Increment Version Code
         run: |
-          echo "💉 Injecting API 35 and Version Code 2..."
+          echo "💉 Injecting API 35 and Version Code 3..."
           if [ -f "android/variables.gradle" ]; then
             sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 35/g' android/variables.gradle
             sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 35/g' android/variables.gradle
           fi
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/versionCode 1/versionCode 3/g' android/app/build.gradle
-            sed -i 's/versionName "1.0"/versionName "1.0.3"/g' android/app/build.gradle
+            sed -i 's/versionName "1.0"/versionName "1.0.2"/g' android/app/build.gradle
           fi
           echo "✅ API and Version updated!"
 
