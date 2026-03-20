@@ -337,7 +337,7 @@ const Settings = () => {
     <div className={`flex flex-col h-full overflow-hidden transition-colors duration-500 relative z-10 ${language === 'ar' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-white' : 'bg-[#fcfdfe] text-slate-800'}`} dir={dir}>
       
       {/* ================= 🩺 الهيدر القياسي الممتد للنوتش ================= */}
-      <header className={`shrink-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 shadow-sm w-full transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`} style={{ WebkitAppRegion: 'drag' } as any}>
+     <header className={`shrink-0 z-40 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
         <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
             <div className="flex items-center gap-3">
                 <div className="bg-white/10 p-2 rounded-xl border border-white/20">
@@ -364,7 +364,7 @@ const Settings = () => {
       </header>
 
       {/* ================= 📝 محتوى الصفحة داخل حاوية تمرير مستقلة ================= */}
-      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-28 custom-scrollbar relative z-10">
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-28 custom-scrollbar relative z-10">
         <div className="space-y-8 max-w-4xl relative z-10 mx-auto w-full">
           
           {/* بطاقة الملف الشخصي */}
