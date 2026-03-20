@@ -26,53 +26,53 @@ import { useSchoolBell } from './hooks/useSchoolBell';
 
 import RamadanTheme from './components/RamadanTheme';
 
-// --- 3D ICONS COMPONENTS ---
-const Dashboard3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="dash_bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#6366f1"} /><stop offset="100%" stopColor={isRamadan ? "#d97706" : "#4338ca"} /></linearGradient></defs>
-    <rect x="10" y="10" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-    <rect x="34" y="10" width="20" height="20" rx="6" fill={isRamadan ? "#3730a3" : "#a5b4fc"} />
-    <rect x="10" y="34" width="20" height="20" rx="6" fill={isRamadan ? "#312e81" : "#c7d2fe"} />
-    <rect x="34" y="34" width="20" height="20" rx="6" fill="url(#dash_bg)" />
-  </svg>
+// --- ✨ GLASS GLOW ICONS (التطوير الزجاجي الجديد) ---
+const NavIconWrapper = ({ active, isRamadan, children }: any) => (
+  <div className={`w-full h-full flex flex-col items-center justify-center transition-all duration-500 ${active ? 'scale-110' : 'opacity-40'}`}>
+    <div className={`relative p-2 rounded-2xl transition-all duration-500 ${active ? (isRamadan ? 'bg-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.3)]' : 'bg-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.3)]') : ''}`}>
+      {children}
+    </div>
+  </div>
 );
-const Attendance3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="cal_bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#f87171"} /><stop offset="100%" stopColor={isRamadan ? "#d97706" : "#dc2626"} /></linearGradient></defs>
-    <rect x="12" y="14" width="40" height="40" rx="8" fill={isRamadan ? "#1e1b4b" : "white"} stroke={isRamadan ? "#4f46e5" : "#e5e7eb"} strokeWidth="2" />
-    <path d="M12 24 L52 24 L52 18 Q52 14 48 14 L16 14 Q12 14 12 18 Z" fill="url(#cal_bg)" />
-    <circle cx="20" cy="12" r="3" fill={isRamadan ? "#fcd34d" : "#991b1b"} />
-    <circle cx="44" cy="12" r="3" fill={isRamadan ? "#fcd34d" : "#991b1b"} />
-    <path d="M22 38 L30 46 L44 30" fill="none" stroke={isRamadan ? "#34d399" : "#10b981"} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+
+const Dashboard3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <LayoutDashboard size={24} className={active ? (isRamadan ? 'text-amber-400' : 'text-indigo-400') : 'text-white'} strokeWidth={active ? 2.5 : 2} />
+  </NavIconWrapper>
 );
-const Students3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="user_grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#3b82f6"} /><stop offset="100%" stopColor={isRamadan ? "#b45309" : "#1d4ed8"} /></linearGradient></defs>
-    <circle cx="32" cy="24" r="12" fill="url(#user_grad)" />
-    <path d="M14 54 C14 40 50 40 50 54 L50 58 L14 58 Z" fill="url(#user_grad)" />
-  </svg>
+
+const Attendance3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <CalendarCheck size={24} className={active ? (isRamadan ? 'text-amber-400' : 'text-indigo-400') : 'text-white'} strokeWidth={active ? 2.5 : 2} />
+  </NavIconWrapper>
 );
-const Grades3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={isRamadan ? "#fde68a" : "#fbbf24"} /><stop offset="1" stopColor={isRamadan ? "#f59e0b" : "#d97706"} /></linearGradient>
-      <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={isRamadan ? "#a7f3d0" : "#34d399"} /><stop offset="1" stopColor={isRamadan ? "#10b981" : "#059669"} /></linearGradient>
-      <linearGradient id="bar3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={isRamadan ? "#c7d2fe" : "#818cf8"} /><stop offset="1" stopColor={isRamadan ? "#6366f1" : "#4f46e5"} /></linearGradient>
-    </defs>
-    <rect x="12" y="34" width="10" height="20" rx="2" fill="url(#bar1)" />
-    <rect x="27" y="24" width="10" height="30" rx="2" fill="url(#bar2)" />
-    <rect x="42" y="14" width="10" height="40" rx="2" fill="url(#bar3)" />
-  </svg>
+
+const Students3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <Users size={24} className={active ? (isRamadan ? 'text-amber-400' : 'text-indigo-400') : 'text-white'} strokeWidth={active ? 2.5 : 2} />
+  </NavIconWrapper>
 );
-const Tasks3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
-  <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="task_grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#10b981"} /><stop offset="100%" stopColor={isRamadan ? "#d97706" : "#059669"} /></linearGradient></defs>
-    <rect x="14" y="10" width="36" height="44" rx="6" fill={isRamadan ? "#0f172a" : "white"} stroke={isRamadan ? "#10b981" : "#059669"} strokeWidth="2" />
-    <rect x="20" y="20" width="24" height="4" rx="2" fill="url(#task_grad)" />
-    <rect x="20" y="30" width="24" height="4" rx="2" fill="url(#task_grad)" />
-    <rect x="20" y="40" width="16" height="4" rx="2" fill="url(#task_grad)" />
-  </svg>
+
+const Grades3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <BarChart3 size={24} className={active ? (isRamadan ? 'text-amber-400' : 'text-indigo-400') : 'text-white'} strokeWidth={active ? 2.5 : 2} />
+  </NavIconWrapper>
+);
+
+const Tasks3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <CheckSquare size={24} className={active ? (isRamadan ? 'text-amber-400' : 'text-indigo-400') : 'text-white'} strokeWidth={active ? 2.5 : 2} />
+  </NavIconWrapper>
+);
+
+const More3D = ({ active, isRamadan }: any) => (
+  <NavIconWrapper active={active} isRamadan={isRamadan}>
+    <div className="grid grid-cols-2 gap-1">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className={`w-2 h-2 rounded-sm border ${active ? (isRamadan ? 'bg-amber-400 border-amber-400' : 'bg-indigo-400 border-indigo-400') : 'border-white/50'}`}></div>
+      ))}
+    </div>
+  </NavIconWrapper>
 );
 
 const AppContent: React.FC = () => {
@@ -197,6 +197,7 @@ const AppContent: React.FC = () => {
     <div className={`flex h-full font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       <RamadanTheme />
 
+      {/* Sidebar (Desktop) */}
       <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
         <div className="p-8 flex items-center gap-4 relative z-10">
           <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
@@ -207,7 +208,7 @@ const AppContent: React.FC = () => {
         </div>
         <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
           {desktopNavItems.map(item => (
-            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white' : 'text-indigo-200/70 hover:bg-white/5'}`}>
+            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200/70 hover:bg-white/5'}`}>
               <item.icon className="w-5 h-5" />
               <span className="font-bold text-sm">{item.label}</span>
             </button>
@@ -221,7 +222,8 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 border-slate-200'}`}>
+      {/* Bottom Nav (Mobile) */}
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 border-slate-200'}`}>
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -229,7 +231,7 @@ const AppContent: React.FC = () => {
               <div className={`absolute top-0 transition-all duration-500 ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
                 <div className="w-11 h-11"><item.IconComponent active={isActive} isRamadan={isRamadan} /></div>
               </div>
-              <span className={`text-[10px] font-black ${isActive ? 'text-indigo-400' : 'text-indigo-200/50'}`}>{item.label}</span>
+              <span className={`text-[10px] font-black ${isActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : 'text-indigo-200/50'}`}>{item.label}</span>
             </button>
           );
         })}
@@ -239,6 +241,7 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
+      {/* More Menu Modal */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] bg-transparent">
         <div className="grid grid-cols-3 gap-3 p-4 rounded-[2rem] border bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-2xl">
           <button onClick={() => handleNavigate('groups')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Users className="w-7 h-7 text-emerald-400" /><span className="font-bold text-[10px] text-white">المجموعات</span></button>
