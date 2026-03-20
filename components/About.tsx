@@ -8,15 +8,7 @@ const About: React.FC = () => {
   const { t, dir } = useApp();
 
   // 🌙 المستشعر الرمضاني اللحظي (يمنع الوميض تماماً)
-  const [isRamadan] = useState(() => {
-      try {
-          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-      } catch(e) {
-          return false;
-      }
-  });
-
+ const isRamadan = true;
   return (
     <div className={`flex flex-col items-center min-h-full p-6 pb-20 animate-in fade-in zoom-in duration-500 relative z-10 transition-colors ${isRamadan ? 'text-white' : 'text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
