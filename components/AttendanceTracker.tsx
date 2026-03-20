@@ -30,14 +30,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
-  const [isRamadan] = useState(() => {
-      try {
-          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-      } catch(e) {
-          return false;
-      }
-  });
+  const isRamadan = true;
 
   useEffect(() => {
       sessionStorage.setItem('rased_grade', selectedGrade);
@@ -278,7 +271,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-2">
-            <div className="w-full h-[80px] shrink-0 md:h-0"></div>
+            <div className="w-full h-[50px] shrink-0 md:h-0"></div>
 
             <div className="-mt-4 relative z-10 px-2">
                 <div className="mb-4">
