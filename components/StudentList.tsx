@@ -77,14 +77,7 @@ const StudentList: React.FC<StudentListProps> = ({
     const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
     const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
 
-    const [isRamadan] = useState(() => {
-      try {
-          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-      } catch(e) {
-          return false;
-      }
-    });
+   const isRamadan = true;
 
     useEffect(() => {
         sessionStorage.setItem('rased_grade', selectedGrade);
