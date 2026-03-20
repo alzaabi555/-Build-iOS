@@ -102,14 +102,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     // ✅ مصفوفة أيام الأسبوع للترجمة الديناميكية
     const weekDayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'] as const;
 
-    const [isRamadan] = useState(() => {
-        try {
-            const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-            return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-        } catch(e) {
-            return false;
-        }
-    });
+   const isRamadan = true;
 
     const [assessmentPlan, setAssessmentPlan] = useState<AssessmentMonth[]>(() => {
         try {
@@ -568,7 +561,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         {getSubjectIcon(displaySubject) || getSubjectIcon(subject) || (idx + 1)}
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2">
                                             <h4 className={`font-black text-sm ${isActive ? 'text-white' : (isRamadan ? 'text-white' : 'text-slate-800')}`}>{subject}</h4>
                                             {isActive && <span className="text-[9px] bg-emerald-400 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">{t('now')}</span>}
                                         </div>
