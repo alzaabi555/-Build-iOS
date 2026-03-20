@@ -83,14 +83,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [bulkScore, setBulkScore] = useState('');
   const [activeToolId, setActiveToolId] = useState<string>('');
 
-  const [isRamadan] = useState(() => {
-      try {
-          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-      } catch(e) {
-          return false;
-      }
-  });
+  const isRamadan = true;
 
   useEffect(() => {
     if (tools.length > 0 && !activeToolId) {
