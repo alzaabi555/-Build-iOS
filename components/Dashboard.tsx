@@ -427,10 +427,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="space-y-6 pb-28 animate-in fade-in duration-500 relative min-h-screen">
-            <header 
-                className={`shrink-0 z-40 relative -mx-4 -mt-4 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 md:-mx-8 md:pt-[calc(env(safe-area-inset-top)+2rem)] md:pb-12 md:px-6 md:pl-40 shadow-sm transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}
-                style={{ WebkitAppRegion: 'drag' } as any}
-            >
+           <header 
+    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}
+    style={{ WebkitAppRegion: 'drag' } as any}
+>
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-3 md:gap-5" style={{ WebkitAppRegion: 'no-drag' } as any}>
                         <div className="relative group">
@@ -660,7 +660,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-1">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 p-1">
                         {tempPlan.map((month, idx) => (
                             <div key={month.id} className={`rounded-xl p-3 border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-slate-50 border-slate-100'}`}>
                                 <div className="flex gap-2 mb-3">
