@@ -86,7 +86,8 @@ const AppContent: React.FC = () => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [appVersion, setAppVersion] = useState('4.4.1');
   
-  const [isRamadan, setIsRamadan] = useState(false);
+  // 💊 الكبسولة السحرية لتثبيت الثيم الزجاجي للأبد
+  const isRamadan = true;
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -103,18 +104,7 @@ const AppContent: React.FC = () => {
       }
     };
     fetchVersion();
-
-    try {
-        const today = new Date();
-        const hijriFormatter = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' });
-        const parts = hijriFormatter.formatToParts(today);
-        const hMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-        if (hMonth === 9) {
-            setIsRamadan(true);
-        }
-    } catch(e) {
-        console.error("Hijri Date parsing skipped.");
-    }
+    // ✂️ تم استئصال كود التحقق من التاريخ الهجري من هنا
   }, []);
 
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
@@ -158,9 +148,9 @@ const AppContent: React.FC = () => {
 
   if (!isDataLoaded) {
     return (
-      <div className="flex flex-col h-full w-full items-center justify-center bg-gray-50 fixed inset-0 z-[99999]" dir={dir}>
+      <div className="flex flex-col h-full w-full items-center justify-center bg-[#020617] fixed inset-0 z-[99999]" dir={dir}>
         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium text-sm">{t('loadingData')}</p>
+        <p className="text-slate-300 font-medium text-sm">{t('loadingData')}</p>
       </div>
     );
   }
@@ -252,8 +242,8 @@ const AppContent: React.FC = () => {
 
         <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
           {desktopNavItems.map(item => (
-            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${activeTab === item.id ? (isRamadan ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-indigo-600 text-white shadow-lg') : (isRamadan ? 'text-indigo-200/70 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900')}`}>
-              <item.icon className={`w-5 h-5 ${activeTab === item.id ? (isRamadan ? 'text-amber-400' : 'text-white') : (isRamadan ? 'text-indigo-400/50' : 'text-slate-400')}`} strokeWidth={2.5} />
+            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${activeTab === item.id ? (isRamadan ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-indigo-600 text-white shadow-lg') : (isRamadan ? 'text-indigo-200/70 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900')}`}>
+              <item.icon className={`w-5 h-5 ${activeTab === item.id ? (isRamadan ? 'text-indigo-300' : 'text-white') : (isRamadan ? 'text-indigo-400/50' : 'text-slate-400')}`} strokeWidth={2.5} />
               <span className="font-bold text-sm">{item.label}</span>
             </button>
           ))}
@@ -262,7 +252,7 @@ const AppContent: React.FC = () => {
         {/* 🛡️ قسم التوثيق الشخصي (البصمة الملكية) */}
         <div className={`p-6 border-t relative z-10 space-y-4 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
             <div className="flex items-center gap-3 group transition-all duration-300">
-                <div className={`w-11 h-11 rounded-full border-2 p-0.5 transition-all duration-500 group-hover:rotate-[360deg] shadow-lg ${isRamadan ? 'border-amber-400/50 bg-white/5 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'border-indigo-100 bg-white'}`}>
+                <div className={`w-11 h-11 rounded-full border-2 p-0.5 transition-all duration-500 group-hover:rotate-[360deg] shadow-lg ${isRamadan ? 'border-indigo-400/50 bg-white/5 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-indigo-100 bg-white'}`}>
                     <img 
                         src={require('./assets/my-signature-logo.png')} 
                         alt="شعار محمد الزعابي" 
@@ -279,7 +269,6 @@ const AppContent: React.FC = () => {
 
             <div className="flex justify-between items-center">
                 <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/40' : 'text-gray-400'}`}>{t('versionLabel')} {appVersion}</p>
-                {isRamadan && <span className="text-[12px] animate-pulse">🌙</span>}
             </div>
         </div>
       </aside>
@@ -302,7 +291,7 @@ const AppContent: React.FC = () => {
               <div className={`absolute top-0 transition-all duration-500 ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
                 <div className="w-11 h-11"><item.IconComponent active={isActive} isRamadan={isRamadan} /></div>
               </div>
-              <span className={`text-[10px] font-black transition-all ${isActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{item.label}</span>
+              <span className={`text-[10px] font-black transition-all ${isActive ? (isRamadan ? 'text-indigo-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{item.label}</span>
             </button>
           );
         })}
@@ -310,7 +299,7 @@ const AppContent: React.FC = () => {
           <div className={`absolute top-0 transition-all duration-500 ${isMoreActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
             <div className="w-11 h-11"><More3D active={isMoreActive} isRamadan={isRamadan} /></div>
           </div>
-          <span className={`text-[10px] font-black transition-all ${isMoreActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{t('moreBtn')}</span>
+          <span className={`text-[10px] font-black transition-all ${isMoreActive ? (isRamadan ? 'text-indigo-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{t('moreBtn')}</span>
         </button>
       </div>
 
@@ -321,8 +310,8 @@ const AppContent: React.FC = () => {
             <Network className={`w-7 h-7 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
             <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
           </button>
-          <button onClick={() => handleNavigate('leaderboard')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-amber-50 border-amber-200'}`}>
-            <Medal className={`w-7 h-7 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`} />
+          <button onClick={() => handleNavigate('leaderboard')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
+            <Medal className={`w-7 h-7 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
             <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights')}</span>
           </button>
           <button onClick={() => handleNavigate('reports')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
