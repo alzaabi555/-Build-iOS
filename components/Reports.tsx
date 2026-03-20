@@ -1084,7 +1084,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
             );
           })}
         </div>
-      </div>
+      </header>
 
       {/* ================= CONTENT AREA ================= */}
      <div className="flex-1 overflow-y-auto px-2 pt-4 pb-28 custom-scrollbar relative z-10">
