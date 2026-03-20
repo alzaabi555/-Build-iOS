@@ -428,7 +428,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 pb-28 animate-in fade-in duration-500 relative min-h-screen">
             <header 
-                className={`pt-10 pb-8 px-4 md:pt-16 md:pb-12 md:px-6 md:pl-40 shadow-xl relative z-20 -mx-4 -mt-4 transition-all duration-500 ${isRamadan ? 'bg-white/5 border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+                className={`shrink-0 z-40 relative -mx-4 -mt-4 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 md:-mx-8 md:pt-[calc(env(safe-area-inset-top)+2rem)] md:pb-12 md:px-6 md:pl-40 shadow-sm transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}
                 style={{ WebkitAppRegion: 'drag' } as any}
             >
                 <div className="flex justify-between items-center mb-2">
