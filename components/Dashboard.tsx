@@ -58,16 +58,22 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const handleMegaSync = async () => {
-    if (!allStudentsData || allStudentsData.length === 0) {
-      alert("لا توجد بيانات للطلاب لرفعها.");
+    // 🚀 جلب المهام المحفوظة من صفحة المهام
+    const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
+
+    if (!allStudentsData || (allStudentsData.length === 0 && savedTasks.length === 0)) {
+      alert("لا توجد بيانات للطلاب أو مهام لرفعها.");
       return;
     }
+    
     setSyncStatus('loading');
+    
     const payload = {
       action: "syncAllData",
       students: allStudentsData,
-      tasks: [] // يمكن دمج المهام لاحقاً هنا
+      tasks: savedTasks // 🚀 الآن سيتم إرسال المهام مع الطلبة للسحابة!
     };
+    
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
