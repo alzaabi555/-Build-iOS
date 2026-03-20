@@ -5,7 +5,8 @@ import {
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
   X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
-  AlertTriangle, Moon, Award, Heart, Plus, Trash2, RefreshCcw
+  AlertTriangle, Moon, Award, Heart, Plus, Trash2, RefreshCcw,
+  CloudUpload, CheckCheck // 🚀 أضفت فقط أيقونات زر المزامنة هنا
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -48,7 +49,90 @@ interface AssessmentMonth {
     tasks: string[];
 }
 
+// ========================================================
+// 🚀 مكون زر المزامنة السحابية (مضاف جديداً ولا يؤثر على الباقي)
+// ========================================================
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkHcom1nHY2N_SVudhe5QyI58ScT6zjjh9xI1gQ4D3vhuVrM5OT0eReoETO_Zo12ve/exec"; 
+
+const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsData }) => {
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const handleMegaSync = async () => {
+    if (!allStudentsData || allStudentsData.length === 0) {
+      alert("لا توجد بيانات للطلاب لرفعها.");
+      return;
+    }
+    setSyncStatus('loading');
+    const payload = {
+      action: "syncAllData",
+      students: allStudentsData,
+      tasks: [] // يمكن دمج المهام لاحقاً هنا
+    };
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSyncStatus('success');
+        setTimeout(() => setSyncStatus('idle'), 5000);
+      } else {
+        setSyncStatus('error');
+        alert("خطأ: " + result.error);
+      }
+    } catch (error) {
+      console.error(error);
+      setSyncStatus('error');
+      alert("فشل الاتصال. تأكد من الإنترنت.");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleMegaSync}
+      disabled={syncStatus === 'loading' || syncStatus === 'success'}
+      className={`w-full flex flex-col items-center justify-center gap-2 p-5 rounded-[1.5rem] text-sm md:text-base font-black transition-all duration-500 shadow-xl relative overflow-hidden ${
+        syncStatus === 'success'
+          ? 'bg-emerald-500 text-white shadow-emerald-500/50 scale-100'
+          : syncStatus === 'error'
+          ? 'bg-rose-500 text-white shadow-rose-500/50'
+          : 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:scale-[1.02] active:scale-95 shadow-indigo-500/40'
+      }`}
+    >
+      {syncStatus === 'idle' && <div className="absolute inset-0 bg-white/20 skew-x-[-20deg] animate-[shimmer_2s_infinite] w-1/2 -ml-[50%]"></div>}
+      
+      {syncStatus === 'idle' && (
+        <div className="flex items-center gap-3 relative z-10">
+          <CloudUpload className="w-6 h-6 animate-bounce" />
+          <span>مزامنة نهاية اليوم لنسخة الطلبة 🚀</span>
+        </div>
+      )}
+      {syncStatus === 'loading' && (
+        <div className="flex items-center gap-3 relative z-10">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>جاري رفع بيانات {allStudentsData.length} طالب...</span>
+        </div>
+      )}
+      {syncStatus === 'success' && (
+        <div className="flex items-center gap-3 relative z-10">
+          <CheckCheck className="w-6 h-6" />
+          <span>تمت المزامنة بنجاح! شكراً لجهودك 🎉</span>
+        </div>
+      )}
+      {syncStatus === 'error' && (
+        <div className="flex items-center gap-3 relative z-10">
+          <AlertTriangle className="w-6 h-6" />
+          <span>فشل الرفع، أعد المحاولة</span>
+        </div>
+      )}
+    </button>
+  );
+};
+// ========================================================
+
 const Dashboard: React.FC<DashboardProps> = ({
+    students, // 🚀 أضفت هذه فقط لتمرير الطلاب للزر
     teacherInfo,
     onUpdateTeacherInfo,
     schedule,
@@ -527,6 +611,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* 🚀 زر المزامنة لنهاية اليوم الدراسي */}
+            <div className="px-4 mt-4 relative z-10">
+                <SyncEndOfDayButton allStudentsData={students || []} />
+            </div>
 
             <div className="px-4 mt-6 relative z-10">
                 <div className="flex justify-between items-center mb-4">
