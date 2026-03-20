@@ -11,7 +11,7 @@ import { Capacitor } from '@capacitor/core';
 
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
-import TeacherTasks from './TeacherTasks';
+import TeacherTasks from './components/TeacherTasks';
 import AttendanceTracker from './components/AttendanceTracker';
 import GradeBook from './components/GradeBook';
 import Reports from './components/Reports';
