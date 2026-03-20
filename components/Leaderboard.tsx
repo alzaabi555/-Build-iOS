@@ -67,14 +67,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const certificateRef = useRef<HTMLDivElement>(null);
 
    // المستشعر الرمضاني
-  const [isRamadan] = useState(() => {
-      try {
-          const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-          return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-      } catch(e) {
-          return false;
-      }
-  });
+  const isRamadan = true;
 
     const getShortName = (fullName: string) => {
         if (!fullName) return '';
