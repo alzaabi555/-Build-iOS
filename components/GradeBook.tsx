@@ -442,7 +442,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     <div className={`flex flex-col h-full overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'}`} dir={dir}>
       
       <header 
-          className={`fixed md:sticky top-0 z-40 md:z-30 shadow-lg px-3 pt-[env(safe-area-inset-top)] pb-4 md:pl-40 transition-all duration-500 md:rounded-none md:shadow-md w-full md:w-auto left-0 right-0 md:left-auto md:right-auto ${isRamadan ? 'bg-white/5 border-b border-white/10 text-white' : 'bg-[#446A8D] text-white'}`}
+         <header className={`shrink-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 shadow-sm w-full transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}>
           style={{ WebkitAppRegion: 'drag' } as any}
       >
         <div className="flex justify-between items-center mb-4">
@@ -575,7 +575,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-[290px] md:pt-2">
+      <div className="flex-1 overflow-y-auto px-2 pt-4 pb-28 custom-scrollbar relative z-10">
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {filteredStudents.map(student => {
             const currentGrade = getStudentGradeForActiveTool(student);
