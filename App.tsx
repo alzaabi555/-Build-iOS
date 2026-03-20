@@ -24,7 +24,6 @@ import WelcomeScreen from './components/WelcomeScreen';
 import StudentGroups from './components/StudentGroups';
 import { useSchoolBell } from './hooks/useSchoolBell';
 
-// 🌙 استدعاء الثيم الخارجي المستقل
 import RamadanTheme from './components/RamadanTheme';
 
 // --- 3D ICONS COMPONENTS ---
@@ -66,15 +65,17 @@ const Grades3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean 
     <rect x="42" y="14" width="10" height="40" rx="2" fill="url(#bar3)" />
   </svg>
 );
-const More3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
+const Tasks3D = ({ active, isRamadan }: { active: boolean, isRamadan?: boolean }) => (
   <svg viewBox="0 0 64 64" className={`w-full h-full transition-all duration-300 ${active ? 'filter drop-shadow-lg scale-110' : 'opacity-60 grayscale-[0.8] hover:grayscale-0 hover:opacity-100 hover:scale-105'}`} xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="grid_grad" x1="0%" y1="0%" x2="1" y2="1"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#f472b6"} /><stop offset="100%" stopColor={isRamadan ? "#d97706" : "#db2777"} /></linearGradient></defs>
-    <rect x="14" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="34" y="14" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="14" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" /><rect x="34" y="34" width="16" height="16" rx="4" fill="url(#grid_grad)" />
+    <defs><linearGradient id="task_grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={isRamadan ? "#fbbf24" : "#10b981"} /><stop offset="100%" stopColor={isRamadan ? "#d97706" : "#059669"} /></linearGradient></defs>
+    <rect x="14" y="10" width="36" height="44" rx="6" fill={isRamadan ? "#0f172a" : "white"} stroke={isRamadan ? "#10b981" : "#059669"} strokeWidth="2" />
+    <rect x="20" y="20" width="24" height="4" rx="2" fill="url(#task_grad)" />
+    <rect x="20" y="30" width="24" height="4" rx="2" fill="url(#task_grad)" />
+    <rect x="20" y="40" width="16" height="4" rx="2" fill="url(#task_grad)" />
   </svg>
 );
 
 const AppContent: React.FC = () => {
-  // 🌍 استدعاء دوال الترجمة والاتجاه من المحرك
   const {
     isDataLoaded, students, setStudents, classes, setClasses,
     teacherInfo, setTeacherInfo, schedule, setSchedule,
@@ -85,8 +86,6 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [appVersion, setAppVersion] = useState('4.4.1');
-  
-  // 💊 الكبسولة السحرية لتثبيت الثيم الزجاجي للأبد
   const isRamadan = true;
 
   useEffect(() => {
@@ -99,12 +98,9 @@ const AppContent: React.FC = () => {
           const info = await CapacitorApp.getInfo();
           setAppVersion(info.version);
         }
-      } catch (error) {
-        console.error("Failed to get version", error);
-      }
+      } catch (error) { console.error("Version error", error); }
     };
     fetchVersion();
-    // ✂️ تم استئصال كود التحقق من التاريخ الهجري من هنا
   }, []);
 
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
@@ -125,30 +121,26 @@ const AppContent: React.FC = () => {
     setShowWelcome(false);
   };
 
-  // 🌍 نقل المصفوفات لداخل المكون لتقرأ الترجمة لحظياً
   const mobileNavItems = [
     { id: 'dashboard', label: t('navDashboard'), IconComponent: Dashboard3D },
     { id: 'attendance', label: t('navAttendance'), IconComponent: Attendance3D },
     { id: 'students', label: t('navStudents'), IconComponent: Students3D },
     { id: 'grades', label: t('navGrades'), IconComponent: Grades3D },
-    { id: 'tasks', icon: CheckSquare, label: t('tasks') || 'المهام' },
-{ id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
-
+    { id: 'tasks', label: t('tasks') || 'المهام', IconComponent: Tasks3D },
   ];
   
   const desktopNavItems = [
     { id: 'dashboard', label: t('navDashboard'), icon: LayoutDashboard },
     { id: 'attendance', label: t('navAttendance'), icon: CalendarCheck },
     { id: 'students', label: t('navStudents'), icon: Users },
- { id: 'groups', label: t('navGroups'), icon: Users },
+    { id: 'groups', label: t('navGroups'), icon: Users },
     { id: 'grades', label: t('navGrades'), icon: BarChart3 },
+    { id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
     { id: 'leaderboard', label: t('navKnights'), icon: Medal },
     { id: 'reports', label: t('navReports'), icon: FileText },
     { id: 'guide', label: t('navGuide'), icon: BookOpen },
     { id: 'settings', label: t('navSettings'), icon: SettingsIcon },
     { id: 'about', label: t('navAbout'), icon: Info },
-{ id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
-
   ];
 
   if (!isDataLoaded) {
@@ -167,20 +159,6 @@ const AppContent: React.FC = () => {
     setShowMoreMenu(false);
   };
 
-  const handleUpdateStudent = (updated: any) => setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-  const handleAddClass = (name: string) => setClasses(prev => [...prev, name]);
-  const handleDeleteClass = (className: string) => {
-    setClasses(prev => prev.filter(c => c !== className));
-    setStudents(prev => prev.map(s => s.classes.includes(className) ? { ...s, classes: s.classes.filter(c => c !== className) } : s));
-  };
-  const handleAddStudent = (name: string, className: string, phone?: string, avatar?: string, gender?: 'male' | 'female') => {
-    setStudents(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      name, classes: [className], attendance: [], behaviors: [], grades: [], grade: '',
-      parentPhone: phone, avatar: avatar, gender: gender || 'male'
-    }]);
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -191,28 +169,22 @@ const AppContent: React.FC = () => {
           notificationsEnabled={notificationsEnabled} onToggleNotifications={handleToggleNotifications}
           currentSemester={currentSemester} onSemesterChange={setCurrentSemester}
         />;
-        case 'tasks': // 🚀 هذه هي حالة صفحة المهام الجديدة
-        return (
-          <TeacherTasks 
-            students={students} 
-            teacherSubject={teacherInfo?.subject || 'عام'} 
-          />
-        );
+      case 'tasks':
+        return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'students':
         return <StudentList
-          students={students} classes={classes} onAddClass={handleAddClass} onAddStudentManually={handleAddStudent}
-          onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])} onUpdateStudent={handleUpdateStudent}
-          onDeleteStudent={(id) => setStudents(prev => prev.filter(s => s.id !== id))} onViewReport={(s) => { }}
-          currentSemester={currentSemester} onSemesterChange={setCurrentSemester} onDeleteClass={handleDeleteClass}
+          students={students} classes={classes} onAddClass={(n) => setClasses(p => [...p, n])} 
+          onAddStudentManually={(n, c, p, a, g) => setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: n, classes: [c], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: p, avatar: a, gender: g || 'male' }])}
+          onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])} 
+          onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
+          onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))} 
+          onViewReport={() => {}} currentSemester={currentSemester} onSemesterChange={setCurrentSemester} 
+          onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
         />;
       case 'groups': return <StudentGroups />;
-      case 'grades':
-        return <GradeBook
-          students={students} classes={classes} onUpdateStudent={handleUpdateStudent} setStudents={setStudents}
-          currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo}
-        />;
-      case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={handleUpdateStudent} teacherInfo={teacherInfo} />;
+      case 'grades': return <GradeBook students={students} classes={classes} onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))} setStudents={setStudents} currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo} />;
+      case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))} teacherInfo={teacherInfo} />;
       case 'reports': return <Reports />;
       case 'guide': return <UserGuide />;
       case 'settings': return <Settings />;
@@ -221,141 +193,72 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const isMoreActive = !mobileNavItems.some(item => item.id === activeTab);
-
-  // 🌍 تطبيق الـ dir على الجذر
   return (
     <div className={`flex h-full font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
-      
-      {/* 🌙 الثيم الرمضاني */}
       <RamadanTheme />
 
-      {/* Sidebar (Desktop) - 🌍 عكس الإتجاهات (border-l أو border-r) */}
-      <aside className={`hidden md:flex w-72 flex-col z-50 shadow-sm h-full relative transition-all duration-500 ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
+      <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
         <div className="p-8 flex items-center gap-4 relative z-10">
           <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
           <div>
-            <h1 className={`text-2xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{t('appNameMain')}</h1>
-            <span className={`text-[10px] font-bold tracking-wider ${isRamadan ? 'text-amber-400' : 'text-indigo-600'}`}>{t('appSubtitleMain')}</span>
+            <h1 className="text-2xl font-black">{t('appNameMain')}</h1>
+            <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain')}</span>
           </div>
         </div>
-        
-        <div className="px-6 mb-6 relative z-10">
-          <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-colors ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border shrink-0 ${isRamadan ? 'bg-[#1e1b4b] border-indigo-500/30' : 'bg-slate-200 border-slate-300'}`}>
-              {teacherInfo?.avatar ? <img src={teacherInfo.avatar} className="w-full h-full object-cover" /> : <span className={`font-black text-lg ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>{teacherInfo?.name?.[0] || 'م'}</span>}
-            </div>
-            <div className="overflow-hidden">
-              <p className={`text-xs font-bold truncate ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{teacherInfo?.name || t('welcomeUser')}</p>
-              <p className={`text-[10px] truncate ${isRamadan ? 'text-indigo-200/70' : 'text-gray-500'}`}>{teacherInfo?.school || t('schoolFallbackMain')}</p>
-            </div>
-          </div>
-        </div>
-
         <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
           {desktopNavItems.map(item => (
-            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${activeTab === item.id ? (isRamadan ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-indigo-600 text-white shadow-lg') : (isRamadan ? 'text-indigo-200/70 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900')}`}>
-              <item.icon className={`w-5 h-5 ${activeTab === item.id ? (isRamadan ? 'text-indigo-300' : 'text-white') : (isRamadan ? 'text-indigo-400/50' : 'text-slate-400')}`} strokeWidth={2.5} />
+            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white' : 'text-indigo-200/70 hover:bg-white/5'}`}>
+              <item.icon className="w-5 h-5" />
               <span className="font-bold text-sm">{item.label}</span>
             </button>
           ))}
         </nav>
-
-        {/* 🛡️ قسم التوثيق الشخصي (البصمة الملكية) */}
-        <div className={`p-6 border-t relative z-10 space-y-4 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-            <div className="flex items-center gap-3 group transition-all duration-300">
-                <div className={`w-11 h-11 rounded-full border-2 p-0.5 transition-all duration-500 group-hover:rotate-[360deg] shadow-lg ${isRamadan ? 'border-indigo-400/50 bg-white/5 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-indigo-100 bg-white'}`}>
-                    <img 
-                        src={require('./assets/my-signature-logo.png')} 
-                        alt="شعار محمد الزعابي" 
-                        className="w-full h-full rounded-full object-contain"
-                        onError={(e) => { (e.target as any).src = 'https://ui-avatars.com/api/?name=MZ&background=6366f1&color=fff'; }}
-                    />
-                </div>
-                {/* 🌍 ضبط محاذاة النص الداخلي للتوقيع */}
-                <div className={`flex flex-col ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-                    <span className={`text-[9px] font-black uppercase tracking-widest opacity-60 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>{t('devLabel')}</span>
-                    <span className={`text-xs font-black ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('devName')}</span>
-                </div>
-            </div>
-
-            <div className="flex justify-between items-center">
-                <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/40' : 'text-gray-400'}`}>{t('versionLabel')} {appVersion}</p>
-            </div>
-        </div>
       </aside>
 
-      {/* Main Container */}
-      <main className={`flex-1 flex flex-col h-full overflow-hidden relative z-10 ${isRamadan ? 'bg-transparent' : 'bg-[#f3f4f6]'}`}>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe relative z-10">
-          <div className="max-w-5xl mx-auto w-full min-h-full">
-            {renderContent()}
-          </div>
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe relative z-10">
+          <div className="max-w-5xl mx-auto w-full min-h-full">{renderContent()}</div>
         </div>
       </main>
 
-      {/* Bottom Nav (Mobile) */}
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-slate-200/60'}`}>
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 border-slate-200'}`}>
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
-            <button key={item.id} onClick={() => handleNavigate(item.id)} className="relative w-full h-full flex flex-col items-center justify-end pb-1 touch-manipulation active:scale-90 transition-transform">
+            <button key={item.id} onClick={() => handleNavigate(item.id)} className="relative w-full h-full flex flex-col items-center justify-end pb-1 active:scale-90 transition-transform">
               <div className={`absolute top-0 transition-all duration-500 ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
                 <div className="w-11 h-11"><item.IconComponent active={isActive} isRamadan={isRamadan} /></div>
               </div>
-              <span className={`text-[10px] font-black transition-all ${isActive ? (isRamadan ? 'text-indigo-400' : 'text-indigo-600') : (isRamadan ? 'text-indigo-200/50 opacity-100' : 'text-gray-400 opacity-0')}`}>{item.label}</span>
+              <span className={`text-[10px] font-black ${isActive ? 'text-indigo-400' : 'text-indigo-200/50'}`}>{item.label}</span>
             </button>
           );
         })}
-      {/* More Menu Modal (Mobile) */}
-<Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className={`max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] ${isRamadan ? 'bg-transparent' : ''}`}>
-  <div className={`grid grid-cols-3 gap-3 p-4 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-transparent'}`}>
-    
-    {/* 🚀 تم استبدال Network بـ Users هنا */}
-    <button onClick={() => handleNavigate('groups')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-emerald-50 border-emerald-200'}`}>
-      <Users className={`w-7 h-7 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
-    </button>
+        <button onClick={() => setShowMoreMenu(true)} className="relative w-full h-full flex flex-col items-center justify-end pb-1">
+          <div className="absolute top-0 translate-y-1 scale-90 w-11 h-11"><More3D active={showMoreMenu} isRamadan={isRamadan} /></div>
+          <span className="text-[10px] font-black text-indigo-200/50">{t('navMore') || 'المزيد'}</span>
+        </button>
+      </div>
 
-    <button onClick={() => handleNavigate('leaderboard')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
-      <Medal className={`w-7 h-7 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights')}</span>
-    </button>
-
-    <button onClick={() => handleNavigate('reports')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
-      <FileText className={`w-7 h-7 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports')}</span>
-    </button>
-
-    <button onClick={() => handleNavigate('settings')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-300'}`}>
-      <SettingsIcon className={`w-7 h-7 ${isRamadan ? 'text-slate-400' : 'text-gray-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings')}</span>
-    </button>
-
-    <button onClick={() => handleNavigate('guide')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-cyan-50 border-cyan-200'}`}>
-      <BookOpen className={`w-7 h-7 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort')}</span>
-    </button>
-
-    <button onClick={() => handleNavigate('about')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-purple-50 border-purple-200'}`}>
-      <Info className={`w-7 h-7 ${isRamadan ? 'text-purple-400' : 'text-purple-600'}`} />
-      <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout')}</span>
-    </button>
-  </div>
-</Modal>
-    
+      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] bg-transparent">
+        <div className="grid grid-cols-3 gap-3 p-4 rounded-[2rem] border bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-2xl">
+          <button onClick={() => handleNavigate('groups')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Users className="w-7 h-7 text-emerald-400" /><span className="font-bold text-[10px] text-white">المجموعات</span></button>
+          <button onClick={() => handleNavigate('leaderboard')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Medal className="w-7 h-7 text-indigo-400" /><span className="font-bold text-[10px] text-white">الفرسان</span></button>
+          <button onClick={() => handleNavigate('reports')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><FileText className="w-7 h-7 text-indigo-400" /><span className="font-bold text-[10px] text-white">التقارير</span></button>
+          <button onClick={() => handleNavigate('settings')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><SettingsIcon className="w-7 h-7 text-slate-400" /><span className="font-bold text-[10px] text-white">الإعدادات</span></button>
+          <button onClick={() => handleNavigate('guide')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><BookOpen className="w-7 h-7 text-cyan-400" /><span className="font-bold text-[10px] text-white">الدليل</span></button>
+          <button onClick={() => handleNavigate('about')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Info className="w-7 h-7 text-purple-400" /><span className="font-bold text-[10px] text-white">عن راصد</span></button>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <ThemeProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </ThemeProvider>
-  );
-};
+const App: React.FC = () => (
+  <ThemeProvider>
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  </ThemeProvider>
+);
 
 export default App;
