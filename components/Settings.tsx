@@ -337,7 +337,10 @@ const Settings = () => {
     <div className={`flex flex-col h-full overflow-hidden transition-colors duration-500 relative z-10 ${language === 'ar' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-white' : 'bg-[#fcfdfe] text-slate-800'}`} dir={dir}>
       
       {/* ================= 🩺 الهيدر القياسي الممتد للنوتش ================= */}
-     <header className={`shrink-0 z-40 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+   <header 
+    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}
+    style={{ WebkitAppRegion: 'drag' } as any}
+>
         <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
             <div className="flex items-center gap-3">
                 <div className="bg-white/10 p-2 rounded-xl border border-white/20">
