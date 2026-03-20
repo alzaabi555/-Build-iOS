@@ -11,6 +11,7 @@ import { Capacitor } from '@capacitor/core';
 
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
+import TeacherTasks from './TeacherTasks';
 import AttendanceTracker from './components/AttendanceTracker';
 import GradeBook from './components/GradeBook';
 import Reports from './components/Reports';
@@ -186,6 +187,13 @@ const AppContent: React.FC = () => {
           notificationsEnabled={notificationsEnabled} onToggleNotifications={handleToggleNotifications}
           currentSemester={currentSemester} onSemesterChange={setCurrentSemester}
         />;
+        case 'tasks': // 🚀 هذه هي حالة صفحة المهام الجديدة
+        return (
+          <TeacherTasks 
+            students={students} 
+            teacherSubject={teacherInfo?.subject || 'عام'} 
+          />
+        );
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'students':
         return <StudentList
