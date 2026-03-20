@@ -197,7 +197,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
             
             <header 
-              <header className={`shrink-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 shadow-sm w-full transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}>
+            <header className={`shrink-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 shadow-sm w-full transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}>
                 style={{ WebkitAppRegion: 'drag' } as any}
             >
                 <div className="flex flex-col items-center text-center relative">
