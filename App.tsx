@@ -132,6 +132,8 @@ const AppContent: React.FC = () => {
     { id: 'students', label: t('navStudents'), IconComponent: Students3D },
     { id: 'grades', label: t('navGrades'), IconComponent: Grades3D },
     { id: 'tasks', icon: CheckSquare, label: t('tasks') || 'المهام' },
+{ id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
+
   ];
   
   const desktopNavItems = [
@@ -145,6 +147,8 @@ const AppContent: React.FC = () => {
     { id: 'guide', label: t('navGuide'), icon: BookOpen },
     { id: 'settings', label: t('navSettings'), icon: SettingsIcon },
     { id: 'about', label: t('navAbout'), icon: Info },
+{ id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
+
   ];
 
   if (!isDataLoaded) {
