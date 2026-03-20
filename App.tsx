@@ -315,33 +315,11 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
-      {/* More Menu Modal (Mobile) */}
-      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className={`max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] ${isRamadan ? 'bg-transparent' : ''}`}>
-        <div className={`grid grid-cols-3 gap-3 p-4 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-transparent'}`}>
-          <button onClick={() => handleNavigate('groups')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-emerald-50 border-emerald-200'}`}>
-            <Network className={`w-7 h-7 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
-          </button>
-          <button onClick={() => handleNavigate('leaderboard')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
-            <Medal className={`w-7 h-7 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights')}</span>
-          </button>
-          <button onClick={() => handleNavigate('reports')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-indigo-50 border-indigo-200'}`}>
-            <FileText className={`w-7 h-7 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports')}</span>
-          </button>
-          <button onClick={() => handleNavigate('settings')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-gray-100 border-gray-300'}`}>
-            <SettingsIcon className={`w-7 h-7 ${isRamadan ? 'text-slate-400' : 'text-gray-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings')}</span>
-          </button>
-          <button onClick={() => handleNavigate('guide')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-cyan-50 border-cyan-200'}`}>
-            <BookOpen className={`w-7 h-7 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort')}</span>
-          </button>
-          <button onClick={() => handleNavigate('about')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-purple-50 border-purple-200'}`}>
-            <Info className={`w-7 h-7 ${isRamadan ? 'text-purple-400' : 'text-purple-600'}`} />
-            <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout')}</span>
-          </button>
+      <button onClick={() => handleNavigate('groups')} className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 border aspect-square transition-all ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-emerald-50 border-emerald-200'}`}>
+  <Users className={`w-7 h-7 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
+  <span className={`font-bold text-[10px] ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
+</button>
+
         </div>
       </Modal>
     </div>
