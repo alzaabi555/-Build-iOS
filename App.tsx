@@ -132,6 +132,7 @@ const AppContent: React.FC = () => {
     { id: 'attendance', label: t('navAttendance'), IconComponent: Attendance3D },
     { id: 'students', label: t('navStudents'), IconComponent: Students3D },
     { id: 'grades', label: t('navGrades'), IconComponent: Grades3D },
+    { id: 'tasks', icon: CheckSquare, label: t('tasks') || 'المهام' },
   ];
   
   const desktopNavItems = [
