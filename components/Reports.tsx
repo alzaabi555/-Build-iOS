@@ -1058,7 +1058,10 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
       />
 
       {/* ================= HEADER ================= */}
-     <header className={`shrink-0 z-40 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+    <header 
+    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}
+    style={{ WebkitAppRegion: 'drag' } as any}
+>
         <div className="flex items-center gap-3 mb-6 mt-4 px-2">
           <div className={`p-2.5 rounded-xl border ${isRamadan ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/10 backdrop-blur-md border-white/20'}`}>
             <Icon3DReportCenter className="w-6 h-6" />
@@ -1086,9 +1089,9 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
         </div>
       </header>
 
-      {/* ================= CONTENT AREA ================= */}
-     <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
-        <div className="w-full h-[190px] shrink-0 block md:hidden"></div>
+     {/* ================= CONTENT AREA ================= */}
+<div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
+    {/* تم حذف الحاجز الوهمي من هنا، ضع محتوى التقارير مباشرة */}
 
         <div className={`rounded-[2rem] p-6 shadow-sm border min-h-[400px] transition-colors ${isRamadan ? 'bg-white/5 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-100'}`}>
           
