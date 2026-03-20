@@ -579,8 +579,7 @@ const StudentList: React.FC<StudentListProps> = ({
     return (
    <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
             
-    <header 
-        className={`shrink-0 z-40 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 shadow-sm w-full transition-all duration-300 ${isRamadan ? 'bg-[#0f172a]/80 border-b border-white/10 text-white backdrop-blur-xl' : 'bg-[#446A8D] text-white border-b border-[#3b5d7c]'}`}
+   <header className={`shrink-0 z-40 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
         style={{ WebkitAppRegion: 'drag' } as any}
     >
             <div className="flex justify-between items-center mb-6">
@@ -701,7 +700,7 @@ const StudentList: React.FC<StudentListProps> = ({
         </header>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-2 pt-4 pb-28 custom-scrollbar relative z-10">
+        <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredStudents.length > 0 ? filteredStudents.map(student => {
                     const totalPoints = calculateTotalPoints(student);
