@@ -5,7 +5,6 @@ import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
   Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare
 } from 'lucide-react';
-
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 
@@ -139,7 +138,7 @@ const AppContent: React.FC = () => {
     { id: 'dashboard', label: t('navDashboard'), icon: LayoutDashboard },
     { id: 'attendance', label: t('navAttendance'), icon: CalendarCheck },
     { id: 'students', label: t('navStudents'), icon: Users },
-    { id: 'groups', label: t('navGroups'), icon: Network }, 
+ { id: 'groups', label: t('navGroups'), icon: Users },
     { id: 'grades', label: t('navGrades'), icon: BarChart3 },
     { id: 'leaderboard', label: t('navKnights'), icon: Medal },
     { id: 'reports', label: t('navReports'), icon: FileText },
