@@ -702,7 +702,7 @@ const StudentList: React.FC<StudentListProps> = ({
         </header>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-64 md:pt-2 relative z-10">
+        <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar pt-58 md:pt-2 relative z-10">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredStudents.length > 0 ? filteredStudents.map(student => {
                     const totalPoints = calculateTotalPoints(student);
