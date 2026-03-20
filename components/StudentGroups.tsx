@@ -29,12 +29,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   ];
   const [selectedColor, setSelectedColor] = useState(groupColors[0]);
 
-  const [isRamadan] = useState(() => {
-    try {
-        const parts = new Intl.DateTimeFormat('en-TN-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
-        return parseInt(parts.find(p => p.type === 'month')?.value || '0') === 9;
-    } catch(e) { return false; }
-  });
+  const isRamadan = true;
 
   const classCategorizations = useMemo(() => categorizations.filter(c => c.classId === selectedClass), [categorizations, selectedClass]);
   const activeCat = useMemo(() => classCategorizations.find(c => c.id === activeCatId) || null, [classCategorizations, activeCatId]);
