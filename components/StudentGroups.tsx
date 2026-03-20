@@ -165,7 +165,10 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     <div className={`flex flex-col h-full overflow-hidden ${isRamadan ? 'text-white' : 'text-slate-800 bg-[#f8fafc]'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
       {/* ================= 🩺 الهيدر القياسي الممتد للنوتش ================= */}
-     <header className={`shrink-0 z-40 px-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+    <header 
+    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}
+    style={{ WebkitAppRegion: 'drag' } as any}
+>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {onBack && (
@@ -194,7 +197,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       </header>
 
       {/* ================= 📝 محتوى الصفحة الداخلي ================= */}
-      <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
+    <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
         
         {/* ================= 🗂️ العمود الأيمن: التقسيمات ================= */}
         <div className={`w-full md:w-1/3 flex flex-col shrink-0 ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'border-white/10 bg-[#020617]/50 backdrop-blur-sm' : 'border-slate-200 bg-white'}`}>
