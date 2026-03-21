@@ -242,14 +242,56 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* More Menu Modal */}
-      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2rem] mb-28 md:hidden z-[10000] bg-transparent">
-        <div className="grid grid-cols-3 gap-3 p-4 rounded-[2rem] border bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-2xl">
-          <button onClick={() => handleNavigate('groups')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Users className="w-7 h-7 text-emerald-400" /><span className="font-bold text-[10px] text-white">المجموعات</span></button>
-          <button onClick={() => handleNavigate('leaderboard')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Medal className="w-7 h-7 text-indigo-400" /><span className="font-bold text-[10px] text-white">الفرسان</span></button>
-          <button onClick={() => handleNavigate('reports')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><FileText className="w-7 h-7 text-indigo-400" /><span className="font-bold text-[10px] text-white">التقارير</span></button>
-          <button onClick={() => handleNavigate('settings')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><SettingsIcon className="w-7 h-7 text-slate-400" /><span className="font-bold text-[10px] text-white">الإعدادات</span></button>
-          <button onClick={() => handleNavigate('guide')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><BookOpen className="w-7 h-7 text-cyan-400" /><span className="font-bold text-[10px] text-white">الدليل</span></button>
-          <button onClick={() => handleNavigate('about')} className="p-4 rounded-2xl flex flex-col items-center justify-center gap-2 bg-white/5 border border-white/10"><Info className="w-7 h-7 text-purple-400" /><span className="font-bold text-[10px] text-white">عن راصد</span></button>
+     {/* ✨ نافذة "المزيد" (More Menu) - التصميم الزجاجي الفاخر + دعم الترجمة */}
+      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2.5rem] mb-28 md:hidden z-[10000] bg-transparent">
+        <div className={`p-5 rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.5)] transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/80 border-white/10' : 'bg-white/90 border-slate-200'}`}>
+          
+          {/* ➖ شريط السحب العلوي (لمسة iOS الأنيقة) */}
+          <div className={`w-12 h-1.5 rounded-full mx-auto mb-5 ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`}></div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <button onClick={() => handleNavigate('groups')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(52,211,153,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-600'}`}>
+                <Users size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
+            </button>
+
+            <button onClick={() => handleNavigate('leaderboard')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30' : 'bg-purple-100 text-purple-600'}`}>
+                <Medal size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights')}</span>
+            </button>
+
+            <button onClick={() => handleNavigate('reports')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/30' : 'bg-indigo-100 text-indigo-600'}`}>
+                <FileText size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports')}</span>
+            </button>
+
+            <button onClick={() => handleNavigate('settings')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(148,163,184,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-slate-500/20 text-slate-300 group-hover:bg-slate-500/30' : 'bg-slate-200 text-slate-600'}`}>
+                <SettingsIcon size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings')}</span>
+            </button>
+
+            <button onClick={() => handleNavigate('guide')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-600'}`}>
+                <BookOpen size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort')}</span>
+            </button>
+
+            <button onClick={() => handleNavigate('about')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(244,114,182,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-pink-500/20 text-pink-400 group-hover:bg-pink-500/30' : 'bg-pink-100 text-pink-600'}`}>
+                <Info size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout')}</span>
+            </button>
+          </div>
         </div>
       </Modal>
     </div>
