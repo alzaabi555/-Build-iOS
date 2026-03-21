@@ -3,7 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
-  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare, Library // 👈 1. تمت إضافة Library هنا
 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -22,6 +22,7 @@ import UserGuide from './components/UserGuide';
 import BrandLogo from './components/BrandLogo';
 import WelcomeScreen from './components/WelcomeScreen';
 import StudentGroups from './components/StudentGroups';
+import TeacherLibrary from './components/TeacherLibrary'; // 👈 2. استدعاء ملف المكتبة
 import { useSchoolBell } from './hooks/useSchoolBell';
 
 import RamadanTheme from './components/RamadanTheme';
@@ -136,6 +137,7 @@ const AppContent: React.FC = () => {
     { id: 'groups', label: t('navGroups'), icon: Users },
     { id: 'grades', label: t('navGrades'), icon: BarChart3 },
     { id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
+    { id: 'library', label: t('library') || 'المكتبة', icon: Library }, // 👈 3. إضافة زر في القائمة الجانبية (للكمبيوتر)
     { id: 'leaderboard', label: t('navKnights'), icon: Medal },
     { id: 'reports', label: t('navReports'), icon: FileText },
     { id: 'guide', label: t('navGuide'), icon: BookOpen },
@@ -171,6 +173,7 @@ const AppContent: React.FC = () => {
         />;
       case 'tasks':
         return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
+      case 'library': return <TeacherLibrary />; // 👈 4. ربط الصفحة
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'students':
         return <StudentList
@@ -242,11 +245,9 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* More Menu Modal */}
-     {/* ✨ نافذة "المزيد" (More Menu) - التصميم الزجاجي الفاخر + دعم الترجمة */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2.5rem] mb-28 md:hidden z-[10000] bg-transparent">
         <div className={`p-5 rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.5)] transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/80 border-white/10' : 'bg-white/90 border-slate-200'}`}>
           
-          {/* ➖ شريط السحب العلوي (لمسة iOS الأنيقة) */}
           <div className={`w-12 h-1.5 rounded-full mx-auto mb-5 ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`}></div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -291,6 +292,15 @@ const AppContent: React.FC = () => {
               </div>
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout')}</span>
             </button>
+
+            {/* 👈 5. الزر السحري الجديد (المكتبة) ظهر هنا بأمان تام */}
+            <button onClick={() => handleNavigate('library')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(232,121,249,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-fuchsia-500/20 text-fuchsia-400 group-hover:bg-fuchsia-500/30' : 'bg-fuchsia-100 text-fuchsia-600'}`}>
+                <Library size={24} strokeWidth={2.5} />
+              </div>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('library') || 'المكتبة'}</span>
+            </button>
+
           </div>
         </div>
       </Modal>
