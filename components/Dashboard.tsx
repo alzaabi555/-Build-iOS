@@ -97,9 +97,10 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
     }
   };
 
-  return (
-    <button
-     {/* 🌟 الهيدر الاحترافي المدمج (العنوان + زر المزامنة في نفس السطر) */}
+return (
+    <div className="animate-in fade-in duration-500 pb-24" dir={dir}>
+      
+      {/* 🌟 الهيدر الاحترافي المدمج (العنوان + زر المزامنة في نفس السطر) */}
       <div className="flex items-center justify-between mb-6 relative z-10">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
@@ -139,6 +140,8 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
           </span>
         </button>
       </div>
+
+      {/* باقي محتوى الداشبورد يكمل هنا... */}
 // ========================================================
 
 const Dashboard: React.FC<DashboardProps> = ({
