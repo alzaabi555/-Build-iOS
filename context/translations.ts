@@ -1,5 +1,17 @@
 export const translations = {
   ar: {
+  tasksTitle: "المهام والواجبات",
+  tasksSubtitle: "أرسل الواجبات لطلابك بسرعة بضغطة زر",
+  addNewTask: "إضافة مهمة جديدة",
+  taskTitleLabel: "عنوان المهمة / الواجب",
+  taskTitlePlaceholder: "مثال: حل أسئلة الفصل الأول صفحة 45...",
+  targetClassLabel: "الصف المستهدف",
+  allClasses: "جميع الفصول (الكل)",
+  sendTaskBtn: "إرسال المهمة",
+  activeTasks: "المهام النشطة",
+  noTasksAdded: "لا توجد مهام حالياً. أضف مهمة لطلابك لتصلهم في المزامنة!",
+  confirmDeleteTask: "هل أنت متأكد من حذف هذه المهمة؟",
+  targetPrefix: "مستهدف",  
     // App Navigation
     loadingData: "جاري استعادة البيانات المحلية...",
     navDashboard: "الرئيسية",
@@ -697,6 +709,18 @@ export const translations = {
     alertNoValidDataExcel: "لم يتم العثور على بيانات صالحة. تأكد من استخدام القالب الصحيح."
   },
   en: {
+    tasksTitle: "Tasks & Assignments",
+  tasksSubtitle: "Send assignments to your students quickly with a click",
+  addNewTask: "Add New Task",
+  taskTitleLabel: "Task / Assignment Title",
+  taskTitlePlaceholder: "e.g., Solve chapter 1 questions page 45...",
+  targetClassLabel: "Target Class",
+  allClasses: "All Classes",
+  sendTaskBtn: "Send Task",
+  activeTasks: "Active Tasks",
+  noTasksAdded: "No tasks currently. Add a task to be sent upon sync!",
+  confirmDeleteTask: "Are you sure you want to delete this task?",
+  targetPrefix: "Target",
     // App Navigation
     loadingData: "Restoring local data...",
     navDashboard: "Dashboard",
