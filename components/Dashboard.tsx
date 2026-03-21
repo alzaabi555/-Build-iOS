@@ -99,45 +99,46 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
 
   return (
     <button
-      onClick={handleMegaSync}
-      disabled={syncStatus === 'loading' || syncStatus === 'success'}
-      className={`w-full flex flex-col items-center justify-center gap-2 p-5 rounded-[1.5rem] text-sm md:text-base font-black transition-all duration-500 shadow-xl relative overflow-hidden ${
-        syncStatus === 'success'
-          ? 'bg-emerald-500 text-white shadow-emerald-500/50 scale-100'
-          : syncStatus === 'error'
-          ? 'bg-rose-500 text-white shadow-rose-500/50'
-          : 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:scale-[1.02] active:scale-95 shadow-indigo-500/40'
-      }`}
-    >
-      {syncStatus === 'idle' && <div className="absolute inset-0 bg-white/20 skew-x-[-20deg] animate-[shimmer_2s_infinite] w-1/2 -ml-[50%]"></div>}
-      
-      {syncStatus === 'idle' && (
-        <div className="flex items-center gap-3 relative z-10">
-          <CloudUpload className="w-6 h-6 animate-bounce" />
-          <span>مزامنة نهاية اليوم لنسخة الطلبة 🚀</span>
+     {/* 🌟 الهيدر الاحترافي المدمج (العنوان + زر المزامنة في نفس السطر) */}
+      <div className="flex items-center justify-between mb-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
+            <LayoutDashboard size={22} />
+          </div>
+          <div>
+            <h1 className={`text-xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+              الرئيسية
+            </h1>
+            <p className={`text-[10px] font-bold opacity-60 mt-0.5 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
+              نظام راصد للمعلمين
+            </p>
+          </div>
         </div>
-      )}
-      {syncStatus === 'loading' && (
-        <div className="flex items-center gap-3 relative z-10">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>جاري رفع بيانات {allStudentsData.length} طالب...</span>
-        </div>
-      )}
-      {syncStatus === 'success' && (
-        <div className="flex items-center gap-3 relative z-10">
-          <CheckCheck className="w-6 h-6" />
-          <span>تمت المزامنة بنجاح! شكراً لجهودك 🎉</span>
-        </div>
-      )}
-      {syncStatus === 'error' && (
-        <div className="flex items-center gap-3 relative z-10">
-          <AlertTriangle className="w-6 h-6" />
-          <span>فشل الرفع، أعد المحاولة</span>
-        </div>
-      )}
-    </button>
-  );
-};
+
+        {/* 🚀 زر المزامنة المصغر (Iconic Button) - لا يأخذ أي مساحة إضافية */}
+        <button
+          onClick={handleMegaSync}
+          disabled={syncStatus === 'loading'}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 shadow-sm ${
+            syncStatus === 'success' 
+              ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' 
+              : isRamadan 
+                ? 'bg-white/10 border-white/10 text-white hover:bg-white/20' 
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          {syncStatus === 'loading' ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : syncStatus === 'success' ? (
+            <CheckSquare size={16} className="animate-bounce text-emerald-400" />
+          ) : (
+            <CloudUpload size={16} className={`${syncStatus === 'loading' ? '' : 'animate-pulse'}`} />
+          )}
+          <span className="hidden sm:inline">
+            {syncStatus === 'loading' ? 'جاري الرفع...' : syncStatus === 'success' ? 'تمت المزامنة' : 'مزامنة السحابة'}
+          </span>
+        </button>
+      </div>
 // ========================================================
 
 const Dashboard: React.FC<DashboardProps> = ({
