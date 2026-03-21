@@ -52,7 +52,7 @@ interface AssessmentMonth {
 // ========================================================
 // 🚀 مكون زر المزامنة السحابية (مضاف جديداً ولا يؤثر على الباقي)
 // ========================================================
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkHcom1nHY2N_SVudhe5QyI58ScT6zjjh9xI1gQ4D3vhuVrM5OT0eReoETO_Zo12ve/exec"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec"; 
 
 const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsData }) => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
