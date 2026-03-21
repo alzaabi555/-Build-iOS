@@ -1,5 +1,15 @@
 export const translations = {
   ar: {
+ navMore: "المزيد",
+  navGroups: "المجموعات",
+  navKnights: "الفرسان",
+  navReports: "التقارير",
+  navSettings: "الإعدادات",
+  navGuide: "دليل الاستخدام",
+  navGuideShort: "الدليل",
+  navAbout: "عن التطبيق",
+    ///
+  tasks: "المهام",   
   tasksTitle: "المهام والواجبات",
   tasksSubtitle: "أرسل الواجبات لطلابك بسرعة بضغطة زر",
   addNewTask: "إضافة مهمة جديدة",
@@ -709,6 +719,16 @@ export const translations = {
     alertNoValidDataExcel: "لم يتم العثور على بيانات صالحة. تأكد من استخدام القالب الصحيح."
   },
   en: {
+navMore: "More",
+  navGroups: "Groups",
+  navKnights: "Knights",
+  navReports: "Reports",
+  navSettings: "Settings",
+  navGuide: "User Guide",
+  navGuideShort: "Guide",
+  navAbout: "About",
+    ///
+  tasks: "Tasks",
     tasksTitle: "Tasks & Assignments",
   tasksSubtitle: "Send assignments to your students quickly with a click",
   addNewTask: "Add New Task",
