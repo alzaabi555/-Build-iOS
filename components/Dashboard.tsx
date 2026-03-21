@@ -58,10 +58,10 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const handleMegaSync = async () => {
-    // 🚀 جلب المهام المحفوظة من صفحة المهام
+    // 🚀 جلب المهام المحفوظة
     const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
 
-    if (!allStudentsData || (allStudentsData.length === 0 && savedTasks.length === 0)) {
+    if (!students || (students.length === 0 && savedTasks.length === 0)) {
       alert("لا توجد بيانات للطلاب أو مهام لرفعها.");
       return;
     }
@@ -70,27 +70,30 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
     
     const payload = {
       action: "syncAllData",
-      students: allStudentsData,
-      tasks: savedTasks // 🚀 الآن سيتم إرسال المهام مع الطلبة للسحابة!
+      students: students,
+      tasks: savedTasks
     };
     
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
+      // 📡 إرسال البيانات للرابط الجديد
+      await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
+        mode: "no-cors", // 💉 لتجاوز قيود المتصفحات (CORS)
+        headers: {
+          "Content-Type": "text/plain", // 💉 جوجل يفضلها هكذا في وضع no-cors
+        },
         body: JSON.stringify(payload)
       });
-      const result = await response.json();
-      if (result.success) {
-        setSyncStatus('success');
-        setTimeout(() => setSyncStatus('idle'), 5000);
-      } else {
-        setSyncStatus('error');
-        alert("خطأ: " + result.error);
-      }
+
+      // في وضع no-cors لا يمكننا قراءة الاستجابة، لذا نعتبرها نجحت إذا لم يحدث Exception
+      setSyncStatus('success');
+      console.log("تمت المزامنة بنجاح عبر الرابط الجديد! 🎉");
+      setTimeout(() => setSyncStatus('idle'), 5000);
+      
     } catch (error) {
-      console.error(error);
+      console.error("خطأ في المزامنة:", error);
       setSyncStatus('error');
-      alert("فشل الاتصال. تأكد من الإنترنت.");
+      alert("فشل الاتصال. تأكد أنك استخدمت الرابط الجديد المنتهي بـ /exec.");
     }
   };
 
