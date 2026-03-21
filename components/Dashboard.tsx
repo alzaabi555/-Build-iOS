@@ -6,7 +6,7 @@ import {
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
   X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
   AlertTriangle, Moon, Award, Heart, Plus, Trash2, RefreshCcw,
-  CloudUpload, CheckCheck // 🚀 أضفت فقط أيقونات زر المزامنة هنا
+  CloudUpload, CheckCheck 
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -50,18 +50,19 @@ interface AssessmentMonth {
 }
 
 // ========================================================
-// 🚀 مكون زر المزامنة السحابية (مضاف جديداً ولا يؤثر على الباقي)
+// 🚀 مكون زر المزامنة السحابية (تم إغلاق الأقواس بنجاح)
 // ========================================================
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec"; 
 
 const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsData }) => {
+  const { dir } = useApp();
+  const isRamadan = true;
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const handleMegaSync = async () => {
-    // 🚀 جلب المهام المحفوظة
     const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
 
-    if (!students || (students.length === 0 && savedTasks.length === 0)) {
+    if (!allStudentsData || (allStudentsData.length === 0 && savedTasks.length === 0)) {
       alert("لا توجد بيانات للطلاب أو مهام لرفعها.");
       return;
     }
@@ -70,22 +71,20 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
     
     const payload = {
       action: "syncAllData",
-      students: students,
+      students: allStudentsData,
       tasks: savedTasks
     };
     
     try {
-      // 📡 إرسال البيانات للرابط الجديد
       await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors", // 💉 لتجاوز قيود المتصفحات (CORS)
+        mode: "no-cors",
         headers: {
-          "Content-Type": "text/plain", // 💉 جوجل يفضلها هكذا في وضع no-cors
+          "Content-Type": "text/plain",
         },
         body: JSON.stringify(payload)
       });
 
-      // في وضع no-cors لا يمكننا قراءة الاستجابة، لذا نعتبرها نجحت إذا لم يحدث Exception
       setSyncStatus('success');
       console.log("تمت المزامنة بنجاح عبر الرابط الجديد! 🎉");
       setTimeout(() => setSyncStatus('idle'), 5000);
@@ -97,30 +96,26 @@ const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsD
     }
   };
 
-return (
-    <div className="animate-in fade-in duration-500 pb-24" dir={dir}>
-      
-      {/* 🌟 الهيدر الاحترافي المدمج (العنوان + زر المزامنة في نفس السطر) */}
-      <div className="flex items-center justify-between mb-6 relative z-10">
+  return (
+      <div className={`flex items-center justify-between p-4 mb-2 rounded-2xl border shadow-lg ${isRamadan ? 'bg-[#0f172a]/80 border-white/10 backdrop-blur-md' : 'bg-white border-slate-200'}`} dir={dir}>
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
-            <LayoutDashboard size={22} />
+            <CloudUpload size={22} />
           </div>
           <div>
-            <h1 className={`text-xl font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
-              الرئيسية
+            <h1 className={`text-base font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+              المزامنة السحابية
             </h1>
-            <p className={`text-[10px] font-bold opacity-60 mt-0.5 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
-              نظام راصد للمعلمين
+            <p className={`text-[10px] font-bold mt-0.5 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
+              رفع البيانات والمهام للطلاب
             </p>
           </div>
         </div>
 
-        {/* 🚀 زر المزامنة المصغر (Iconic Button) - لا يأخذ أي مساحة إضافية */}
         <button
           onClick={handleMegaSync}
           disabled={syncStatus === 'loading'}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 shadow-sm ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 shadow-sm ${
             syncStatus === 'success' 
               ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' 
               : isRamadan 
@@ -131,21 +126,21 @@ return (
           {syncStatus === 'loading' ? (
             <Loader2 size={16} className="animate-spin" />
           ) : syncStatus === 'success' ? (
-            <CheckSquare size={16} className="animate-bounce text-emerald-400" />
+            <CheckCheck size={16} className="animate-bounce text-emerald-400" />
           ) : (
-            <CloudUpload size={16} className={`${syncStatus === 'loading' ? '' : 'animate-pulse'}`} />
+            <RefreshCcw size={16} className={`${syncStatus === 'loading' ? '' : 'animate-pulse'}`} />
           )}
           <span className="hidden sm:inline">
             {syncStatus === 'loading' ? 'جاري الرفع...' : syncStatus === 'success' ? 'تمت المزامنة' : 'مزامنة السحابة'}
           </span>
         </button>
       </div>
-
-      {/* باقي محتوى الداشبورد يكمل هنا... */}
+  );
+};
 // ========================================================
 
 const Dashboard: React.FC<DashboardProps> = ({
-    students, // 🚀 أضفت هذه فقط لتمرير الطلاب للزر
+    students, 
     teacherInfo,
     onUpdateTeacherInfo,
     schedule,
