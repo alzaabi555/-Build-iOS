@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Save, AlertTriangle, FileJson, Trash2, 
-  Download, RefreshCw, Loader2, Zap, Database, ArrowRight, Cloud, CloudUpload, CloudDownload, CheckCircle, XCircle, Globe, Settings as SettingsIcon 
+  Download, RefreshCw, Loader2, Zap, Database, ArrowRight, Globe, Settings as SettingsIcon 
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-
-// ⚠️ الرابط السري الخاص بك
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
 // ✅ أيقونات 3D فخمة
 const Icon3DProfile = ({ isRamadan }: { isRamadan?: boolean }) => (
@@ -39,19 +36,6 @@ const Icon3DDatabase = ({ isRamadan }: { isRamadan?: boolean }) => (
   </svg>
 );
 
-const Icon3DSync = ({ isRamadan }: { isRamadan?: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-12 h-12">
-    <defs>
-      <linearGradient id="gradS" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor={isRamadan ? "#c084fc" : "#8b5cf6"} />
-        <stop offset="100%" stopColor={isRamadan ? "#581c87" : "#4c1d95"} />
-      </linearGradient>
-    </defs>
-    <path d="M10 50 Q30 20 50 30 T90 50 Q70 80 50 70 T10 50 Z" fill="url(#gradS)" filter="url(#glow)" />
-    <circle cx="50" cy="50" r="15" fill="#fff" fillOpacity="0.2" />
-  </svg>
-);
-
 const Settings = () => {
   const { 
     teacherInfo, setTeacherInfo, students, setStudents, 
@@ -59,7 +43,7 @@ const Settings = () => {
     periodTimes, setPeriodTimes, assessmentTools, setAssessmentTools,
     certificateSettings, setCertificateSettings, hiddenClasses, setHiddenClasses,
     groups, setGroups, categorizations, setCategorizations, gradeSettings, setGradeSettings,
-    language, setLanguage, t, dir // 🌍 جلب محرك اللغات
+    language, setLanguage, t, dir 
   } = useApp();
 
   const [name, setName] = useState(teacherInfo?.name || '');
@@ -68,9 +52,6 @@ const Settings = () => {
   
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   const isRamadan = true;
 
@@ -85,186 +66,7 @@ const Settings = () => {
     setLanguage(language === 'ar' ? 'en' : 'ar');
   };
 
-  // ==========================================
-  // 🚀 1. زر الرفع المباشر للسحابة
-  // ==========================================
-  const handleUploadToCloud = async () => {
-    if (!teacherInfo.civilId) return alert(t('alertEnterCivilId'));
-    if (!confirm(t('alertConfirmPush'))) return;
-    
-    setIsUploading(true);
-    try {
-      const cleanId = teacherInfo.civilId.trim();
-      const teacherUniqueId = "id_" + cleanId;
-      const forceTimestamp = Date.now(); 
-
-      const recordsToSync = [
-        { id: "tools_data", type: "Tools", data: JSON.stringify(assessmentTools), lastUpdated: forceTimestamp },
-        { id: "groups_data", type: "Groups", data: JSON.stringify(groups || []), lastUpdated: forceTimestamp },
-        { id: "categorizations_data", type: "Categorizations", data: JSON.stringify(categorizations || []), lastUpdated: forceTimestamp },
-        { id: "gradeSettings_data", type: "GradeSettings", data: JSON.stringify(gradeSettings), lastUpdated: forceTimestamp },
-        { id: "classes_data", type: "Classes", data: JSON.stringify(classes), lastUpdated: forceTimestamp },
-        { id: "teacher_info_data", type: "TeacherInfo", data: JSON.stringify(teacherInfo), lastUpdated: forceTimestamp },
-        { id: "schedule_data", type: "Schedule", data: JSON.stringify(schedule || {}), lastUpdated: forceTimestamp },
-        { id: "periodTimes_data", type: "PeriodTimes", data: JSON.stringify(periodTimes || []), lastUpdated: forceTimestamp },
-        { id: "certSettings_data", type: "CertSettings", data: JSON.stringify(certificateSettings || {}), lastUpdated: forceTimestamp },
-        { id: "hiddenClasses_data", type: "HiddenClasses", data: JSON.stringify(hiddenClasses || []), lastUpdated: forceTimestamp },
-      ];
-
-      if (!students || students.length === 0) {
-          recordsToSync.push({ id: "students_chunk_0", type: "StudentsChunk", data: "[]", lastUpdated: forceTimestamp });
-      } else {
-          const CHUNK_SIZE = 100;
-          for (let i = 0; i < students.length; i += CHUNK_SIZE) {
-            recordsToSync.push({
-              id: `students_chunk_${i}`, 
-              type: "StudentsChunk", 
-              data: JSON.stringify(students.slice(i, i + CHUNK_SIZE)), 
-              lastUpdated: forceTimestamp 
-            });
-          }
-      }
-
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'sync', teacherPhone: teacherUniqueId, records: recordsToSync })
-      });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        alert(t('alertPushSuccess'));
-      } else { throw new Error("Server Error"); }
-    } catch (error) {
-      alert(t('alertSyncError'));
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // ==========================================
-  // 📥 2. زر الجلب المباشر
-  // ==========================================
-  const handleDownloadFromCloud = async () => {
-    if (!teacherInfo.civilId) return alert(t('alertEnterCivilId'));
-    if (!confirm(t('alertConfirmPull'))) return;
-
-    setIsDownloading(true);
-    try {
-      const cleanId = teacherInfo.civilId.trim();
-      const teacherUniqueId = "id_" + cleanId;
-
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'sync', teacherPhone: teacherUniqueId, records: [] }) 
-      });
-
-      const result = await response.json();
-
-      if (result.status === 'success' && result.records && result.records.length > 0) {
-        let incomingChunks: any[] = [];
-        let hasData = false;
-
-        let newAssessmentTools = assessmentTools;
-        let newGroups = groups;
-        let newCategorizations = categorizations;
-        let newGradeSettings = gradeSettings;
-        let newClasses = classes;
-        let newTeacherInfo = teacherInfo;
-        let newSchedule = schedule;
-        let newPeriodTimes = periodTimes;
-        let newCertificateSettings = certificateSettings;
-        let newHiddenClasses = hiddenClasses;
-        let newStudents = students;
-
-        result.records.forEach((serverRec: any) => {
-            hasData = true;
-            try {
-                const parsedData = JSON.parse(serverRec.data);
-                
-                if (serverRec.id === "tools_data") newAssessmentTools = parsedData;
-                if (serverRec.id === "groups_data") newGroups = parsedData;
-                if (serverRec.id === "categorizations_data") newCategorizations = parsedData;
-                if (serverRec.id === "gradeSettings_data") newGradeSettings = parsedData;
-                if (serverRec.id === "classes_data") newClasses = parsedData;
-                if (serverRec.id === "teacher_info_data") newTeacherInfo = parsedData;
-                
-                if (serverRec.id === "schedule_data") newSchedule = parsedData;
-                if (serverRec.id === "periodTimes_data") newPeriodTimes = parsedData;
-                if (serverRec.id === "certSettings_data") newCertificateSettings = parsedData;
-                if (serverRec.id === "hiddenClasses_data") newHiddenClasses = parsedData;
-
-                if (serverRec.type === "StudentsChunk") {
-                  incomingChunks.push({id: serverRec.id, data: parsedData});
-                }
-            } catch (e) { console.error("Error parsing", e); }
-        });
-
-        if (incomingChunks.length > 0) {
-            incomingChunks.sort((a, b) => {
-                const numA = parseInt(a.id.replace('students_chunk_', ''));
-                const numB = parseInt(b.id.replace('students_chunk_', ''));
-                return numA - numB;
-            });
-            newStudents = incomingChunks.reduce((acc, chunk) => acc.concat(chunk.data), []);
-            
-            const uniqueStudentsMap = new Map();
-            newStudents.forEach((student: any) => {
-                if (student && student.id) {
-                    uniqueStudentsMap.set(student.id, student);
-                }
-            });
-            newStudents = Array.from(uniqueStudentsMap.values());
-            
-        } else if (hasData) {
-            newStudents = []; 
-        }
-
-        if (hasData) {
-            const dataToSave = {
-              version: '3.8.7',
-              timestamp: new Date().toISOString(),
-              students: newStudents,
-              classes: newClasses,
-              hiddenClasses: newHiddenClasses,
-              groups: newGroups,
-              schedule: newSchedule,
-              periodTimes: newPeriodTimes,
-              teacherInfo: newTeacherInfo,
-              assessmentTools: newAssessmentTools,
-              certificateSettings: newCertificateSettings,
-              categorizations: newCategorizations,
-              gradeSettings: newGradeSettings 
-            };
-
-            const jsonString = JSON.stringify(dataToSave, null, 2);
-
-            if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
-                await Filesystem.writeFile({ path: 'raseddatabasev2.json', data: jsonString, directory: Directory.Data, encoding: Encoding.UTF8 });
-            }
-
-            setStudents(newStudents);
-            setClasses(newClasses);
-            setAssessmentTools(newAssessmentTools);
-            setTeacherInfo(newTeacherInfo);
-
-            alert(t('alertPullSuccess'));
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            alert(t('alertNoDataForId'));
-        }
-      } else { 
-        alert(t('alertNoDataInCloud')); 
-      }
-    } catch (error) {
-      alert(t('alertSyncError'));
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  // ✅ الدوال الأساسية للنسخ الاحتياطي
+  // ✅ الدوال الأساسية للنسخ الاحتياطي (محلياً Local Backup)
   const handleBackup = async () => {
     setLoading('backup');
     try {
@@ -398,44 +200,6 @@ const Settings = () => {
             <button onClick={() => setTeacherInfo({ ...teacherInfo, name, school, civilId })} className={`mt-6 w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-amber-600 text-white shadow-lg' : 'bg-blue-600 text-white shadow-xl shadow-blue-200'}`}>
               <Save size={18} /> {t('saveProfileBtn')}
             </button>
-          </div>
-
-          {/* 🚀 بطاقة المزامنة السحابية */}
-          <div className={`rounded-[2.5rem] p-8 relative overflow-hidden border transition-colors ${isRamadan ? 'bg-[#1e1b4b]/80 border-indigo-500/30 shadow-[0_0_50px_rgba(79,70,229,0.2)]' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 shadow-[0_10px_40px_-15px_rgba(79,70,229,0.15)]'}`}>
-            <div className={`absolute top-0 right-0 w-40 h-40 rounded-full -mr-20 -mt-20 blur-3xl ${isRamadan ? 'bg-indigo-500/20' : 'bg-indigo-400/20'}`}></div>
-            <div className="flex flex-col items-start gap-6 relative z-10">
-              <div className="flex items-center gap-5">
-                <Icon3DSync isRamadan={isRamadan} />
-                <div>
-                  <h2 className={`text-xl font-black ${isRamadan ? 'text-white' : 'text-indigo-900'}`}>{t('syncTitle')}</h2>
-                  <p className={`text-xs font-bold mt-1 ${isRamadan ? 'text-indigo-200' : 'text-indigo-600/70'}`}>{t('syncSubtitle')}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                <button 
-                  onClick={handleUploadToCloud} 
-                  disabled={isUploading || isDownloading} 
-                  className={`w-full px-6 py-5 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}
-                >
-                  {isUploading ? <Loader2 className="animate-spin w-5 h-5" /> : <CloudUpload className="w-5 h-5" />}
-                  {isUploading ? t('pushingBtn') : t('pushBtn')}
-                </button>
-
-                <button 
-                  onClick={handleDownloadFromCloud} 
-                  disabled={isUploading || isDownloading} 
-                  className={`w-full px-6 py-5 rounded-2xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${isRamadan ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200'}`}
-                >
-                  {isDownloading ? <Loader2 className="animate-spin w-5 h-5" /> : <CloudDownload className="w-5 h-5" />}
-                  {isDownloading ? t('pullingBtn') : t('pullBtn')}
-                </button>
-              </div>
-              <div className={`text-[10px] font-bold px-2 ${isRamadan ? 'text-indigo-300' : 'text-indigo-700/60'}`}>
-                {t('syncNote1')}<br/>
-                {t('syncNote2')}
-              </div>
-            </div>
           </div>
 
           {/* بطاقة النسخ المحلي */}
