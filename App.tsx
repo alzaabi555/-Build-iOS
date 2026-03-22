@@ -27,10 +27,10 @@ import { useSchoolBell } from './hooks/useSchoolBell';
 
 import RamadanTheme from './components/RamadanTheme';
 
-// 👈 1. استدعاء زر المزامنة الشامل الجديد هنا
+// زر المزامنة الشامل
 import GlobalSyncManager from './components/GlobalSyncManager'; 
 
-// --- ✨ GLASS GLOW ICONS (التطوير الزجاجي الجديد) ---
+// --- ✨ GLASS GLOW ICONS ---
 const NavIconWrapper = ({ active, isRamadan, children }: any) => (
   <div className={`w-full h-full flex flex-col items-center justify-center transition-all duration-500 ${active ? 'scale-110' : 'opacity-40'}`}>
     <div className={`relative p-2 rounded-2xl transition-all duration-500 ${active ? (isRamadan ? 'bg-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.3)]' : 'bg-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.3)]') : ''}`}>
@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
     isDataLoaded, students, setStudents, classes, setClasses,
     teacherInfo, setTeacherInfo, schedule, setSchedule,
     periodTimes, setPeriodTimes, currentSemester, setCurrentSemester,
-    t, dir
+    t, dir, language
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -125,34 +125,35 @@ const AppContent: React.FC = () => {
     setShowWelcome(false);
   };
 
+  // 🧠 قوائم محمية بترجمة ذكية
   const mobileNavItems = [
-    { id: 'dashboard', label: t('navDashboard'), IconComponent: Dashboard3D },
-    { id: 'attendance', label: t('navAttendance'), IconComponent: Attendance3D },
-    { id: 'students', label: t('navStudents'), IconComponent: Students3D },
-    { id: 'grades', label: t('navGrades'), IconComponent: Grades3D },
-    { id: 'tasks', label: t('tasks') || 'المهام', IconComponent: Tasks3D },
+    { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), IconComponent: Dashboard3D },
+    { id: 'attendance', label: t('navAttendance') || (dir === 'rtl' ? 'الغياب' : 'Attendance'), IconComponent: Attendance3D },
+    { id: 'students', label: t('navStudents') || (dir === 'rtl' ? 'الطلاب' : 'Students'), IconComponent: Students3D },
+    { id: 'grades', label: t('navGrades') || (dir === 'rtl' ? 'الدرجات' : 'Grades'), IconComponent: Grades3D },
+    { id: 'tasks', label: t('navTasks') || t('tasks') || (dir === 'rtl' ? 'المهام' : 'Tasks'), IconComponent: Tasks3D },
   ];
   
   const desktopNavItems = [
-    { id: 'dashboard', label: t('navDashboard'), icon: LayoutDashboard },
-    { id: 'attendance', label: t('navAttendance'), icon: CalendarCheck },
-    { id: 'students', label: t('navStudents'), icon: Users },
-    { id: 'groups', label: t('navGroups'), icon: Users },
-    { id: 'grades', label: t('navGrades'), icon: BarChart3 },
-    { id: 'tasks', label: t('tasks') || 'المهام', icon: CheckSquare },
-    { id: 'library', label: t('library') || 'المكتبة', icon: Library },
-    { id: 'leaderboard', label: t('navKnights'), icon: Medal },
-    { id: 'reports', label: t('navReports'), icon: FileText },
-    { id: 'guide', label: t('navGuide'), icon: BookOpen },
-    { id: 'settings', label: t('navSettings'), icon: SettingsIcon },
-    { id: 'about', label: t('navAbout'), icon: Info },
+    { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), icon: LayoutDashboard },
+    { id: 'attendance', label: t('navAttendance') || (dir === 'rtl' ? 'الغياب' : 'Attendance'), icon: CalendarCheck },
+    { id: 'students', label: t('navStudents') || (dir === 'rtl' ? 'الطلاب' : 'Students'), icon: Users },
+    { id: 'groups', label: t('navGroups') || (dir === 'rtl' ? 'المجموعات' : 'Groups'), icon: Users },
+    { id: 'grades', label: t('navGrades') || (dir === 'rtl' ? 'الدرجات' : 'Grades'), icon: BarChart3 },
+    { id: 'tasks', label: t('navTasks') || t('tasks') || (dir === 'rtl' ? 'المهام' : 'Tasks'), icon: CheckSquare },
+    { id: 'library', label: t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library'), icon: Library },
+    { id: 'leaderboard', label: t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Leaderboard'), icon: Medal },
+    { id: 'reports', label: t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports'), icon: FileText },
+    { id: 'guide', label: t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide'), icon: BookOpen },
+    { id: 'settings', label: t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings'), icon: SettingsIcon },
+    { id: 'about', label: t('navAbout') || (dir === 'rtl' ? 'حول' : 'About'), icon: Info },
   ];
 
   if (!isDataLoaded) {
     return (
       <div className="flex flex-col h-full w-full items-center justify-center bg-[#020617] fixed inset-0 z-[99999]" dir={dir}>
         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
-        <p className="text-slate-300 font-medium text-sm">{t('loadingData')}</p>
+        <p className="text-slate-300 font-medium text-sm">{t('loadingData') || (dir === 'rtl' ? 'جاري تحميل البيانات...' : 'Loading Data...')}</p>
       </div>
     );
   }
@@ -181,7 +182,7 @@ const AppContent: React.FC = () => {
       case 'students':
         return <StudentList
           students={students} classes={classes} onAddClass={(n) => setClasses(p => [...p, n])} 
-          onAddStudentManually={(n, c, p, a, g) => setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: n, classes: [c], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: p, avatar: a, gender: g || 'male' }])}
+          onAddStudentManually={(n, c, p, a, g, cid) => setStudents(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: n, classes: [c], attendance: [], behaviors: [], grades: [], grade: '', parentPhone: p, avatar: a, gender: g || 'male', parentCode: cid }])}
           onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])} 
           onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
           onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))} 
@@ -208,8 +209,8 @@ const AppContent: React.FC = () => {
         <div className="p-8 flex items-center gap-4 relative z-10">
           <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
           <div>
-            <h1 className="text-2xl font-black">{t('appNameMain')}</h1>
-            <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain')}</span>
+            <h1 className="text-2xl font-black">{t('appNameMain') || 'راصد'}</h1>
+            <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
@@ -243,7 +244,7 @@ const AppContent: React.FC = () => {
         })}
         <button onClick={() => setShowMoreMenu(true)} className="relative w-full h-full flex flex-col items-center justify-end pb-1">
           <div className="absolute top-0 translate-y-1 scale-90 w-11 h-11"><More3D active={showMoreMenu} isRamadan={isRamadan} /></div>
-          <span className="text-[10px] font-black text-indigo-200/50">{t('navMore') || 'المزيد'}</span>
+          <span className="text-[10px] font-black text-indigo-200/50">{t('navMore') || (dir === 'rtl' ? 'المزيد' : 'More')}</span>
         </button>
       </div>
 
@@ -258,56 +259,57 @@ const AppContent: React.FC = () => {
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-600'}`}>
                 <Users size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups') || (dir === 'rtl' ? 'المجموعات' : 'Groups')}</span>
             </button>
 
             <button onClick={() => handleNavigate('leaderboard')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30' : 'bg-purple-100 text-purple-600'}`}>
                 <Medal size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Knights')}</span>
             </button>
 
             <button onClick={() => handleNavigate('reports')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/30' : 'bg-indigo-100 text-indigo-600'}`}>
                 <FileText size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports')}</span>
             </button>
 
             <button onClick={() => handleNavigate('settings')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(148,163,184,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-slate-500/20 text-slate-300 group-hover:bg-slate-500/30' : 'bg-slate-200 text-slate-600'}`}>
                 <SettingsIcon size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings')}</span>
             </button>
 
             <button onClick={() => handleNavigate('guide')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-600'}`}>
                 <BookOpen size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort') || t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide')}</span>
             </button>
 
             <button onClick={() => handleNavigate('about')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(244,114,182,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-pink-500/20 text-pink-400 group-hover:bg-pink-500/30' : 'bg-pink-100 text-pink-600'}`}>
                 <Info size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout')}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout') || (dir === 'rtl' ? 'حول' : 'About')}</span>
             </button>
 
+            {/* زر المكتبة في الهاتف */}
             <button onClick={() => handleNavigate('library')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(232,121,249,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-fuchsia-500/20 text-fuchsia-400 group-hover:bg-fuchsia-500/30' : 'bg-fuchsia-100 text-fuchsia-600'}`}>
                 <Library size={24} strokeWidth={2.5} />
               </div>
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('library') || 'المكتبة'}</span>
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
             </button>
 
           </div>
         </div>
       </Modal>
 
-      {/* 👈 2. الزر السحري تم زراعته هنا ليطفو فوق كل التطبيق بشكل آمن ومستقل */}
+      {/* الزر السحري للمزامنة العائم */}
       <GlobalSyncManager />
       
     </div>
