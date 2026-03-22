@@ -5,8 +5,7 @@ import {
   School, Download, Loader2, 
   PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
   X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
-  AlertTriangle, Moon, Award, Heart, Plus, Trash2, RefreshCcw,
-  CloudUpload, CheckCheck 
+  AlertTriangle, Moon, Award, Heart, Plus, Trash2, RefreshCcw
 } from 'lucide-react';
 import Modal from './Modal';
 import { useApp } from '../context/AppContext';
@@ -48,96 +47,6 @@ interface AssessmentMonth {
     monthName: string;
     tasks: string[];
 }
-
-// ========================================================
-// 🚀 مكون زر المزامنة السحابية (تم إغلاق الأقواس بنجاح)
-// ========================================================
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec"; 
-
-const SyncEndOfDayButton: React.FC<{ allStudentsData: any[] }> = ({ allStudentsData }) => {
-  const { dir } = useApp();
-  const isRamadan = true;
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
-  const handleMegaSync = async () => {
-    const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
-
-    if (!allStudentsData || (allStudentsData.length === 0 && savedTasks.length === 0)) {
-      alert("لا توجد بيانات للطلاب أو مهام لرفعها.");
-      return;
-    }
-    
-    setSyncStatus('loading');
-    
-    const payload = {
-      action: "syncAllData",
-      students: allStudentsData,
-      tasks: savedTasks
-    };
-    
-    try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain",
-        },
-        body: JSON.stringify(payload)
-      });
-
-      setSyncStatus('success');
-      console.log("تمت المزامنة بنجاح عبر الرابط الجديد! 🎉");
-      setTimeout(() => setSyncStatus('idle'), 5000);
-      
-    } catch (error) {
-      console.error("خطأ في المزامنة:", error);
-      setSyncStatus('error');
-      alert("فشل الاتصال. تأكد أنك استخدمت الرابط الجديد المنتهي بـ /exec.");
-    }
-  };
-
-  return (
-      <div className={`flex items-center justify-between p-4 mb-2 rounded-2xl border shadow-lg ${isRamadan ? 'bg-[#0f172a]/80 border-white/10 backdrop-blur-md' : 'bg-white border-slate-200'}`} dir={dir}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
-            <CloudUpload size={22} />
-          </div>
-          <div>
-            <h1 className={`text-base font-black tracking-tight ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
-              المزامنة السحابية
-            </h1>
-            <p className={`text-[10px] font-bold mt-0.5 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
-              رفع البيانات والمهام للطلاب
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleMegaSync}
-          disabled={syncStatus === 'loading'}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 shadow-sm ${
-            syncStatus === 'success' 
-              ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' 
-              : isRamadan 
-                ? 'bg-white/10 border-white/10 text-white hover:bg-white/20' 
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          {syncStatus === 'loading' ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : syncStatus === 'success' ? (
-            <CheckCheck size={16} className="animate-bounce text-emerald-400" />
-          ) : (
-            <RefreshCcw size={16} className={`${syncStatus === 'loading' ? '' : 'animate-pulse'}`} />
-          )}
-          <span className="hidden sm:inline">
-            {syncStatus === 'loading' ? 'جاري الرفع...' : syncStatus === 'success' ? 'تمت المزامنة' : 'مزامنة السحابة'}
-          </span>
-        </button>
-      </div>
-  );
-};
-// ========================================================
 
 const Dashboard: React.FC<DashboardProps> = ({
     students, 
@@ -619,11 +528,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             )}
-
-            {/* 🚀 زر المزامنة لنهاية اليوم الدراسي */}
-            <div className="px-4 mt-4 relative z-10">
-                <SyncEndOfDayButton allStudentsData={students || []} />
-            </div>
 
             <div className="px-4 mt-6 relative z-10">
                 <div className="flex justify-between items-center mb-4">
