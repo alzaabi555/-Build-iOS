@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: 18
 
+      # 💉 المصل المضاد: تثبيت مكتبة vips لحل مشكلة مكتبة sharp مع سيرفرات أبل الحديثة
+      - name: Install vips (Fix for sharp on Apple Silicon)
+        run: brew install vips
+
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
