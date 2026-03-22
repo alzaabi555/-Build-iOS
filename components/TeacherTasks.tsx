@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   CheckSquare, Plus, Trash2, 
-  BookOpen, Users 
+  BookOpen, Users, Check 
 } from 'lucide-react';
 
 export interface Task {
@@ -31,26 +31,58 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
   });
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskClass, setNewTaskClass] = useState('all');
+  
+  // 🧠 حالة جديدة للتحديد المتعدد للفصول بدلاً من قائمة منسدلة
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   useEffect(() => {
     localStorage.setItem('rased_teacher_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  // دالة لاختيار/إلغاء اختيار الفصول
+  const toggleClass = (className: string) => {
+    setSelectedClasses(prev => 
+      prev.includes(className) 
+        ? prev.filter(c => c !== className) // إلغاء التحديد
+        : [...prev, className]              // إضافة التحديد
+    );
+  };
+
+  // دالة لتحديد الكل / إلغاء تحديد الكل
+  const toggleAllClasses = () => {
+    if (selectedClasses.length === safeClasses.length) {
+      setSelectedClasses([]); // إلغاء الكل
+    } else {
+      setSelectedClasses([...safeClasses]); // تحديد الكل
+    }
+  };
+
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
+    
+    // التحقق من اختيار فصل واحد على الأقل
+    if (selectedClasses.length === 0) {
+        alert(t('alertSelectOneClass') || 'الرجاء اختيار فصل واحد على الأقل.');
+        return;
+    }
+
+    // 🧠 دمج الفصول المحددة (أو كتابة "الكل" إذا تم تحديد جميع الفصول)
+    const finalTargetClass = selectedClasses.length === safeClasses.length 
+        ? (t('allClasses') || 'الكل') 
+        : selectedClasses.join(' , ');
 
     const newTask: Task = {
       id: `T-${Date.now()}`,
       title: newTaskTitle.trim(),
       subject: teacherSubject || t('unspecified') || 'عام',
-      targetClass: newTaskClass === 'all' ? (t('allClasses') || 'الكل') : newTaskClass,
+      targetClass: finalTargetClass,
       createdAt: new Date().toISOString()
     };
 
     setTasks([newTask, ...tasks]);
     setNewTaskTitle(''); 
+    setSelectedClasses([]); // تصفير التحديد بعد الإرسال
   };
 
   const handleDeleteTask = (id: string) => {
@@ -102,27 +134,50 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className={`text-[10px] font-bold ml-1 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
-              {t('targetClassLabel') || 'الصف المستهدف'}
-            </label>
-            <div className="relative">
-              <Users className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 ${isRamadan ? 'text-white/30' : 'text-slate-400'}`} />
-              <select 
-                value={newTaskClass} 
-                onChange={e => setNewTaskClass(e.target.value)} 
-                className={`w-full text-xs font-bold py-3.5 ${dir === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'} rounded-xl outline-none border transition-all appearance-none ${isRamadan ? 'bg-[#0f172a]/50 text-white border-white/10 focus:border-indigo-400' : 'bg-slate-50 text-slate-800 border-slate-200 focus:border-indigo-500'}`}
+          {/* 🧠 منطقة التحديد المتعدد للفصول بدلاً من القائمة المنسدلة */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className={`text-[10px] font-bold ml-1 ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
+                {t('targetClassLabel') || 'الفصول المستهدفة:'}
+              </label>
+              <button 
+                type="button" 
+                onClick={toggleAllClasses}
+                className={`text-[10px] font-bold px-3 py-1 rounded-lg transition-colors ${isRamadan ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'}`}
               >
-                <option value="all">{t('allClasses') || 'جميع الفصول (الكل)'}</option>
-                {safeClasses.map((cls, idx) => (
-                  <option key={idx} value={cls}>{cls}</option>
-                ))}
-              </select>
+                {selectedClasses.length === safeClasses.length ? (t('deselectAll') || 'إلغاء الكل') : (t('selectAll') || 'تحديد الكل')}
+              </button>
             </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {safeClasses.map((c, i) => {
+                const isSelected = selectedClasses.includes(c);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleClass(c)}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                      isSelected 
+                        ? (isRamadan ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-indigo-600 border-indigo-600 text-white shadow-md')
+                        : (isRamadan ? 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50')
+                    }`}
+                  >
+                    {isSelected && <Check size={12} className={isRamadan ? 'text-emerald-400' : 'text-white'} />}
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedClasses.length === 0 && <p className="text-[10px] text-rose-400 font-bold">{t('alertSelectOneClass') || 'يرجى اختيار فصل واحد على الأقل'}</p>}
           </div>
 
-          <button type="submit" className={`w-full py-4 mt-2 rounded-xl text-sm font-black shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${isRamadan ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:opacity-90' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-            <Plus size={18} /> {t('sendTaskBtn') || 'إرسال المهمة'}
+          <button 
+            type="submit" 
+            disabled={selectedClasses.length === 0}
+            className={`w-full py-4 mt-2 rounded-xl text-sm font-black shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isRamadan ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:opacity-90' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+          >
+            <Plus size={18} /> {t('sendTaskBtn') || 'إضافة المهمة'}
           </button>
         </form>
       </div>
