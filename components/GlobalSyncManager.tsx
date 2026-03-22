@@ -50,18 +50,56 @@ const GlobalSyncManager: React.FC = () => {
       // ==========================================
       if (type === 'student') {
         setSyncMessage('جاري مزامنة تطبيق الطلاب...');
-        const payload = { students: students, className: 'الكل' };
+        
+        // 👈 إضافة المهام بفضل دقة ملاحظتك يا دكتور!
+        const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
+        
+        const payload = { 
+          students: students, 
+          tasks: savedTasks, // إرفاق المهام للسيرفر
+          className: 'الكل' 
+        };
         await fetch(STUDENT_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
-      } 
+      }
       
       // ==========================================
       // 👨‍👩‍👦 2. تحديث تطبيق أولياء الأمور
       // ==========================================
       else if (type === 'parent') {
-        setSyncMessage('جاري مزامنة تطبيق أولياء الأمور...');
-        const payload = { students: students, className: 'الكل' };
-        await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
-      } 
+        setSyncMessage('جاري معالجة ومزامنة بيانات أولياء الأمور...');
+        
+        // 🧠 معالجة البيانات بنفس دقة الكود القديم
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+
+        const parentPayload = students
+            .filter(s => s.parentCode && s.parentCode.trim() !== "")
+            .map(s => {
+                const monthlyPoints = (s.behaviors || [])
+                    .filter(b => {
+                        const d = new Date(b.date);
+                        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                    })
+                    .reduce((acc, b) => acc + b.points, 0);
+
+                return {
+                    parentCode: s.parentCode,
+                    name: s.name,
+                    className: s.classes[0] || "",
+                    subject: teacherInfo?.subject || 'عام', 
+                    schoolName: teacherInfo?.school || 'عام',
+                    totalPoints: monthlyPoints,
+                    behaviors: s.behaviors || [],
+                    grades: s.grades || [],
+                    attendance: s.attendance || [] 
+                };
+            });
+
+        if (parentPayload.length === 0) throw new Error('لا يوجد طلاب لديهم رقم مدني للمزامنة!');
+
+        await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(parentPayload) });
+      }
       
       // ==========================================
       // ☁️ 3. الرفع الاحتياطي (Backup) - الكود الهندسي
