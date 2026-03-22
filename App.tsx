@@ -125,7 +125,6 @@ const AppContent: React.FC = () => {
     setShowWelcome(false);
   };
 
-  // 🧠 قوائم محمية بترجمة ذكية
   const mobileNavItems = [
     { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), IconComponent: Dashboard3D },
     { id: 'attendance', label: t('navAttendance') || (dir === 'rtl' ? 'الغياب' : 'Attendance'), IconComponent: Attendance3D },
@@ -175,8 +174,7 @@ const AppContent: React.FC = () => {
           notificationsEnabled={notificationsEnabled} onToggleNotifications={handleToggleNotifications}
           currentSemester={currentSemester} onSemesterChange={setCurrentSemester}
         />;
-      case 'tasks':
-        return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
+      case 'tasks': return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
       case 'library': return <TeacherLibrary />;
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
       case 'students':
@@ -201,33 +199,75 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className={`flex h-full font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    // تغييرنا الرئيسي هنا: جعلنا الحاوية flex-col لكي يجلس شريط الويندوز في الأعلى
+    <div className={`flex flex-col h-screen font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+      
+      {/* كود CSS قوي جداً لنزع خاصية Fixed من زر المزامنة ليتموضع داخل القوائم */}
+      <style>{`
+        .sync-override-container > div, 
+        .sync-override-container > button {
+          position: relative !important;
+          bottom: auto !important;
+          left: auto !important;
+          right: auto !important;
+          top: auto !important;
+          transform: none !important;
+          margin: 0 !important;
+          z-index: 10 !important;
+        }
+      `}</style>
+
       <RamadanTheme />
 
-      {/* Sidebar (Desktop) */}
-      <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
-        <div className="p-8 flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12"><BrandLogo className="w-full h-full" showText={false} /></div>
-          <div>
-            <h1 className="text-2xl font-black">{t('appNameMain') || 'راصد'}</h1>
-            <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
-          {desktopNavItems.map(item => (
-            <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200/70 hover:bg-white/5'}`}>
-              <item.icon className="w-5 h-5" />
-              <span className="font-bold text-sm">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+      {/* 🖥️ الشريط العلوي المخصص لويندوز (Custom Titlebar) */}
+      <div 
+        className={`hidden md:flex w-full h-9 shrink-0 items-center justify-center relative z-[99999] shadow-sm ${isRamadan ? 'bg-[#1e1b4b]' : 'bg-slate-800'}`}
+        style={{ 
+          borderBottom: isRamadan ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+          WebkitAppRegion: 'drag' as any // هذه الخاصية تسمح بسحب النافذة بالماوس
+        }}
+      >
+        <span className="text-amber-400 text-[11px] font-black tracking-widest uppercase opacity-90">
+          {t('appNameMain') || 'راصد'} - {t('appSubtitleMain') || 'نسخة المعلم'}
+        </span>
+        {/* منطقة آمنة لأزرار الويندوز (إغلاق، تصغير) لكي لا تتأثر بالسحب */}
+        <div className="absolute top-0 right-0 w-40 h-full" style={{ WebkitAppRegion: 'no-drag' as any }}></div>
+        <div className="absolute top-0 left-0 w-40 h-full" style={{ WebkitAppRegion: 'no-drag' as any }}></div>
+      </div>
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe relative z-10">
-          <div className="max-w-5xl mx-auto w-full min-h-full">{renderContent()}</div>
-        </div>
-      </main>
+      {/* محتوى التطبيق الأساسي */}
+      <div className="flex flex-1 overflow-hidden relative z-10 w-full">
+        
+        {/* Sidebar (Desktop) */}
+        <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
+          <div className="p-8 flex items-center gap-4 relative z-10" style={{ WebkitAppRegion: 'no-drag' as any }}>
+            <div className="w-12 h-12 shrink-0"><BrandLogo className="w-full h-full" showText={false} /></div>
+            <div className="flex-1">
+              <h1 className="text-2xl font-black">{t('appNameMain') || 'راصد'}</h1>
+              <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
+            </div>
+            {/* 🔄 زر المزامنة انتقل إلى هنا في نسخة الكمبيوتر */}
+            <div className="shrink-0 sync-override-container">
+              <GlobalSyncManager />
+            </div>
+          </div>
+          
+          <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
+            {desktopNavItems.map(item => (
+              <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200/70 hover:bg-white/5'}`}>
+                <item.icon className="w-5 h-5" />
+                <span className="font-bold text-sm">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 md:pb-4 px-4 md:px-8 pt-safe relative z-10">
+            <div className="max-w-5xl mx-auto w-full min-h-full">{renderContent()}</div>
+          </div>
+        </main>
+      </div>
 
       {/* Bottom Nav (Mobile) */}
       <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 border-slate-200'}`}>
@@ -248,7 +288,7 @@ const AppContent: React.FC = () => {
         </button>
       </div>
 
-      {/* More Menu Modal */}
+      {/* More Menu Modal (الهاتف) */}
       <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2.5rem] mb-28 md:hidden z-[10000] bg-transparent">
         <div className={`p-5 rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.5)] transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/80 border-white/10' : 'bg-white/90 border-slate-200'}`}>
           
@@ -297,7 +337,6 @@ const AppContent: React.FC = () => {
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout') || (dir === 'rtl' ? 'حول' : 'About')}</span>
             </button>
 
-            {/* زر المكتبة في الهاتف */}
             <button onClick={() => handleNavigate('library')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(232,121,249,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-fuchsia-500/20 text-fuchsia-400 group-hover:bg-fuchsia-500/30' : 'bg-fuchsia-100 text-fuchsia-600'}`}>
                 <Library size={24} strokeWidth={2.5} />
@@ -305,13 +344,16 @@ const AppContent: React.FC = () => {
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
             </button>
 
+            {/* 🔄 زر المزامنة انتقل إلى قائمة المزيد في الهاتف */}
+            <div className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 sync-override-container ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+              <GlobalSyncManager />
+              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-amber-400' : 'text-slate-800'}`}>مزامنة</span>
+            </div>
+
           </div>
         </div>
       </Modal>
 
-      {/* الزر السحري للمزامنة العائم */}
-      <GlobalSyncManager />
-      
     </div>
   );
 };
