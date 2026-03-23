@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   CloudSync, Users, GraduationCap, CloudUpload, CloudDownload,
-  CheckCircle2, X, AlertCircle, Loader2
+  CheckCircle2, X, AlertCircle, Loader2, Server, Smartphone
 } from 'lucide-react';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
-// 🌐 الروابط المستقلة (شرايين التطبيق)
 const STUDENT_APP_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec";
 const PARENT_APP_URL = "https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec";
 const DEVICE_SYNC_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
@@ -17,12 +16,10 @@ const GlobalSyncManager: React.FC = () => {
     students, setStudents, classes, setClasses, 
     teacherInfo, setTeacherInfo, schedule, setSchedule, 
     periodTimes, setPeriodTimes, dir, t,
-    // جلب باقي المتغيرات الهامة للنسخ الاحتياطي مع قيم افتراضية للحماية
     groups = [], assessmentTools = [], categorizations = [], 
     gradeSettings = {}, certificateSettings = {}, hiddenClasses = [], setAssessmentTools
   } = useApp();
   
-  const [isOpen, setIsOpen] = useState(false);
   const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState('');
 
@@ -30,45 +27,32 @@ const GlobalSyncManager: React.FC = () => {
 
   const handleSync = async (type: 'student' | 'parent' | 'backup' | 'restore') => {
     
-    // ⚠️ الحماية الأولى: التحقق من الرقم المدني للمعلم
     if ((type === 'backup' || type === 'restore') && !teacherInfo?.civilId) {
       alert(t('alertEnterCivilId') || 'الرجاء إدخال الرقم المدني في الإعدادات أولاً!');
       return;
     }
 
-    // ⚠️ الحماية الثانية: رسائل التأكيد
     if (type === 'restore') {
-      if (!window.confirm(t('alertConfirmPull') || "تحذير: سيتم استبدال كل بياناتك الحالية. هل أنت متأكد؟")) return;
+      if (!window.confirm(t('alertConfirmPull') || "تحذير خطير: سيتم استبدال كل بياناتك الحالية بالبيانات المحفوظة في السحابة. هل أنت متأكد؟")) return;
     }
     if (type === 'backup') {
-      if (!window.confirm(t('alertConfirmPush') || "هل أنت متأكد من رفع البيانات للسحابة؟")) return;
+      if (!window.confirm(t('alertConfirmPush') || "هل أنت متأكد من رفع بياناتك الحالية للسحابة كنسخة احتياطية؟")) return;
     }
 
     setSyncState('syncing');
 
     try {
-      // ==========================================
       // 🎓 1. تحديث تطبيق الطلاب
-      // ==========================================
       if (type === 'student') {
-        setSyncMessage(t('syncingMsg') || 'جاري مزامنة تطبيق الطلاب...');
-        
+        setSyncMessage(t('syncingMsg') || 'جاري تحديث بيانات تطبيق الطلاب والمهام...');
         const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
-        
-        const payload = { 
-          students: students, 
-          tasks: savedTasks,
-          className: 'الكل' 
-        };
+        const payload = { students: students, tasks: savedTasks, className: 'الكل' };
         await fetch(STUDENT_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
       }
       
-      // ==========================================
       // 👨‍👩‍👦 2. تحديث تطبيق أولياء الأمور
-      // ==========================================
       else if (type === 'parent') {
         setSyncMessage(t('syncingMsg') || 'جاري معالجة ومزامنة بيانات أولياء الأمور...');
-        
         const today = new Date();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
@@ -97,15 +81,12 @@ const GlobalSyncManager: React.FC = () => {
             });
 
         if (parentPayload.length === 0) throw new Error(t('alertNoCivilIdToSync') || 'لا يوجد طلاب لديهم رقم مدني للمزامنة!');
-
         await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(parentPayload) });
       }
       
-      // ==========================================
-      // ☁️ 3. الرفع الاحتياطي (Backup) - الكود الهندسي
-      // ==========================================
+      // ☁️ 3. الرفع الاحتياطي (Backup)
       else if (type === 'backup') {
-        setSyncMessage(t('syncingMsg') || 'جاري تقسيم البيانات ورفعها للسحابة...');
+        setSyncMessage(t('syncingMsg') || 'جاري تقسيم البيانات ورفعها بأمان للسحابة...');
         const cleanId = teacherInfo.civilId.trim();
         const teacherUniqueId = "id_" + cleanId;
         const forceTimestamp = Date.now(); 
@@ -147,11 +128,9 @@ const GlobalSyncManager: React.FC = () => {
         if (result.status !== 'success') throw new Error("Server Error");
       } 
       
-      // ==========================================
-      // 📥 4. جلب البيانات (Restore) - الكود الهندسي
-      // ==========================================
+      // 📥 4. جلب البيانات (Restore)
       else if (type === 'restore') {
-        setSyncMessage(t('syncingMsg') || 'جاري جلب البيانات وتجميعها...');
+        setSyncMessage(t('syncingMsg') || 'جاري جلب بياناتك من السحابة وتجميعها...');
         const cleanId = teacherInfo.civilId.trim();
         const teacherUniqueId = "id_" + cleanId;
 
@@ -240,8 +219,8 @@ const GlobalSyncManager: React.FC = () => {
               setTeacherInfo(newTeacherInfo);
               
               setSyncState('success');
-              setSyncMessage(t('syncSuccess') || 'تم الجلب بنجاح! سيتم إعادة تشغيل التطبيق...');
-              setTimeout(() => window.location.reload(), 1500);
+              setSyncMessage(t('syncSuccess') || 'تم استرجاع بياناتك بنجاح! سيتم إعادة تشغيل التطبيق...');
+              setTimeout(() => window.location.reload(), 2000);
               return; 
           }
         } else { 
@@ -250,123 +229,127 @@ const GlobalSyncManager: React.FC = () => {
       }
 
       setSyncState('success');
-      setSyncMessage(t('syncSuccess') || 'تمت العملية بنجاح! ✨');
+      setSyncMessage(t('syncSuccess') || 'تمت المزامنة بنجاح! ✨');
       setTimeout(() => {
-        setIsOpen(false);
         setSyncState('idle');
       }, 3000);
 
     } catch (error) {
       console.error(error);
       setSyncState('error');
-      setSyncMessage(t('syncError') || 'فشل الاتصال! تأكد من الإنترنت.');
+      setSyncMessage(t('syncError') || 'فشل الاتصال! يرجى التأكد من اتصال الإنترنت والمحاولة مجدداً.');
       setTimeout(() => setSyncState('idle'), 4000);
     }
   };
 
   return (
-    // 💡 التعديل هنا: نقل الزر للأعلى (top-24) بدلاً من الأسفل لتفادي تغطية المحتوى
-    <div className={`fixed z-[99999] transition-all duration-500 ${dir === 'rtl' ? 'left-6' : 'right-6'} top-24 md:top-28`} dir={dir}>
+    <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500" dir={dir}>
       
-      {/* ☁️ القائمة المنبثقة (مركز القيادة السحابي) */}
-      {isOpen && (
-        // 💡 التعديل هنا: توجيه القائمة للفتح للداخل (origin-top-left أو right) وعدم الخروج من الشاشة
-        <div className={`absolute top-16 ${dir === 'rtl' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-2 w-80 bg-[#0f172a]/95 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 shadow-[0_30px_60px_rgba(0,0,0,0.7)] animate-in slide-in-from-top-5 fade-in duration-300 transform`}>
+      {/* 🌟 ترويسة صفحة المزامنة */}
+      <div className={`p-6 rounded-[2.5rem] shadow-lg flex flex-col items-center justify-center text-center relative overflow-hidden ${isRamadan ? 'bg-[#1e1b4b] border border-white/5' : 'bg-white border border-slate-100'}`}>
+        <div className={`p-4 rounded-3xl mb-4 ${isRamadan ? 'bg-cyan-500/20 shadow-[0_0_30px_rgba(34,211,238,0.3)]' : 'bg-cyan-100'}`}>
+          <CloudSync className={`w-10 h-10 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
+        </div>
+        <h2 className={`text-2xl font-black mb-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+          {t('syncMenuTitle') || 'مركز مزامنة السحابة'}
+        </h2>
+        <p className={`text-sm max-w-md ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
+          من هنا يمكنك مزامنة بياناتك مع تطبيقات الطلاب وأولياء الأمور، أو أخذ نسخة احتياطية لبياناتك بالكامل لاسترجاعها لاحقاً.
+        </p>
+      </div>
+
+      {/* 🔄 حالات التحميل والنجاح والخطأ (تظهر بدلاً من الأزرار أثناء العملية) */}
+      {syncState !== 'idle' ? (
+        <div className={`p-12 rounded-[2.5rem] shadow-lg flex flex-col items-center justify-center text-center min-h-[300px] border ${isRamadan ? 'bg-[#1e293b] border-white/5' : 'bg-white border-slate-100'}`}>
           
-          <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-            <h3 className="text-base font-black text-white flex items-center gap-2">
-              <CloudSync className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-              {t('syncMenuTitle') || 'مركز المزامنة'}
-            </h3>
-            <button onClick={() => setIsOpen(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {syncState === 'idle' && (
-            <div className="space-y-3">
-              <button onClick={() => handleSync('student')} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-3.5 px-4 rounded-2xl flex items-center justify-between shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all active:scale-95 border border-white/10 group">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors"><GraduationCap className="w-5 h-5 text-blue-200" /></div>
-                  <div className={`flex flex-col ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-                    <span className="text-sm">{t('syncStudentsOnly') || 'تطبيق الطلاب والمهام'}</span>
-                  </div>
-                </div>
-              </button>
-
-              <button onClick={() => handleSync('parent')} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3.5 px-4 rounded-2xl flex items-center justify-between shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all active:scale-95 border border-white/10 group">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors"><Users className="w-5 h-5 text-emerald-200" /></div>
-                  <div className={`flex flex-col ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
-                    <span className="text-sm">{t('syncParentsOnly') || 'تطبيق أولياء الأمور'}</span>
-                  </div>
-                </div>
-              </button>
-
-              <div className="flex items-center gap-3 my-4 opacity-50">
-                <div className="flex-1 h-px bg-white/20"></div>
-                <span className="text-[10px] font-bold text-white">{t('syncDeviceTitle') || 'مزامنة الأجهزة'}</span>
-                <div className="flex-1 h-px bg-white/20"></div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => handleSync('backup')} className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black py-3 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
-                  <CloudUpload className="w-5 h-5 text-amber-400" />
-                  <span className="text-[10px] text-center px-1">{t('syncBackupBtn') || 'رفع احتياطي'}</span>
-                </button>
-                <button onClick={() => handleSync('restore')} className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black py-3 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
-                  <CloudDownload className="w-5 h-5 text-rose-400" />
-                  <span className="text-[10px] text-center px-1">{t('syncRestoreBtn') || 'جلب البيانات'}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
           {syncState === 'syncing' && (
-            <div className="py-10 flex flex-col items-center justify-center animate-in fade-in">
-              <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />
-              <p className="text-sm font-black text-cyan-100 text-center drop-shadow-md px-4">{syncMessage}</p>
+            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+              <Loader2 className={`w-16 h-16 animate-spin mb-6 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
+              <p className={`text-lg font-black ${isRamadan ? 'text-cyan-100' : 'text-slate-700'}`}>{syncMessage}</p>
             </div>
           )}
 
           {syncState === 'success' && (
-            <div className="py-10 flex flex-col items-center justify-center animate-in zoom-in">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isRamadan ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : 'bg-emerald-100'}`}>
+                <CheckCircle2 className={`w-12 h-12 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
               </div>
-              <p className="text-sm font-black text-emerald-100 text-center drop-shadow-md">{syncMessage}</p>
+              <p className={`text-lg font-black ${isRamadan ? 'text-emerald-100' : 'text-slate-700'}`}>{syncMessage}</p>
             </div>
           )}
 
           {syncState === 'error' && (
-            <div className="py-10 flex flex-col items-center justify-center animate-in zoom-in">
-               <div className="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center mb-4 border border-rose-500/30 shadow-[0_0_30px_rgba(244,63,94,0.4)]">
-                <AlertCircle className="w-10 h-10 text-rose-400" />
+            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isRamadan ? 'bg-rose-500/20 border-2 border-rose-500/30' : 'bg-rose-100'}`}>
+                <AlertCircle className={`w-12 h-12 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`} />
               </div>
-              <p className="text-sm font-black text-rose-100 text-center drop-shadow-md px-4">{syncMessage}</p>
-              <button onClick={() => setSyncState('idle')} className="mt-4 text-xs font-bold text-slate-400 underline hover:text-white">{t('closeBtn') || 'رجوع'}</button>
+              <p className={`text-lg font-black mb-6 ${isRamadan ? 'text-rose-100' : 'text-slate-700'}`}>{syncMessage}</p>
+              <button onClick={() => setSyncState('idle')} className={`px-6 py-3 rounded-xl font-bold transition-all active:scale-95 ${isRamadan ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                {t('closeBtn') || 'الرجوع للمركز'}
+              </button>
             </div>
           )}
         </div>
+      ) : (
+        
+        /* 🎛️ شبكة الأزرار الكبيرة */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          
+          {/* كرت مزامنة الطلاب */}
+          <button onClick={() => handleSync('student')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-gradient-to-br from-[#1e1b4b] to-[#312e81] border-indigo-500/20 hover:border-indigo-400/50' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-indigo-500/20 text-indigo-300 group-hover:bg-indigo-500/40' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200'}`}>
+              <Smartphone className="w-8 h-8" />
+            </div>
+            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
+              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق الطلاب والمهام</h3>
+              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-indigo-200/70' : 'text-slate-500'}`}>
+                إرسال الدرجات، المهام، النقاط، والمراكز فوراً ليتمكن الطالب من رؤيتها في تطبيقه.
+              </p>
+            </div>
+          </button>
+
+          {/* كرت مزامنة أولياء الأمور */}
+          <button onClick={() => handleSync('parent')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-gradient-to-br from-[#064e3b] to-[#0f766e] border-emerald-500/20 hover:border-emerald-400/50' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
+            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-emerald-500/20 text-emerald-300 group-hover:bg-emerald-500/40' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200'}`}>
+              <Users className="w-8 h-8" />
+            </div>
+            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
+              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق أولياء الأمور</h3>
+              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-emerald-100/70' : 'text-slate-500'}`}>
+                مزامنة سجلات الغياب، السلوكيات، والدرجات للطلاب الذين تم ربط أرقامهم المدنية.
+              </p>
+            </div>
+          </button>
+
+          {/* كرت النسخ الاحتياطي */}
+          <button onClick={() => handleSync('backup')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-[#1e293b] border-white/10 hover:border-amber-500/50 hover:bg-white/5' : 'bg-slate-50 border-slate-200 hover:border-amber-400'}`}>
+            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20' : 'bg-amber-100 text-amber-600'}`}>
+              <CloudUpload className="w-8 h-8" />
+            </div>
+            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
+              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('syncBackupBtn') || 'رفع نسخة احتياطية (سحابي)'}</h3>
+              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>
+                حفظ نسخة كاملة من بياناتك وإعداداتك في السحابة لضمان عدم ضياعها أو لنقلها لجهاز آخر.
+              </p>
+            </div>
+          </button>
+
+          {/* كرت الاسترجاع */}
+          <button onClick={() => handleSync('restore')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-[#1e293b] border-white/10 hover:border-rose-500/50 hover:bg-white/5' : 'bg-slate-50 border-slate-200 hover:border-rose-400'}`}>
+            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20' : 'bg-rose-100 text-rose-600'}`}>
+              <CloudDownload className="w-8 h-8" />
+            </div>
+            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
+              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`}>{t('syncRestoreBtn') || 'استرجاع البيانات (سحابي)'}</h3>
+              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>
+                جلب بياناتك المحفوظة مسبقاً من السحابة. (تحذير: سيتم استبدال بياناتك الحالية بالكامل).
+              </p>
+            </div>
+          </button>
+
+        </div>
       )}
 
-      {/* 🌟 الزر العائم الرئيسي */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 border backdrop-blur-md active:scale-90 ${
-          isOpen ? 'bg-slate-800 border-slate-600 rotate-180' : 'bg-gradient-to-tr from-cyan-500 to-indigo-600 border-cyan-400/50 hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] hover:-translate-y-1'
-        }`}
-      >
-        {isOpen ? <X className="w-6 h-6 text-slate-300" /> : <CloudSync className="w-6 h-6 text-white" />}
-        
-        {/* النقطة النابضة إذا لزم الأمر، يمكنك إضافتها هنا */}
-        {!isOpen && (
-            <span className="absolute top-0 right-0 flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isRamadan ? 'bg-amber-400' : 'bg-rose-400'}`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${isRamadan ? 'bg-amber-500' : 'bg-rose-500'}`}></span>
-            </span>
-        )}
-      </button>
     </div>
   );
 };
