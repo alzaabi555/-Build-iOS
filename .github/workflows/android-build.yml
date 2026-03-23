@@ -1,103 +1,21 @@
-name: Build Android App (Signed apk)
-
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Web Assets
-        run: npm run build
-
-      - name: Sync/Repair Android Platform
-        run: |
-          echo "Checking Android platform integrity..."
-          if [ -d "android" ] && ( [ ! -f "android/build.gradle" ] || [ ! -f "android/settings.gradle" ] ); then
-            echo "⚠️ Android folder exists but is corrupted (missing gradle files). Initiating repair..."
-            mkdir -p temp_backup/app/src/main/res/xml
-            [ -f "android/app/src/main/AndroidManifest.xml" ] && cp "android/app/src/main/AndroidManifest.xml" "temp_backup/app/src/main/"
-            [ -f "android/app/src/main/res/xml/network_security_config.xml" ] && cp "android/app/src/main/res/xml/network_security_config.xml" "temp_backup/app/src/main/res/xml/"
-            [ -f "android/app/src/main/res/xml/data_extraction_rules.xml" ] && cp "android/app/src/main/res/xml/data_extraction_rules.xml" "temp_backup/app/src/main/res/xml/"
-            [ -f "android/app/src/main/res/xml/file_paths.xml" ] && cp "android/app/src/main/res/xml/file_paths.xml" "temp_backup/app/src/main/res/xml/"
-            rm -rf android
-            npx cap add android
-            [ -f "temp_backup/app/src/main/AndroidManifest.xml" ] && cp "temp_backup/app/src/main/AndroidManifest.xml" "android/app/src/main/"
-            [ -f "temp_backup/app/src/main/res/xml/network_security_config.xml" ] && cp "temp_backup/app/src/main/res/xml/network_security_config.xml" "android/app/src/main/res/xml/"
-            [ -f "temp_backup/app/src/main/res/xml/data_extraction_rules.xml" ] && cp "temp_backup/app/src/main/res/xml/data_extraction_rules.xml" "android/app/src/main/res/xml/"
-            [ -f "temp_backup/app/src/main/res/xml/file_paths.xml" ] && cp "temp_backup/app/src/main/res/xml/file_paths.xml" "android/app/src/main/res/xml/"
-            rm -rf temp_backup
-            echo "✅ Android platform repaired successfully."
-          elif [ ! -d "android" ]; then
-            echo "Android folder missing. Adding platform..."
-            npx cap add android
-          else
-            echo "Android platform appears valid."
-          fi
-          echo "Syncing Capacitor..."
-          npx cap sync android
-
-      - name: Force API 35 and Increment Version Code
-        run: |
-          echo "💉 Injecting API 35 and Version Code 4..."
-          if [ -f "android/variables.gradle" ]; then
-            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 35/g' android/variables.gradle
-            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 35/g' android/variables.gradle
-          fi
-          if [ -f "android/app/build.gradle" ]; then
-            sed -i 's/versionCode 1/versionCode 4/g' android/app/build.gradle
-            sed -i 's/versionName "1.0"/versionName "1.0.3"/g' android/app/build.gradle
-          fi
-          echo "✅ API and Version updated!"
-
-      - name: Create Dummy google-services.json
-        run: |
-          if [ ! -f "android/app/google-services.json" ]; then
-            echo "Creating dummy google-services.json to prevent build failure..."
-            mkdir -p android/app
-            echo '{
-              "project_info": { "project_number": "123456789012", "project_id": "dummy-project", "storage_bucket": "dummy-project.appspot.com" },
-              "client": [ { "client_info": { "mobilesdk_app_id": "1:123456789012:android:321abc456def7890", "android_client_info": { "package_name": "com.alzaabi.rased.teachers.app" } }, "oauth_client": [], "api_key": [ { "current_key": "AIzaSyDummyKey" } ], "services": { "appinvite_service": { "other_platform_oauth_client": [] } } } ],
-              "configuration_version": "1"
-            }' > android/app/google-services.json
-          fi
-
-      - name: Generate App Icons
-        run: npx capacitor-assets generate --android
-
-      - name: Build Android Release Bundle (apk)
+- name: Build Android Release (apk)
         run: |
           cd android
           if [ -f "gradlew" ]; then
             chmod +x gradlew
-            ./gradlew assembleDebug --stacktrace
+            # تم التغيير لـ assembleRelease للحصول على نسخة رسمية قابلة للتوقيع
+            ./gradlew assembleRelease --stacktrace
           else
             echo "Gradlew missing. Falling back to system Gradle..."
-            gradle bundleRelease --stacktrace
+            gradle assembleRelease --stacktrace
           fi
 
       - name: Sign apk
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
-          releaseDirectory: android/app/build/outputs/bundle/release
+          # ✅ تم تصحيح المسار ليبحث في مجلد الـ apk وليس الـ bundle
+          releaseDirectory: android/app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -107,4 +25,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Rased-Teacher-Signed-apk
+          # سيقوم برفع الملف الموقّع الذي أنتجته خطوة التوقيع
           path: ${{steps.sign_app.outputs.signedReleaseFile}}
