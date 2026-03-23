@@ -1,4 +1,4 @@
-name: Build Android App (Signed AAB)
+name: Build Android App (Signed apk)
 
 on:
   workflow_dispatch:
@@ -82,7 +82,7 @@ jobs:
       - name: Generate App Icons
         run: npx capacitor-assets generate --android
 
-      - name: Build Android Release Bundle (AAB)
+      - name: Build Android Release Bundle (apk)
         run: |
           cd android
           if [ -f "gradlew" ]; then
@@ -93,7 +93,7 @@ jobs:
             gradle bundleRelease --stacktrace
           fi
 
-      - name: Sign AAB
+      - name: Sign apk
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
@@ -103,8 +103,8 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Signed AAB
+      - name: Upload Signed apk
         uses: actions/upload-artifact@v4
         with:
-          name: Rased-Teacher-Signed-AAB
+          name: Rased-Teacher-Signed-apk
           path: ${{steps.sign_app.outputs.signedReleaseFile}}
