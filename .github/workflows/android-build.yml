@@ -56,7 +56,9 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-
+        env:
+          # 👈 هذه الحقنة السحرية لتوجيه السيرفر لأدوات البناء الصحيحة
+          BUILD_TOOLS_VERSION: "35.0.0"
       - name: Upload Signed apk
         uses: actions/upload-artifact@v4
         with:
