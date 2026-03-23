@@ -3,7 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
-  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare, Library
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare, Library, CloudSync
 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
