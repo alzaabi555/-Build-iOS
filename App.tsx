@@ -143,6 +143,7 @@ const AppContent: React.FC = () => {
     { id: 'library', label: t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library'), icon: Library },
     { id: 'leaderboard', label: t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Leaderboard'), icon: Medal },
     { id: 'reports', label: t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports'), icon: FileText },
+  { id: 'sync', label: t('navSync') || (dir === 'rtl' ? 'مزامنة السحابة' : 'Cloud Sync'), icon: CloudSync },
     { id: 'guide', label: t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide'), icon: BookOpen },
     { id: 'settings', label: t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings'), icon: SettingsIcon },
     { id: 'about', label: t('navAbout') || (dir === 'rtl' ? 'حول' : 'About'), icon: Info },
@@ -191,6 +192,7 @@ const AppContent: React.FC = () => {
       case 'grades': return <GradeBook students={students} classes={classes} onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))} setStudents={setStudents} currentSemester={currentSemester} onSemesterChange={setCurrentSemester} teacherInfo={teacherInfo} />;
       case 'leaderboard': return <Leaderboard students={students} classes={classes} onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))} teacherInfo={teacherInfo} />;
       case 'reports': return <Reports />;
+        case 'sync': return <GlobalSyncManager />;
       case 'guide': return <UserGuide />;
       case 'settings': return <Settings />;
       case 'about': return <About />;
@@ -200,58 +202,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
-      
-      {/* 🚀 السحر يبدأ هنا: كود التوجيه الدقيق لنافذة المزامنة */}
-      <style>{`
-        /* 1. إجبار أيقونة المزامنة الرئيسية على أن تكون عنصراً ثابتاً (غير عائم) داخل القوائم */
-        .custom-sync-wrapper > div,
-        .custom-sync-wrapper button[class*="fixed"], 
-        .custom-sync-wrapper button[class*="absolute"] {
-          position: relative !important;
-          inset: auto !important;
-          transform: none !important;
-          margin: 0 !important;
-          z-index: 10 !important;
-        }
-
-        /* 2. الديسكتوب (ويندوز): إجبار القائمة المنسدلة على الفتح للداخل (يساراً) وللأسفل */
-        .desktop-sync-wrapper [class*="absolute"], 
-        .desktop-sync-wrapper [class*="fixed"],
-        .desktop-sync-wrapper > div > div:not(:first-child) {
-          position: absolute !important;
-          top: 120% !important;
-          right: auto !important;
-          left: 0 !important; /* 🔥 هذا ما يجعله يفتح باتجاه الداخل (اليسار) */
-          bottom: auto !important;
-          min-width: 280px !important;
-          max-height: 80vh !important;
-          overflow-y: auto !important;
-          z-index: 999999 !important;
-          border-radius: 1rem !important;
-          box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5) !important;
-        }
-
-        /* 3. الهاتف: إجبار نافذة المزامنة على التوسط في الشاشة كـ Modal فوق قائمة المزيد */
-        .mobile-sync-wrapper [class*="absolute"], 
-        .mobile-sync-wrapper [class*="fixed"],
-        .mobile-sync-wrapper > div > div:not(:first-child) {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important; /* التوسيط المثالي */
-          width: 90vw !important;
-          max-width: 350px !important;
-          max-height: 85vh !important;
-          overflow-y: auto !important;
-          bottom: auto !important;
-          right: auto !important;
-          z-index: 9999999 !important; /* ضمان بقائها فوق كل شيء */
-          margin: 0 !important;
-          border-radius: 1.5rem !important;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-        }
-      `}</style>
-
+  
       <RamadanTheme />
 
       {/* 🖥️ الشريط العلوي المخصص لويندوز (Custom Titlebar) */}
@@ -281,12 +232,8 @@ const AppContent: React.FC = () => {
               <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
             </div>
             
-            {/* 🔄 زر المزامنة للديسكتوب */}
-            <div className="shrink-0 custom-sync-wrapper desktop-sync-wrapper relative">
-              <GlobalSyncManager />
-            </div>
+  
           </div>
-          
           <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
             {desktopNavItems.map(item => (
               <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200/70 hover:bg-white/5'}`}>
@@ -380,11 +327,13 @@ const AppContent: React.FC = () => {
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
             </button>
 
-            {/* 🔄 زر المزامنة للهاتف: يفتح كنافذة في المنتصف بفضل كود الـ CSS */}
-            <div className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border transition-all duration-300 custom-sync-wrapper mobile-sync-wrapper ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
-              <GlobalSyncManager />
-              <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-amber-400' : 'text-slate-800'}`}>مزامنة</span>
-            </div>
+            {/* 🔄 زر المزامنة للهاتف (يفتح كصفحة مستقلة) */}
+<button onClick={() => handleNavigate('sync')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+  <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-600'}`}>
+    <CloudSync size={24} strokeWidth={2.5} />
+  </div>
+  <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>مزامنة السحابة</span>
+</button>
 
           </div>
         </div>
