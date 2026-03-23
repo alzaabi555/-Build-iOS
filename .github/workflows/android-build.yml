@@ -87,7 +87,7 @@ jobs:
           cd android
           if [ -f "gradlew" ]; then
             chmod +x gradlew
-            ./gradlew bundleRelease --stacktrace
+            ./gradlew assembleDebug --stacktrace
           else
             echo "Gradlew missing. Falling back to system Gradle..."
             gradle bundleRelease --stacktrace
