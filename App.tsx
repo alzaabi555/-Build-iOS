@@ -199,21 +199,56 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    // تغييرنا الرئيسي هنا: جعلنا الحاوية flex-col لكي يجلس شريط الويندوز في الأعلى
     <div className={`flex flex-col h-screen font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
-      {/* كود CSS قوي جداً لنزع خاصية Fixed من زر المزامنة ليتموضع داخل القوائم */}
+      {/* 🚀 السحر يبدأ هنا: كود التوجيه الدقيق لنافذة المزامنة */}
       <style>{`
-        .sync-override-container > div, 
-        .sync-override-container > button {
+        /* 1. إجبار أيقونة المزامنة الرئيسية على أن تكون عنصراً ثابتاً (غير عائم) داخل القوائم */
+        .custom-sync-wrapper > div,
+        .custom-sync-wrapper button[class*="fixed"], 
+        .custom-sync-wrapper button[class*="absolute"] {
           position: relative !important;
-          bottom: auto !important;
-          left: auto !important;
-          right: auto !important;
-          top: auto !important;
+          inset: auto !important;
           transform: none !important;
           margin: 0 !important;
           z-index: 10 !important;
+        }
+
+        /* 2. الديسكتوب (ويندوز): إجبار القائمة المنسدلة على الفتح للداخل (يساراً) وللأسفل */
+        .desktop-sync-wrapper [class*="absolute"], 
+        .desktop-sync-wrapper [class*="fixed"],
+        .desktop-sync-wrapper > div > div:not(:first-child) {
+          position: absolute !important;
+          top: 120% !important;
+          right: auto !important;
+          left: 0 !important; /* 🔥 هذا ما يجعله يفتح باتجاه الداخل (اليسار) */
+          bottom: auto !important;
+          min-width: 280px !important;
+          max-height: 80vh !important;
+          overflow-y: auto !important;
+          z-index: 999999 !important;
+          border-radius: 1rem !important;
+          box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5) !important;
+        }
+
+        /* 3. الهاتف: إجبار نافذة المزامنة على التوسط في الشاشة كـ Modal فوق قائمة المزيد */
+        .mobile-sync-wrapper [class*="absolute"], 
+        .mobile-sync-wrapper [class*="fixed"],
+        .mobile-sync-wrapper > div > div:not(:first-child) {
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important; /* التوسيط المثالي */
+          width: 90vw !important;
+          max-width: 350px !important;
+          max-height: 85vh !important;
+          overflow-y: auto !important;
+          bottom: auto !important;
+          right: auto !important;
+          z-index: 9999999 !important; /* ضمان بقائها فوق كل شيء */
+          margin: 0 !important;
+          border-radius: 1.5rem !important;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
         }
       `}</style>
 
@@ -224,13 +259,12 @@ const AppContent: React.FC = () => {
         className={`hidden md:flex w-full h-9 shrink-0 items-center justify-center relative z-[99999] shadow-sm ${isRamadan ? 'bg-[#1e1b4b]' : 'bg-slate-800'}`}
         style={{ 
           borderBottom: isRamadan ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
-          WebkitAppRegion: 'drag' as any // هذه الخاصية تسمح بسحب النافذة بالماوس
+          WebkitAppRegion: 'drag' as any
         }}
       >
         <span className="text-amber-400 text-[11px] font-black tracking-widest uppercase opacity-90">
           {t('appNameMain') || 'راصد'} - {t('appSubtitleMain') || 'نسخة المعلم'}
         </span>
-        {/* منطقة آمنة لأزرار الويندوز (إغلاق، تصغير) لكي لا تتأثر بالسحب */}
         <div className="absolute top-0 right-0 w-40 h-full" style={{ WebkitAppRegion: 'no-drag' as any }}></div>
         <div className="absolute top-0 left-0 w-40 h-full" style={{ WebkitAppRegion: 'no-drag' as any }}></div>
       </div>
@@ -246,8 +280,9 @@ const AppContent: React.FC = () => {
               <h1 className="text-2xl font-black">{t('appNameMain') || 'راصد'}</h1>
               <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
             </div>
-            {/* 🔄 زر المزامنة انتقل إلى هنا في نسخة الكمبيوتر */}
-            <div className="shrink-0 sync-override-container">
+            
+            {/* 🔄 زر المزامنة للديسكتوب */}
+            <div className="shrink-0 custom-sync-wrapper desktop-sync-wrapper relative">
               <GlobalSyncManager />
             </div>
           </div>
@@ -289,7 +324,8 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* More Menu Modal (الهاتف) */}
-      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2.5rem] mb-28 md:hidden z-[10000] bg-transparent">
+      {/* ⚠️ جعلنا الـ Modal overflow-visible لكي لا يقص نافذة المزامنة إذا فتحت داخله */}
+      <Modal isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} className="max-w-md rounded-[2.5rem] mb-28 md:hidden z-[10000] bg-transparent overflow-visible">
         <div className={`p-5 rounded-[2.5rem] border backdrop-blur-3xl shadow-[0_10px_50px_rgba(0,0,0,0.5)] transition-all duration-500 ${isRamadan ? 'bg-[#0f172a]/80 border-white/10' : 'bg-white/90 border-slate-200'}`}>
           
           <div className={`w-12 h-1.5 rounded-full mx-auto mb-5 ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`}></div>
@@ -344,8 +380,8 @@ const AppContent: React.FC = () => {
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
             </button>
 
-            {/* 🔄 زر المزامنة انتقل إلى قائمة المزيد في الهاتف */}
-            <div className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 sync-override-container ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+            {/* 🔄 زر المزامنة للهاتف: يفتح كنافذة في المنتصف بفضل كود الـ CSS */}
+            <div className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border transition-all duration-300 custom-sync-wrapper mobile-sync-wrapper ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
               <GlobalSyncManager />
               <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-amber-400' : 'text-slate-800'}`}>مزامنة</span>
             </div>
