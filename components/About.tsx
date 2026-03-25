@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Phone, ShieldCheck, Mail, Github, Info } from 'lucide-react';
+import { Users, Phone, ShieldCheck, Mail, Info } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { useApp } from '../context/AppContext'; // 🌍 استيراد محرك اللغات
 
@@ -109,7 +109,7 @@ const About: React.FC = () => {
                       <div className="flex flex-col items-center gap-3 mt-6">
                           <div className="flex justify-center gap-6">
                               <a href="https://*****" target="_blank" rel="noreferrer" className={`flex items-center gap-2 text-[10px] font-bold transition-colors ${isRamadan ? 'text-indigo-300 hover:text-white' : 'text-slate-500 hover:text-indigo-600'}`}>
-                                  <Github size={14} /> GitHub: ******
+                                  < size={14} /> : ******
                               </a>
                           </div>
                           <div className={`flex items-center justify-center gap-2 text-[10px] font-bold w-full ${isRamadan ? 'text-indigo-200/70' : 'text-slate-500'}`}>
