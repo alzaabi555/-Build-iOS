@@ -1,0 +1,27 @@
+{
+	"appId": "com.alzaabi.rased.teachers.app",
+	"appName": "راصد",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https",
+		"cleartext": true,
+		"allowNavigation": [
+			"*"
+		]
+	},
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		}
+	},
+	"android": {
+		"allowMixedContent": true,
+		"captureInput": true,
+		"backgroundColor": "#111827"
+	},
+	"ios": {
+		"contentInset": "automatic",
+		"backgroundColor": "#F2F2F7",
+		"allowsBackForwardNavigationGestures": true
+	}
+}
