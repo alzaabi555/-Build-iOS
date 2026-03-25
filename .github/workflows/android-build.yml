@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/versionCode [0-9]*/versionCode 4/g' android/app/build.gradle
-            sed -i 's/versionName "[^"]*"/versionName "1.0.3"/g' android/app/build.gradle
+            sed -i 's/versionName "[^"]*"/versionName "1.0.4"/g' android/app/build.gradle
           fi
 
       - name: Build Android Release (apk)
