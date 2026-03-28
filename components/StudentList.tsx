@@ -6,7 +6,6 @@ import {
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
     Sparkles, Phone, Send, Star, Loader2, Mail, RefreshCcw 
 } from 'lucide-react';
-import Modal from './Modal';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
@@ -15,6 +14,54 @@ import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
 import alarmSound from '../assets/alarm.mp3';
+
+// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة (درج جانبي للكمبيوتر + لوحة سفلية للجوال)
+const DrawerSheet: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    isRamadan: boolean;
+    dir: string;
+}> = ({ isOpen, onClose, children, isRamadan, dir }) => {
+    useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen]);
+
+    return (
+        <>
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={onClose}
+            />
+            <div
+                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[90vh] max-md:rounded-t-3xl max-md:pb-[env(safe-area-inset-bottom)]
+                    md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-3xl border-r' : 'md:right-0 md:rounded-l-3xl border-l'} md:w-[420px] md:h-full
+                    ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isOpen
+                        ? 'translate-y-0 md:translate-x-0'
+                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
+                    }
+                `}
+            >
+                <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={onClose}>
+                    <div className={`w-12 h-1.5 rounded-full ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`} />
+                </div>
+                <button
+                    onClick={onClose}
+                    className={`hidden md:flex absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] ${isRamadan ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                    <X size={20} />
+                </button>
+                <div className={`flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col md:pt-14`}>
+                    {children}
+                </div>
+            </div>
+        </>
+    );
+};
 
 interface StudentListProps {
     students: Student[];
@@ -38,7 +85,6 @@ const SOUNDS = {
     alarm: alarmSound
 }
 
-// ✅ تم ربط مفاتيح الترجمة مع المصطلحات الأصلية لتجنب تكرار البيانات
 const NEGATIVE_BEHAVIORS = [
     { id: '1', original: 'إزعاج في الحصة', transKey: 'behNeg1', points: -2 },
     { id: '2', original: 'عدم حل الواجب', transKey: 'behNeg2', points: -2 },
@@ -57,7 +103,6 @@ const POSITIVE_BEHAVIORS = [
     { id: 'p6', original: 'إبداع وتميز', transKey: 'behPos6', points: 3 },
 ];
 
-// ⚠️ تم الحفاظ على الرابط لأنه يستخدم في جلب رسائل الآباء (Inbox)
 const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec"; 
 
 const StudentList: React.FC<StudentListProps> = ({ 
@@ -71,14 +116,13 @@ const StudentList: React.FC<StudentListProps> = ({
     currentSemester, 
     onDeleteClass 
 }) => {
-    // 🌍 استدعاء محرك الترجمة والاتجاه
     const { defaultStudentGender, setDefaultStudentGender, setStudents, teacherInfo, t, dir, language } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
     
     const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
     const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
 
-   const isRamadan = true;
+    const isRamadan = true;
 
     useEffect(() => {
         sessionStorage.setItem('rased_grade', selectedGrade);
@@ -405,7 +449,6 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    // ✅ حفظ البيانات بالمصطلح الأصلي (العربي) لضمان استقرار قاعدة البيانات والإحصائيات
     const confirmPositiveBehavior = (originalTitle: string, points: number) => {
         if (!selectedStudentForBehavior) return;
         playSound('positive');
@@ -413,7 +456,7 @@ const StudentList: React.FC<StudentListProps> = ({
             id: Math.random().toString(36).substr(2, 9),
             date: new Date().toISOString(),
             type: 'positive' as const,
-            description: originalTitle, // ✅ تم حفظه بالعربية
+            description: originalTitle,
             points: points,
             semester: currentSemester
         };
@@ -425,7 +468,6 @@ const StudentList: React.FC<StudentListProps> = ({
         setSelectedStudentForBehavior(null);
     };
 
-    // ✅ حفظ البيانات بالمصطلح الأصلي (العربي) 
     const confirmNegativeBehavior = (originalTitle: string, points: number) => {
         if (!selectedStudentForBehavior) return;
         playSound('negative');
@@ -433,7 +475,7 @@ const StudentList: React.FC<StudentListProps> = ({
             id: Math.random().toString(36).substr(2, 9),
             date: new Date().toISOString(),
             type: 'negative' as const,
-            description: originalTitle, // ✅ تم حفظه بالعربية
+            description: originalTitle,
             points: points,
             semester: currentSemester
         };
@@ -479,7 +521,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     id: Math.random().toString(36).substr(2, 9),
                     date: new Date().toISOString(),
                     type: 'positive' as const,
-                    description: 'هدوء وانضباط', // مصطلح ثابت للمكافأة الجماعية
+                    description: 'هدوء وانضباط',
                     points: 2,
                     semester: currentSemester
                 };
@@ -710,34 +752,29 @@ const StudentList: React.FC<StudentListProps> = ({
             </div>
         </div>
 
-        {/* ================= نوافذ منبثقة (Modals) ================= */}
+        {/* ================= النوافذ المنزلقة الجديدة (DrawerSheets) ================= */}
 
-        {/* 📥 نافذة صندوق الوارد للرسائل */}
-        <Modal isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} className={`max-w-2xl rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={`p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+        {/* 📥 1. نافذة صندوق الوارد للرسائل */}
+        <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
+            <div className="flex flex-col h-full w-full">
+                <div className={`flex justify-between items-center mb-6 border-b pb-4 shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
                     <h3 className="font-black text-xl flex items-center gap-2 text-purple-600">
                         <Mail className="w-6 h-6" />
                         {t('parentsInboxTitle')}
                     </h3>
-                    <div className="flex gap-2">
-                        <button onClick={fetchParentMessages} className="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors" title={t('refreshMessages')}>
-                            <RefreshCcw className={`w-5 h-5 ${isFetchingMsgs ? 'animate-spin text-purple-600' : ''}`} />
-                        </button>
-                        <button onClick={() => setIsMessagesModalOpen(false)} className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200">
-                            <X className="w-5 h-5"/>
-                        </button>
-                    </div>
+                    <button onClick={fetchParentMessages} className="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors" title={t('refreshMessages')}>
+                        <RefreshCcw className={`w-5 h-5 ${isFetchingMsgs ? 'animate-spin text-purple-600' : ''}`} />
+                    </button>
                 </div>
 
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
                     {isFetchingMsgs && messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10">
+                        <div className="flex flex-col items-center justify-center py-10 h-full">
                             <Loader2 className="w-10 h-10 animate-spin text-purple-500 mb-2" />
                             <p className="text-slate-500 font-bold">{t('fetchingMessages')}</p>
                         </div>
                     ) : messages.length === 0 ? (
-                        <div className="text-center py-10">
+                        <div className="text-center py-10 h-full flex flex-col justify-center">
                             <Mail className="w-16 h-16 text-slate-200 mx-auto mb-4" />
                             <p className="text-slate-500 font-bold">{t('noNewMessages')}</p>
                         </div>
@@ -772,16 +809,16 @@ const StudentList: React.FC<StudentListProps> = ({
                     )}
                 </div>
             </div>
-        </Modal>
+        </DrawerSheet>
 
-        {/* باقي النوافذ المعتادة (الإضافة اليدوية، الاستيراد، الفصول، السلوكيات...) */}
-        <Modal isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-             <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-transparent'}`}>
+        {/* ➕ 2. الإضافة اليدوية */}
+        <DrawerSheet isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} isRamadan={isRamadan} dir={dir}>
+             <div className="flex flex-col h-full w-full text-center pb-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-transparent'}`}>
                     <UserPlus className="w-8 h-8" />
                 </div>
-                <h3 className="font-black text-xl mb-6">{t('addStudentTitle')}</h3>
-                <div className="space-y-3">
+                <h3 className="font-black text-xl mb-6 shrink-0">{t('addStudentTitle')}</h3>
+                <div className="space-y-3 overflow-y-auto custom-scrollbar px-1 pb-4">
                     <input type="text" placeholder={t('studentNamePlaceholder')} value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
                     <select value={newStudentClass} onChange={(e) => setNewStudentClass(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`}>
                         <option value="" disabled className={isRamadan ? 'text-slate-500' : ''}>{t('selectClassPlaceholder')}</option>
@@ -793,13 +830,16 @@ const StudentList: React.FC<StudentListProps> = ({
                         <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? (isRamadan ? 'bg-blue-500/20 border-blue-400/50 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('maleStudent')}</button>
                         <button onClick={() => setNewStudentGender('female')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? (isRamadan ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-pink-50 border-pink-200 text-pink-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('femaleStudent')}</button>
                     </div>
-                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass || !newStudentCivilID} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 mt-2 ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveStudentBtn')}</button>
+                </div>
+                <div className="mt-auto pt-2 shrink-0">
+                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass || !newStudentCivilID} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveStudentBtn')}</button>
                 </div>
             </div>
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} className={`max-w-lg rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={isRamadan ? 'bg-[#0f172a] border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden' : ''}>
+        {/* 📊 3. استيراد إكسل */}
+        <DrawerSheet isOpen={showImportModal} onClose={() => setShowImportModal(false)} isRamadan={isRamadan} dir={dir}>
+            <div className="flex-1 w-full h-full flex flex-col">
                 <ExcelImport 
                     existingClasses={safeClasses} 
                     onImport={(importedStudents) => {
@@ -842,20 +882,26 @@ const StudentList: React.FC<StudentListProps> = ({
                     onAddClass={onAddClass} 
                 />
             </div>
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-             <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <h3 className="font-black text-lg mb-4">{t('addNewClassTitle')}</h3>
-                <input autoFocus type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border mb-4 transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
-                <button onClick={handleAddClassSubmit} className={`w-full py-3 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('addBtnSimple')}</button>
+        {/* 🏫 4. إضافة فصل جديد */}
+        <DrawerSheet isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} isRamadan={isRamadan} dir={dir}>
+             <div className="flex flex-col h-full w-full text-center pb-4">
+                <h3 className="font-black text-lg mb-4 shrink-0">{t('addNewClassTitle')}</h3>
+                <div className="flex-1">
+                    <input autoFocus type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
+                </div>
+                <div className="mt-auto pt-4 shrink-0">
+                    <button onClick={handleAddClassSubmit} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('addBtnSimple')}</button>
+                </div>
              </div>
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <h3 className="font-black text-xl mb-6">{t('classSettingsTitle')}</h3>
-                <div className={`rounded-2xl p-4 mb-6 border ${isRamadan ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-100'}`}>
+        {/* ⚙️ 5. إدارة الفصول */}
+        <DrawerSheet isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} isRamadan={isRamadan} dir={dir}>
+            <div className="flex flex-col h-full w-full text-center">
+                <h3 className="font-black text-xl mb-6 shrink-0">{t('classSettingsTitle')}</h3>
+                <div className={`rounded-2xl p-4 mb-6 border shrink-0 ${isRamadan ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-100'}`}>
                     <div className={`flex items-center justify-center gap-2 mb-3 ${isRamadan ? 'text-indigo-300' : 'text-indigo-900'}`}>
                         <Users className="w-4 h-4" />
                         <span className="font-bold text-sm">{t('schoolTypeBatchChange')}</span>
@@ -878,12 +924,12 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                     <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/60' : 'text-indigo-400'}`}>{t('iconUnificationNote')}</p>
                 </div>
-                <div className={`w-full h-px mb-6 ${isRamadan ? 'bg-white/10' : 'bg-gray-100'}`}></div>
-                <div className="flex justify-between items-center mb-2 px-2">
+                <div className={`w-full h-px mb-6 shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-gray-100'}`}></div>
+                <div className="flex justify-between items-center mb-2 px-2 shrink-0">
                       <span className={`text-xs font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('deleteClassInstruction')}</span>
                       <span className={`text-[10px] font-bold ${isRamadan ? 'text-rose-400' : 'text-red-400'}`}>{t('deleteClassWarning')}</span>
                 </div>
-                <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 space-y-2">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-2">
                     {safeClasses.map(cls => (
                         <div key={cls} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                             <span className={`font-bold text-sm ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{cls}</span>
@@ -894,37 +940,36 @@ const StudentList: React.FC<StudentListProps> = ({
                     ))}
                     {safeClasses.length === 0 && <p className={`text-xs ${isRamadan ? 'text-slate-500' : 'text-gray-400'}`}>{t('noClassesAdded')}</p>}
                 </div>
-                <button onClick={() => setShowManageClasses(false)} className={`mt-4 w-full py-3 rounded-xl font-bold text-xs transition-colors ${isRamadan ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}>{t('closeBtn')}</button>
             </div>
-        </Modal>
+        </DrawerSheet>
         
-        <Modal isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-black text-lg flex items-center gap-2">
-                        <CheckCircle2 className={`w-5 h-5 ${isRamadan ? 'text-emerald-400' : 'text-emerald-500'}`} />
-                        {t('positiveReinforcement')}
-                    </h3>
-                    <button onClick={() => setShowPositiveModal(false)} className={`p-2 rounded-full transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}><X className="w-4 h-4"/></button>
-                </div>
-                <p className={`text-xs font-bold mb-4 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
+        {/* 👍 6. السلوك الإيجابي */}
+        <DrawerSheet isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}>
+            <div className="flex flex-col h-full w-full text-center pb-4">
+                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0">
+                    <CheckCircle2 className={`w-5 h-5 ${isRamadan ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                    {t('positiveReinforcement')}
+                </h3>
+                <p className={`text-xs font-bold mb-4 shrink-0 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
                     {t('chooseExcellenceType')} <bdi className={isRamadan ? 'text-amber-400' : 'text-indigo-600'}>{selectedStudentForBehavior?.name}</bdi>
                 </p>
                 
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                    {POSITIVE_BEHAVIORS.map(b => (
-                        <button 
-                            key={b.id}
-                            onClick={() => confirmPositiveBehavior(b.original, b.points)}
-                            className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100'}`}
-                        >
-                            <span>{t(b.transKey)}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-emerald-500/30 text-emerald-200' : 'bg-white text-emerald-600'}`}>+{b.points}</span>
-                        </button>
-                    ))}
+                <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                        {POSITIVE_BEHAVIORS.map(b => (
+                            <button 
+                                key={b.id}
+                                onClick={() => confirmPositiveBehavior(b.original, b.points)}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100'}`}
+                            >
+                                <span>{t(b.transKey)}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-emerald-500/30 text-emerald-200' : 'bg-white text-emerald-600'}`}>+{b.points}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className={`pt-3 border-t ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
+                <div className={`pt-3 border-t shrink-0 mt-auto ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('orAddCustomBehavior')}</p>
                     <div className="flex gap-2">
                         <input 
@@ -947,35 +992,35 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 </div>
             </div>
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-black text-lg flex items-center gap-2">
-                        <AlertCircle className={`w-5 h-5 ${isRamadan ? 'text-rose-400' : 'text-rose-500'}`} />
-                        {t('behavioralAlert')}
-                    </h3>
-                    <button onClick={() => setShowNegativeModal(false)} className={`p-2 rounded-full transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}><X className="w-4 h-4"/></button>
-                </div>
-                <p className={`text-xs font-bold mb-4 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
+        {/* 👎 7. السلوك السلبي */}
+        <DrawerSheet isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}>
+            <div className="flex flex-col h-full w-full text-center pb-4">
+                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0">
+                    <AlertCircle className={`w-5 h-5 ${isRamadan ? 'text-rose-400' : 'text-rose-500'}`} />
+                    {t('behavioralAlert')}
+                </h3>
+                <p className={`text-xs font-bold mb-4 shrink-0 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
                     {t('chooseNoteType')} <bdi className={isRamadan ? 'text-amber-400' : 'text-indigo-600'}>{selectedStudentForBehavior?.name}</bdi>
                 </p>
                 
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                    {NEGATIVE_BEHAVIORS.map(b => (
-                        <button 
-                            key={b.id}
-                            onClick={() => confirmNegativeBehavior(b.original, b.points)}
-                            className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-rose-400/30 text-rose-300 hover:bg-rose-500/30' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100'}`}
-                        >
-                            <span>{t(b.transKey)}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-rose-500/30 text-rose-200' : 'bg-white text-rose-600'}`}>{b.points}</span>
-                        </button>
-                    ))}
+                <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                        {NEGATIVE_BEHAVIORS.map(b => (
+                            <button 
+                                key={b.id}
+                                onClick={() => confirmNegativeBehavior(b.original, b.points)}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-rose-400/30 text-rose-300 hover:bg-rose-500/30' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100'}`}
+                            >
+                                <span>{t(b.transKey)}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-rose-500/30 text-rose-200' : 'bg-white text-rose-600'}`}>{b.points}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className={`pt-3 border-t ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
+                <div className={`pt-3 border-t shrink-0 mt-auto ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('orAddCustomNote')}</p>
                     <div className="flex gap-2">
                         <input 
@@ -998,13 +1043,14 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 </div>
             </div>
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
+        {/* ✏️ 8. تعديل بيانات طالب */}
+        <DrawerSheet isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} isRamadan={isRamadan} dir={dir}>
             {editingStudent && (
-                 <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                    <h3 className="font-black text-xl mb-6">{t('editStudentData')}</h3>
-                    <div className="space-y-3">
+                 <div className="flex flex-col h-full w-full text-center pb-4">
+                    <h3 className="font-black text-xl mb-6 shrink-0">{t('editStudentData')}</h3>
+                    <div className="space-y-3 flex-1 overflow-y-auto px-1 custom-scrollbar">
                         <input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} placeholder={t('namePlaceholderSimple')} />
                         <select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`}>
                             {safeClasses.map(c => <option key={c} value={c} className={isRamadan ? 'bg-[#0f172a]' : ''}>{c}</option>)}
@@ -1026,18 +1072,19 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? (isRamadan ? 'bg-blue-500/20 border-blue-400/50 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('maleStudent')}</button>
                             <button onClick={() => setEditingStudent({...editingStudent, gender: 'female'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? (isRamadan ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-pink-50 border-pink-200 text-pink-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('femaleStudent')}</button>
                         </div>
-                        <div className="flex gap-2 mt-4">
-                            <button onClick={handleEditStudentSave} className={`flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveChangesBtn')}</button>
-                            <button onClick={() => { if(confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className={`px-4 py-3 border rounded-xl font-black text-sm transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'}`}><Trash2 className="w-5 h-5"/></button>
-                        </div>
+                    </div>
+                    <div className="flex gap-2 mt-4 shrink-0">
+                        <button onClick={handleEditStudentSave} className={`flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveChangesBtn')}</button>
+                        <button onClick={() => { if(confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className={`px-4 py-3 border rounded-xl font-black text-sm transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'}`}><Trash2 className="w-5 h-5"/></button>
                     </div>
                 </div>
             )}
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={!!randomWinner} onClose={() => setRandomWinner(null)} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
+        {/* 🎲 9. الفائز العشوائي */}
+        <DrawerSheet isOpen={!!randomWinner} onClose={() => setRandomWinner(null)} isRamadan={isRamadan} dir={dir}>
             {randomWinner && (
-                <div className={`text-center py-6 px-4 animate-in zoom-in duration-300 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
+                <div className="flex flex-col h-full w-full text-center items-center justify-center pb-8 animate-in zoom-in duration-300">
                     <div className="mb-6 relative inline-block">
                         <div className={`w-24 h-24 rounded-full border-4 shadow-xl overflow-hidden mx-auto transition-colors ${isRamadan ? 'border-purple-500/50 bg-purple-900/30' : 'border-purple-200 bg-purple-50'}`}>
                             <StudentAvatar 
@@ -1052,67 +1099,67 @@ const StudentList: React.FC<StudentListProps> = ({
                     <p className={`text-sm font-bold inline-block px-3 py-1 rounded-full mb-6 transition-colors ${isRamadan ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600'}`}>
                         {randomWinner.classes[0]}
                     </p>
-                    <div className="flex gap-3">
-                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500 text-white shadow-emerald-900/50 hover:bg-emerald-400' : 'bg-emerald-500 text-white shadow-emerald-200 hover:bg-emerald-600'}`}>
+                    <div className="flex gap-3 w-full">
+                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500 text-white shadow-emerald-900/50 hover:bg-emerald-400' : 'bg-emerald-500 text-white shadow-emerald-200 hover:bg-emerald-600'}`}>
                             {t('reinforceBtn')}
-                        </button>
-                        <button onClick={() => setRandomWinner(null)} className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${isRamadan ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                            {t('closeBtn')}
                         </button>
                     </div>
                 </div>
             )}
-        </Modal>
+        </DrawerSheet>
 
-        <Modal isOpen={showTimerModal} onClose={() => setShowTimerModal(false)} className={`max-w-xs rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-            <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white border-transparent text-slate-800 shadow-2xl'}`}>
-                <h3 className="font-black text-lg mb-4 flex items-center justify-center gap-2">
+        {/* ⏱️ 10. المؤقت */}
+        <DrawerSheet isOpen={showTimerModal} onClose={() => setShowTimerModal(false)} isRamadan={isRamadan} dir={dir}>
+            <div className="flex flex-col h-full w-full text-center pb-4">
+                <h3 className="font-black text-lg mb-6 flex items-center justify-center gap-2 shrink-0">
                     <Timer className={`w-5 h-5 ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`}/> {t('timerTitle')}
                 </h3>
                 
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                    {[1, 3, 5, 10, 15, 20].map(min => (
-                        <button 
-                            key={min} 
-                            onClick={() => startTimer(min)} 
-                            className={`border rounded-xl py-2 text-xs font-bold transition-all active:scale-95 ${isRamadan ? 'bg-[#1e293b] border-white/10 text-slate-300 hover:bg-indigo-500/20 hover:border-indigo-400/50 hover:text-indigo-300' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600'}`}
-                        >
-                            {min} {t('minuteAbbrev')}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="flex gap-2 items-center mb-4">
-                    <input 
-                        type="number" 
-                        value={timerInput} 
-                        onChange={(e) => setTimerInput(e.target.value)} 
-                        className={`w-full border rounded-xl py-2 px-3 text-center font-black outline-none transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800 placeholder:text-slate-400'}`} 
-                        placeholder={t('minutePlaceholder')}
-                    />
-                    <button 
-                        onClick={() => startTimer(Number(timerInput))} 
-                        className={`p-2.5 rounded-xl active:scale-95 shadow-lg transition-colors ${isRamadan ? 'bg-indigo-500 shadow-indigo-900/50 hover:bg-indigo-400' : 'bg-indigo-600 shadow-indigo-200 hover:bg-indigo-700'}`}
-                    >
-                        <Play size={16} fill="white" className="text-white" />
-                    </button>
-                </div>
-
-                {isTimerRunning && (
-                    <div className={`border-t pt-4 mt-2 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-                        <h2 className="text-4xl font-black mb-4 font-mono">{formatTime(timerSeconds)}</h2>
-                        <div className="flex gap-2 justify-center">
-                            <button onClick={() => setIsTimerRunning(false)} className={`p-3 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'}`}>
-                                <Pause size={20} fill="currentColor" />
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                        {[1, 3, 5, 10, 15, 20].map(min => (
+                            <button 
+                                key={min} 
+                                onClick={() => startTimer(min)} 
+                                className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 ${isRamadan ? 'bg-[#1e293b] border-white/10 text-slate-300 hover:bg-indigo-500/20 hover:border-indigo-400/50 hover:text-indigo-300' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600'}`}
+                            >
+                                {min} {t('minuteAbbrev')}
                             </button>
-                            <button onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className={`p-3 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
-                                <RotateCcw size={20} />
-                            </button>
-                        </div>
+                        ))}
                     </div>
-                )}
+
+                    <div className="flex gap-2 items-center mb-6">
+                        <input 
+                            type="number" 
+                            value={timerInput} 
+                            onChange={(e) => setTimerInput(e.target.value)} 
+                            className={`w-full border rounded-xl py-3 px-3 text-center font-black outline-none transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800 placeholder:text-slate-400'}`} 
+                            placeholder={t('minutePlaceholder')}
+                        />
+                        <button 
+                            onClick={() => startTimer(Number(timerInput))} 
+                            className={`p-3.5 rounded-xl active:scale-95 shadow-lg transition-colors ${isRamadan ? 'bg-indigo-500 shadow-indigo-900/50 hover:bg-indigo-400' : 'bg-indigo-600 shadow-indigo-200 hover:bg-indigo-700'}`}
+                        >
+                            <Play size={18} fill="white" className="text-white" />
+                        </button>
+                    </div>
+
+                    {isTimerRunning && (
+                        <div className={`border-t pt-6 mt-4 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
+                            <h2 className="text-5xl font-black mb-6 font-mono">{formatTime(timerSeconds)}</h2>
+                            <div className="flex gap-3 justify-center">
+                                <button onClick={() => setIsTimerRunning(false)} className={`p-4 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'}`}>
+                                    <Pause size={24} fill="currentColor" />
+                                </button>
+                                <button onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className={`p-4 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
+                                    <RotateCcw size={24} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-        </Modal>
+        </DrawerSheet>
 
     </div>
   );
