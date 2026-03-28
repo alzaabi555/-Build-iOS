@@ -1,6 +1,54 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Users, Plus, Trash2, X, Edit2, Check, UserMinus, FolderPlus, ArrowRight, UserPlus, CheckCircle2 } from 'lucide-react';
+
+// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة (درج جانبي للكمبيوتر + لوحة سفلية للجوال)
+const DrawerSheet: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    isRamadan: boolean;
+    dir: string;
+}> = ({ isOpen, onClose, children, isRamadan, dir }) => {
+    useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen]);
+
+    return (
+        <>
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={onClose}
+            />
+            <div
+                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[90vh] max-md:rounded-t-3xl max-md:pb-[env(safe-area-inset-bottom)]
+                    md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-3xl border-r' : 'md:right-0 md:rounded-l-3xl border-l'} md:w-[500px] md:h-full
+                    ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isOpen
+                        ? 'translate-y-0 md:translate-x-0'
+                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
+                    }
+                `}
+            >
+                <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={onClose}>
+                    <div className={`w-12 h-1.5 rounded-full ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`} />
+                </div>
+                <button
+                    onClick={onClose}
+                    className={`hidden md:flex absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] ${isRamadan ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                    <X size={20} />
+                </button>
+                <div className={`flex-1 overflow-hidden flex flex-col md:pt-14`}>
+                    {children}
+                </div>
+            </div>
+        </>
+    );
+};
 
 interface StudentGroupsProps {
   onBack?: () => void;
@@ -197,11 +245,11 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       </header>
 
       {/* ================= 📝 محتوى الصفحة الداخلي ================= */}
-    <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
+    <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10 flex flex-col md:flex-row">
         
         {/* ================= 🗂️ العمود الأيمن: التقسيمات ================= */}
-        <div className={`w-full md:w-1/3 flex flex-col shrink-0 ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'border-white/10 bg-[#020617]/50 backdrop-blur-sm' : 'border-slate-200 bg-white'}`}>
-          <div className="p-5 border-b border-inherit">
+        <div className={`w-full md:w-1/3 flex flex-col shrink-0 mb-4 md:mb-0 ${dir === 'rtl' ? 'md:border-l' : 'md:border-r'} ${isRamadan ? 'border-white/10 bg-[#020617]/50 backdrop-blur-sm' : 'border-slate-200 bg-white'}`}>
+          <div className="p-5 border-b border-inherit shrink-0">
             <h2 className={`font-black text-lg mb-4 flex items-center gap-2 ${isRamadan ? 'text-indigo-300' : ''}`}>
               <FolderPlus className={`w-5 h-5 ${isRamadan ? 'text-indigo-400' : 'text-indigo-500'}`} /> {t('classCategorizations')}
             </h2>
@@ -224,7 +272,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar pb-28 md:pb-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {classCategorizations.length === 0 ? (
               <div className={`text-center p-8 rounded-2xl border border-dashed ${isRamadan ? 'border-white/20 text-slate-400 bg-white/5' : 'border-slate-300 text-slate-500'}`}
                    dangerouslySetInnerHTML={{ __html: t('noCategorizations') }}>
@@ -255,7 +303,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         </div>
 
         {/* ================= 🧩 العمود الأيسر: إدارة المجموعات ================= */}
-        <div className={`flex-1 flex flex-col overflow-hidden relative ${isRamadan ? 'bg-transparent' : 'bg-slate-50/50'}`}>
+        <div className={`flex-1 flex flex-col overflow-hidden relative min-h-[400px] md:min-h-0 ${isRamadan ? 'bg-transparent' : 'bg-slate-50/50'}`}>
           {!activeCat ? (
             <div className={`flex-1 flex flex-col items-center justify-center p-10 text-center opacity-50 ${isRamadan ? 'text-slate-400' : ''}`}>
               <Users className="w-24 h-24 mb-6" />
@@ -265,7 +313,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
             <>
               {/* شريط الإضافة للمجموعات */}
               <div className={`p-4 border-b flex flex-wrap gap-3 items-center shrink-0 ${isRamadan ? 'border-white/10 bg-white/5 backdrop-blur-md' : 'border-slate-200 bg-white'}`}>
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0">
                   {groupColors.map(color => (
                     <button 
                       key={color.id}
@@ -293,10 +341,10 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar pb-32 flex flex-col gap-6">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-6">
                 
                 {/* منطقة الطلاب غير الموزعين */}
-                <div className={`p-5 rounded-2xl border ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
+                <div className={`p-5 rounded-2xl border shrink-0 ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
                   <h3 className="font-black text-sm mb-4 flex items-center justify-between">
                     <span className={isRamadan ? 'text-slate-300' : 'text-slate-500'}>{t('unassignedStudents')}</span>
                     <span className={`text-xs px-3 py-1 rounded-lg font-bold ${isRamadan ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>
@@ -335,7 +383,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
                     return (
                       <div key={group.id} className={`rounded-2xl border-2 flex flex-col overflow-hidden transition-all duration-300 ${containerStyle}`}>
-                        <div className={`p-3 border-b flex justify-between items-center ${headerStyle}`}>
+                        <div className={`p-3 border-b flex justify-between items-center shrink-0 ${headerStyle}`}>
                           <div className="flex items-center gap-2">
                               <button 
                                 onClick={() => toggleGroupCompletion(group.id)} 
@@ -375,7 +423,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                         </div>
                         
                         {!isCompleted && (
-                            <div className={`p-3 border-t ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white'}`}>
+                            <div className={`p-3 border-t shrink-0 ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-white'}`}>
                               <button 
                                 onClick={() => openAssignModal(group.id)}
                                 className={`w-full py-2.5 rounded-xl border-2 border-dashed font-bold text-sm flex items-center justify-center gap-2 transition-colors ${isRamadan ? 'border-indigo-400/50 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400'}`}
@@ -396,19 +444,16 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
       {/* ================= 🎯 نافذة التحديد الجماعي الذكية ================= */}
       {assigningToGroup && activeCat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className={`w-full max-w-xl rounded-[2rem] border shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 ${isRamadan ? 'bg-[#0f172a] border-white/20 text-white' : 'bg-white border-slate-100'}`}>
+        <DrawerSheet isOpen={true} onClose={() => setAssigningToGroup(null)} isRamadan={isRamadan} dir={dir}>
+          <div className="flex flex-col h-full w-full">
             
-            <div className={`p-5 border-b flex justify-between items-center ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
+            <div className={`p-5 pb-4 border-b flex justify-between items-center shrink-0 ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
               <div>
                 <h3 className="font-black text-xl">{t('selectStudentsTitle')}</h3>
                 <p className={`text-sm font-bold mt-1 ${isRamadan ? 'text-indigo-400' : 'text-indigo-500'}`}>
                   {t('groupLabel')} {activeCat.groups.find(g => g.id === assigningToGroup.groupId)?.name}
                 </p>
               </div>
-              <button onClick={() => setAssigningToGroup(null)} className={`p-2 rounded-full transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}`}>
-                <X className="w-5 h-5" />
-              </button>
             </div>
             
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
@@ -449,14 +494,14 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
               </div>
             </div>
             
-            <div className={`p-4 border-t flex gap-3 ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
-              <button onClick={saveBulkAssignment} className={`flex-1 py-3.5 rounded-xl font-black text-lg transition-colors shadow-lg ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+            <div className={`p-4 pt-4 mt-auto border-t flex gap-3 shrink-0 ${isRamadan ? 'border-white/10 bg-white/5' : 'bg-slate-50 border-slate-100'}`}>
+              <button onClick={saveBulkAssignment} className={`flex-1 py-4 rounded-xl font-black text-sm transition-colors shadow-lg active:scale-95 ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
                 {t('confirmAndAssignBtn')} ({selectedStudentIds.size})
               </button>
             </div>
             
           </div>
-        </div>
+        </DrawerSheet>
       )}
     </div>
   );
