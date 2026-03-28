@@ -1,14 +1,69 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { MessageCircle, Loader2, Share2, DoorOpen, UserCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { MessageCircle, Loader2, Share2, DoorOpen, UserCircle2, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
-import Modal from './Modal';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { StudentAvatar } from './StudentAvatar';
 import { useApp } from '../context/AppContext'; // 🌍 استيراد السياق للغات
+
+// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة (درج جانبي للكمبيوتر + لوحة سفلية للجوال)
+const DrawerSheet: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    isRamadan: boolean;
+    dir: string;
+}> = ({ isOpen, onClose, children, isRamadan, dir }) => {
+    // إيقاف التمرير في الخلفية عند فتح اللوحة
+    useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen]);
+
+    return (
+        <>
+            {/* الخلفية المظللة */}
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={onClose}
+            />
+            {/* حاوية اللوحة المنزلقة */}
+            <div
+                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:rounded-t-3xl max-md:pb-[env(safe-area-inset-bottom)]
+                    md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-3xl border-r' : 'md:right-0 md:rounded-l-3xl border-l'} md:w-[420px] md:h-full
+                    ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isOpen
+                        ? 'translate-y-0 md:translate-x-0'
+                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
+                    }
+                `}
+            >
+                {/* مقبض السحب الخاص بالجوال */}
+                <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={onClose}>
+                    <div className={`w-12 h-1.5 rounded-full ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`} />
+                </div>
+
+                {/* زر الإغلاق الخاص بالكمبيوتر */}
+                <button
+                    onClick={onClose}
+                    className={`hidden md:flex absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] ${isRamadan ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                    <X size={20} />
+                </button>
+
+                {/* المحتوى الداخلي */}
+                <div className={`flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col md:pt-14`}>
+                    {children}
+                </div>
+            </div>
+        </>
+    );
+};
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -344,20 +399,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
             </div>
         </div>
 
-        {/* 🚀 نافذة إشعار ولي الأمر المصلحة */}
-        <Modal 
+        {/* 🚀 نافذة إشعار ولي الأمر المصلحة (تم تحويلها لـ DrawerSheet) */}
+        <DrawerSheet 
             isOpen={!!notificationTarget} 
             onClose={() => setNotificationTarget(null)} 
-            className={`max-w-xs rounded-[2.5rem] overflow-hidden ${isRamadan ? 'bg-transparent' : 'bg-white'}`}
+            isRamadan={isRamadan} 
+            dir={dir}
         >
             {notificationTarget && (
-                <div className={`text-center p-8 rounded-[2.5rem] border transition-all duration-500 ${
-                    isRamadan 
-                    ? 'bg-[#0f172a]/95 backdrop-blur-2xl border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]' 
-                    : 'bg-white border-gray-100 shadow-2xl'
-                }`}>
+                <div className="flex flex-col items-center text-center h-full justify-center pb-4">
                     
-                    <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner ${
+                    <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner shrink-0 ${
                         notificationTarget.type === 'absent' ? (isRamadan ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-600') : 
                         notificationTarget.type === 'late' ? (isRamadan ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600') : 
                         (isRamadan ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600')
@@ -376,7 +428,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                         </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full mt-auto shrink-0">
                         <button 
                             onClick={() => performNotification('whatsapp')} 
                             className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg ${
@@ -411,7 +463,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     </div>
                 </div>
             )}
-        </Modal>
+        </DrawerSheet>
     </div>
   );
 };
