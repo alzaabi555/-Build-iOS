@@ -1,4 +1,4 @@
-name: Build Android App (Signed apk)
+name: Build Android App (Signed APK & AAB)
 
 on:
   workflow_dispatch:
@@ -41,15 +41,17 @@ jobs:
             sed -i 's/versionName "[^"]*"/versionName "1.0.4"/g' android/app/build.gradle
           fi
 
-      - name: Build Android Release (apk)
+      # 👈 التعديل السحري الأول: بناء النسختين معاً (APK و AAB) في سطر واحد
+      - name: Build Android Release (APK & AAB)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew assembleRelease bundleRelease --stacktrace
 
-      - name: Sign apk
+      # 👈 التوقيع الجراحي لنسخة هواوي (APK)
+      - name: Sign APK
         uses: r0adkll/sign-android-release@v1
-        id: sign_app
+        id: sign_apk
         with:
           releaseDirectory: android/app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -57,10 +59,31 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
-          # 👈 هذه الحقنة السحرية لتوجيه السيرفر لأدوات البناء الصحيحة
           BUILD_TOOLS_VERSION: "35.0.0"
-      - name: Upload Signed apk
+
+      # 👈 التوقيع الجراحي لنسخة جوجل (AAB)
+      - name: Sign AAB
+        uses: r0adkll/sign-android-release@v1
+        id: sign_aab
+        with:
+          releaseDirectory: android/app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "35.0.0"
+
+      # 👈 تسليم نسخة هواوي
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: Rased-Teacher-Signed-apk
-          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          name: Rased-Teacher-Signed-APK
+          path: ${{ steps.sign_apk.outputs.signedReleaseFile }}
+
+      # 👈 تسليم نسخة جوجل
+      - name: Upload Signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rased-Teacher-Signed-AAB
+          path: ${{ steps.sign_aab.outputs.signedReleaseFile }}
