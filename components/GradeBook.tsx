@@ -5,13 +5,60 @@ import {
   FileSpreadsheet, FileUp, Wand2, BarChart3, SlidersHorizontal, 
   FileDown, PieChart, AlertTriangle, Download, Copy 
 } from 'lucide-react';
-import Modal from './Modal';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 import { StudentAvatar } from './StudentAvatar';
+
+// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة (درج جانبي للكمبيوتر + لوحة سفلية للجوال)
+const DrawerSheet: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+    isRamadan: boolean;
+    dir: string;
+}> = ({ isOpen, onClose, children, isRamadan, dir }) => {
+    useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, [isOpen]);
+
+    return (
+        <>
+            <div
+                className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={onClose}
+            />
+            <div
+                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:rounded-t-3xl max-md:pb-[env(safe-area-inset-bottom)]
+                    md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-3xl border-r' : 'md:right-0 md:rounded-l-3xl border-l'} md:w-[420px] md:h-full
+                    ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isOpen
+                        ? 'translate-y-0 md:translate-x-0'
+                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
+                    }
+                `}
+            >
+                <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={onClose}>
+                    <div className={`w-12 h-1.5 rounded-full ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`} />
+                </div>
+                <button
+                    onClick={onClose}
+                    className={`hidden md:flex absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] ${isRamadan ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                    <X size={20} />
+                </button>
+                <div className={`flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col md:pt-14`}>
+                    {children}
+                </div>
+            </div>
+        </>
+    );
+};
 
 interface GradeBookProps {
   students: Student[];
@@ -63,6 +110,8 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showMenu, setShowMenu] = useState(false);
+  
+  // States for Modals (Now Drawers)
   const [showToolsManager, setShowToolsManager] = useState(false);
   const [isAddingTool, setIsAddingTool] = useState(false);
   const [newToolName, setNewToolName] = useState('');
@@ -612,16 +661,20 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       </div>
 
-      <Modal isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} className={`max-w-sm rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-         <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
-          <div className="flex justify-between items-center mb-6">
+      {/* 🌟 1. اللوحة المنزلقة: إدارة أدوات التقويم */}
+      <DrawerSheet isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} isRamadan={isRamadan} dir={dir}>
+        <div className="flex flex-col h-full w-full">
+          <div className={`flex justify-between items-center mb-6 pb-2 border-b shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
             <h3 className="font-black text-lg">{t('assessmentToolsTitle')}</h3>
-            <button onClick={() => { setShowToolsManager(false); setIsAddingTool(false); }} className={`p-2 rounded-full transition-colors ${isRamadan ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X className={`w-5 h-5 ${isRamadan ? 'text-slate-400' : 'text-gray-500'}`} /></button>
           </div>
+          
           {!isAddingTool ? (
             <>
-              <button onClick={() => setIsAddingTool(true)} className={`w-full py-3.5 mb-4 rounded-xl font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${isRamadan ? 'bg-indigo-600/80 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}><Plus className="w-4 h-4" /> {t('addNewTool')}</button>
-              <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
+              <button onClick={() => setIsAddingTool(true)} className={`w-full py-3.5 mb-4 rounded-xl font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 shrink-0 ${isRamadan ? 'bg-indigo-600/80 hover:bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                <Plus className="w-4 h-4" /> {t('addNewTool')}
+              </button>
+              
+              <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar p-1">
                 {tools.length > 0 ? (
                   tools.map(tool => (
                     <div key={tool.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm group transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-white border-slate-200'}`}>
@@ -638,21 +691,25 @@ const GradeBook: React.FC<GradeBookProps> = ({
               </div>
             </>
           ) : (
-            <div className="animate-in fade-in zoom-in duration-200">
-              <input autoFocus placeholder={t('toolNamePlaceholder')} value={newToolName} onChange={e => setNewToolName(e.target.value)} className={`w-full p-4 rounded-2xl mb-4 font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} />
-              <div className="flex gap-2">
+            <div className="animate-in fade-in zoom-in duration-200 flex flex-col h-full">
+              <input autoFocus placeholder={t('toolNamePlaceholder')} value={newToolName} onChange={e => setNewToolName(e.target.value)} className={`w-full p-4 rounded-2xl mb-4 font-bold text-sm outline-none border transition-colors shrink-0 ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} />
+              <div className="flex gap-2 mt-auto pt-4 shrink-0">
                 <button onClick={() => setIsAddingTool(false)} className={`flex-1 py-3 font-bold text-xs rounded-xl transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 hover:bg-white/20' : 'bg-gray-100 text-slate-500 hover:bg-gray-200'}`}>{t('closeBtn') || 'إلغاء'}</button>
                 <button onClick={handleAddTool} className={`flex-[2] py-3 font-black text-xs rounded-xl shadow-lg transition-colors ${isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{t('saveTool')}</button>
               </div>
             </div>
           )}
         </div>
-      </Modal>
+      </DrawerSheet>
 
-      <Modal isOpen={showDistModal} onClose={() => setShowDistModal(false)} className={`max-w-md rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-        <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
-          <h3 className={`font-black text-xl mb-6 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('gradeDistributionSettings')}</h3>
-          <div className="space-y-6">
+      {/* 🌟 2. اللوحة المنزلقة: إعدادات توزيع الدرجات */}
+      <DrawerSheet isOpen={showDistModal} onClose={() => setShowDistModal(false)} isRamadan={isRamadan} dir={dir}>
+        <div className="flex flex-col h-full w-full">
+          <div className={`flex justify-between items-center mb-6 pb-2 border-b shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
+             <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('gradeDistributionSettings')}</h3>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pb-4">
             <div className={`p-4 rounded-2xl border ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               <label className={`block text-${dir === 'rtl' ? 'right' : 'left'} text-xs font-black mb-2 ${isRamadan ? 'text-indigo-200' : 'text-slate-700'}`}>{t('totalSubjectScoreLabel')}</label>
               <input type="number" value={distTotal} onChange={e => setDistTotal(Number(e.target.value))} className={`w-full p-3 border rounded-xl text-center font-black text-lg outline-none transition-colors ${isRamadan ? 'bg-[#0f172a] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-white border-gray-200 focus:border-indigo-500'}`} />
@@ -673,22 +730,29 @@ const GradeBook: React.FC<GradeBookProps> = ({
               <div className={`text-xl font-black mx-2 ${isRamadan ? 'text-slate-600' : 'text-slate-300'}`}>=</div>
               <div className="text-center flex-1"><span className={`block text-xs font-bold mb-1 ${isRamadan ? 'text-blue-300' : 'text-blue-600'}`}>{distTotal}</span></div>
             </div>
+          </div>
+          
+          <div className={`pt-4 mt-auto border-t shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
             <button onClick={handleSaveDistribution} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-[#1e3a8a] hover:bg-[#172554] text-white'}`}>{t('saveDistribution')}</button>
           </div>
         </div>
-      </Modal>
+      </DrawerSheet>
 
-      <Modal isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} className={`max-w-xs rounded-[2rem] ${isRamadan ? 'bg-transparent' : ''}`}>
-         {bulkFillTool && (
-          <div className={`text-center p-6 rounded-[2rem] border transition-colors ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white shadow-2xl' : 'bg-white text-slate-900 border-transparent shadow-2xl'}`}>
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 border ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-indigo-100'}`}><Wand2 className="w-7 h-7" /></div>
-            <h3 className={`font-black text-lg mb-1 ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{t('bulkFill')}</h3>
-            <p className={`text-xs font-bold mb-4 inline-block px-3 py-1 rounded-lg ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>{bulkFillTool.name}</p>
-            <input type="number" autoFocus placeholder={t('score')} className={`w-full rounded-xl p-3 text-center text-lg font-black outline-none border mb-4 transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10 focus:border-indigo-400 text-white' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} value={bulkScore} onChange={e => setBulkScore(e.target.value)} />
-            <button onClick={handleBulkFill} className={`w-full py-3.5 rounded-xl font-black text-xs shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{t('applyBulkFill')}</button>
+      {/* 🌟 3. اللوحة المنزلقة: التعبئة السريعة (Bulk Fill) */}
+      <DrawerSheet isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} isRamadan={isRamadan} dir={dir}>
+        {bulkFillTool && (
+          <div className="flex flex-col items-center justify-center text-center h-full pb-8">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-indigo-100'}`}><Wand2 className="w-8 h-8" /></div>
+            <h3 className={`font-black text-xl mb-2 ${isRamadan ? 'text-white' : 'text-slate-900'}`}>{t('bulkFill')}</h3>
+            <p className={`text-xs font-bold mb-6 inline-block px-3 py-1.5 rounded-lg ${isRamadan ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>{bulkFillTool.name}</p>
+            
+            <div className="w-full mt-auto space-y-4 shrink-0">
+                <input type="number" autoFocus placeholder={t('score')} className={`w-full rounded-xl p-4 text-center text-xl font-black outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10 focus:border-indigo-400 text-white' : 'bg-gray-50 border-slate-200 focus:border-indigo-500 text-slate-800'}`} value={bulkScore} onChange={e => setBulkScore(e.target.value)} />
+                <button onClick={handleBulkFill} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{t('applyBulkFill')}</button>
+            </div>
           </div>
         )}
-      </Modal>
+      </DrawerSheet>
 
     </div>
   );
