@@ -37,12 +37,10 @@ const DrawerSheet: React.FC<{
 
     return (
         <>
-            {/* الخلفية المظلمة */}
             <div
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
-            {/* حاوية اللوحة المنزلقة - تم رفعها إلى 95vh وحماية المنطقة السفلية للآيفون */}
             <div
                 className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                     max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[95vh] max-md:rounded-t-[2.5rem] max-md:pb-[env(safe-area-inset-bottom)]
@@ -50,24 +48,19 @@ const DrawerSheet: React.FC<{
                     ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
                     ${isOpen
                         ? 'translate-y-0 md:translate-x-0'
-                        : \`max-md:translate-y-full \${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}\`
+                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
                     }
                 `}
             >
-                {/* مقبض السحب للجوال */}
                 <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onClick={onClose}>
                     <div className={`w-10 h-1.5 rounded-full ${isRamadan ? 'bg-white/20' : 'bg-slate-300'}`} />
                 </div>
-
-                {/* زر الإغلاق للكمبيوتر */}
                 <button
                     onClick={onClose}
                     className={`hidden md:flex absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] ${isRamadan ? 'hover:bg-white/10 text-white/70' : 'hover:bg-slate-100 text-slate-500'}`}
                 >
                     <X size={20} />
                 </button>
-
-                {/* المحتوى الداخلي - تم إزالة Padding العام لضمان سيطرة الـ Footer */}
                 <div className="flex-1 flex flex-col overflow-hidden md:pt-10">
                     {children}
                 </div>
