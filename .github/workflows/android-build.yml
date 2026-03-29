@@ -34,21 +34,50 @@ jobs:
           fi
           npx cap sync android
 
+      # 👈 رفعنا رقم الإصدار إلى 5 لكي يقبله متجر جوجل كتحديث جديد
       - name: Update Version and API
         run: |
           if [ -f "android/app/build.gradle" ]; then
-            sed -i 's/versionCode [0-9]*/versionCode 4/g' android/app/build.gradle
-            sed -i 's/versionName "[^"]*"/versionName "1.0.4"/g' android/app/build.gradle
+            sed -i 's/versionCode [0-9]*/versionCode 5/g' android/app/build.gradle
+            sed -i 's/versionName "[^"]*"/versionName "1.0.5"/g' android/app/build.gradle
           fi
 
-      # 👈 التعديل السحري الأول: بناء النسختين معاً (APK و AAB) في سطر واحد
-      - name: Build Android Release (APK & AAB)
+      # 👈 الحقنة الجديدة: زرع التوافق مع أندرويد 15 (Edge-to-Edge)
+      - name: 🛡️ Enforce MainActivity & Edge-To-Edge
+        run: |
+          echo "💉 Injecting MainActivity with Android 15 compatibility..."
+          APP_ID=$(grep 'applicationId' android/app/build.gradle | awk -F '"' '{print $2}')
+          DIR="android/app/src/main/java/$(echo $APP_ID | tr '.' '/')"
+          mkdir -p $DIR
+          cat <<EOF > $DIR/MainActivity.java
+          package $APP_ID;
+          
+          import android.os.Bundle;
+          import androidx.activity.EdgeToEdge;
+          import com.getcapacitor.BridgeActivity;
+          
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  // تفعيل العرض حتى حافة الشاشة لتوافق Android 15
+                  EdgeToEdge.enable(this);
+              }
+          }
+          EOF
+          echo "✅ MainActivity Patched!"
+
+      # 👈 التعديل الجراحي: بناء النسختين بشكل منفصل لمنع تداخل الملفات (مشكلة الشاشة البيضاء)
+      - name: Build Android Release (Safely Separated)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease bundleRelease --stacktrace
+          echo "🔨 Building APK for Huawei / Direct Install..."
+          ./gradlew assembleRelease --stacktrace
+          
+          echo "🔨 Building AAB for Google Play Store..."
+          ./gradlew bundleRelease --stacktrace
 
-      # 👈 التوقيع الجراحي لنسخة هواوي (APK)
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
         id: sign_apk
@@ -61,7 +90,6 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
-      # 👈 التوقيع الجراحي لنسخة جوجل (AAB)
       - name: Sign AAB
         uses: r0adkll/sign-android-release@v1
         id: sign_aab
@@ -74,16 +102,16 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
-      # 👈 تسليم نسخة هواوي
+      # 👈 تسليم نسخة هواوي بالطريقة المضمونة لالتقاط الملف
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: Rased-Teacher-Signed-APK
-          path: ${{ steps.sign_apk.outputs.signedReleaseFile }}
+          path: android/app/build/outputs/apk/release/*.apk
 
-      # 👈 تسليم نسخة جوجل
+      # 👈 تسليم نسخة جوجل بالطريقة المضمونة لالتقاط الملف
       - name: Upload Signed AAB
         uses: actions/upload-artifact@v4
         with:
           name: Rased-Teacher-Signed-AAB
-          path: ${{ steps.sign_aab.outputs.signedReleaseFile }}
+          path: android/app/build/outputs/bundle/release/*.aab
