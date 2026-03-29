@@ -19,6 +19,9 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
 
+  // 🌙 متغير لتحديد الثيم الحالي
+  const isRamadan = true;
+
   const handleDownloadTemplate = async () => {
     try {
       const wb = XLSX.utils.book_new();
@@ -129,22 +132,22 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
     }
   };
 
-  // 🌍 تطبيق الاتجاه على الحاوية
+  // 🌍 تطبيق الاتجاه والثيم على الحاوية
   return (
-    <div className={`p-6 bg-slate-50 flex flex-col gap-6 ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    <div className={`p-4 md:p-6 flex flex-col gap-6 w-full h-full overflow-y-auto custom-scrollbar ${isRamadan ? 'text-white bg-transparent' : 'text-slate-800 bg-slate-50'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
         
         <button 
             onClick={handleDownloadTemplate}
-            className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-200 py-4 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm"
+            className={`w-full py-4 md:py-5 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm border-2 ${isRamadan ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border-amber-500/30' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'}`}
         >
             <Download className="w-5 h-5" />
             {t('downloadExcelTemplateWithCivilId')}
         </button>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-black text-slate-800 flex items-center gap-2">
-                    <LayoutGrid className="w-5 h-5 text-indigo-500" />
+        <div className={`p-5 rounded-2xl border shadow-sm ${isRamadan ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-3 mb-4">
+                <h3 className={`font-black flex items-center gap-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
+                    <LayoutGrid className={`w-5 h-5 ${isRamadan ? 'text-amber-400' : 'text-indigo-500'}`} />
                     {t('assignStudentsToClass')}
                 </h3>
                 <button 
@@ -155,7 +158,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
                             setSelectedClass(newClass.trim());
                         }
                     }}
-                    className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isRamadan ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'}`}
                 >
                     {t('newClassBtnPlus')}
                 </button>
@@ -168,25 +171,25 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
                         onClick={() => setSelectedClass(cls)}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
                             selectedClass === cls 
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm scale-105' 
-                            : 'border-slate-100 bg-white text-slate-600 hover:border-indigo-200'
+                            ? (isRamadan ? 'border-amber-500 bg-amber-500/20 text-amber-300 shadow-md scale-105' : 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm scale-105') 
+                            : (isRamadan ? 'border-white/10 bg-white/5 text-slate-300 hover:border-amber-200/50' : 'border-slate-100 bg-white text-slate-600 hover:border-indigo-200')
                         }`}
                     >
                         {cls}
                     </button>
                 ))}
                 {existingClasses.length === 0 && (
-                    <p className="text-xs text-slate-400 font-bold p-2">{t('alertSelectClassExcel')}</p>
+                    <p className={`text-xs font-bold p-2 ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('alertSelectClassExcel')}</p>
                 )}
             </div>
         </div>
 
-        <div className={`border-2 border-dashed rounded-[2rem] p-8 text-center transition-all ${selectedClass ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-300 bg-slate-50 opacity-60'}`}>
-            <div className="w-16 h-16 bg-indigo-100 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className={`border-2 border-dashed rounded-[2rem] p-8 text-center transition-all flex flex-col items-center justify-center min-h-[250px] ${selectedClass ? (isRamadan ? 'border-indigo-400/50 bg-indigo-900/20' : 'border-indigo-300 bg-indigo-50/30') : (isRamadan ? 'border-white/20 bg-white/5 opacity-60' : 'border-slate-300 bg-slate-50 opacity-60')}`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border shadow-sm ${isRamadan ? 'bg-[#1e293b] text-indigo-400 border-indigo-500/30' : 'bg-indigo-100 text-indigo-500 border-indigo-200'}`}>
                 <FileSpreadsheet className="w-8 h-8" />
             </div>
-            <h3 className="font-black text-lg text-slate-800 mb-2">{t('uploadExcelFileTitle')}</h3>
-            <p className="text-xs font-bold text-slate-500 mb-6">
+            <h3 className={`font-black text-lg mb-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('uploadExcelFileTitle')}</h3>
+            <p className={`text-xs font-bold mb-6 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-500'}`}>
                 {!selectedClass ? t('mustSelectClassFirst') : `سيتم استيراد الطلاب إلى صف: ${selectedClass}`}
             </p>
             
@@ -201,16 +204,16 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
             <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!selectedClass}
-                className="bg-indigo-600 disabled:bg-slate-400 text-white px-8 py-3.5 rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 mx-auto"
+                className={`px-8 py-3.5 rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 w-full md:w-auto mx-auto disabled:opacity-50 disabled:scale-100 ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/50' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
             >
                 <Upload className="w-4 h-4" />
                 {t('chooseFileNow')}
             </button>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <Info className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs font-bold text-amber-800 leading-relaxed">
+        <div className={`border rounded-xl p-4 flex items-start gap-3 mt-auto shrink-0 ${isRamadan ? 'bg-amber-900/20 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
+            <Info className={`w-5 h-5 shrink-0 mt-0.5 ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`} />
+            <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-amber-200/90' : 'text-amber-800'}`}>
                 {t('excelTipBestResults')}
             </p>
         </div>
