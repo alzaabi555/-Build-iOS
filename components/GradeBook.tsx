@@ -33,15 +33,15 @@ const DrawerSheet: React.FC<{
                 className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
-            {/* حاوية اللوحة المنزلقة - تم تحسين الارتفاع والتدوير */}
+            {/* حاوية اللوحة المنزلقة - تم رفعها إلى 95vh وحماية المنطقة السفلية للآيفون */}
             <div
                 className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[85vh] max-md:rounded-t-[2.5rem]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[95vh] max-md:rounded-t-[2.5rem] max-md:pb-[env(safe-area-inset-bottom)]
                     md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-[2.5rem] border-r' : 'md:right-0 md:rounded-l-[2.5rem] border-l'} md:w-[450px] md:h-full
                     ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
                     ${isOpen
                         ? 'translate-y-0 md:translate-x-0'
-                        : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
+                        : \`max-md:translate-y-full \${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}\`
                     }
                 `}
             >
