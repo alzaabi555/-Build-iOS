@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext'; // 🌍 استيراد محرك 
 
 const About: React.FC = () => {
   // 🌍 استدعاء دوال الترجمة والاتجاه
-  const { t, dir } = useApp();
+ const { t, dir, language } = useApp();
 
   // 🌙 المستشعر الرمضاني
   const isRamadan = true;
