@@ -31,7 +31,7 @@ const DrawerSheet: React.FC<{
             />
             <div
                 className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[95vh] max-md:rounded-t-[2.5rem] max-md:pb-[env(safe-area-inset-bottom)]
+                    max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[92vh] max-md:rounded-t-[2.5rem]
                     md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-[2.5rem] border-r' : 'md:right-0 md:rounded-l-[2.5rem] border-l'} md:w-[450px] md:h-full
                     ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
                     ${isOpen
@@ -49,14 +49,15 @@ const DrawerSheet: React.FC<{
                 >
                     <X size={20} />
                 </button>
-                <div className="flex-1 flex flex-col overflow-hidden md:pt-10">
+                
+                {/* 👈 تم إضافة pb-8 هنا كعازل أمان سفلي إجباري لكل الهواتف */}
+                <div className="flex-1 flex flex-col overflow-hidden md:pt-10 pb-8 md:pb-0">
                     {children}
                 </div>
             </div>
         </>
     );
 };
-
 interface AttendanceTrackerProps {
   students: Student[];
   classes: string[];
