@@ -25,11 +25,9 @@ import TeacherLibrary from './components/TeacherLibrary';
 import { useSchoolBell } from './hooks/useSchoolBell';
 
 import RamadanTheme from './components/RamadanTheme';
-
-// زر المزامنة الشامل
 import GlobalSyncManager from './components/GlobalSyncManager'; 
 
-// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة (معدلة خصيصاً لتطفو فوق شريط التنقل)
+// 🌟 المكون الجراحي الجديد بألوان وسطية مريحة للعين
 const DrawerSheet: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -46,14 +44,14 @@ const DrawerSheet: React.FC<{
     return (
         <>
             <div
-                className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
             <div
                 className={`fixed z-[10001] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                     max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[85vh] max-md:rounded-t-[2.5rem]
                     md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-[2.5rem] border-r' : 'md:right-0 md:rounded-l-[2.5rem] border-l'} md:w-[450px] md:h-full
-                    ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isRamadan ? 'bg-[#1e293b] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
                     ${isOpen
                         ? 'translate-y-0 md:translate-x-0'
                         : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`
@@ -79,7 +77,7 @@ const DrawerSheet: React.FC<{
 
 // --- ✨ GLASS GLOW ICONS ---
 const NavIconWrapper = ({ active, isRamadan, children }: any) => (
-  <div className={`w-full h-full flex flex-col items-center justify-center transition-all duration-500 ${active ? 'scale-110' : 'opacity-40'}`}>
+  <div className={`w-full h-full flex flex-col items-center justify-center transition-all duration-500 ${active ? 'scale-110' : 'opacity-50'}`}>
     <div className={`relative p-2 rounded-2xl transition-all duration-500 ${active ? (isRamadan ? 'bg-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.3)]' : 'bg-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.3)]') : ''}`}>
       {children}
     </div>
@@ -120,7 +118,7 @@ const More3D = ({ active, isRamadan }: any) => (
   <NavIconWrapper active={active} isRamadan={isRamadan}>
     <div className="grid grid-cols-2 gap-1">
       {[1, 2, 3, 4].map(i => (
-        <div key={i} className={`w-2 h-2 rounded-sm border ${active ? (isRamadan ? 'bg-amber-400 border-amber-400' : 'bg-indigo-400 border-indigo-400') : 'border-white/50'}`}></div>
+        <div key={i} className={`w-2 h-2 rounded-sm border ${active ? (isRamadan ? 'bg-amber-400 border-amber-400' : 'bg-indigo-400 border-indigo-400') : 'border-white/60'}`}></div>
       ))}
     </div>
   </NavIconWrapper>
@@ -190,7 +188,7 @@ const AppContent: React.FC = () => {
     { id: 'library', label: t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library'), icon: Library },
     { id: 'leaderboard', label: t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Leaderboard'), icon: Medal },
     { id: 'reports', label: t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports'), icon: FileText },
-  { id: 'sync', label: t('navSync') || (dir === 'rtl' ? 'مزامنة السحابة' : 'Cloud Sync'), icon: CloudSync },
+    { id: 'sync', label: t('navSync') || (dir === 'rtl' ? 'مزامنة السحابة' : 'Cloud Sync'), icon: CloudSync },
     { id: 'guide', label: t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide'), icon: BookOpen },
     { id: 'settings', label: t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings'), icon: SettingsIcon },
     { id: 'about', label: t('navAbout') || (dir === 'rtl' ? 'حول' : 'About'), icon: Info },
@@ -198,7 +196,7 @@ const AppContent: React.FC = () => {
 
   if (!isDataLoaded) {
     return (
-      <div className="flex flex-col h-full w-full items-center justify-center bg-[#020617] fixed inset-0 z-[99999]" dir={dir}>
+      <div className="flex flex-col h-full w-full items-center justify-center bg-[#0f172a] fixed inset-0 z-[99999]" dir={dir}>
         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
         <p className="text-slate-300 font-medium text-sm">{t('loadingData') || (dir === 'rtl' ? 'جاري تحميل البيانات...' : 'Loading Data...')}</p>
       </div>
@@ -248,15 +246,16 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col h-screen font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#020617] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    // 👈 تعديل لون الخلفية الأساسية ليكون أزرق ليلي مريح (#0f172a) بدلاً من الأسود العميق (#020617)
+    <div className={`flex flex-col h-screen font-sans overflow-hidden relative transition-colors duration-1000 ${isRamadan ? 'bg-[#0f172a] text-white' : 'bg-[#f3f4f6] text-slate-900'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
   
       <RamadanTheme />
 
       {/* 🖥️ الشريط العلوي المخصص لويندوز (Custom Titlebar) */}
       <div 
-        className={`hidden md:flex w-full h-9 shrink-0 items-center justify-center relative z-[99999] shadow-sm ${isRamadan ? 'bg-[#1e1b4b]' : 'bg-slate-800'}`}
+        className={`hidden md:flex w-full h-9 shrink-0 items-center justify-center relative z-[99999] shadow-sm ${isRamadan ? 'bg-[#1e293b]/90 backdrop-blur-md' : 'bg-slate-800'}`}
         style={{ 
-          borderBottom: isRamadan ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: isRamadan ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(255, 255, 255, 0.1)',
           WebkitAppRegion: 'drag' as any
         }}
       >
@@ -270,20 +269,18 @@ const AppContent: React.FC = () => {
       {/* محتوى التطبيق الأساسي */}
       <div className="flex flex-1 overflow-hidden relative z-10 w-full">
         
-        {/* Sidebar (Desktop) */}
-        <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#0f172a]/60 backdrop-blur-2xl border-white/10' : 'bg-white border-slate-200'}`}>
+        {/* Sidebar (Desktop) - تفتيح درجته قليلاً ليفصل عن الخلفية */}
+        <aside className={`hidden md:flex w-72 flex-col z-50 h-full relative ${dir === 'rtl' ? 'border-l' : 'border-r'} ${isRamadan ? 'bg-[#1e293b]/70 backdrop-blur-2xl border-white/5' : 'bg-white border-slate-200'}`}>
           <div className="p-8 flex items-center gap-4 relative z-10" style={{ WebkitAppRegion: 'no-drag' as any }}>
             <div className="w-12 h-12 shrink-0"><BrandLogo className="w-full h-full" showText={false} /></div>
             <div className="flex-1">
               <h1 className="text-2xl font-black">{t('appNameMain') || 'راصد'}</h1>
               <span className="text-[10px] font-bold text-amber-400">{t('appSubtitleMain') || 'النسخة المتقدمة'}</span>
             </div>
-            
-  
           </div>
           <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4 relative z-10">
             {desktopNavItems.map(item => (
-              <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200/70 hover:bg-white/5'}`}>
+              <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-100/80 hover:bg-white/10'}`}>
                 <item.icon className="w-5 h-5" />
                 <span className="font-bold text-sm">{item.label}</span>
               </button>
@@ -298,8 +295,8 @@ const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Bottom Nav (Mobile) */}
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#0f172a]/80 backdrop-blur-2xl border-white/10' : 'bg-white/95 border-slate-200'}`}>
+      {/* Bottom Nav (Mobile) - تفتيح درجته ليتناسب مع الخلفية المريحة */}
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#1e293b]/90 backdrop-blur-2xl border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]' : 'bg-white/95 border-slate-200'}`}>
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -307,13 +304,13 @@ const AppContent: React.FC = () => {
               <div className={`absolute top-0 transition-all duration-500 ${isActive ? '-translate-y-7 scale-110' : 'translate-y-1 scale-90'}`}>
                 <div className="w-11 h-11"><item.IconComponent active={isActive} isRamadan={isRamadan} /></div>
               </div>
-              <span className={`text-[10px] font-black ${isActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : 'text-indigo-200/50'}`}>{item.label}</span>
+              <span className={`text-[10px] font-black ${isActive ? (isRamadan ? 'text-amber-400' : 'text-indigo-600') : 'text-indigo-200/60'}`}>{item.label}</span>
             </button>
           );
         })}
         <button onClick={() => setShowMoreMenu(true)} className="relative w-full h-full flex flex-col items-center justify-end pb-1">
           <div className="absolute top-0 translate-y-1 scale-90 w-11 h-11"><More3D active={showMoreMenu} isRamadan={isRamadan} /></div>
-          <span className="text-[10px] font-black text-indigo-200/50">{t('navMore') || (dir === 'rtl' ? 'المزيد' : 'More')}</span>
+          <span className="text-[10px] font-black text-indigo-200/60">{t('navMore') || (dir === 'rtl' ? 'المزيد' : 'More')}</span>
         </button>
       </div>
 
@@ -324,65 +321,63 @@ const AppContent: React.FC = () => {
                <h2 className="text-xl font-black">{t('navMore') || (dir === 'rtl' ? 'المزيد' : 'More')}</h2>
             </div>
             
-            {/* منطقة الأزرار القابلة للتمرير مع حماية للأسفل */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pt-2 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
                <div className="grid grid-cols-3 gap-3">
                   
-                  <button onClick={() => handleNavigate('groups')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(52,211,153,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('groups')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(52,211,153,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-600'}`}>
                       <Users size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGroups') || (dir === 'rtl' ? 'المجموعات' : 'Groups')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navGroups') || (dir === 'rtl' ? 'المجموعات' : 'Groups')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('leaderboard')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('leaderboard')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30' : 'bg-purple-100 text-purple-600'}`}>
                       <Medal size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Knights')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navKnights') || (dir === 'rtl' ? 'الفرسان' : 'Knights')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('reports')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('reports')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/30' : 'bg-indigo-100 text-indigo-600'}`}>
                       <FileText size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navReports') || (dir === 'rtl' ? 'التقارير' : 'Reports')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('settings')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(148,163,184,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('settings')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(148,163,184,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-slate-500/20 text-slate-300 group-hover:bg-slate-500/30' : 'bg-slate-200 text-slate-600'}`}>
                       <SettingsIcon size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navSettings') || (dir === 'rtl' ? 'الإعدادات' : 'Settings')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('guide')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('guide')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-600'}`}>
                       <BookOpen size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navGuideShort') || t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navGuideShort') || t('navGuide') || (dir === 'rtl' ? 'الدليل' : 'Guide')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('about')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(244,114,182,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('about')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(244,114,182,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-pink-500/20 text-pink-400 group-hover:bg-pink-500/30' : 'bg-pink-100 text-pink-600'}`}>
                       <Info size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navAbout') || (dir === 'rtl' ? 'حول' : 'About')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navAbout') || (dir === 'rtl' ? 'حول' : 'About')}</span>
                   </button>
 
-                  <button onClick={() => handleNavigate('library')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(232,121,249,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('library')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(232,121,249,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-fuchsia-500/20 text-fuchsia-400 group-hover:bg-fuchsia-500/30' : 'bg-fuchsia-100 text-fuchsia-600'}`}>
                       <Library size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>{t('navLibrary') || t('library') || (dir === 'rtl' ? 'المكتبة' : 'Library')}</span>
                   </button>
 
-                  {/* 🔄 زر المزامنة للهاتف */}
-                  <button onClick={() => handleNavigate('sync')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                  <button onClick={() => handleNavigate('sync')} className={`group p-4 rounded-3xl flex flex-col items-center justify-center gap-3 border active:scale-90 transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/5 hover:bg-white/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
                     <div className={`p-2.5 rounded-2xl transition-colors ${isRamadan ? 'bg-cyan-500/20 text-cyan-400 group-hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-600'}`}>
                       <CloudSync size={24} strokeWidth={2.5} />
                     </div>
-                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-100' : 'text-slate-800'}`}>مزامنة السحابة</span>
+                    <span className={`font-black text-[10px] tracking-wide ${isRamadan ? 'text-indigo-50' : 'text-slate-800'}`}>مزامنة السحابة</span>
                   </button>
 
                </div>
