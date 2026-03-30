@@ -510,28 +510,66 @@ const GradeBook: React.FC<GradeBookProps> = ({
         {/* ✅ الحاوية للخطوط الثلاثة */}
         <div className="space-y-3 relative z-50 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
           
-          <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-            <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`shrink-0 px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>{t('allGradesList')}</button>
-            {availableGrades.map(g => (
-              <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`shrink-0 px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>{t('gradePrefix')} {g}</button>
-            ))}
+          {/* ================= 1. كبسولة الفصول والصفوف (مدمجة) ================= */}
+          <div className="w-full overflow-x-auto no-scrollbar pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                  
+                  {/* زر (الكل) */}
+                  <button 
+                      onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
+                      className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                  >
+                      {t('allGradesList')}
+                  </button>
+
+                  {/* أزرار الصفوف (Grades) */}
+                  {availableGrades.map(g => (
+                      <React.Fragment key={`grade-${g}`}>
+                          <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                          <button 
+                              onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
+                              className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                          >
+                              {t('gradePrefix')} {g}
+                          </button>
+                      </React.Fragment>
+                  ))}
+
+                  {/* أزرار الفصول (Classes) */}
+                  {visibleClasses.map(c => (
+                      <React.Fragment key={`class-${c}`}>
+                          <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                          <button 
+                              onClick={() => setSelectedClass(c)} 
+                              className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                          >
+                              {c}
+                          </button>
+                      </React.Fragment>
+                  ))}
+              </div>
           </div>
 
-          <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-            <button onClick={() => setSelectedClass('all')} className={`shrink-0 px-5 py-2 text-xs font-bold whitespace-nowrap transition-all rounded-xl border shadow-sm ${selectedClass === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>{t('all')}</button>
-            {visibleClasses.map(c => (
-              <button key={c} onClick={() => setSelectedClass(c)} className={`shrink-0 px-5 py-2 text-xs font-bold whitespace-nowrap transition-all rounded-xl border shadow-sm ${selectedClass === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20'}`}>{c}</button>
-            ))}
-          </div>
-          
-          <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-            {tools.map(tool => (
-                <button key={tool.id} onClick={() => setActiveToolId(tool.id)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap border flex items-center gap-1.5 active:scale-95 shadow-sm transition-all ${activeToolId === tool.id ? (isRamadan ? 'bg-white/20 text-amber-300 border-amber-400/50 shadow-md' : 'bg-white text-[#1e3a8a] border-white shadow-md') : 'bg-white/10 hover:bg-white/20 text-white border-white/20'} ${tool.isFinal ? 'border-amber-400/50' : ''}`}>
-                  {activeToolId === tool.id && <Check className="w-3 h-3" />}
-                  {tool.isFinal && <span className="text-amber-400 ml-1">★</span>}
-                  {tool.name}
-                </button>
-            ))}
+          {/* ================= 2. كبسولة أدوات التقويم (Tools) ================= */}
+          <div className="w-full overflow-x-auto no-scrollbar pb-1 mt-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all ${isRamadan ? 'bg-indigo-900/30 border-indigo-500/30' : 'bg-indigo-50 border-indigo-100'}`}>
+                  {tools.map((tool, index) => (
+                      <React.Fragment key={tool.id}>
+                          {index > 0 && <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-indigo-500/30' : 'bg-indigo-200'}`} />}
+                          <button 
+                              onClick={() => setActiveToolId(tool.id)} 
+                              className={`relative px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-300 ${activeToolId === tool.id ? (isRamadan ? 'bg-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-indigo-600 text-white shadow-md') : (isRamadan ? 'text-indigo-200/70 hover:text-white hover:bg-white/5' : 'text-indigo-600/70 hover:text-indigo-900 hover:bg-indigo-100/50')}`}
+                          >
+                              {activeToolId === tool.id && <Check className="w-3.5 h-3.5" />}
+                              {tool.isFinal && <span className="text-amber-400">★</span>}
+                              {tool.name}
+                          </button>
+                      </React.Fragment>
+                  ))}
+                  {tools.length === 0 && (
+                      <span className={`px-4 py-2 text-xs font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('noToolsAdded')}</span>
+                  )}
+              </div>
           </div>
 
           <div className={`grid grid-cols-3 gap-2 mt-2 p-2 rounded-xl border ${isRamadan ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20 shadow-inner'}`}>
@@ -615,7 +653,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </div>
 
       {/* 🌟 1. اللوحة المنزلقة: إدارة أدوات التقويم */}
-      <DrawerSheet isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} isRamadan={isRamadan} dir={dir}>
+      <DrawerSheet isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} isRamadan={isRamadan} dir={dir} mode="side">
         <div className="flex flex-col h-full w-full">
           <div className={`flex justify-between items-center mb-6 pb-2 border-b shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
             <h3 className="font-black text-lg">{t('assessmentToolsTitle')}</h3>
@@ -656,7 +694,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </DrawerSheet>
 
       {/* 🌟 2. اللوحة المنزلقة: إعدادات توزيع الدرجات */}
-      <DrawerSheet isOpen={showDistModal} onClose={() => setShowDistModal(false)} isRamadan={isRamadan} dir={dir}>
+      <DrawerSheet isOpen={showDistModal} onClose={() => setShowDistModal(false)} isRamadan={isRamadan} dir={dir} mode="side">
         <div className="flex flex-col h-full w-full">
           <div className={`flex justify-between items-center mb-6 pb-2 border-b shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
              <h3 className={`font-black text-lg ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('gradeDistributionSettings')}</h3>
@@ -692,7 +730,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
       </DrawerSheet>
 
       {/* 🌟 3. اللوحة المنزلقة: التعبئة السريعة (Bulk Fill) */}
-      <DrawerSheet isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} isRamadan={isRamadan} dir={dir}>
+      <DrawerSheet isOpen={!!bulkFillTool} onClose={() => { setBulkFillTool(null); setBulkScore(''); }} isRamadan={isRamadan} dir={dir} mode="bottom">
         {bulkFillTool && (
           <div className="flex flex-col items-center justify-center text-center h-full pb-8">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-indigo-100'}`}><Wand2 className="w-8 h-8" /></div>
