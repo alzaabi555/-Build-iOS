@@ -666,8 +666,9 @@ const StudentList: React.FC<StudentListProps> = ({
                             </React.Fragment>
                         ))}
 
-                    </div>
+                   </div>
                 </div>
+            </div> {/* 👈 الغرزة المفقودة: أضف هذا السطر فقط ليغلق الحاوية */}
         </header>
 
         {/* List */}
