@@ -263,6 +263,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                             ))}
                         </div>
                     </div>
+                </div> {/* 👈 الغرزة المفقودة: أضف هذا السطر فقط ليغلق الحاوية */}
             </header>
 
             <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
