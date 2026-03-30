@@ -47,7 +47,7 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
             <div
                 className={`fixed z-[1000] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                     ${positioningStyles}
-                    ${isRamadan ? 'bg-[#1e1b4b] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
+                    ${isRamadan ? 'bg-[#1e1b4b] border-[#d4af37]/20 text-white shadow-[0_0_50px_rgba(76,29,149,0.3)]' : 'bg-white border-slate-200 text-slate-800'}
                     ${transformStyles}
                 `}
             >
