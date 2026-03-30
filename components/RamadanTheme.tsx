@@ -28,15 +28,40 @@ const RamadanTheme: React.FC = () => {
     <>
       <style>
         {`
+          /* === ستايل شريط التمرير الذهبي === */
           ::-webkit-scrollbar { width: 8px; height: 8px; }
           ::-webkit-scrollbar-track { background: transparent !important; }
-          /* شريط التمرير باللون الذهبي الرمضاني */
           ::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.25) !important; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
           ::-webkit-scrollbar-thumb:hover { background: rgba(251, 191, 36, 0.8) !important; }
 
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent !important; }
           .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.3) !important; }
           .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(251, 191, 36, 0.9) !important; }
+
+          /* ===================================================== */
+          /* 🔮 السحر هنا: توحيد شكل جميع مربعات الإدخال في التطبيق */
+          /* ===================================================== */
+          input, textarea, select {
+              background-color: rgba(255, 255, 255, 0.05) !important; /* خلفية زجاجية شبه شفافة */
+              border: 1px solid rgba(255, 255, 255, 0.1) !important; /* حدود بيضاء خفيفة جداً */
+              color: white !important; /* لون النص أبيض ناصع */
+              border-radius: 1rem !important; /* حواف دائرية ناعمة (16px) */
+              transition: all 0.3s ease !important; /* حركة ناعمة */
+          }
+          
+          /* شكل المربع عند الضغط عليه (الكتابة داخله) - توهج ذهبي فخم */
+          input:focus, textarea:focus, select:focus {
+              border-color: #fbbf24 !important; /* حدود ذهبية (Amber-400) */
+              box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15) !important; /* هالة ذهبية شفافة حول المربع */
+              outline: none !important; /* إخفاء الخط الأسود/الأزرق الافتراضي للمتصفح */
+              background-color: rgba(255, 255, 255, 0.08) !important; /* زيادة الشفافية قليلاً عند الكتابة */
+          }
+
+          /* لون النص الإرشادي (Placeholder) */
+          input::placeholder, textarea::placeholder {
+              color: rgba(255, 255, 255, 0.3) !important; /* لون فضي هادئ */
+              font-weight: 600 !important;
+          }
         `}
       </style>
 
