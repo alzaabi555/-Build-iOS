@@ -842,7 +842,7 @@ const StudentList: React.FC<StudentListProps> = ({
              <div className="flex flex-col h-full w-full text-center pb-4">
                 <h3 className="font-black text-lg mb-4 shrink-0">{t('addNewClassTitle')}</h3>
                 <div className="flex-1">
-                    <input autoFocus type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
+                    <input type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
                 </div>
                 <div className="mt-auto pt-4 shrink-0">
                     <button onClick={handleAddClassSubmit} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('addBtnSimple')}</button>
