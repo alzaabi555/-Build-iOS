@@ -40,12 +40,12 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
     return (
         <>
             <div
-                className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[999] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
             
             <div
-                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                className={`fixed z-[1000] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                     ${positioningStyles}
                     ${isRamadan ? 'bg-[#1e1b4b] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}
                     ${transformStyles}
