@@ -151,7 +151,21 @@ const AppContent: React.FC = () => {
     };
     fetchVersion();
   }, []);
-
+// 🚀 الضربة النووية للقضاء على الشريط الأبيض السفلي والعلوي (System UI)
+  useEffect(() => {
+    // 1. تلوين أرضية المتصفح (Body) بالكامل لكي لا يظهر أي بياض تحت التطبيق
+    document.body.style.backgroundColor = isRamadan ? '#0f172a' : '#f3f4f6';
+    
+    // 2. إجبار نظام الهاتف (أندرويد/آيفون) على تلوين المنطقة الآمنة السفلية والعلوية
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+    // استخدمت لون #0f172a ليكون متطابقاً 100% مع لون خلفية تطبيقك الأساسية
+    metaThemeColor.setAttribute('content', isRamadan ? '#0f172a' : '#f3f4f6');
+  }, [isRamadan]);
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => localStorage.getItem('bell_enabled') === 'true');
 
