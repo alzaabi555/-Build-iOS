@@ -237,13 +237,32 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         <input type="text" placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10' : 'pl-10'} text-xs font-bold outline-none transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white placeholder:text-blue-200/50 focus:bg-white/20' : 'bg-white/20 border-white/30 text-white placeholder:text-blue-100 focus:bg-white/30'}`} />
                     </div>
 
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-2 w-full justify-start" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <button onClick={() => setSelectedClass('all')} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border transition-all ${selectedClass === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-blue-100'}`}>{t('all')}</button>
-                        {classes.map(c => (
-                            <button key={c} onClick={() => setSelectedClass(c)} className={`shrink-0 whitespace-nowrap px-5 py-2 rounded-xl text-xs font-black border transition-all ${selectedClass === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 text-blue-100'}`}>{c}</button>
-                        ))}
+                    {/* ================= شريط اختيار الفصول (الكبسولة الزجاجية الفخمة) ================= */}
+                    <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                        <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                            
+                            {/* زر (الكل) */}
+                            <button 
+                                onClick={() => setSelectedClass('all')} 
+                                className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                            >
+                                {t('all')}
+                            </button>
+
+                            {/* أزرار الفصول (Classes) */}
+                            {classes.map(c => (
+                                <React.Fragment key={c}>
+                                    <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                                    <button 
+                                        onClick={() => setSelectedClass(c)} 
+                                        className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                                    >
+                                        {c}
+                                    </button>
+                                </React.Fragment>
+                            ))}
+                        </div>
                     </div>
-                </div>
             </header>
 
             <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
