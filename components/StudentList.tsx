@@ -628,16 +628,46 @@ const StudentList: React.FC<StudentListProps> = ({
                     />
                 </div>
                 
-                <div className="flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible pb-2">
-                    <button onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === 'all' && selectedClass === 'all' ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{t('all')}</button>
-                    {availableGrades.map(g => (
-                         <button key={g} onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedGrade === g ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{t('gradePrefix')} {g}</button>
-                    ))}
-                    {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
-                        <button key={c} onClick={() => setSelectedClass(c)} className={`px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-all rounded-xl border ${selectedClass === c ? (isRamadan ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md' : 'bg-white text-[#1e3a8a] shadow-md border-white') : 'bg-white/10 text-blue-100 border-white/20 hover:bg-white/20'}`}>{c}</button>
-                    ))}
+               {/* ================= شريط اختيار الفصول (الكبسولة الزجاجية الفخمة) ================= */}
+                <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
+                    <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                        
+                        {/* زر (الكل) */}
+                        <button 
+                            onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
+                            className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                        >
+                            {t('all')}
+                        </button>
+
+                        {/* أزرار الصفوف (Grades) */}
+                        {availableGrades.map(g => (
+                            <React.Fragment key={`grade-${g}`}>
+                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                                <button 
+                                    onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
+                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                                >
+                                    {t('gradePrefix')} {g}
+                                </button>
+                            </React.Fragment>
+                        ))}
+
+                        {/* أزرار الفصول (Classes) */}
+                        {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
+                            <React.Fragment key={`class-${c}`}>
+                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                                <button 
+                                    onClick={() => setSelectedClass(c)} 
+                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                                >
+                                    {c}
+                                </button>
+                            </React.Fragment>
+                        ))}
+
+                    </div>
                 </div>
-            </div>
         </header>
 
         {/* List */}
