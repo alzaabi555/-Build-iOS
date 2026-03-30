@@ -296,7 +296,11 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Bottom Nav (Mobile) - تفتيح درجته ليتناسب مع الخلفية المريحة */}
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] h-[85px] rounded-t-[2.5rem] flex justify-around items-end pb-4 border-t transition-colors duration-500 ${isRamadan ? 'bg-[#1e293b]/90 backdrop-blur-2xl border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]' : 'bg-white/95 border-slate-200'}`}>
+      {/* Bottom Nav (Mobile) - مسطح وممتد للأسفل ليلغي الشريط الأبيض */}
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[9999] flex justify-around items-end border-t transition-colors duration-500 
+          pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] 
+          ${isRamadan ? 'bg-[#1a103c]/95 backdrop-blur-2xl border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]' : 'bg-white/95 border-slate-200'}
+      `}>
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
