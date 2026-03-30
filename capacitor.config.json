@@ -3,6 +3,7 @@
   "appId": "com.alzaabi.rased.teachers.app",
   "appName": "راصد",
   "webDir": "www",
+  "backgroundColor": "#1e1b4b",
   "server": {
     "androidScheme": "https",
     "cleartext": true,
