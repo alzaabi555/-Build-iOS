@@ -1,0 +1,91 @@
+/* theme/tokens.css - النسخة العلاجية الناصعة والناعمة */
+
+@layer base {
+  /* ☀️ الثيم الفاتح (Light) */
+  :root[data-theme="light"] {
+    --bg: #FFFFFF; /* 👈 ✅ تم التبييض! أبيض ناصع ونقّي بدلاً من الكريمي */
+    --text: #000000;
+    --secondary: #8e8e93;
+    --card: rgba(255, 255, 255, 0.4); /* 👈 جعلت خلفية البطاقة أكثر شفافية */
+    --border: rgba(60, 60, 67, 0.1);  /* 👈 حدود أخف وأنعم */
+    --glass: rgba(255, 255, 255, 0.2);
+    --primary: #007aff;
+    --glow: rgba(0, 122, 255, 0.05); /* 👈 توهج أخف */
+  }
+
+  /* 🌙 الثيم الداكن (Dark) */
+  :root[data-theme="dark"] {
+    --bg: #000000;
+    --text: #ffffff;
+    --secondary: #ebebf599;
+    --card: #1c1c1e;
+    --border: rgba(84, 84, 88, 0.65);
+    --glass: rgba(28, 28, 30, 0.7);
+    --primary: #0a84ff;
+    --glow: rgba(10, 132, 255, 0.15);
+  }
+
+  /* 🧊 الثيم الزجاجي الفاخر (Deep Space Glass) */
+  :root[data-theme="glass"] {
+    --bg: radial-gradient(circle at top right, #0d2b5e 0%, #051024 40%, #020617 100%);
+    --text: #ffffff;
+    --secondary: #8fb0e8;
+    --card: rgba(13, 34, 74, 0.4); 
+    --glass: rgba(13, 34, 74, 0.2); 
+    --border: rgba(143, 176, 232, 0.2); 
+    --primary: #4da6ff;
+    --glow: rgba(77, 166, 255, 0.4);
+  }
+
+  /* ✨ الثيم الرمضاني (Ramadan) */
+  :root[data-theme="ramadan"] {
+    --bg: #0B0F1A;
+    --text: #fef3c7;
+    --secondary: #d97706;
+    --card: rgba(30, 27, 75, 0.4);
+    --border: rgba(251, 191, 36, 0.15);
+    --glass: rgba(15, 23, 42, 0.4);
+    --primary: #fbbf24;
+    --glow: rgba(251, 191, 36, 0.2);
+  }
+}
+
+@layer components {
+  /* 🌟 كلاسات الزجاج الموحدة (تم تخفيف الظلال بشكل كبير للثيم الفاتح) */
+  
+  /* البطاقات العادية (Cards) */
+  .glass-card {
+    @apply bg-bgCard border border-borderColor animate-smooth;
+    backdrop-filter: blur(24px); 
+    -webkit-backdrop-filter: blur(24px);
+    /* 👈 ✅ تم التخفيف! ظلال ناعمة وخفيفة للثيم الفاتح */
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08), /* ظلال خارجية ناعمة (8%) */
+      inset 0 1px 1px rgba(255, 255, 255, 0.1); /* ظل داخلي خفيف جداً */
+  }
+  
+  /* اللوحات الكبيرة والـ Drawers (Panels) */
+  .glass-panel {
+    @apply bg-bgSoft border border-borderColor animate-smooth;
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    /* 👈 ✅ تم التخفيف! ظلال ناعمة وخفيفة للبانل */
+    box-shadow: 
+      0 10px 25px rgba(0, 0, 0, 0.1),
+      inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+
+  /* الأزرار الزجاجية */
+  .glass-button {
+    @apply bg-bgSoft border border-borderColor text-textPrimary animate-smooth hover:bg-bgCard active:scale-95;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+@layer utilities {
+  .animate-smooth {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+}
