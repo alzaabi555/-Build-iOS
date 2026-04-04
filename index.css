@@ -129,26 +129,41 @@ body {
     margin: 0;
 }
 /* ========================================================= */
-/* --- 💉 حقنة تقوية الزجاج للثيم الفاتح (علاج اللون الرمادي) --- */
+/* --- 💉 عملية تصحيح النظر الشاملة للثيم الفاتح (Light Theme Overhaul) --- */
 /* ========================================================= */
+
+@layer base {
+  /* 1. فصل لون الخلفية عن لون البطاقات (تباين مريح للعين) */
+  :root[data-theme="light"],
+  :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) {
+    --bg: #f1f5f9 !important; /* خلفية التطبيق: رمادي فاتح جداً (كلون ورق الجرائد المريح) */
+    --text: #0f172a !important; /* نصوص رئيسية: أسود داكن جداً (قراءة حادة) */
+    --text-secondary: #475569 !important; /* نصوص ثانوية: رمادي داكن (واضحة ولا ترهق) */
+    --border: #cbd5e1 !important; /* حدود رمادية ظاهرة */
+  }
+}
+
 @layer components {
-  /* هذا الكود يستهدف الثيم الفاتح فقط (سواء كان عبر data-theme="light" 
-    أو كان هو الثيم الافتراضي الذي لا يحمل اسم دارك أو رمضان).
-    سيجعل النوافذ واللوحات بيضاء بنسبة 95% مع حدود ناعمة جداً لمنع تسرب التضليل الأسود!
-  */
+  /* 2. إبراز البطاقات، المستطيلات، واللوحات (إعطاء عمق 3D) */
   :root[data-theme="light"] .glass-panel,
   :root[data-theme="light"] .glass-card,
   :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .glass-panel,
   :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .glass-card {
-    background-color: rgba(255, 255, 255, 0.95) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
+    background-color: #ffffff !important; /* البطاقة تصبح بيضاء ناصعة لتبرز فوق الخلفية الرمادية */
+    border: 1px solid rgba(15, 23, 42, 0.12) !important; /* إطار رمادي أنيق يحدد حوافها */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important; /* ظل خفيف يرفع البطاقة عن الشاشة */
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
   }
 
-  /* معالجة النصوص والأيقونات داخل النوافذ في الثيم الفاتح لضمان الوضوح التام */
-  :root[data-theme="light"] .text-textSecondary,
-  :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .text-textSecondary {
-    color: rgba(15, 23, 42, 0.7) !important; /* رمادي داكن مريح للعين */
+  /* 3. علاج طوارئ لخطوط المؤقت والنصوص الباهتة */
+  /* هذا السطر يُجبر أي نص بُرمج بالخطأ ليكون رمادياً فاتحاً أو أبيض شفافاً، على أن يصبح غامقاً ومقروءاً في الثيم الفاتح */
+  :root[data-theme="light"] .text-slate-400,
+  :root[data-theme="light"] .text-slate-300,
+  :root[data-theme="light"] .text-indigo-200,
+  :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .text-slate-400,
+  :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .text-slate-300,
+  :root:not([data-theme="dark"]):not([data-theme="ramadan"]):not([data-theme="glass"]) .text-indigo-200 {
+    color: var(--text-secondary) !important;
   }
 }
