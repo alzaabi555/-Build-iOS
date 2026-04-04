@@ -19,11 +19,11 @@
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
-    "backgroundColor": "#111827"
+    "backgroundColor": "#0f172a",
   },
   "ios": {
     "contentInset": "automatic",
-    "backgroundColor": "#F2F2F7",
+ "backgroundColor": "#0f172a",
     "allowsBackForwardNavigationGestures": true
   }
 }
