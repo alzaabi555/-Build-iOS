@@ -127,7 +127,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       {/* 💉 الجراحة الثانية: تغيير fixed إلى absolute مع زراعة "رقعة" تمتص البياض */}
       <div 
-        className="md:hidden absolute bottom-0 left-0 right-0 z-[9999] glass-panel border-t border-borderColor rounded-none transition-all duration-500 flex flex-col"
+        className="md:hidden absolute bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col m-0"
       >
         <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full">
           {mobileNavItems.map((item) => {
