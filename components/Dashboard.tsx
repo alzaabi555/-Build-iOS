@@ -485,7 +485,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             {/* 🌟 1. زر تغيير الثيم */}
                             <button 
                                 onClick={() => {
-                                    const themes = ['light', 'dark', 'glass', 'ramadan'];
+                                    const themes = ['light', 'dark', 'glass'];
                                     const currentIndex = themes.indexOf(theme || 'light');
                                     const nextTheme = themes[(currentIndex + 1) % themes.length];
                                     setTheme(nextTheme as any);
