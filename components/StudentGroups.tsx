@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../theme/ThemeProvider'; // 👈 استدعاء محرك الثيمات
+import { useTheme } from '../theme/ThemeProvider'; 
 import { Users, Plus, Trash2, X, Edit2, Check, UserMinus, FolderPlus, ArrowRight, UserPlus, CheckCircle2 } from 'lucide-react';
 
-// 🌟 المكون الجراحي الجديد: نافذة ذكية منزلقة تتوافق مع الثيمات
 const DrawerSheet: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -26,9 +25,7 @@ const DrawerSheet: React.FC<{
         transformStyles = isOpen ? 'translate-y-0' : 'translate-y-full';
     } 
     else if (mode === 'side') {
-        // ✨ تم تعديل الاتجاهات هنا: يسار للعربي ويمين للإنجليزي
         positioningStyles = `top-0 bottom-0 h-full w-[85%] max-w-[450px] ${dir === 'rtl' ? 'left-0 rounded-r-[2.5rem] border-r' : 'right-0 rounded-l-[2.5rem] border-l'}`;
-        // ✨ تم تعديل اتجاه الحركة ليتوافق مع المكان الجديد
         transformStyles = isOpen ? 'translate-x-0' : (dir === 'rtl' ? '-translate-x-full' : 'translate-x-full');
     } 
     else {
@@ -58,7 +55,6 @@ const DrawerSheet: React.FC<{
 
                 <button
                     onClick={onClose}
-                    // ✨ تم تعديل مكان زر الإغلاق ليتناسب مع الاتجاه الجديد للوحة
                     className={`absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] hover:bg-bgSoft text-textSecondary hover:text-textPrimary ${mode === 'bottom' ? 'hidden md:flex' : 'flex'}`}
                 >
                     <X size={20} />
@@ -79,7 +75,7 @@ interface StudentGroupsProps {
 
 const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   const { students, classes, categorizations, setCategorizations, t, dir } = useApp();
-  const { theme } = useTheme(); // جلب الثيم الحالي
+  const { theme } = useTheme(); 
   
   const [selectedClass, setSelectedClass] = useState<string>(classes[0] || '');
   const [activeCatId, setActiveCatId] = useState<string>('');
@@ -90,7 +86,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   const [assigningToGroup, setAssigningToGroup] = useState<{ catId: string; groupId: string } | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
-  // 🎨 ألوان مرنة تتناسب مع كل الثيمات (شفافية ذكية)
   const groupColors = [
     { id: 'blue', bg: 'bg-blue-500/10', header: 'bg-blue-500/20', border: 'border-blue-500/50', text: 'text-blue-500' },
     { id: 'emerald', bg: 'bg-emerald-500/10', header: 'bg-emerald-500/20', border: 'border-emerald-500/50', text: 'text-emerald-500' },
@@ -464,7 +459,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* ================= 🎯 نافذة التحديد الجماعي الذكية ================= */}
+      {/* ================= 🎯 نافذة التحديد الجماعي الذكية (تمت فلترتها بذكاء) ================= */}
       {assigningToGroup && activeCat && (
         <DrawerSheet isOpen={true} onClose={() => setAssigningToGroup(null)} dir={dir}>
           <div className="flex flex-col h-full w-full">
@@ -480,9 +475,14 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
             
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-bgMain">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {classStudents.map(student => {
+                {/* 💉 الجراحة الذكية: فلترة الطلاب لتخفيف الازدحام! */}
+                {classStudents.filter(student => {
+                    const isSelected = selectedStudentIds.has(student.id);
+                    const isInAnotherGroup = activeCat.groups.some(g => g.id !== assigningToGroup.groupId && g.studentIds.includes(student.id));
+                    // عرض الطالب فقط إذا كان في المجموعة الحالية (لإمكانية إزالته) أو إذا لم يكن في أي مجموعة أخرى إطلاقاً
+                    return isSelected || !isInAnotherGroup;
+                }).map(student => {
                   const isSelected = selectedStudentIds.has(student.id);
-                  const otherGroup = activeCat.groups.find(g => g.id !== assigningToGroup.groupId && g.studentIds.includes(student.id));
                   
                   return (
                     <div 
@@ -504,11 +504,6 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                         <p className={`font-black text-sm truncate ${isSelected ? 'text-primary' : 'text-textPrimary'}`}>
                           {getShortName(student.name)}
                         </p>
-                        {otherGroup && !isSelected && (
-                          <p className="text-[10px] font-bold mt-0.5 truncate text-warning">
-                            {t('assignedToGroupLabel')} {otherGroup.name}
-                          </p>
-                        )}
                       </div>
                     </div>
                   );
