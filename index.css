@@ -52,7 +52,6 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  position: fixed; /* تثبيت الجسم لمنع السحب المطاطي */
   top: 0;
   left: 0;
   right: 0;
