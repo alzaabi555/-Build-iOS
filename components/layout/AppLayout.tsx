@@ -78,7 +78,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
       )}
 
-      <div className="fixed inset-0 z-[-2] transition-colors duration-500" style={{ background: 'var(--bg)' }} />
+     <div className="fixed inset-0 z-[-2] transition-all duration-700 ease-in-out" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg)' }} />
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] left-[10%] w-[400px] h-[400px] bg-glow rounded-full blur-[100px] opacity-40" />
@@ -127,7 +127,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       {/* 💉 الجراحة الثانية: تغيير fixed إلى absolute مع زراعة "رقعة" تمتص البياض */}
       <div 
-        className="md:hidden absolute bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col m-0"
+        className="md:hidden absolute bottom-0 left-0 right-0 z-[9999] glass-panel border-t border-borderColor rounded-none transition-all duration-500 flex flex-col"
       >
         <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full">
           {mobileNavItems.map((item) => {
