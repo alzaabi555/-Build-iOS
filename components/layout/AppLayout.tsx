@@ -52,9 +52,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen font-sans overflow-hidden text-textPrimary animate-smooth relative" dir={dir}>
+    // 💉 الجراحة الأولى: تغيير h-screen إلى fixed inset-0 w-full h-[100dvh] لملء الشاشة بالقوة
+    <div className="fixed inset-0 w-full h-[100dvh] flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent" dir={dir}>
       
-      {/* 👑 الشريط العلوي للديسكتوب */}
       {isDesktop && (
         <div 
           className="flex justify-between items-center px-4 h-10 shrink-0 z-[99999] glass-panel border-b border-borderColor rounded-none bg-bgCard/40 backdrop-blur-md"
@@ -78,16 +78,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
       )}
 
-      {/* 🌟 الخلفيات */}
       <div className="fixed inset-0 z-[-2] transition-colors duration-500" style={{ background: 'var(--bg)' }} />
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] left-[10%] w-[400px] h-[400px] bg-glow rounded-full blur-[100px] opacity-40" />
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative z-10 w-full">
+      <div className="flex flex-1 overflow-hidden relative z-10 w-full h-full">
         
-        {/* 💻 القائمة الجانبية (سطح المكتب) */}
         <aside className={cn(
           "hidden md:flex w-72 flex-col z-50 h-full relative glass-panel rounded-none",
           dir === 'rtl' ? 'border-l border-borderColor' : 'border-r border-borderColor'
@@ -118,10 +116,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </nav>
         </aside>
 
-        {/* 📄 المحتوى الرئيسي */}
         <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          {/* 💉 تم زيادة المساحة السفلية لضمان عدم اختفاء المحتوى خلف الشريط الجديد */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe">
             <div className="max-w-5xl mx-auto w-full min-h-full py-6">
               {children}
             </div>
@@ -129,16 +125,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </main>
       </div>
 
-      {/* ========================================================= */}
-      {/* 📱 شريط التنقل السفلي للهاتف (الاحترافي الملاصق للشاشة) */}
-      {/* ========================================================= */}
+      {/* 💉 الجراحة الثانية: تغيير fixed إلى absolute مع زراعة "رقعة" تمتص البياض */}
       <div 
-        className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] glass-panel border-t border-borderColor rounded-none transition-all duration-500"
-        /* 💉 هذا السطر السحري هو ما سيمسح البياض السفلي للأبد بتمديد لون الشريط للأسفل */
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} 
+        className="md:hidden absolute bottom-0 left-0 right-0 z-[9999] glass-panel border-t border-borderColor rounded-none transition-all duration-500 flex flex-col"
       >
-        <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16">
-          
+        <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full">
           {mobileNavItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -163,7 +154,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             );
           })}
 
-          {/* ➕ زر المزيد */}
           {extraNavItems.length > 0 && (
              <button
                 onClick={() => setShowMoreMenu(true)}
@@ -184,9 +174,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               </button>
           )}
         </div>
+        {/* 💉 3. الرقعة السفلية: هذه الـ div ستتمدد برمجياً لتغطي أي مساحة فارغة في الأسفل! */}
+        <div className="w-full bg-inherit" style={{ height: 'env(safe-area-inset-bottom, 0px)' }}></div>
       </div>
 
-      {/* 🗄️ القائمة السفلية "المزيد" */}
       {showMoreMenu && (
         <div className="relative z-[99999]">
             <DrawerSheet isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} dir={dir} mode="bottom">
