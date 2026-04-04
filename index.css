@@ -52,6 +52,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  position: fixed; /* تثبيت الجسم لمنع السحب المطاطي */
   top: 0;
   left: 0;
   right: 0;
@@ -109,27 +110,11 @@ body {
 /* ========================================================= */
 /* --- 💎 UTILITIES & FIXES (Preserved Layout) --- */
 /* ========================================================= */
-:root {
-  --safe-top: env(safe-area-inset-top);
-  --safe-bottom: env(safe-area-inset-bottom);
-}
 
-/* للمحتوى */
-.content-safe {
-  padding-bottom: var(--safe-bottom);
-}
-
-/* للقائمة السفلية */
-.bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-
-  padding-bottom: var(--safe-bottom);
-  margin-bottom: calc(var(--safe-bottom) * -1);
-}
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 .shimmer-hover { position: relative; overflow: hidden !important; }
+
 /* --- PRINT OVERLAY FIX --- */
 #temp-print-overlay {
     position: fixed;
