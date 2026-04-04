@@ -6,7 +6,7 @@ interface DrawerSheetProps {
     isOpen: boolean;
     onClose: () => void;
     children: React.ReactNode;
-    isRamadan?: boolean; // يمكن الاستغناء عنه إذا كان جزءاً من الثيم العام
+    isRamadan?: boolean;
     dir: string;
     mode?: 'bottom' | 'side' | 'full'; 
 }
@@ -18,42 +18,42 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
 
     useEffect(() => {
         setMounted(true);
+        // منع التمرير في الخلفية عندما تكون اللوحة مفتوحة
         if (isOpen) document.body.style.overflow = 'hidden';
         else document.body.style.overflow = '';
         return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
 
+    // نضمن عدم الرندر على السيرفر (SSR) لتجنب أخطاء Hydration
     if (!mounted) return null;
 
-    // 🧬 تحديد التموضع بناءً على الوضع (Side, Bottom, Full)
     let positioningStyles = '';
-    let hiddenStyles = ''; // 👈 السر في إخفاء الخط الأسود
+    let hiddenStyles = ''; 
 
+    // ✂️ استراتيجية الإخفاء المطلق حسب وضع اللوحة
     if (mode === 'full') {
         positioningStyles = 'inset-0 w-full h-full rounded-none';
-        hiddenStyles = 'translate-y-full opacity-0';
+        hiddenStyles = 'translate-y-full opacity-0 invisible';
     } 
     else if (mode === 'side') {
         positioningStyles = `top-0 bottom-0 h-full w-[90%] max-w-[450px] ${
             dir === 'rtl' ? 'left-0 rounded-r-[2rem]' : 'right-0 rounded-l-[2rem]'
         }`;
-        // 👈 دفع اللوحة بعيداً بمسافة 110% لإخفاء الظل والحدود تماماً
-        hiddenStyles = dir === 'rtl' ? '-translate-x-[110%] opacity-0' : 'translate-x-[110%] opacity-0';
+        hiddenStyles = dir === 'rtl' ? '-translate-x-[120%] opacity-0 invisible' : 'translate-x-[120%] opacity-0 invisible';
     } 
     else {
-        // الوضع الافتراضي (Bottom في الموبايل و Side في الديسكتوب)
         positioningStyles = `max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[92vh] max-md:rounded-t-[2.5rem] md:inset-y-0 ${
             dir === 'rtl' ? 'md:left-0 md:rounded-r-[2.5rem]' : 'md:right-0 md:rounded-l-[2.5rem]'
         } md:w-[450px] md:h-full`;
         
-        hiddenStyles = `max-md:translate-y-full ${
-            dir === 'rtl' ? 'md:-translate-x-[110%]' : 'md:translate-x-[110%]'
-        } opacity-0`;
+        hiddenStyles = `max-md:translate-y-[120%] ${
+            dir === 'rtl' ? 'md:-translate-x-[120%]' : 'md:translate-x-[120%]'
+        } opacity-0 invisible`;
     }
 
     const drawerContent = (
         <>
-            {/* 🌑 التضليل الخلفي (Backdrop) */}
+            {/* التضليل الخلفي */}
             <div
                 className={`fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-in-out ${
                     isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -62,16 +62,21 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
                 style={{ zIndex: 99998 }} 
             />
             
-            {/* 🧊 الحاوية المنزلقة (تستخدم الآن كلاسات الثيم المتغيرة) */}
+            {/* الحاوية الرئيسية للوحة */}
             <div
                 className={`fixed flex flex-col glass-panel transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                     ${positioningStyles}
-                    ${isOpen ? 'translate-x-0 translate-y-0 opacity-100' : hiddenStyles}
+                    ${isOpen ? 'translate-x-0 translate-y-0 opacity-100 visible' : hiddenStyles}
                     ${isRamadan ? 'ramadan-overrides shadow-glow' : ''}
                 `}
-                style={{ zIndex: 99999 }}
+                style={{ 
+                    zIndex: 99999,
+                    // مسح الظل عند الإغلاق لمنع الخطوط السوداء
+                    boxShadow: isOpen ? undefined : 'none',
+                    pointerEvents: isOpen ? 'auto' : 'none'
+                }}
             >
-                {/* 🌙 حقن ستايل رمضان الذكي (فقط إذا كان الثيم مفعلاً) */}
+                {/* ستايل رمضان الإضافي */}
                 {isRamadan && (
                     <style>{`
                         .ramadan-overrides { --border: rgba(251, 191, 36, 0.3); }
@@ -79,14 +84,14 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
                     `}</style>
                 )}
 
-                {/* 🖐️ مقبض السحب للموبايل */}
+                {/* مقبض السحب للموبايل */}
                 {(!mode || mode === 'bottom') && (
                     <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0 cursor-pointer" onClick={onClose}>
                         <div className="w-12 h-1.5 rounded-full bg-textPrimary/20" />
                     </div>
                 )}
 
-                {/* ❌ زر الإغلاق الذكي */}
+                {/* زر الإغلاق */}
                 <button
                     onClick={onClose}
                     className={`absolute top-6 ${dir === 'rtl' ? 'right-6' : 'left-6'} p-2.5 rounded-xl 
@@ -96,7 +101,7 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
                     <X size={20} />
                 </button>
 
-                {/* 📝 محتوى اللوحة */}
+                {/* محتوى اللوحة الداخلي */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className={`flex flex-col min-h-full p-6 ${(!mode || mode === 'bottom') ? 'pt-20' : 'pt-20'}`}
                          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}>
@@ -109,6 +114,7 @@ const DrawerSheet: React.FC<DrawerSheetProps> = ({
         </>
     );
 
+    // حقن اللوحة في نهاية الـ DOM
     return createPortal(drawerContent, document.body);
 };
 
