@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '../../utils/cn';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Menu, X, Minus, Square } from 'lucide-react'; 
@@ -31,6 +31,27 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const { theme } = useTheme();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
+  // 💉 الضربة القاضية المطلقة: السيطرة على لون نظام تشغيل الهاتف نفسه!
+  useEffect(() => {
+    // نحدد اللون بناءً على الثيم (رمادي فاتح للثيم الفاتح، وكحلي عميق للداكن والزجاجي)
+    const systemColor = theme === 'light' ? '#f1f5f9' : '#0f172a'; 
+    
+    // 1. إجبار الميتا تاج الخاص بمتصفح الجوال
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', systemColor);
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = systemColor;
+      document.head.appendChild(meta);
+    }
+
+    // 2. إجبار الجدار الخلفي المطلق للمتصفح (HTML & Body) لكي لا يظهر أي بياض عند السحب
+    document.body.style.backgroundColor = systemColor;
+    document.documentElement.style.backgroundColor = systemColor;
+  }, [theme]);
+
   const mobileNavIds = mobileNavItems.map(item => item.id);
   const extraNavItems = desktopNavItems.filter(item => !mobileNavIds.includes(item.id));
 
@@ -52,7 +73,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   };
 
   return (
-    // 💉 الجراحة الأولى: تغيير h-screen إلى fixed inset-0 w-full h-[100dvh] لملء الشاشة بالقوة
     <div className="fixed inset-0 w-full h-[100dvh] flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent" dir={dir}>
       
       {isDesktop && (
@@ -125,11 +145,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </main>
       </div>
 
-      {/* 💉 الجراحة الثانية: تغيير fixed إلى absolute مع زراعة "رقعة" تمتص البياض */}
+      {/* 💉 الجراحة النهائية للشريط السفلي: استخدام fixed بدلاً من absolute، وتمديد الشريط للأسفل عبر الـ padding */}
       <div 
-        className="md:hidden absolute bottom-0 left-0 right-0 z-[9999] glass-panel border-t border-borderColor rounded-none transition-all duration-500 flex flex-col"
+        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col m-0"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full">
+        <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full relative z-10">
           {mobileNavItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -174,8 +195,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               </button>
           )}
         </div>
-        {/* 💉 3. الرقعة السفلية: هذه الـ div ستتمدد برمجياً لتغطي أي مساحة فارغة في الأسفل! */}
-        <div className="w-full bg-inherit" style={{ height: 'env(safe-area-inset-bottom, 0px)' }}></div>
       </div>
 
       {showMoreMenu && (
