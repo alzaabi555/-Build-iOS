@@ -5,24 +5,23 @@ import {
     School, Download, Loader2, 
     PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
     X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
-    AlertTriangle, Palette, Award, Heart, Plus, Trash2, RefreshCcw
+    AlertTriangle, Palette, Award, Heart, Plus, Trash2, RefreshCcw,
+    BookOpen, MapPin // 👈 أيقونات جديدة أضفناها للتنسيق الأفقي
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../theme/ThemeProvider'; // 👈 استدعاء محرك الثيمات الأصلي
+import { useTheme } from '../theme/ThemeProvider'; 
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import alarmSound from '../assets/alarm.mp3';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 
-// رسمة افتراضية
 const DefaultAvatarSVG = ({ gender }: { gender: string }) => (
     <svg viewBox="0 0 100 100" className="w-full h-full bg-bgSoft" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="40" r="15" fill={gender === 'female' ? '#f472b6' : '#60a5fa'} opacity="0.8"/>
         <path d="M20 90 C20 70 35 60 50 60 C65 60 80 70 80 90" fill={gender === 'female' ? '#f472b6' : '#60a5fa'} opacity="0.6"/>
     </svg>
 );
-
 
 interface DashboardProps {
     students: any[];
@@ -66,10 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     currentSemester,
     onSemesterChange
 }) => {
-    // 🌍 استدعاء محرك الترجمة والاتجاه
     const { classes, setSelectedClass, t, dir } = useApp();
-    
-    // 🎨 تفعيل محرك الثيمات الأصلي
     const { theme, setTheme } = useTheme();
 
     if (!teacherInfo) return <div className="flex items-center justify-center h-screen text-textPrimary">{t('dashboardLoading')}</div>;
@@ -426,7 +422,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const isToday = todayRaw === dayIndex;
 
     const currentMonthIndex = new Date().getMonth();
-    const currentTasks = assessmentPlan.find(p => p.monthIndex === currentMonthIndex)?.tasks || [];
+    // جلب بيانات الشهر الحالي فقط للداشبورد (المخ سليم، الفلترة فقط في العرض)
+    const currentAssessmentPlan = assessmentPlan.find(p => p.monthIndex === currentMonthIndex);
 
     const monthNames = [t('jan'), t('feb'), t('mar'), t('apr'), t('may'), t('jun'), t('jul'), t('aug'), t('sep'), t('oct'), t('nov'), t('dec')];
 
@@ -436,95 +433,105 @@ const Dashboard: React.FC<DashboardProps> = ({
             className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent`}
             style={{ WebkitAppRegion: 'drag' } as any}
         >
-                <div className="flex justify-between items-center mb-2">
-                    {/* معلومات المعلم */}
-                    <div className="flex items-center gap-3 md:gap-5" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <div className="relative group">
+                <div className="flex justify-between items-start mb-2 pt-2">
+                    {/* 👤 معلومات المعلم والمدرسة (مساحة أكبر للتمدد) */}
+                    <div className="flex items-start gap-3 md:gap-5 flex-1 min-w-0 pr-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                        <div className="relative group shrink-0">
                             <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-bgSoft border border-borderColor flex items-center justify-center overflow-hidden shadow-inner transition-transform hover:scale-105">
                                 {getDisplayImage(teacherInfo?.avatar, teacherInfo?.gender) ? (
                                     <img src={teacherInfo.avatar} className="w-full h-full object-cover" alt="Teacher" onError={(e) => e.currentTarget.style.display='none'} />
                                 ) : <DefaultAvatarSVG gender={teacherInfo?.gender || 'male'} />}
                             </div>
-                            <button onClick={() => setShowEditModal(true)} className={`absolute -bottom-2 ${dir === 'rtl' ? '-right-2' : '-left-2'} p-1.5 md:p-2 rounded-full shadow-lg border-2 border-bgCard bg-primary text-white hover:scale-110 transition-transform`} title={t('editIdentity')}>
-                                <Edit3 size={12} className="md:w-3.5 md:h-3.5" strokeWidth={3} />
-                            </button>
                         </div>
-                        <div className="flex flex-col gap-0.5 md:gap-1">
-                            <h1 className="text-xl md:text-3xl font-black tracking-wide text-textPrimary">{teacherInfo?.name || t('welcome')}</h1>
-                            <div className="flex items-center gap-2 text-textSecondary">
-                                <p className="text-xs md:text-sm font-bold flex items-center gap-1">
-                                    <School size={12} className="md:w-3.5 md:h-3.5" /> {teacherInfo?.school || t('schoolFallback')}
+                        
+                        <div className="flex flex-col gap-1 md:gap-1.5 flex-1 min-w-0">
+                            <h1 className="text-xl md:text-2xl font-black tracking-wide text-textPrimary truncate" title={teacherInfo?.name || t('welcome')}>
+                                {teacherInfo?.name || t('welcome')}
+                            </h1>
+                            
+                            <div className="flex flex-wrap items-center gap-2 text-textSecondary">
+                                <p className="text-xs font-bold flex items-center gap-1 truncate" title={teacherInfo?.school || t('schoolFallback')}>
+                                    <School size={12} className="shrink-0" /> <span className="truncate">{teacherInfo?.school || t('schoolFallback')}</span>
                                 </p>
-                                <span className={`text-[9px] md:text-[10px] px-2 md:px-3 py-0.5 md:py-1 rounded-full font-bold border bg-bgSoft border-borderColor text-textSecondary`}>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border bg-bgSoft border-borderColor text-textSecondary shrink-0`}>
                                     {currentSemester === '1' ? t('semester1') : t('semester2')}
                                 </span>
+                            </div>
+
+                            {/* 🏆 الجراحة التجميلية: رص البطاقات الجانبية (المادة، المحافظة، العام) */}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
+                                {teacherInfo?.subject && (
+                                    <span className="text-[10px] font-bold text-primary flex items-center gap-1 bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md truncate">
+                                        <BookOpen size={10} className="shrink-0"/> <span className="truncate">{teacherInfo.subject}</span>
+                                    </span>
+                                )}
+                                {teacherInfo?.governorate && (
+                                    <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md truncate">
+                                        <MapPin size={10} className="shrink-0"/> <span className="truncate">{teacherInfo.governorate}</span>
+                                    </span>
+                                )}
+                                {teacherInfo?.academicYear && (
+                                    <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md shrink-0">
+                                        <Calendar size={10} /> {teacherInfo.academicYear}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
                     
-                    {/* الأزرار العلوية */}
-                    <div className="flex gap-2 md:gap-3" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        
-                        {/* 🌟 1. زر تغيير الثيم الديناميكي */}
-                        <button 
-                            onClick={() => {
-                                const themes = ['light', 'dark', 'glass', 'ramadan'];
-                                const currentIndex = themes.indexOf(theme || 'light');
-                                const nextTheme = themes[(currentIndex + 1) % themes.length];
-                                setTheme(nextTheme as any);
-                            }} 
-                            className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border transition-all bg-bgSoft border-borderColor text-primary hover:bg-primary hover:text-white shadow-sm"
-                            title={t('themeSettings') || 'تغيير المظهر'}
-                        >
-                            <Palette size={20} className="md:w-6 md:h-6" />
-                        </button>
-
-                        {/* ⚙️ 2. زر الإعدادات العامة */}
-                        <button 
-                            onClick={onOpenSettings} 
-                            className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border transition-all bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard hover:text-textPrimary"
-                            title={t('settings') || 'الإعدادات'}
-                        >
-                            <Settings size={20} className="md:w-6 md:h-6" />
-                        </button>
-
-                        {/* 👤 3. قائمة الخيارات الإضافية */}
-                        <div className="relative z-[50]">
-                             <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-10 h-10 md:w-12 md:h-12 bg-bgSoft hover:bg-bgCard border border-borderColor text-textSecondary hover:text-textPrimary rounded-2xl flex items-center justify-center transition-all`}>
-                                <User size={20} className="md:w-6 md:h-6" />
+                    {/* 🎛️ الأزرار العلوية (ترتيب عمودي مزدوج) */}
+                    <div className="flex flex-col gap-2 shrink-0 items-end" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                        <div className="flex gap-2">
+                            {/* 🌟 1. زر تغيير الثيم */}
+                            <button 
+                                onClick={() => {
+                                    const themes = ['light', 'dark', 'glass', 'ramadan'];
+                                    const currentIndex = themes.indexOf(theme || 'light');
+                                    const nextTheme = themes[(currentIndex + 1) % themes.length];
+                                    setTheme(nextTheme as any);
+                                }} 
+                                className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all bg-bgSoft border-borderColor text-primary hover:bg-primary hover:text-white shadow-sm"
+                                title={t('themeSettings') || 'تغيير المظهر'}
+                            >
+                                <Palette size={16} />
                             </button>
-                            {showSettingsDropdown && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
-                                    <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-3 w-60 rounded-2xl shadow-2xl border border-borderColor z-50 overflow-hidden animate-in zoom-in-95 origin-top-left bg-bgCard text-textPrimary`}>
-                                        <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className={`flex items-center gap-3 px-4 py-4 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
-                                            <div className={`p-2 rounded-lg bg-primary/10`}><User size={18} className="text-primary"/></div>
-                                            <span className="text-sm font-bold text-textPrimary">{t('editIdentity')}</span>
-                                        </button>
 
-                                        {/* ✅ تمت إضافة الزر المفقود لاستيراد الجدول هنا */}
-                                        <button onClick={() => { scheduleFileInputRef.current?.click(); }} className={`flex items-center gap-3 px-4 py-4 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
-                                            <div className={`p-2 rounded-lg bg-success/10`}><Download size={18} className="text-success"/></div>
-                                            <span className="text-sm font-bold text-textPrimary">{isImportingSchedule ? '...' : (t('importSchedule') || 'استيراد الجدول')}</span>
-                                        </button>
+                            {/* 👤 2. قائمة الخيارات (تعديل الهوية والاستيراد) */}
+                            <div className="relative z-[50]">
+                                <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-9 h-9 md:w-10 md:h-10 bg-bgSoft hover:bg-bgCard border border-borderColor text-textSecondary hover:text-textPrimary rounded-xl flex items-center justify-center transition-all shadow-sm`}>
+                                    <User size={16} />
+                                </button>
+                                {showSettingsDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)}></div>
+                                        <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-56 rounded-2xl shadow-xl border border-borderColor z-50 overflow-hidden animate-in zoom-in-95 origin-top-left bg-bgCard text-textPrimary`}>
+                                            <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
+                                                <div className={`p-1.5 rounded-lg bg-primary/10`}><Edit3 size={16} className="text-primary"/></div>
+                                                <span className="text-xs font-bold text-textPrimary">{t('editIdentity')}</span>
+                                            </button>
 
-                                        <button onClick={handleTestNotification} className={`flex items-center gap-3 px-4 py-4 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} transition-colors hover:bg-bgSoft`}>
-                                            <div className={`p-2 rounded-lg bg-warning/10`}><PlayCircle size={18} className="text-warning"/></div>
-                                            <span className="text-sm font-bold text-textPrimary">{t('testBell')}</span>
-                                        </button>
-                                    </div>
-                                </>
-                            )}
+                                            <button onClick={() => { scheduleFileInputRef.current?.click(); }} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
+                                                <div className={`p-1.5 rounded-lg bg-success/10`}><Download size={16} className="text-success"/></div>
+                                                <span className="text-xs font-bold text-textPrimary">{isImportingSchedule ? '...' : (t('importSchedule') || 'استيراد الجدول')}</span>
+                                            </button>
+
+                                            <button onClick={handleTestNotification} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} transition-colors hover:bg-bgSoft`}>
+                                                <div className={`p-1.5 rounded-lg bg-warning/10`}><PlayCircle size={16} className="text-warning"/></div>
+                                                <span className="text-xs font-bold text-textPrimary">{t('testBell')}</span>
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {/* ✅ تمت إضافة الحقل المخفي الخاص بالاستيراد بجوار الأزرار لكي يعمل بسلاسة */}
-                        <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
-
-                        {/* 🔔 4. زر الإشعارات */}
-                        <button onClick={onToggleNotifications} className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border transition-all ${notificationsEnabled ? 'bg-warning/10 border-warning/30 text-warning shadow-sm' : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard hover:text-textPrimary'}`}>
-                            {notificationsEnabled ? <Bell size={20} className="md:w-6 md:h-6 animate-pulse" /> : <BellOff size={20} className="md:w-6 md:h-6" />}
+                        {/* 🔔 3. زر الإشعارات (في السطر الثاني للترتيب) */}
+                        <button onClick={onToggleNotifications} className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all shadow-sm ${notificationsEnabled ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard hover:text-textPrimary'}`}>
+                            {notificationsEnabled ? <Bell size={16} className="animate-pulse" /> : <BellOff size={16} />}
                         </button>
                     </div>
+
+                    <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
                 </div>
             </header>
 
@@ -567,45 +574,55 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                 </div>
 
-                <div className="space-y-3">
+                {/* 📅 الجراحة الجذرية: تحويل الجدول لشبكة بطاقات ذكية (2 حصص في كل صف) */}
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
                     {todaySchedule.periods && todaySchedule.periods.map((subject: string, idx: number) => {
                         if (!subject) return null;
                         const time = periodTimes[idx] || { startTime: '00:00', endTime: '00:00' };
                         const isActive = isToday && checkActivePeriod(time.startTime, time.endTime);
                         const displaySubject = teacherInfo?.subject && teacherInfo.subject.trim().length > 0 ? teacherInfo.subject : subject;
 
-                        const activeClass = 'bg-primary text-white border-primary shadow-lg scale-105 z-10';
-                        const inactiveClass = 'glass-panel border-borderColor hover:shadow-md';
+                        const activeClass = 'bg-primary border-primary shadow-lg scale-[1.02] z-10';
+                        const inactiveClass = 'glass-card border-borderColor hover:shadow-md';
 
                         return (
-                            <div key={idx} className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${isActive ? activeClass : inactiveClass}`}>
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-bgSoft text-textSecondary'}`}>
+                            <div key={idx} className={`relative flex flex-col justify-between p-3 rounded-2xl border transition-all duration-300 gap-3 ${isActive ? activeClass : inactiveClass}`}>
+                                <div className="flex items-start gap-2">
+                                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-black text-sm md:text-lg shrink-0 ${isActive ? 'bg-white/20 text-white' : 'bg-bgSoft text-textSecondary'}`}>
                                         {getSubjectIcon(displaySubject) || getSubjectIcon(subject) || (idx + 1)}
                                     </div>
-                                    <div>
-                                       <div className="flex items-center gap-2">
-                                            <h4 className={`font-black text-sm ${isActive ? 'text-white' : 'text-textPrimary'}`}>{subject}</h4>
-                                            {isActive && <span className="text-[9px] bg-success text-white px-2 py-0.5 rounded-full font-bold animate-pulse shadow-sm">{t('now')}</span>}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-col items-start gap-0.5">
+                                            <h4 className={`font-black text-xs md:text-sm truncate w-full ${isActive ? 'text-white' : 'text-textPrimary'}`}>{subject}</h4>
+                                            {isActive && <span className="text-[8px] md:text-[9px] bg-success text-white px-1.5 py-0.5 rounded-md font-bold animate-pulse shadow-sm shrink-0 leading-none">{t('now')}</span>}
                                         </div>
-                                        <span className={`text-[10px] font-bold ${isActive ? 'text-white/80' : 'text-textSecondary'}`}>
-                                            {t('period')} {idx + 1} • {time.startTime} - {time.endTime}
-                                        </span>
                                     </div>
                                 </div>
-                                {isActive ? (
-                                    <button 
-                                        onClick={() => {
-                                            if (setSelectedClass) setSelectedClass(subject);
-                                            onNavigate('attendance');
-                                        }} 
-                                        className={`px-3 py-2 rounded-lg font-bold text-xs shadow-md flex items-center gap-1 active:scale-95 bg-white text-primary`}
-                                    >
-                                        {t('takeAttendance')} <ChevronLeft size={14} className={dir === 'ltr' ? 'rotate-180' : ''} />
-                                    </button>
-                                ) : (
-                                    <div className={`w-1.5 h-1.5 rounded-full bg-borderColor`}></div>
-                                )}
+
+                                <div className="flex items-center justify-between mt-auto">
+                                    <div className="flex flex-col">
+                                        <span className={`text-[8px] font-bold ${isActive ? 'text-white/70' : 'text-textSecondary/70'}`}>{t('period')} {idx + 1}</span>
+                                        <span className={`text-[10px] font-bold font-mono ${isActive ? 'text-white/90' : 'text-textSecondary'}`}>
+                                            {time.startTime}-{time.endTime}
+                                        </span>
+                                    </div>
+                                    
+                                    {isActive ? (
+                                        <button 
+                                            onClick={() => {
+                                                if (setSelectedClass) setSelectedClass(subject);
+                                                onNavigate('attendance');
+                                            }} 
+                                            className={`p-1.5 md:px-2 md:py-1.5 rounded-lg font-bold text-[10px] shadow-md flex items-center gap-1 active:scale-95 bg-white text-primary`}
+                                            title={t('takeAttendance')}
+                                        >
+                                            <span className="hidden md:inline">{t('takeAttendance')}</span>
+                                            <CheckCircle2 size={14} className="md:w-3 md:h-3" />
+                                        </button>
+                                    ) : (
+                                        <div className={`w-1.5 h-1.5 rounded-full bg-borderColor mb-1`}></div>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
@@ -623,38 +640,35 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <Settings size={18} />
                         </button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {assessmentPlan.map((plan) => {
-                            const isCurrent = currentMonthIndex === plan.monthIndex;
-                            const isPast = currentMonthIndex > plan.monthIndex;
-                            
-                            let monthBg = 'bg-bgSoft border-borderColor';
-                            if(isCurrent) monthBg = 'bg-primary/10 border-primary/30';
-                            if(isPast) monthBg = 'bg-bgSoft border-borderColor opacity-50 grayscale';
-
-                            return (
-                                <div key={plan.id} className={`p-4 rounded-2xl border transition-all ${monthBg}`}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className={`text-xs font-black ${isCurrent ? 'text-primary' : 'text-textPrimary'}`}>{t('monthPrefix')} {plan.monthName}</span>
-                                        {isCurrent && <span className={`text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse bg-primary text-white shadow-sm`}>{t('currentMonthLabel')}</span>}
-                                        {isPast && <CheckCircle2 className={`w-3.5 h-3.5 text-success`} />}
-                                    </div>
-                                    <ul className="space-y-1.5">
-                                        {plan.tasks.map((task, idx) => (
-                                            <li key={idx} className={`flex items-start gap-2 text-[10px] font-bold ${isCurrent ? 'text-textPrimary' : 'text-textSecondary'}`}>
-                                                <div className={`w-1 h-1 rounded-full mt-1.5 shrink-0 ${isCurrent ? 'bg-primary' : 'bg-textSecondary'}`}></div>
-                                                <span className={isPast ? 'line-through' : ''}>{task}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                    
+                    {/* 🎯 إخفاء الأشهر وعرض الشهر الحالي فقط */}
+                    <div className="grid grid-cols-1 gap-3">
+                        {currentAssessmentPlan ? (
+                            <div key={currentAssessmentPlan.id} className={`p-4 rounded-2xl border transition-all bg-primary/10 border-primary/30`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className={`text-xs font-black text-primary`}>{t('monthPrefix')} {currentAssessmentPlan.monthName}</span>
+                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse bg-primary text-white shadow-sm`}>{t('currentMonthLabel')}</span>
                                 </div>
-                            );
-                        })}
+                                <ul className="space-y-1.5">
+                                    {currentAssessmentPlan.tasks.map((task, idx) => (
+                                        <li key={idx} className={`flex items-start gap-2 text-[10px] font-bold text-textPrimary`}>
+                                            <div className={`w-1 h-1 rounded-full mt-1.5 shrink-0 bg-primary`}></div>
+                                            <span>{task}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="p-4 rounded-2xl border border-dashed border-borderColor text-center text-textSecondary text-xs font-bold bg-bgSoft">
+                                لا توجد خطة تقويم لهذا الشهر
+                            </div>
+                        )}
                     </div>
+
                 </div>
             </div>
 
-            {/* DrawerSheets */}
+            {/* المودالز والنوافذ المنبثقة تبقى بكامل قوتها البرمجية وبدون مساس */}
             <DrawerSheet isOpen={showPlanSettingsModal} onClose={() => setShowPlanSettingsModal(false)} dir={dir}>
                 <div className="flex flex-col h-full w-full">
                     <div className={`flex justify-between items-center mb-4 pb-2 border-b border-borderColor`}>
