@@ -21,7 +21,7 @@ export const translations = {
   syncDeviceTitle: "مزامنة الأجهزة",
   syncBackupBtn: "رفع احتياطي",
   syncRestoreBtn: "جلب البيانات",
-
+    navSync: " مركز المزامنة",
   // 📚 Library & Tasks (المفاتيح المفقودة في الصور)
   libraryTitle: "إدارة المكتبة والمصادر",
   librarySubtitle: "أرسل شروحات الفيديو والملفات لطلابك بضغطة زر 🚀",
@@ -443,9 +443,11 @@ export const translations = {
     thanksForCooperation: "شاكرين لكم حسن تعاونكم واهتمامكم بمصلحة الطالب.",
     schoolPrincipalMale: "مدير المدرسة",
     noStudentDataToDisplay: "لا توجد بيانات طلاب لعرضها",
+    selectStudentPlaceholder : " اختيار طالب ",
 
     // Student Groups
     noClassesAdded: "لا توجد فصول مضافة",
+    addBtn : " إضافة ",
     manageGroupsTitle: "إدارة المجموعات",
     groupsSubtitle: "هندسة التوزيع للتعلم التعاوني",
     classCategorizations: "تقسيمات الصف",
@@ -788,6 +790,7 @@ navMore: "More",
   syncDeviceTitle: "Device Sync",
   syncBackupBtn: "Cloud Backup",
   syncRestoreBtn: "Restore Data",
+   navSync: "Cloud Sync",
   
   // 📚 Library & Tasks (المفاتيح المفقودة في الصور)
   libraryTitle: "Library & Resources",
@@ -1066,6 +1069,7 @@ navMore: "More",
 
     // Reports - English Keys
     closeAndReturn: "Close & Return",
+    selectStudentPlaceholder :"Student selection",
     processingPrint: "Processing...",
     exportToPrint: "Export for Printing",
     pdfGenerationError: "Error generating PDF.",
@@ -1200,6 +1204,7 @@ navMore: "More",
 
     // Student Groups
     noClassesAdded: "No classes added",
+    addBtn : " addition ",
     manageGroupsTitle: "Group Management",
     groupsSubtitle: "Distribution engineering for cooperative learning",
     classCategorizations: "Class Categorizations",
