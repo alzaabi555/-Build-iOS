@@ -6,7 +6,8 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     
     return {
-      base: '/',  // ✅ مهم جداً للمسارات
+      // ✅ تم تعديل المسار هنا إلى نسبي './' وهذا هو سر عودة الثيمات
+      base: './',  
       publicDir: 'public',  // ✅ يضمن نسخ الملفات من public/
       
       server: {
