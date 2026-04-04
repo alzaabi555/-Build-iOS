@@ -52,18 +52,19 @@ html {
   padding: 0;
   overflow: hidden; /* منع تمرير الصفحة بالكامل */
   background-color: var(--bg); 
+  overscroll-behavior-y: none; /* 🔪 يمنع توليد مساحات خارج الشاشة */
 }
 
 body {
   background-color: var(--bg);
-  color: var(--text);
-  
+  color: var(--text); 
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
   position: fixed; /* تثبيت الجسم لمنع السحب المطاطي */
+  overscroll-behavior-y: none; /* 🔪 القطع النهائي للمساحات البيضاء */
   top: 0;
   left: 0;
   right: 0;
