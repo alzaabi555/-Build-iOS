@@ -85,46 +85,46 @@ const TeacherLibrary: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-white pt-6 px-6" dir={dir}>
+    <div className="flex flex-col h-full bg-transparent text-textPrimary pt-6 px-6" dir={dir}>
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-white flex items-center gap-2 mb-2">
-          <Library className="w-8 h-8 text-fuchsia-400 drop-shadow-[0_0_10px_rgba(232,121,249,0.5)]" />
+        <h1 className="text-2xl font-black text-textPrimary flex items-center gap-2 mb-2">
+          <Library className="w-8 h-8 text-primary drop-shadow-sm" />
           {t('libraryTitle') || 'إدارة المكتبة والمصادر'}
         </h1>
-        <p className="text-xs font-bold text-indigo-200/70">
+        <p className="text-xs font-bold text-textSecondary">
           {t('librarySubtitle') || 'أرسل شروحات الفيديو والملفات لطلابك بضغطة زر 🚀'}
         </p>
       </div>
 
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-2xl relative overflow-hidden">
+      <div className="glass-panel border border-borderColor rounded-[2rem] p-6 shadow-sm relative overflow-hidden">
         {success && (
-          <div className="absolute inset-0 z-20 bg-emerald-500/20 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <CheckCircle2 className="w-16 h-16 text-emerald-400 mb-2 drop-shadow-md" />
-            <h2 className="text-lg font-black text-white">{t('sendSuccess') || 'تم الإرسال للطلاب بنجاح!'}</h2>
+          <div className="absolute inset-0 z-20 bg-success/10 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <CheckCircle2 className="w-16 h-16 text-success mb-2 drop-shadow-md" />
+            <h2 className="text-lg font-black text-textPrimary">{t('sendSuccess') || 'تم الإرسال للطلاب بنجاح!'}</h2>
           </div>
         )}
 
         <form onSubmit={handleSend} className="space-y-6 relative z-10">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-indigo-200">{t('lessonTitleLabel') || 'عنوان الدرس أو الملف'}</label>
+            <label className="text-xs font-bold text-textSecondary">{t('lessonTitleLabel') || 'عنوان الدرس أو الملف'}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('lessonTitlePlaceholder') || "مثال: شرح درس القسمة المطولة..."}
-              className={`w-full bg-black/20 border border-white/10 rounded-2xl py-3.5 px-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}
+              className={`w-full bg-bgCard border-2 border-borderColor rounded-2xl py-3.5 px-4 text-textPrimary placeholder:text-textSecondary focus:outline-none focus:border-primary transition-colors ${dir === 'rtl' ? 'text-right' : 'text-left'}`}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-indigo-200">{t('fileLinkLabel') || 'رابط الملف (يوتيوب أو درايف)'}</label>
+            <label className="text-xs font-bold text-textSecondary">{t('fileLinkLabel') || 'رابط الملف (يوتيوب أو درايف)'}</label>
             <input
               type="url"
               value={link}
               onChange={(e) => setLink(e.target.value)}
               placeholder="https://..."
-              className="w-full bg-black/20 border border-white/10 rounded-2xl py-3.5 px-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 text-left"
+              className="w-full bg-bgCard border-2 border-borderColor rounded-2xl py-3.5 px-4 text-textPrimary placeholder:text-textSecondary focus:outline-none focus:border-primary transition-colors text-left"
               dir="ltr"
               required
             />
@@ -133,11 +133,11 @@ const TeacherLibrary: React.FC = () => {
           {/* 🧠 منطقة التحديد المتعدد للفصول بدلاً من القائمة المنسدلة */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-indigo-200">{t('targetClassLabel') || 'إرسال إلى الفصول:'}</label>
+              <label className="text-xs font-bold text-textSecondary">{t('targetClassLabel') || 'إرسال إلى الفصول:'}</label>
               <button 
                 type="button" 
                 onClick={toggleAllClasses}
-                className="text-[10px] font-bold px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+                className="text-[10px] font-bold px-3 py-1 rounded-lg bg-bgSoft hover:bg-bgCard text-textSecondary hover:text-primary transition-colors"
               >
                 {selectedClasses.length === classes.length ? (t('deselectAll') || 'إلغاء الكل') : (t('selectAll') || 'تحديد الكل')}
               </button>
@@ -153,23 +153,23 @@ const TeacherLibrary: React.FC = () => {
                     onClick={() => toggleClass(c)}
                     className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
                       isSelected 
-                        ? 'bg-fuchsia-500/20 border-fuchsia-500/50 text-fuchsia-300 shadow-[0_0_10px_rgba(217,70,239,0.3)]' 
-                        : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5'
+                        ? 'bg-primary border-primary text-white shadow-md' 
+                        : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard'
                     }`}
                   >
-                    {isSelected && <Check size={12} className="text-fuchsia-400" />}
+                    {isSelected && <Check size={12} className="text-white" />}
                     {c}
                   </button>
                 );
               })}
             </div>
-            {selectedClasses.length === 0 && <p className="text-[10px] text-rose-400 font-bold">{t('alertSelectOneClass') || 'يرجى اختيار فصل واحد على الأقل'}</p>}
+            {selectedClasses.length === 0 && <p className="text-[10px] text-danger font-bold">{t('alertSelectOneClass') || 'يرجى اختيار فصل واحد على الأقل'}</p>}
           </div>
 
           <button
             type="submit"
             disabled={loading || selectedClasses.length === 0}
-            className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-400 hover:to-purple-500 disabled:opacity-50 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] transition-all active:scale-95 mt-4"
+            className="w-full bg-primary hover:bg-primary/80 disabled:opacity-50 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 mt-4"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5" /> {t('sendToLibraryBtn') || 'إرسال للمكتبة'}</>}
           </button>

@@ -123,7 +123,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
   // 🌍 تطبيق الاتجاه العام على الصفحة
   return (
-    <div className={`flex flex-col h-full space-y-4 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-900 ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    <div className={`flex flex-col h-full space-y-4 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
         
         {/* Header Action Bar */}
         <div className="flex items-center justify-between glass-heavy p-4 rounded-[2rem] print:hidden">
@@ -132,7 +132,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                     <ArrowRight className={`w-5 h-5 text-slate-600 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
                 <div>
-                    <h2 className="text-lg font-black text-slate-900">{student.name}</h2>
+                    <h2 className="text-lg font-black text-textPrimary">{student.name}</h2>
                     <p className="text-xs font-bold text-gray-500">{student.classes[0]} • {t('semesterReportText')} {currentSemester}</p>
                 </div>
             </div>
@@ -150,7 +150,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
 
         {/* Report Preview (Screen) - 🌍 ربط dir بالمحتوى المطبوع ليعكس اللغات */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
-            <div id="report-content" className={`bg-white text-black p-8 rounded-none md:rounded-[2rem] max-w-4xl mx-auto shadow-sm border border-gray-200 relative overflow-hidden box-border ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+            <div id="report-content" className={`bg-bgCard text-black p-8 rounded-none md:rounded-[2rem] max-w-4xl mx-auto shadow-sm border border-gray-200 relative overflow-hidden box-border ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
                 
                 {/* Formal Header */}
                 <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-6">
@@ -203,7 +203,7 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                             <div className="bg-rose-100 border border-black text-rose-900 px-3 py-1 rounded-lg text-xs font-bold">{t('negativePointsLabel')} {totalNegativePoints}</div>
                         </div>
                     </div>
-                    <div className="w-24 h-24 bg-white rounded-2xl border-2 border-black p-1 shadow-sm">
+                    <div className="w-24 h-24 bg-bgCard rounded-2xl border-2 border-black p-1 shadow-sm">
                          {student.avatar ? <img src={student.avatar} className="w-full h-full object-cover rounded-xl" /> : <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-xl text-3xl font-black text-black">{student.name.charAt(0)}</div>}
                     </div>
                 </div>

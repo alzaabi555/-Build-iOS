@@ -9,7 +9,7 @@ import {
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
-import DrawerSheet from './DrawerSheet';
+import { Drawer as DrawerSheet } from './ui/Drawer';
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
@@ -284,29 +284,52 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const handleRandomPick = () => {
         const todayStr = new Date().toLocaleDateString('en-CA');
-        const presentStudents = filteredStudents.filter(s => {
-            const attendanceRecord = s.attendance.find(a => a.date === todayStr);
+        const now = new Date();
+
+        // 1. تصفية الطلاب المتاحين (استبعاد الغائبين + أصحاب السلوك السلبي اليوم)
+        const eligibleStudents = filteredStudents.filter(student => {
+            // استبعاد الغائب أو الهارب
+            const attendanceRecord = student.attendance?.find(a => a.date === todayStr);
             const isAbsentOrTruant = attendanceRecord?.status === 'absent' || attendanceRecord?.status === 'truant';
-            return !isAbsentOrTruant;
+            if (isAbsentOrTruant) return false;
+
+            // استبعاد من لديه سلوك سلبي في نفس اليوم
+            const hasNegativeToday = (student.behaviors || []).some(b => {
+                const bDate = new Date(b.date);
+                return b.type === 'negative' && 
+                       bDate.getDate() === now.getDate() &&
+                       bDate.getMonth() === now.getMonth() &&
+                       bDate.getFullYear() === now.getFullYear();
+            });
+            if (hasNegativeToday) return false;
+
+            return true; // الطالب حاضر وسلوكه نظيف اليوم!
         });
 
-        if (presentStudents.length === 0) {
-            alert(t('alertNoPresentStudentsForDraw'));
+        // إذا لم يكن هناك أي طالب متاح (الكل إما غائب أو معاقب)
+        if (eligibleStudents.length === 0) {
+            alert(t('alertNoPresentStudentsForDraw') || 'لا يوجد طلاب متاحين للقرعة (الجميع غائب أو لديه سلوك سلبي)');
             return;
         }
 
-        const eligibleCandidates = presentStudents.filter(s => !pickedStudentIds.includes(s.id));
+        // 2. تصفية الطلاب الذين لم يسبق اختيارهم في هذه الجولة
+        let candidates = eligibleStudents.filter(s => !pickedStudentIds.includes(s.id));
 
-        if (eligibleCandidates.length === 0) {
-            if (confirm(t('alertAllPresentSelected'))) {
-                setPickedStudentIds([]);
+        // 3. إعادة الضبط الذكي في حال تم سحب جميع الطلاب المتاحين
+        if (candidates.length === 0) {
+            if (confirm(t('alertAllPresentSelected') || 'تم سحب جميع الطلاب المتاحين. هل تريد تصفير القرعة والبدء من جديد؟')) {
+                setPickedStudentIds([]); // تصفير الذاكرة
+                candidates = eligibleStudents; // إعادة إدخال جميع الطلاب المتاحين للقرعة من جديد
+            } else {
+                return; // إلغاء العملية إذا لم يرد المعلم التصفير
             }
-            return;
         }
 
-        const randomIndex = Math.floor(Math.random() * eligibleCandidates.length);
-        const winner = eligibleCandidates[randomIndex];
+        // 4. السحب العشوائي العادل من القائمة النقية
+        const randomIndex = Math.floor(Math.random() * candidates.length);
+        const winner = candidates[randomIndex];
 
+        // تسجيل الطالب كـ "تم اختياره" حتى لا يتكرر
         setPickedStudentIds(prev => [...prev, winner.id]);
         setRandomWinner(winner);
         playSound('positive'); 
@@ -528,20 +551,20 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     return (
-   <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative ${isRamadan ? 'text-white' : 'text-slate-800'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+   <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
             
 <header 
-    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent ${isRamadan ? 'text-white' : 'text-slate-800'}`}
+    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary`}
     style={{ WebkitAppRegion: 'drag' } as any}
 >
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="bg-white/10 p-2 rounded-xl border border-white/20">
-                        <Users className="w-5 h-5 text-white" />
+                    <div className="bg-bgSoft p-2 rounded-xl border border-borderColor transition-all duration-300">
+                        <Users className="w-5 h-5 text-textPrimary" />
                     </div>
                     <div>
                         <h1 className="text-xl md:text-2xl font-black tracking-wide">{t('studentsTitle')}</h1>
-                        <p className={`text-[10px] font-bold opacity-80 ${isRamadan ? 'text-indigo-200' : 'text-blue-200'}`}>{safeStudents.length} {t('registeredStudents')}</p>
+                        <p className={`text-[10px] font-bold opacity-80 text-textSecondary`}>{safeStudents.length} {t('registeredStudents')}</p>
                     </div>
                 </div>
 
@@ -565,7 +588,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <div className="relative">
                         <button 
                             onClick={() => setShowTimerModal(true)} 
-                            className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : (isRamadan ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-white/10 border-white/20 text-white hover:bg-white/20')}`}
+                            className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}
                             title={t('timerTitle')}
                         >
                             <Timer className="w-5 h-5" />
@@ -577,36 +600,36 @@ const StudentList: React.FC<StudentListProps> = ({
 
                     <button 
                         onClick={handleRandomPick} 
-                        className={`p-2.5 rounded-xl border active:scale-95 transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}
+                        className={`p-2.5 rounded-xl border active:scale-95 transition-all bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
                         title={t('randomDraw')}
                     >
                         <Dices className="w-5 h-5" />
                     </button>
 
                     <div className="relative z-[9999]">
-                        <button onClick={() => setShowMenu(!showMenu)} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${showMenu ? (isRamadan ? 'bg-white/20 border-white/30 text-white' : 'bg-white text-[#1e3a8a]') : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}>
+                        <button onClick={() => setShowMenu(!showMenu)} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${showMenu ? 'bg-bgCard border-borderColor text-textPrimary' : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}>
                             <MoreVertical className="w-5 h-5" />
                         </button>
                         {showMenu && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                            <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-56 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left ${isRamadan ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+                            <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-56 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
                                 <div className="p-1">
-                                        <button onClick={handleQuietAndDiscipline} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold border-b ${isRamadan ? 'hover:bg-purple-900/40 border-white/10 text-purple-200' : 'hover:bg-purple-50 border-slate-50 text-slate-700'}`}>
-                                            <Sparkles className={`w-4 h-4 ${isRamadan ? 'text-purple-400' : 'text-purple-600'}`} /> {t('rewardDiscipline')}
+                                        <button onClick={handleQuietAndDiscipline} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold border-b hover:bg-bgSoft border-borderColor text-textPrimary`}>
+                                            <Sparkles className={`w-4 h-4 text-purple-500`} /> {t('rewardDiscipline')}
                                         </button>
-                                        <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold ${isRamadan ? 'hover:bg-white/10 text-indigo-100' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                            <UserPlus className={`w-4 h-4 ${isRamadan ? 'text-indigo-400' : 'text-indigo-600'}`} /> {t('addStudentManually')}
+                                        <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
+                                            <UserPlus className={`w-4 h-4 text-primary`} /> {t('addStudentManually')}
                                         </button>
-                                        <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold ${isRamadan ? 'hover:bg-white/10 text-indigo-100' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                            <FileSpreadsheet className={`w-4 h-4 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} /> {t('importFromExcelMenu')}
+                                        <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
+                                            <FileSpreadsheet className={`w-4 h-4 text-success`} /> {t('importFromExcelMenu')}
                                         </button>
-                                        <div className={`my-1 border-t ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}></div>
-                                        <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold ${isRamadan ? 'hover:bg-white/10 text-indigo-100' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                            <LayoutGrid className={`w-4 h-4 ${isRamadan ? 'text-amber-400' : 'text-amber-600'}`} /> {t('addNewClassMenu')}
+                                        <div className={`my-1 border-t border-borderColor`}></div>
+                                        <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
+                                            <LayoutGrid className={`w-4 h-4 text-warning`} /> {t('addNewClassMenu')}
                                         </button>
-                                        <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold ${isRamadan ? 'hover:bg-white/10 text-indigo-100' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                            <Settings className={`w-4 h-4 ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`} /> {t('manageClassesMenu')}
+                                        <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
+                                            <Settings className={`w-4 h-4 text-textSecondary`} /> {t('manageClassesMenu')}
                                         </button>
                                 </div>
                             </div>
@@ -618,24 +641,24 @@ const StudentList: React.FC<StudentListProps> = ({
 
             <div className="space-y-3 relative z-10" style={{ WebkitAppRegion: 'no-drag' } as any}>
                 <div className="relative">
-                    <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-blue-200`} />
+                    <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
                     <input 
                         type="text" 
                         placeholder={t('searchStudent')} 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all ${isRamadan ? 'bg-white/10 border-white/20 text-white placeholder:text-blue-200/50 focus:bg-white/20' : 'bg-white/20 border-white/30 text-white placeholder:text-blue-100 focus:bg-white/30'}`}
+                        className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
                     />
                 </div>
                 
                {/* ================= شريط اختيار الفصول (الكبسولة الزجاجية الفخمة) ================= */}
                 <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
-                    <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all ${isRamadan ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                    <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
                         
                         {/* زر (الكل) */}
                         <button 
                             onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
-                            className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                            className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
                         >
                             {t('all')}
                         </button>
@@ -643,10 +666,10 @@ const StudentList: React.FC<StudentListProps> = ({
                         {/* أزرار الصفوف (Grades) */}
                         {availableGrades.map(g => (
                             <React.Fragment key={`grade-${g}`}>
-                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
                                 <button 
                                     onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
-                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
                                 >
                                     {t('gradePrefix')} {g}
                                 </button>
@@ -656,10 +679,10 @@ const StudentList: React.FC<StudentListProps> = ({
                         {/* أزرار الفصول (Classes) */}
                         {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
                             <React.Fragment key={`class-${c}`}>
-                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-slate-300'}`} />
+                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
                                 <button 
                                     onClick={() => setSelectedClass(c)} 
-                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? (isRamadan ? 'bg-white/15 text-white shadow-lg' : 'bg-white text-indigo-600 shadow-sm') : (isRamadan ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800')}`}
+                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
                                 >
                                     {c}
                                 </button>
@@ -668,7 +691,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
                    </div>
                 </div>
-            </div> {/* 👈 الغرزة المفقودة: أضف هذا السطر فقط ليغلق الحاوية */}
+            </div> 
         </header>
 
         {/* List */}
@@ -677,7 +700,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 {filteredStudents.length > 0 ? filteredStudents.map(student => {
                     const totalPoints = calculateTotalPoints(student);
                     return (
-                    <div key={student.id} className={`rounded-[1.5rem] border flex flex-col items-center overflow-hidden transition-all duration-300 ${isRamadan ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-100 hover:shadow-md'}`}>
+                    <div key={student.id} className={`glass-panel border-borderColor rounded-[1.5rem] flex flex-col items-center overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
                         <div className="p-4 flex flex-col items-center w-full relative">
                             
                             <div className="relative mb-3">
@@ -693,44 +716,44 @@ const StudentList: React.FC<StudentListProps> = ({
                                 )}
                             </div>
 
-                            <h3 className={`font-black text-sm text-center line-clamp-1 w-full ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{student.name}</h3>
+                            <h3 className={`font-black text-sm text-center line-clamp-1 w-full text-textPrimary`}>{student.name}</h3>
                             <div className="flex gap-1 mt-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isRamadan ? 'bg-white/10 text-indigo-200' : 'bg-slate-100 text-slate-500'}`}>{student.classes && student.classes.length > 0 ? student.classes[0] : t('unspecified')}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold bg-bgSoft text-textSecondary`}>{student.classes && student.classes.length > 0 ? student.classes[0] : t('unspecified')}</span>
                             </div>
                         </div>
 
-                        <div className={`w-full h-px ${isRamadan ? 'bg-white/10' : 'bg-slate-100'}`}></div>
+                        <div className={`w-full h-px bg-borderColor`}></div>
 
                         {/* أزرار الإجراءات */}
-                        <div className={`flex w-full divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} ${isRamadan ? 'divide-white/10' : 'divide-slate-100'}`}>
+                        <div className={`flex w-full divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} divide-borderColor`}>
                             
-                            <button onClick={() => handleBehavior(student, 'positive')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-emerald-500/20 active:bg-emerald-500/30' : 'hover:bg-emerald-50 active:bg-emerald-100'}`} title={t('positiveReinforcement')}>
-                                <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                            <button onClick={() => handleBehavior(student, 'positive')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-emerald-500/10 active:bg-emerald-500/20`} title={t('positiveReinforcement')}>
+                                <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform text-emerald-500`} />
                             </button>
                             
-                            <button onClick={() => handleBehavior(student, 'negative')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-rose-500/20 active:bg-rose-500/30' : 'hover:bg-rose-50 active:bg-rose-100'}`} title={t('behavioralAlert')}>
-                                <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-rose-400' : 'text-rose-500'}`} />
+                            <button onClick={() => handleBehavior(student, 'negative')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-rose-500/10 active:bg-rose-500/20`} title={t('behavioralAlert')}>
+                                <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform text-rose-500`} />
                             </button>
 
-                            <button onClick={() => handleSendSmartReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-blue-500/20 active:bg-blue-500/30' : 'hover:bg-blue-50 active:bg-blue-100'}`} title="تقرير الدرجات والتميز (واتساب)">
-                                <MessageCircle className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-blue-400' : 'text-blue-500'}`} />
+                            <button onClick={() => handleSendSmartReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-blue-500/10 active:bg-blue-500/20`} title="تقرير الدرجات والتميز (واتساب)">
+                                <MessageCircle className={`w-4 h-4 group-hover:scale-110 transition-transform text-blue-500`} />
                             </button>
 
-                            <button onClick={() => handleSendNegativeReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-amber-500/20 active:bg-amber-500/30' : 'hover:bg-amber-50 active:bg-amber-100'}`} title="تقرير سلوكي إنذار (واتساب)">
-                                <Send className={`w-4 h-4 group-hover:scale-110 transition-transform ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`} />
+                            <button onClick={() => handleSendNegativeReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-amber-500/10 active:bg-amber-500/20`} title="تقرير سلوكي إنذار (واتساب)">
+                                <Send className={`w-4 h-4 group-hover:scale-110 transition-transform text-amber-500`} />
                             </button>
                             
-                            <button onClick={() => setEditingStudent(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group ${isRamadan ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-slate-50 active:bg-slate-100'}`} title={t('editStudentData')}>
-                                <Edit2 className={`w-4 h-4 transition-colors ${isRamadan ? 'text-slate-400 group-hover:text-indigo-300' : 'text-slate-400 group-hover:text-indigo-500'}`} />
+                            <button onClick={() => setEditingStudent(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-bgSoft active:bg-bgSoft/80`} title={t('editStudentData')}>
+                                <Edit2 className={`w-4 h-4 transition-colors text-textSecondary group-hover:text-primary`} />
                             </button>
                             
                         </div>
                     </div>
                 )}) : (
-                    <div className={`flex flex-col items-center justify-center py-20 col-span-full text-center ${isRamadan ? 'opacity-70' : 'opacity-50'}`}>
-                        <UserPlus className={`w-16 h-16 mb-4 ${isRamadan ? 'text-white/20' : 'text-gray-300'}`} />
-                        <p className={`text-sm font-bold ${isRamadan ? 'text-indigo-200/50' : 'text-gray-400'}`}>{t('noMatchingStudents')}</p>
-                        {safeClasses.length === 0 && <p className={`text-xs mt-2 font-bold cursor-pointer ${isRamadan ? 'text-amber-400' : 'text-indigo-400'}`} onClick={() => setShowAddClassModal(true)}>{t('startByAddingClass')}</p>}
+                    <div className={`flex flex-col items-center justify-center py-20 col-span-full text-center opacity-70`}>
+                        <UserPlus className={`w-16 h-16 mb-4 text-textSecondary/50`} />
+                        <p className={`text-sm font-bold text-textSecondary`}>{t('noMatchingStudents')}</p>
+                        {safeClasses.length === 0 && <p className={`text-xs mt-2 font-bold cursor-pointer text-primary`} onClick={() => setShowAddClassModal(true)}>{t('startByAddingClass')}</p>}
                     </div>
                 )}
             </div>
@@ -741,48 +764,48 @@ const StudentList: React.FC<StudentListProps> = ({
         {/* 📥 1. نافذة صندوق الوارد للرسائل */}
         <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
             <div className="flex flex-col h-full w-full">
-                <div className={`flex justify-between items-center mb-6 border-b pb-4 shrink-0 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-                    <h3 className="font-black text-xl flex items-center gap-2 text-purple-600">
+                <div className={`flex justify-between items-center mb-6 border-b pb-4 shrink-0 border-borderColor`}>
+                    <h3 className="font-black text-xl flex items-center gap-2 text-primary">
                         <Mail className="w-6 h-6" />
                         {t('parentsInboxTitle')}
                     </h3>
-                    <button onClick={fetchParentMessages} className="p-2 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors" title={t('refreshMessages')}>
-                        <RefreshCcw className={`w-5 h-5 ${isFetchingMsgs ? 'animate-spin text-purple-600' : ''}`} />
+                    <button onClick={fetchParentMessages} className="p-2 bg-bgSoft text-textSecondary rounded-full hover:bg-bgCard transition-colors" title={t('refreshMessages')}>
+                        <RefreshCcw className={`w-5 h-5 ${isFetchingMsgs ? 'animate-spin text-primary' : ''}`} />
                     </button>
                 </div>
 
                 <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
                     {isFetchingMsgs && messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-10 h-full">
-                            <Loader2 className="w-10 h-10 animate-spin text-purple-500 mb-2" />
-                            <p className="text-slate-500 font-bold">{t('fetchingMessages')}</p>
+                            <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
+                            <p className="bg-transparent font-bold text-textSecondary">{t('fetchingMessages')}</p>
                         </div>
                     ) : messages.length === 0 ? (
                         <div className="text-center py-10 h-full flex flex-col justify-center">
-                            <Mail className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-                            <p className="text-slate-500 font-bold">{t('noNewMessages')}</p>
+                            <Mail className="w-16 h-16 text-textSecondary/30 mx-auto mb-4" />
+                            <p className="bg-transparent font-bold text-textSecondary">{t('noNewMessages')}</p>
                         </div>
                     ) : (
                         messages.map((msg, index) => (
-                            <div key={index} className="p-5 border border-slate-200 rounded-2xl bg-slate-50 relative overflow-hidden group">
-                                <div className={`absolute top-0 ${dir === 'rtl' ? 'right-0' : 'left-0'} w-2 h-full bg-purple-500`}></div>
+                            <div key={index} className="p-5 border border-borderColor rounded-2xl bg-transparent relative overflow-hidden group">
+                                <div className={`absolute top-0 ${dir === 'rtl' ? 'right-0' : 'left-0'} w-2 h-full bg-primary`}></div>
                                 <div className={`flex justify-between items-start mb-3 ${dir === 'rtl' ? 'pl-2' : 'pr-2'}`}>
                                     <div>
-                                        <h4 className="font-black text-slate-800 text-lg">{msg.studentName}</h4>
-                                        <p className="text-[10px] font-bold text-slate-400 font-mono mt-0.5">{t('civilIdPrefix')} {msg.civilID}</p>
+                                        <h4 className="font-black text-textPrimary text-lg">{msg.studentName}</h4>
+                                        <p className="text-[10px] font-bold text-textSecondary font-mono mt-0.5">{t('civilIdPrefix')} {msg.civilID}</p>
                                     </div>
-                                    <span className="text-[10px] font-bold bg-white px-2 py-1 rounded-lg border text-slate-500 shadow-sm">
+                                    <span className="text-[10px] font-bold bg-bgCard text-textSecondary px-2 py-1 rounded-lg border border-borderColor shadow-sm">
                                         {new Date(msg.date).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                                     </span>
                                 </div>
-                                <div className={`bg-white p-4 rounded-xl border border-slate-100 text-sm font-bold text-slate-700 leading-relaxed shadow-inner ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
+                                <div className={`glass-panel p-4 rounded-xl border border-borderColor text-sm font-bold text-textPrimary leading-relaxed shadow-sm ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                                     {msg.message}
                                 </div>
                                 {/* 💬 زر الرد عبر الواتساب */}
                                 <div className="mt-3 flex justify-end">
                                     <button 
                                         onClick={() => handleReplyToMessage(msg)}
-                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black shadow-sm active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100'}`}
+                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black shadow-sm active:scale-95 transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20`}
                                     >
                                         <MessageCircle size={14} />
                                         {t('replyViaWhatsapp')}
@@ -796,33 +819,33 @@ const StudentList: React.FC<StudentListProps> = ({
         </DrawerSheet>
 
         {/* ➕ 2. الإضافة اليدوية */}
-        <DrawerSheet isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} isRamadan={isRamadan} dir={dir}mode="side">
+        <DrawerSheet isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} isRamadan={isRamadan} dir={dir} mode="side">
              <div className="flex flex-col h-full w-full text-center pb-4">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 ${isRamadan ? 'bg-indigo-900/50 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-500 border-transparent'}`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 bg-primary/10 text-primary border-primary/20`}>
                     <UserPlus className="w-8 h-8" />
                 </div>
                 <h3 className="font-black text-xl mb-6 shrink-0">{t('addStudentTitle')}</h3>
                 <div className="space-y-3 overflow-y-auto custom-scrollbar px-1 pb-4">
-                    <input type="text" placeholder={t('studentNamePlaceholder')} value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
-                    <select value={newStudentClass} onChange={(e) => setNewStudentClass(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`}>
-                        <option value="" disabled className={isRamadan ? 'text-slate-500' : ''}>{t('selectClassPlaceholder')}</option>
-                        {safeClasses.map(c => <option key={c} value={c} className={isRamadan ? 'bg-[#0f172a]' : ''}>{c}</option>)}
+                    <input type="text" placeholder={t('studentNamePlaceholder')} value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} />
+                    <select value={newStudentClass} onChange={(e) => setNewStudentClass(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`}>
+                        <option value="" disabled className="bg-bgCard">{t('selectClassPlaceholder')}</option>
+                        {safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}
                     </select>
-                    <input type="number" placeholder={t('civilIdPlaceholderMandatory')} value={newStudentCivilID} onChange={(e) => setNewStudentCivilID(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-amber-50 border-amber-200 focus:border-amber-500 text-slate-800'}`} />
-                    <input type="tel" placeholder={t('parentPhoneOptional')} value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
+                    <input type="number" placeholder={t('civilIdPlaceholderMandatory')} value={newStudentCivilID} onChange={(e) => setNewStudentCivilID(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-amber-500/10 border-amber-500/30 focus:border-amber-500 text-textPrimary`} />
+                    <input type="tel" placeholder={t('parentPhoneOptional')} value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} />
                      <div className="flex gap-2">
-                        <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? (isRamadan ? 'bg-blue-500/20 border-blue-400/50 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('maleStudent')}</button>
-                        <button onClick={() => setNewStudentGender('female')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? (isRamadan ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-pink-50 border-pink-200 text-pink-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('femaleStudent')}</button>
+                        <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button>
+                        <button onClick={() => setNewStudentGender('female')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'female' ? 'bg-pink-500/10 border-pink-500/30 text-pink-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('femaleStudent')}</button>
                     </div>
                 </div>
                 <div className="mt-auto pt-2 shrink-0">
-                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass || !newStudentCivilID} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveStudentBtn')}</button>
+                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass || !newStudentCivilID} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 bg-primary text-white hover:bg-primary/80`}>{t('saveStudentBtn')}</button>
                 </div>
             </div>
         </DrawerSheet>
 
         {/* 📊 3. استيراد إكسل */}
-        <DrawerSheet isOpen={showImportModal} onClose={() => setShowImportModal(false)} isRamadan={isRamadan} dir={dir}mode="full">
+        <DrawerSheet isOpen={showImportModal} onClose={() => setShowImportModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
             <div className="flex-1 w-full h-full flex flex-col">
                 <ExcelImport 
                     existingClasses={safeClasses} 
@@ -873,10 +896,10 @@ const StudentList: React.FC<StudentListProps> = ({
              <div className="flex flex-col h-full w-full text-center pb-4">
                 <h3 className="font-black text-lg mb-4 shrink-0">{t('addNewClassTitle')}</h3>
                 <div className="flex-1">
-                    <input type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} />
+                    <input type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} />
                 </div>
                 <div className="mt-auto pt-4 shrink-0">
-                    <button onClick={handleAddClassSubmit} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('addBtnSimple')}</button>
+                    <button onClick={handleAddClassSubmit} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-colors bg-primary text-white hover:bg-primary/80`}>{t('addBtnSimple')}</button>
                 </div>
              </div>
         </DrawerSheet>
@@ -885,44 +908,44 @@ const StudentList: React.FC<StudentListProps> = ({
         <DrawerSheet isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} isRamadan={isRamadan} dir={dir}>
             <div className="flex flex-col h-full w-full text-center">
                 <h3 className="font-black text-xl mb-6 shrink-0">{t('classSettingsTitle')}</h3>
-                <div className={`rounded-2xl p-4 mb-6 border shrink-0 ${isRamadan ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-100'}`}>
-                    <div className={`flex items-center justify-center gap-2 mb-3 ${isRamadan ? 'text-indigo-300' : 'text-indigo-900'}`}>
+                <div className={`rounded-2xl p-4 mb-6 border shrink-0 bg-primary/10 border-primary/20`}>
+                    <div className={`flex items-center justify-center gap-2 mb-3 text-primary`}>
                         <Users className="w-4 h-4" />
                         <span className="font-bold text-sm">{t('schoolTypeBatchChange')}</span>
                     </div>
                     <div className="flex gap-3 mb-2">
                         <button 
                             onClick={() => handleBatchGenderUpdate('male')}
-                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? (isRamadan ? 'bg-blue-500/20 border-blue-400/50 text-blue-300 shadow-md' : 'bg-white border-blue-200 shadow-md text-blue-700') : (isRamadan ? 'bg-white/5 border-transparent text-slate-400 hover:bg-white/10' : 'bg-white/50 border-transparent text-slate-500 hover:bg-white')}`}
+                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? 'bg-bgCard border-blue-500 shadow-md text-blue-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}
                         >
                             <span className="text-xl">👨‍🎓</span>
                             <span className="font-black text-sm">{t('boys')}</span>
                         </button>
                         <button 
                             onClick={() => handleBatchGenderUpdate('female')}
-                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? (isRamadan ? 'bg-pink-500/20 border-pink-400/50 text-pink-300 shadow-md' : 'bg-white border-pink-200 shadow-md text-pink-700') : (isRamadan ? 'bg-white/5 border-transparent text-slate-400 hover:bg-white/10' : 'bg-white/50 border-transparent text-slate-500 hover:bg-white')}`}
+                            className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? 'bg-bgCard border-pink-500 shadow-md text-pink-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}
                         >
                             <span className="text-xl">👩‍🎓</span>
                             <span className="font-black text-sm">{t('girls')}</span>
                         </button>
                     </div>
-                    <p className={`text-[10px] font-bold ${isRamadan ? 'text-indigo-200/60' : 'text-indigo-400'}`}>{t('iconUnificationNote')}</p>
+                    <p className={`text-[10px] font-bold text-primary`}>{t('iconUnificationNote')}</p>
                 </div>
-                <div className={`w-full h-px mb-6 shrink-0 ${isRamadan ? 'bg-white/10' : 'bg-gray-100'}`}></div>
+                <div className={`w-full h-px mb-6 shrink-0 bg-borderColor`}></div>
                 <div className="flex justify-between items-center mb-2 px-2 shrink-0">
-                      <span className={`text-xs font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('deleteClassInstruction')}</span>
-                      <span className={`text-[10px] font-bold ${isRamadan ? 'text-rose-400' : 'text-red-400'}`}>{t('deleteClassWarning')}</span>
+                      <span className={`text-xs font-bold text-textSecondary`}>{t('deleteClassInstruction')}</span>
+                      <span className={`text-[10px] font-bold text-rose-500`}>{t('deleteClassWarning')}</span>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-2">
                     {safeClasses.map(cls => (
-                        <div key={cls} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${isRamadan ? 'bg-[#1e293b] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-                            <span className={`font-bold text-sm ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{cls}</span>
+                        <div key={cls} className={`flex justify-between items-center p-3 rounded-xl border transition-colors bg-transparent border-borderColor`}>
+                            <span className={`font-bold text-sm text-textPrimary`}>{cls}</span>
                             <div className="flex gap-2">
-                                <button onClick={() => { if(onDeleteClass && confirm(t('alertConfirmDeleteClass'))) onDeleteClass(cls); }} className={`p-2 rounded-lg transition-colors ${isRamadan ? 'text-rose-400 bg-rose-500/20 hover:bg-rose-500/30' : 'text-rose-500 bg-rose-50 hover:bg-rose-100'}`}><Trash2 className="w-4 h-4"/></button>
+                                <button onClick={() => { if(onDeleteClass && confirm(t('alertConfirmDeleteClass'))) onDeleteClass(cls); }} className={`p-2 rounded-lg transition-colors text-rose-500 bg-rose-500/10 hover:bg-rose-500/20`}><Trash2 className="w-4 h-4"/></button>
                             </div>
                         </div>
                     ))}
-                    {safeClasses.length === 0 && <p className={`text-xs ${isRamadan ? 'text-slate-500' : 'text-gray-400'}`}>{t('noClassesAdded')}</p>}
+                    {safeClasses.length === 0 && <p className={`text-xs text-textSecondary`}>{t('noClassesAdded')}</p>}
                 </div>
             </div>
         </DrawerSheet>
@@ -930,12 +953,12 @@ const StudentList: React.FC<StudentListProps> = ({
         {/* 👍 6. السلوك الإيجابي */}
         <DrawerSheet isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}>
             <div className="flex flex-col h-full w-full text-center pb-4">
-                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0">
-                    <CheckCircle2 className={`w-5 h-5 ${isRamadan ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary">
+                    <CheckCircle2 className={`w-5 h-5 text-emerald-500`} />
                     {t('positiveReinforcement')}
                 </h3>
-                <p className={`text-xs font-bold mb-4 shrink-0 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
-                    {t('chooseExcellenceType')} <bdi className={isRamadan ? 'text-amber-400' : 'text-indigo-600'}>{selectedStudentForBehavior?.name}</bdi>
+                <p className={`text-xs font-bold mb-4 shrink-0 text-textSecondary`}>
+                    {t('chooseExcellenceType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi>
                 </p>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
@@ -944,24 +967,24 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button 
                                 key={b.id}
                                 onClick={() => confirmPositiveBehavior(b.original, b.points)}
-                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100'}`}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
                             >
                                 <span>{t(b.transKey)}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-emerald-500/30 text-emerald-200' : 'bg-white text-emerald-600'}`}>+{b.points}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>+{b.points}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className={`pt-3 border-t shrink-0 mt-auto ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-                    <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('orAddCustomBehavior')}</p>
+                <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
+                    <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p>
                     <div className="flex gap-2">
                         <input 
                             type="text" 
                             value={customPositiveReason}
                             onChange={(e) => setCustomPositiveReason(e.target.value)}
                             placeholder={t('otherReasonPlaceholder')} 
-                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-emerald-400 text-white placeholder:text-indigo-200/40' : 'bg-slate-50 border-slate-200 focus:border-emerald-500 text-slate-800'}`}
+                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
                         />
                         <button 
                             onClick={() => {
@@ -969,7 +992,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                     confirmPositiveBehavior(customPositiveReason, 1);
                                 }
                             }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors ${isRamadan ? 'bg-emerald-500 hover:bg-emerald-400 text-white' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600`}
                         >
                             <Plus size={14} /> {t('addBtnSmall')}
                         </button>
@@ -981,12 +1004,12 @@ const StudentList: React.FC<StudentListProps> = ({
         {/* 👎 7. السلوك السلبي */}
         <DrawerSheet isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}>
             <div className="flex flex-col h-full w-full text-center pb-4">
-                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0">
-                    <AlertCircle className={`w-5 h-5 ${isRamadan ? 'text-rose-400' : 'text-rose-500'}`} />
+                <h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary">
+                    <AlertCircle className={`w-5 h-5 text-rose-500`} />
                     {t('behavioralAlert')}
                 </h3>
-                <p className={`text-xs font-bold mb-4 shrink-0 ${isRamadan ? 'text-slate-300' : 'text-gray-500'}`}>
-                    {t('chooseNoteType')} <bdi className={isRamadan ? 'text-amber-400' : 'text-indigo-600'}>{selectedStudentForBehavior?.name}</bdi>
+                <p className={`text-xs font-bold mb-4 shrink-0 text-textSecondary`}>
+                    {t('chooseNoteType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi>
                 </p>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
@@ -995,24 +1018,24 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button 
                                 key={b.id}
                                 onClick={() => confirmNegativeBehavior(b.original, b.points)}
-                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 ${isRamadan ? 'bg-[#1e293b] border-rose-400/30 text-rose-300 hover:bg-rose-500/30' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100'}`}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20`}
                             >
                                 <span>{t(b.transKey)}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm ${isRamadan ? 'bg-rose-500/30 text-rose-200' : 'bg-white text-rose-600'}`}>{b.points}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className={`pt-3 border-t shrink-0 mt-auto ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-                    <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('orAddCustomNote')}</p>
+                <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
+                    <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomNote')}</p>
                     <div className="flex gap-2">
                         <input 
                             type="text" 
                             value={customNegativeReason}
                             onChange={(e) => setCustomNegativeReason(e.target.value)}
                             placeholder={t('otherReasonPlaceholder')} 
-                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-rose-400 text-white placeholder:text-indigo-200/40' : 'bg-slate-50 border-slate-200 focus:border-rose-500 text-slate-800'}`}
+                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary`}
                         />
                         <button 
                             onClick={() => {
@@ -1020,7 +1043,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                     confirmNegativeBehavior(customNegativeReason, -1);
                                 }
                             }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors ${isRamadan ? 'bg-rose-500 hover:bg-rose-400 text-white' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600`}
                         >
                             <Plus size={14} /> {t('addBtnSmall')}
                         </button>
@@ -1033,33 +1056,33 @@ const StudentList: React.FC<StudentListProps> = ({
         <DrawerSheet isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} isRamadan={isRamadan} dir={dir}>
             {editingStudent && (
                  <div className="flex flex-col h-full w-full text-center pb-4">
-                    <h3 className="font-black text-xl mb-6 shrink-0">{t('editStudentData')}</h3>
+                    <h3 className="font-black text-xl mb-6 shrink-0 text-textPrimary">{t('editStudentData')}</h3>
                     <div className="space-y-3 flex-1 overflow-y-auto px-1 custom-scrollbar">
-                        <input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} placeholder={t('namePlaceholderSimple')} />
-                        <select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`}>
-                            {safeClasses.map(c => <option key={c} value={c} className={isRamadan ? 'bg-[#0f172a]' : ''}>{c}</option>)}
+                        <input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} placeholder={t('namePlaceholderSimple')} />
+                        <select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({...editingStudent, classes: [e.target.value]})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`}>
+                            {safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}
                         </select>
-                        <input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-gray-50 border-gray-200 focus:border-indigo-500 text-slate-800'}`} placeholder={t('phoneNumberPlaceholder')} />
+                        <input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} placeholder={t('phoneNumberPlaceholder')} />
                         
                         <div className="relative mt-2">
-                            <p className={`text-[10px] ${dir === 'rtl' ? 'text-right' : 'text-left'} mb-1 font-bold ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>{t('civilIdEssentialNote')}</p>
+                            <p className={`text-[10px] ${dir === 'rtl' ? 'text-right' : 'text-left'} mb-1 font-bold text-textSecondary`}>{t('civilIdEssentialNote')}</p>
                             <input 
                                 type="number" 
                                 value={editingStudent.parentCode || ''} 
                                 onChange={(e) => setEditingStudent({...editingStudent, parentCode: e.target.value})}
                                 placeholder={t('enterCivilIdHere')}
-                                className={`w-full p-4 rounded-xl font-mono text-center font-black tracking-widest outline-none border transition-colors ${isRamadan ? 'bg-black/50 border-amber-500/50 focus:border-amber-400 text-amber-400' : 'bg-amber-50 border-amber-200 focus:border-amber-500 text-slate-800'}`} 
+                                className={`w-full p-4 rounded-xl font-mono text-center font-black tracking-widest outline-none border transition-colors bg-amber-500/10 border-amber-500/30 focus:border-amber-500 text-textPrimary`} 
                             />
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? (isRamadan ? 'bg-blue-500/20 border-blue-400/50 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('maleStudent')}</button>
-                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'female'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? (isRamadan ? 'bg-pink-500/20 border-pink-400/50 text-pink-300' : 'bg-pink-50 border-pink-200 text-pink-600') : (isRamadan ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-400')}`}>{t('femaleStudent')}</button>
+                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button>
+                            <button onClick={() => setEditingStudent({...editingStudent, gender: 'female'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-500/10 border-pink-500/30 text-pink-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('femaleStudent')}</button>
                         </div>
                     </div>
                     <div className="flex gap-2 mt-4 shrink-0">
-                        <button onClick={handleEditStudentSave} className={`flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors ${isRamadan ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{t('saveChangesBtn')}</button>
-                        <button onClick={() => { if(confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className={`px-4 py-3 border rounded-xl font-black text-sm transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'}`}><Trash2 className="w-5 h-5"/></button>
+                        <button onClick={handleEditStudentSave} className={`flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors bg-primary text-white hover:bg-primary/80`}>{t('saveChangesBtn')}</button>
+                        <button onClick={() => { if(confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); }}} className={`px-4 py-3 border rounded-xl font-black text-sm transition-colors bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20`}><Trash2 className="w-5 h-5"/></button>
                     </div>
                 </div>
             )}
@@ -1070,7 +1093,7 @@ const StudentList: React.FC<StudentListProps> = ({
             {randomWinner && (
                 <div className="flex flex-col h-full w-full text-center items-center justify-center pb-8 animate-in zoom-in duration-300">
                     <div className="mb-6 relative inline-block">
-                        <div className={`w-24 h-24 rounded-full border-4 shadow-xl overflow-hidden mx-auto transition-colors ${isRamadan ? 'border-purple-500/50 bg-purple-900/30' : 'border-purple-200 bg-purple-50'}`}>
+                        <div className={`w-24 h-24 rounded-full border-4 shadow-xl overflow-hidden mx-auto transition-colors border-purple-500/30 bg-purple-500/10`}>
                             <StudentAvatar 
                                 gender={randomWinner.gender}
                                 className="w-full h-full"
@@ -1079,12 +1102,12 @@ const StudentList: React.FC<StudentListProps> = ({
                         <div className={`absolute -top-3 ${dir === 'rtl' ? '-right-3' : '-left-3'} text-4xl animate-bounce`}>🎉</div>
                         <div className={`absolute -bottom-2 ${dir === 'rtl' ? '-left-2' : '-right-2'} text-4xl animate-bounce`} style={{animationDelay: '0.2s'}}>✨</div>
                     </div>
-                    <h2 className="text-2xl font-black mb-1">{randomWinner.name}</h2>
-                    <p className={`text-sm font-bold inline-block px-3 py-1 rounded-full mb-6 transition-colors ${isRamadan ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600'}`}>
+                    <h2 className="text-2xl font-black mb-1 text-textPrimary">{randomWinner.name}</h2>
+                    <p className={`text-sm font-bold inline-block px-3 py-1 rounded-full mb-6 transition-colors bg-purple-500/10 text-purple-500`}>
                         {randomWinner.classes[0]}
                     </p>
                     <div className="flex gap-3 w-full">
-                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all ${isRamadan ? 'bg-emerald-500 text-white shadow-emerald-900/50 hover:bg-emerald-400' : 'bg-emerald-500 text-white shadow-emerald-200 hover:bg-emerald-600'}`}>
+                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600`}>
                             {t('reinforceBtn')}
                         </button>
                     </div>
@@ -1093,10 +1116,10 @@ const StudentList: React.FC<StudentListProps> = ({
         </DrawerSheet>
 
         {/* ⏱️ 10. المؤقت */}
-       <DrawerSheet isOpen={showTimerModal} onClose={() => setShowTimerModal(false)} isRamadan={isRamadan} dir={dir}mode="bottom">
+       <DrawerSheet isOpen={showTimerModal} onClose={() => setShowTimerModal(false)} isRamadan={isRamadan} dir={dir} mode="bottom">
             <div className="flex flex-col h-full w-full text-center pb-4">
-                <h3 className="font-black text-lg mb-6 flex items-center justify-center gap-2 shrink-0">
-                    <Timer className={`w-5 h-5 ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`}/> {t('timerTitle')}
+                <h3 className="font-black text-lg mb-6 flex items-center justify-center gap-2 shrink-0 text-textPrimary">
+                    <Timer className={`w-5 h-5 text-amber-500`}/> {t('timerTitle')}
                 </h3>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -1105,7 +1128,7 @@ const StudentList: React.FC<StudentListProps> = ({
                             <button 
                                 key={min} 
                                 onClick={() => startTimer(min)} 
-                                className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 ${isRamadan ? 'bg-[#1e293b] border-white/10 text-slate-300 hover:bg-indigo-500/20 hover:border-indigo-400/50 hover:text-indigo-300' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600'}`}
+                                className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 bg-transparent border-borderColor text-textSecondary hover:bg-primary/10 hover:border-primary/30 hover:text-primary`}
                             >
                                 {min} {t('minuteAbbrev')}
                             </button>
@@ -1117,25 +1140,25 @@ const StudentList: React.FC<StudentListProps> = ({
                             type="number" 
                             value={timerInput} 
                             onChange={(e) => setTimerInput(e.target.value)} 
-                            className={`w-full border rounded-xl py-3 px-3 text-center font-black outline-none transition-colors ${isRamadan ? 'bg-[#1e293b] border-indigo-500/30 focus:border-indigo-400 text-white placeholder:text-indigo-200/40' : 'bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800 placeholder:text-slate-400'}`} 
+                            className={`w-full border rounded-xl py-3 px-3 text-center font-black outline-none transition-colors bg-transparent border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} 
                             placeholder={t('minutePlaceholder')}
                         />
                         <button 
                             onClick={() => startTimer(Number(timerInput))} 
-                            className={`p-3.5 rounded-xl active:scale-95 shadow-lg transition-colors ${isRamadan ? 'bg-indigo-500 shadow-indigo-900/50 hover:bg-indigo-400' : 'bg-indigo-600 shadow-indigo-200 hover:bg-indigo-700'}`}
+                            className={`p-3.5 rounded-xl active:scale-95 shadow-lg transition-colors bg-primary hover:bg-primary/80`}
                         >
-                            <Play size={18} fill="white" className="text-white" />
+                            <Play size={18} className="text-white fill-white" />
                         </button>
                     </div>
 
                     {isTimerRunning && (
-                        <div className={`border-t pt-6 mt-4 ${isRamadan ? 'border-white/10' : 'border-slate-100'}`}>
-                            <h2 className="text-5xl font-black mb-6 font-mono">{formatTime(timerSeconds)}</h2>
+                        <div className={`border-t pt-6 mt-4 border-borderColor`}>
+                            <h2 className="text-5xl font-black mb-6 font-mono text-textPrimary">{formatTime(timerSeconds)}</h2>
                             <div className="flex gap-3 justify-center">
-                                <button onClick={() => setIsTimerRunning(false)} className={`p-4 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'}`}>
+                                <button onClick={() => setIsTimerRunning(false)} className={`p-4 rounded-full border active:scale-95 transition-colors bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20`}>
                                     <Pause size={24} fill="currentColor" />
                                 </button>
-                                <button onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className={`p-4 rounded-full border active:scale-95 transition-colors ${isRamadan ? 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
+                                <button onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className={`p-4 rounded-full border active:scale-95 transition-colors bg-bgSoft border-borderColor hover:bg-bgCard text-textPrimary`}>
                                     <RotateCcw size={24} />
                                 </button>
                             </div>

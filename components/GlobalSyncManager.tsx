@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { useTheme } from '../theme/ThemeProvider'; // 👈 استدعاء محرك الثيمات
 
 const STUDENT_APP_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec";
 const PARENT_APP_URL = "https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec";
@@ -20,10 +21,11 @@ const GlobalSyncManager: React.FC = () => {
     gradeSettings = {}, certificateSettings = {}, hiddenClasses = [], setAssessmentTools
   } = useApp();
   
+  // 🎨 جلب الثيم الحالي للتناسق البصري
+  const { theme } = useTheme();
+
   const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState('');
-
-  const isRamadan = true;
 
   const handleSync = async (type: 'student' | 'parent' | 'backup' | 'restore') => {
     
@@ -243,115 +245,165 @@ const GlobalSyncManager: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500" dir={dir}>
-      
-      {/* 🌟 ترويسة صفحة المزامنة */}
-      <div className={`p-6 rounded-[2.5rem] shadow-lg flex flex-col items-center justify-center text-center relative overflow-hidden ${isRamadan ? 'bg-[#1e1b4b] border border-white/5' : 'bg-white border border-slate-100'}`}>
-        <div className={`p-4 rounded-3xl mb-4 ${isRamadan ? 'bg-cyan-500/20 shadow-[0_0_30px_rgba(34,211,238,0.3)]' : 'bg-cyan-100'}`}>
-          <CloudSync className={`w-10 h-10 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
-        </div>
-        <h2 className={`text-2xl font-black mb-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
-          {t('syncMenuTitle') || 'مركز مزامنة السحابة'}
-        </h2>
-        <p className={`text-sm max-w-md ${isRamadan ? 'text-indigo-200' : 'text-slate-500'}`}>
-          من هنا يمكنك مزامنة بياناتك مع تطبيقات الطلاب وأولياء الأمور، أو أخذ نسخة احتياطية لبياناتك بالكامل لاسترجاعها لاحقاً.
+  <div className="w-full max-w-6xl mx-auto p-4 md:p-6 space-y-6 text-textPrimary" dir={dir}>
+
+    {/* Header */}
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-bold">
+          {t('syncMenuTitle') || 'مركز المزامنة'}
+        </h1>
+        <p className="text-sm text-textSecondary font-bold mt-1">
+          إدارة المزامنة والنسخ الاحتياطي
         </p>
       </div>
 
-      {/* 🔄 حالات التحميل والنجاح والخطأ (تظهر بدلاً من الأزرار أثناء العملية) */}
-      {syncState !== 'idle' ? (
-        <div className={`p-12 rounded-[2.5rem] shadow-lg flex flex-col items-center justify-center text-center min-h-[300px] border ${isRamadan ? 'bg-[#1e293b] border-white/5' : 'bg-white border-slate-100'}`}>
-          
-          {syncState === 'syncing' && (
-            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <Loader2 className={`w-16 h-16 animate-spin mb-6 ${isRamadan ? 'text-cyan-400' : 'text-cyan-600'}`} />
-              <p className={`text-lg font-black ${isRamadan ? 'text-cyan-100' : 'text-slate-700'}`}>{syncMessage}</p>
-            </div>
-          )}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-bold flex items-center gap-1 text-success">
+          <Server className="w-4 h-4" />
+          متصل
+        </span>
 
-          {syncState === 'success' && (
-            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isRamadan ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : 'bg-emerald-100'}`}>
-                <CheckCircle2 className={`w-12 h-12 ${isRamadan ? 'text-emerald-400' : 'text-emerald-600'}`} />
-              </div>
-              <p className={`text-lg font-black ${isRamadan ? 'text-emerald-100' : 'text-slate-700'}`}>{syncMessage}</p>
-            </div>
-          )}
+        <button
+          onClick={() => handleSync('student')}
+          className="px-4 py-2 rounded-xl border border-primary bg-primary text-white font-bold flex items-center gap-2 hover:bg-primary/90 hover:scale-[1.03] transition shadow-md"
+        >
+          <CloudSync className="w-4 h-4" />
+          مزامنة سريعة
+        </button>
+      </div>
+    </div>
 
-          {syncState === 'error' && (
-            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-xl ${isRamadan ? 'bg-rose-500/20 border-2 border-rose-500/30' : 'bg-rose-100'}`}>
-                <AlertCircle className={`w-12 h-12 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`} />
+    {/* Status Section */}
+    {syncState !== 'idle' && (
+      <div className="rounded-2xl border border-borderColor bg-bgCard p-6 flex flex-col items-center justify-center text-center min-h-[200px] shadow-sm animate-in fade-in">
+
+        {syncState === 'syncing' && (
+          <>
+            <Loader2 className="w-10 h-10 animate-spin mb-4 text-primary" />
+            <p className="font-bold text-textPrimary">{syncMessage}</p>
+          </>
+        )}
+
+        {syncState === 'success' && (
+          <>
+            <CheckCircle2 className="w-10 h-10 mb-4 text-success animate-bounce" />
+            <p className="font-bold text-textPrimary">{syncMessage}</p>
+          </>
+        )}
+
+        {syncState === 'error' && (
+          <>
+            <AlertCircle className="w-10 h-10 mb-4 text-danger animate-pulse" />
+            <p className="font-bold mb-4 text-textPrimary">{syncMessage}</p>
+            <button
+              onClick={() => setSyncState('idle')}
+              className="px-6 py-2 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold hover:bg-bgCard transition"
+            >
+              رجوع
+            </button>
+          </>
+        )}
+      </div>
+    )}
+
+    {/* Main Grid */}
+    {syncState === 'idle' && (
+      <>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
+            <p className="text-xs font-bold text-textSecondary mb-1">عدد الطلاب</p>
+            <h3 className="text-xl font-black text-textPrimary">{students.length}</h3>
+          </div>
+
+          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
+            <p className="text-xs font-bold text-textSecondary mb-1">الفصول</p>
+            <h3 className="text-xl font-black text-textPrimary">{classes.length}</h3>
+          </div>
+
+          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
+            <p className="text-xs font-bold text-textSecondary mb-1">الأدوات</p>
+            <h3 className="text-xl font-black text-textPrimary">{assessmentTools.length}</h3>
+          </div>
+
+          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
+            <p className="text-xs font-bold text-textSecondary mb-1">الحالة</p>
+            <h3 className="text-xl font-black text-success">جاهز</h3>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="grid md:grid-cols-3 gap-6">
+
+          {/* Apps */}
+          <div className="md:col-span-2 rounded-2xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
+            <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3">التطبيقات</h2>
+
+            {/* Student App */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
+              <div>
+                <h4 className="font-bold text-textPrimary">تطبيق الطلاب</h4>
+                <p className="text-xs font-bold text-textSecondary mt-1">إرسال المهام والدرجات</p>
               </div>
-              <p className={`text-lg font-black mb-6 ${isRamadan ? 'text-rose-100' : 'text-slate-700'}`}>{syncMessage}</p>
-              <button onClick={() => setSyncState('idle')} className={`px-6 py-3 rounded-xl font-bold transition-all active:scale-95 ${isRamadan ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                {t('closeBtn') || 'الرجوع للمركز'}
+
+              <button
+                onClick={() => handleSync('student')}
+                className="px-4 py-2 rounded-xl border border-primary/30 bg-primary/10 text-primary font-bold flex items-center gap-2 hover:bg-primary hover:text-white transition"
+              >
+                <GraduationCap className="w-4 h-4" />
+                مزامنة
               </button>
             </div>
-          )}
-        </div>
-      ) : (
-        
-        /* 🎛️ شبكة الأزرار الكبيرة */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          
-          {/* كرت مزامنة الطلاب */}
-          <button onClick={() => handleSync('student')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-gradient-to-br from-[#1e1b4b] to-[#312e81] border-indigo-500/20 hover:border-indigo-400/50' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
-            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-indigo-500/20 text-indigo-300 group-hover:bg-indigo-500/40' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200'}`}>
-              <Smartphone className="w-8 h-8" />
-            </div>
-            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
-              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق الطلاب والمهام</h3>
-              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-indigo-200/70' : 'text-slate-500'}`}>
-                إرسال الدرجات، المهام، النقاط، والمراكز فوراً ليتمكن الطالب من رؤيتها في تطبيقه.
-              </p>
-            </div>
-          </button>
 
-          {/* كرت مزامنة أولياء الأمور */}
-          <button onClick={() => handleSync('parent')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-gradient-to-br from-[#064e3b] to-[#0f766e] border-emerald-500/20 hover:border-emerald-400/50' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
-            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-emerald-500/20 text-emerald-300 group-hover:bg-emerald-500/40' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200'}`}>
-              <Users className="w-8 h-8" />
-            </div>
-            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
-              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>تطبيق أولياء الأمور</h3>
-              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-emerald-100/70' : 'text-slate-500'}`}>
-                مزامنة سجلات الغياب، السلوكيات، والدرجات للطلاب الذين تم ربط أرقامهم المدنية.
-              </p>
-            </div>
-          </button>
+            {/* Parent App */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
+              <div>
+                <h4 className="font-bold text-textPrimary">تطبيق أولياء الأمور</h4>
+                <p className="text-xs font-bold text-textSecondary mt-1">مزامنة السلوك والدرجات</p>
+              </div>
 
-          {/* كرت النسخ الاحتياطي */}
-          <button onClick={() => handleSync('backup')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-[#1e293b] border-white/10 hover:border-amber-500/50 hover:bg-white/5' : 'bg-slate-50 border-slate-200 hover:border-amber-400'}`}>
-            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20' : 'bg-amber-100 text-amber-600'}`}>
-              <CloudUpload className="w-8 h-8" />
+              <button
+                onClick={() => handleSync('parent')}
+                className="px-4 py-2 rounded-xl border border-warning/30 bg-warning/10 text-warning font-bold flex items-center gap-2 hover:bg-warning hover:text-white transition"
+              >
+                <Users className="w-4 h-4" />
+                مزامنة
+              </button>
             </div>
-            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
-              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('syncBackupBtn') || 'رفع نسخة احتياطية (سحابي)'}</h3>
-              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>
-                حفظ نسخة كاملة من بياناتك وإعداداتك في السحابة لضمان عدم ضياعها أو لنقلها لجهاز آخر.
-              </p>
-            </div>
-          </button>
 
-          {/* كرت الاسترجاع */}
-          <button onClick={() => handleSync('restore')} className={`group p-6 rounded-[2rem] flex flex-col items-start gap-4 transition-all duration-300 active:scale-[0.98] border shadow-lg ${isRamadan ? 'bg-[#1e293b] border-white/10 hover:border-rose-500/50 hover:bg-white/5' : 'bg-slate-50 border-slate-200 hover:border-rose-400'}`}>
-            <div className={`p-4 rounded-2xl transition-colors ${isRamadan ? 'bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20' : 'bg-rose-100 text-rose-600'}`}>
-              <CloudDownload className="w-8 h-8" />
-            </div>
-            <div className={`text-right ${dir === 'ltr' ? 'text-left' : ''}`}>
-              <h3 className={`text-lg font-black mb-1 ${isRamadan ? 'text-rose-400' : 'text-rose-600'}`}>{t('syncRestoreBtn') || 'استرجاع البيانات (سحابي)'}</h3>
-              <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-slate-400' : 'text-slate-500'}`}>
-                جلب بياناتك المحفوظة مسبقاً من السحابة. (تحذير: سيتم استبدال بياناتك الحالية بالكامل).
-              </p>
-            </div>
-          </button>
+          </div>
+
+          {/* Backup & Restore */}
+          <div className="rounded-2xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
+            <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3">السحابة المركزية</h2>
+
+            <button
+              onClick={() => handleSync('backup')}
+              className="w-full p-4 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-primary group"
+            >
+              <span>رفع نسخة احتياطية</span>
+              <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition">
+                  <CloudUpload className="w-5 h-5" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleSync('restore')}
+              className="w-full p-4 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-success group"
+            >
+              <span>استرجاع البيانات</span>
+              <div className="p-2 rounded-lg bg-success/10 text-success group-hover:bg-success group-hover:text-white transition">
+                  <CloudDownload className="w-5 h-5" />
+              </div>
+            </button>
+          </div>
 
         </div>
-      )}
-
-    </div>
-  );
+      </>
+    )}
+  </div>
+);
 };
 
 export default GlobalSyncManager;
