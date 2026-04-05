@@ -4,7 +4,7 @@ import {
   Download, Menu, X, WifiOff, MessageCircle, FileText, Shield, 
   CheckCircle, PenTool, PieChart, Printer, Save, RefreshCw, 
   Trash2, Share2, MousePointer, User, Bell, File, Clock, Star,
-  ListTodo, Cloud, Sparkles // 👈 الأيقونات الجديدة
+  ListTodo, Cloud, Sparkles
 } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -20,11 +20,11 @@ type DetailCardProps = {
   title: string;
   desc: string;
   details?: string[];
-  isNew?: boolean; // 👈 علامة "جديد"
+  isNew?: boolean; 
+  newLabel?: string; // 👈 تمت إضافة هذا لكي نستقبل الترجمة من المكون الأب
 };
 
-// 💎 تم تنظيف DetailCard ليتفاعل مع كل الثيمات (تمت إزالة الألوان الصلبة)
-const DetailCard: React.FC<DetailCardProps> = ({ icon: Icon, title, desc, details, isNew }) => (
+const DetailCard: React.FC<DetailCardProps> = ({ icon: Icon, title, desc, details, isNew, newLabel }) => (
   <div className="glass-card p-6 border border-borderColor transition-all duration-300 hover:border-primary/50 hover:bg-bgSoft">
     <div className="flex items-start gap-4">
       <div className="p-3 rounded-2xl shrink-0 bg-primary/10 text-primary shadow-inner">
@@ -35,7 +35,7 @@ const DetailCard: React.FC<DetailCardProps> = ({ icon: Icon, title, desc, detail
             <h4 className="font-black text-lg text-textPrimary">{title}</h4>
             {isNew && (
                 <span className="flex items-center gap-1 text-[10px] font-black bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full border border-green-500/20">
-                    <Sparkles size={10} /> جديد
+                    <Sparkles size={10} /> {newLabel}
                 </span>
             )}
         </div>
@@ -61,20 +61,17 @@ const UserGuide: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // ❌ تم استئصال كبسولة رمضان الثابتة (isRamadan = true)، فالثيمات ستعمل تلقائياً الآن
-
-  // 🌍 تحديث الـ Menu Items ليقرأ من الترجمة + الأقسام الجديدة
   const menuItems = useMemo(
     () => [
       { id: 'dashboard', label: t('dashboardMenu'), icon: Home },
       { id: 'attendance', label: t('attendanceMenu'), icon: Calendar },
       { id: 'students', label: t('studentsMenu'), icon: Users },
       { id: 'grades', label: t('gradesMenu'), icon: BarChart },
-      { id: 'tasks', label: 'إدارة المهام', icon: ListTodo, isNew: true }, // 👈 قسم جديد
-      { id: 'library', label: 'المكتبة الرقمية', icon: BookOpen, isNew: true }, // 👈 قسم جديد
+      { id: 'tasks', label: t('tasksMenu'), icon: ListTodo, isNew: true }, 
+      { id: 'library', label: t('libraryMenu'), icon: BookOpen, isNew: true }, 
       { id: 'knights', label: t('knightsMenu'), icon: Award },
       { id: 'reports', label: t('reportsMenu'), icon: Printer },
-      { id: 'sync', label: 'المزامنة السحابية', icon: Cloud, isNew: true }, // 👈 قسم جديد
+      { id: 'sync', label: t('syncMenu'), icon: Cloud, isNew: true }, 
       { id: 'settings', label: t('settingsMenu'), icon: Settings },
     ],
     [t]
@@ -87,7 +84,6 @@ const UserGuide: React.FC = () => {
     setSidebarOpen(false);
   };
 
-  // 📄 دالة التصدير كما هي، لم ألمسها!
   const handleDownloadPDF = async () => {
     try {
       setIsExporting(true);
@@ -105,7 +101,6 @@ const UserGuide: React.FC = () => {
         html2canvas: { 
             scale: 2, 
             useCORS: true, 
-            // 👈 خدعة لتصدير الـ PDF بخلفية بيضاء دائماً حتى لو كان الثيم داكناً ليكون مقروءاً
             backgroundColor: '#ffffff', 
             scrollY: 0 
         },
@@ -140,10 +135,8 @@ const UserGuide: React.FC = () => {
   };
 
   return (
-    // 🎨 الحاوية الرئيسية أصبحت شفافة وتعتمد على AppLayout
     <div className={`flex h-full font-sans overflow-hidden ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       
-      {/* 🧭 Sidebar Navigation (تم تحويله لـ Glass Panel) */}
       <aside
         className={`
           fixed inset-y-0 ${dir === 'rtl' ? 'right-0 border-l' : 'left-0 border-r'} z-50 w-72 transform transition-transform duration-300 ease-in-out
@@ -204,10 +197,8 @@ const UserGuide: React.FC = () => {
         </div>
       </aside>
 
-      {/* 📄 Main Content Area */}
       <main className="flex-1 overflow-y-auto relative scroll-smooth custom-scrollbar">
         
-        {/* زر فتح القائمة للموبايل */}
         <button
           onClick={() => setSidebarOpen(true)}
           className={`fixed top-[calc(env(safe-area-inset-top)+1rem)] ${dir === 'rtl' ? 'right-4' : 'left-4'} z-40 p-3 rounded-xl shadow-lg lg:hidden glass-panel border-borderColor text-textPrimary`}
@@ -217,7 +208,6 @@ const UserGuide: React.FC = () => {
 
         <div id="guide-content-inner" className="w-full" dir={dir}>
 
-            {/* الهيدر */}
             <header id="hero" className="relative px-6 text-center border-b border-borderColor transition-all pb-12 pt-[calc(env(safe-area-inset-top)+4rem)]">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-6 bg-primary/10 border border-primary/20 text-primary">
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> {t('versionTag')}
@@ -232,7 +222,6 @@ const UserGuide: React.FC = () => {
 
             <div className="max-w-5xl mx-auto px-6 pb-32 space-y-24 pt-12">
               
-              {/* 1. Dashboard */}
               <section id="dashboard" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -247,7 +236,6 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* 2. Attendance */}
               <section id="attendance" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -261,7 +249,6 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* 3. Students */}
               <section id="students" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -274,7 +261,6 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* 4. Grades */}
               <section id="grades" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -287,35 +273,32 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* ✨ 5. Tasks (جديد) */}
               <section id="tasks" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
                     <ListTodo className="w-6 h-6" />
                   </div>
-                  <h2 className="text-3xl font-black text-textPrimary">إدارة المهام</h2>
+                  <h2 className="text-3xl font-black text-textPrimary">{t('secTasksTitle')}</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <DetailCard isNew icon={ListTodo} title="تنظيم المهام اليومية" desc="نظام متكامل لإضافة المهام، تحديد أولوياتها، وتعيين تواريخ الاستحقاق لتنظيم وقتك بفعالية." />
-                  <DetailCard isNew icon={CheckCircle} title="أرشفة المهام المنجزة" desc="عند إنجاز مهمة، يتم نقلها تلقائياً إلى الأرشيف للرجوع إليها وتقييم إنجازاتك لاحقاً." />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={ListTodo} title={t('secTasksCard1Title')} desc={t('secTasksCard1Desc')} />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={CheckCircle} title={t('secTasksCard2Title')} desc={t('secTasksCard2Desc')} />
                 </div>
               </section>
 
-              {/* ✨ 6. Library (جديد) */}
               <section id="library" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
                     <BookOpen className="w-6 h-6" />
                   </div>
-                  <h2 className="text-3xl font-black text-textPrimary">المكتبة الرقمية</h2>
+                  <h2 className="text-3xl font-black text-textPrimary">{t('secLibraryTitle')}</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <DetailCard isNew icon={File} title="مكتبتك السحابية" desc="ارفع ملفات PDF وعروض تقديمية وأوراق عمل لتكون متاحة لك في أي وقت ومن أي جهاز." />
-                  <DetailCard isNew icon={Star} title="التصنيف والتنظيم" desc="نظم ملفاتك في مجلدات ووسوم للوصول السريع إليها أثناء الحصة الدراسية." />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={File} title={t('secLibraryCard1Title')} desc={t('secLibraryCard1Desc')} />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={Star} title={t('secLibraryCard2Title')} desc={t('secLibraryCard2Desc')} />
                 </div>
               </section>
 
-              {/* 7. Knights */}
               <section id="knights" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -328,7 +311,6 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* 8. Reports */}
               <section id="reports" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -341,21 +323,19 @@ const UserGuide: React.FC = () => {
                 </div>
               </section>
 
-              {/* ✨ 9. Sync (جديد) */}
               <section id="sync" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
                     <Cloud className="w-6 h-6" />
                   </div>
-                  <h2 className="text-3xl font-black text-textPrimary">المزامنة السحابية</h2>
+                  <h2 className="text-3xl font-black text-textPrimary">{t('secSyncTitle')}</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <DetailCard isNew icon={Cloud} title="الربط مع Google Drive" desc="اربط التطبيق بحسابك في جوجل لتأمين قاعدة بياناتك ومزامنتها بين هاتفك وحاسوبك تلقائياً." />
-                  <DetailCard isNew icon={Save} title="النسخ الاحتياطي المحلي" desc="يمكنك تصدير بيانات التطبيق كملف مشفر والاحتفاظ به على جهازك لاستعادته في أي وقت." />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={Cloud} title={t('secSyncCard1Title')} desc={t('secSyncCard1Desc')} />
+                  <DetailCard isNew newLabel={t('newBadge')} icon={Save} title={t('secSyncCard2Title')} desc={t('secSyncCard2Desc')} />
                 </div>
               </section>
 
-              {/* 10. Settings */}
               <section id="settings" className="scroll-mt-24 border-t border-borderColor pt-12">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="p-3 rounded-2xl bg-primary/10 text-primary shadow-inner">
