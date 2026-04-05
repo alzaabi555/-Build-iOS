@@ -136,9 +136,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </nav>
         </aside>
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe">
-            <div className="max-w-5xl mx-auto w-full min-h-full py-6">
+        <main className="flex-1 flex flex-col h-full relative z-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-20 md:pb-6 px-4 md:px-10 pt-safe">
+            <div className="max-w-5xl mx-auto w-full py-6">
               {children}
             </div>
           </div>
