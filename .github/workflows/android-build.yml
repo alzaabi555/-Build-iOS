@@ -39,7 +39,7 @@ jobs:
         run: |
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/versionCode [0-9]*/versionCode 5/g' android/app/build.gradle
-            sed -i 's/versionName "[^"]*"/versionName "1.0.5"/g' android/app/build.gradle
+            sed -i 's/versionName "[^"]*"/versionName "1.0.6"/g' android/app/build.gradle
           fi
 
       # 👈 الحقنة الجديدة: زرع التوافق مع أندرويد 15 (Edge-to-Edge)
