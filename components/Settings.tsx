@@ -31,7 +31,6 @@ const Settings = () => {
   const [loading, setLoading] = useState<'backup' | 'restore' | 'reset' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // تم الإبقاء عليه لتمريره لـ DrawerSheet إذا كانت تحتاج تعديلات خاصة برمضان
   const isRamadan = theme === 'ramadan';
 
   const [activeDrawer, setActiveDrawer] = useState<'language' | 'profile' | 'system' | null>(null);
@@ -42,7 +41,6 @@ const Settings = () => {
       setCivilId(teacherInfo?.civilId || '');
   }, [teacherInfo]);
 
-  // الدوال البرمجية لم يتم المساس بها إطلاقاً 🛡️
   const handleBackup = async () => {
     setLoading('backup');
     try {
@@ -114,7 +112,6 @@ const Settings = () => {
   const ChevronIcon = dir === 'rtl' ? ChevronLeft : ChevronRight;
 
   return (
-    // 🎨 الحاوية الرئيسية نظيفة وتعتمد على متغيرات الثيم
     <div className={`flex flex-col h-full overflow-hidden transition-colors duration-500 relative z-10 text-textPrimary ${language === 'ar' ? 'text-right' : 'text-left'}`} dir={dir}>
       
       {/* ================= 🩺 الهيدر ================= */}
@@ -143,16 +140,15 @@ const Settings = () => {
           
           {/* 🌐 مجموعة إعدادات اللغة */}
           <div className="space-y-2">
-            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">التفضيلات</h3>
+            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">{t('preferencesSection')}</h3>
             <div className="glass-card rounded-2xl overflow-hidden border border-borderColor transition-all">
                 <button 
                     onClick={() => setActiveDrawer('language')}
                     className="w-full p-4 flex items-center justify-between transition-colors hover:bg-bgSoft active:scale-[0.99]"
                 >
                     <div className="flex items-center gap-3">
-                        {/* استخدام ألوان متوافقة مع كل الثيمات (شفافية 10%) */}
                         <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500"><Globe size={20} /></div>
-                        <span className="font-bold text-sm text-textPrimary">لغة التطبيق (Language)</span>
+                        <span className="font-bold text-sm text-textPrimary">{t('appLanguageLabel')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-textSecondary">{language === 'ar' ? 'العربية' : 'English'}</span>
@@ -164,7 +160,7 @@ const Settings = () => {
 
           {/* 👤 مجموعة إعدادات الحساب */}
           <div className="space-y-2">
-            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">الحساب والمدرسة</h3>
+            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">{t('accountAndSchoolSection')}</h3>
             <div className="glass-card rounded-2xl overflow-hidden border border-borderColor transition-all">
                 <button 
                     onClick={() => setActiveDrawer('profile')}
@@ -181,7 +177,7 @@ const Settings = () => {
 
           {/* ⚙️ مجموعة إعدادات النظام */}
           <div className="space-y-2">
-            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">النظام والبيانات</h3>
+            <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">{t('systemAndDataSection')}</h3>
             <div className="glass-card rounded-2xl overflow-hidden border border-borderColor flex flex-col divide-y divide-borderColor/50 transition-all">
                 <button 
                     onClick={() => setActiveDrawer('system')}
@@ -191,7 +187,7 @@ const Settings = () => {
                         <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500"><Database size={20} /></div>
                         <div className="flex flex-col items-start">
                             <span className="font-bold text-sm text-textPrimary">{t('backupTitle')}</span>
-                            <span className="text-[10px] text-textSecondary">تصدير، استيراد، وإعادة ضبط</span>
+                            <span className="text-[10px] text-textSecondary">{t('systemAndDataDesc')}</span>
                         </div>
                     </div>
                     <ChevronIcon size={16} className="text-textSecondary" />
@@ -205,24 +201,24 @@ const Settings = () => {
       {/* ================= 🗂️ اللوحات السفلية/الجانبية المنزلقة (Drawers) ================= */}
 
       {/* 🌐 1. لوحة تغيير اللغة */}
-      <DrawerSheet isOpen={activeDrawer === 'language'} onClose={() => setActiveDrawer(null)} isRamadan={isRamadan} dir={dir} mode="side">
+      <DrawerSheet isOpen={activeDrawer === 'language'} onClose={() => setActiveDrawer(null)} dir={dir} mode="side">
         <div className="flex flex-col h-full w-full">
             <div className="flex justify-between items-center px-6 pb-4 border-b border-borderColor shrink-0">
-                <h3 className="font-black text-xl text-textPrimary">لغة التطبيق</h3>
+                <h3 className="font-black text-xl text-textPrimary">{t('appLanguageTitle')}</h3>
             </div>
             <div className="p-6 space-y-3">
                 <button 
                     onClick={() => { setLanguage('ar'); setActiveDrawer(null); }}
                     className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${language === 'ar' ? 'border-primary bg-primary/10' : 'border-borderColor bg-bgCard hover:bg-bgSoft'}`}
                 >
-                    <span className="font-bold text-lg text-textPrimary">العربية (Arabic)</span>
+                    <span className="font-bold text-lg text-textPrimary">{t('arabicLangLabel')}</span>
                     {language === 'ar' && <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary text-white">✓</div>}
                 </button>
                 <button 
                     onClick={() => { setLanguage('en'); setActiveDrawer(null); }}
                     className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${language === 'en' ? 'border-primary bg-primary/10' : 'border-borderColor bg-bgCard hover:bg-bgSoft'}`}
                 >
-                    <span className="font-bold text-lg text-textPrimary">English (English)</span>
+                    <span className="font-bold text-lg text-textPrimary">{t('englishLangLabel')}</span>
                     {language === 'en' && <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary text-white">✓</div>}
                 </button>
             </div>
@@ -230,7 +226,7 @@ const Settings = () => {
       </DrawerSheet>
 
       {/* 👤 2. لوحة البيانات الشخصية */}
-      <DrawerSheet isOpen={activeDrawer === 'profile'} onClose={() => setActiveDrawer(null)} isRamadan={isRamadan} dir={dir} mode="side">
+      <DrawerSheet isOpen={activeDrawer === 'profile'} onClose={() => setActiveDrawer(null)} dir={dir} mode="side">
         <div className="flex flex-col h-full w-full">
             <div className="flex justify-between items-center px-6 pb-4 border-b border-borderColor shrink-0">
                 <h3 className="font-black text-xl text-textPrimary">{t('profileTitle')}</h3>
@@ -247,7 +243,7 @@ const Settings = () => {
                 <div className="space-y-1">
                     <label className="text-xs font-bold px-1 flex items-center gap-1 text-amber-500"><Shield size={14}/> {t('civilIdLabel')}</label>
                     <input type="number" value={civilId} onChange={e => setCivilId(e.target.value)} className="w-full rounded-xl px-4 py-3.5 outline-none font-mono font-black tracking-widest text-center transition-all border bg-amber-500/5 border-amber-500/20 text-textPrimary focus:border-amber-500 placeholder:text-textSecondary/50" placeholder={t('civilIdPlaceholder')} />
-                    <p className="text-[10px] text-center mt-1 text-textSecondary">مطلوب لتمكين ولي الأمر من جلب درجات الطالب بأمان</p>
+                    <p className="text-[10px] text-center mt-1 text-textSecondary">{t('civilIdHint')}</p>
                 </div>
             </div>
             <div className="p-4 border-t border-borderColor bg-bgCard shrink-0">
@@ -259,7 +255,7 @@ const Settings = () => {
       </DrawerSheet>
 
       {/* ⚙️ 3. لوحة إدارة النظام والبيانات */}
-      <DrawerSheet isOpen={activeDrawer === 'system'} onClose={() => setActiveDrawer(null)} isRamadan={isRamadan} dir={dir} mode="side">
+      <DrawerSheet isOpen={activeDrawer === 'system'} onClose={() => setActiveDrawer(null)} dir={dir} mode="side">
         <div className="flex flex-col h-full w-full">
             <div className="flex justify-between items-center px-6 pb-4 border-b border-borderColor shrink-0">
                 <h3 className="font-black text-xl text-textPrimary">{t('backupTitle')}</h3>
@@ -273,21 +269,21 @@ const Settings = () => {
                     <button onClick={handleBackup} className="w-full p-4 flex items-center justify-between transition-colors hover:bg-bgSoft active:scale-[0.99]">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500"><Download size={18} /></div>
-                            <span className="font-bold text-sm text-textPrimary">تصدير نسخة احتياطية (محلياً)</span>
+                            <span className="font-bold text-sm text-textPrimary">{t('exportBackupLocal')}</span>
                         </div>
                     </button>
 
                     <button onClick={() => fileInputRef.current?.click()} className="w-full p-4 flex items-center justify-between transition-colors hover:bg-bgSoft active:scale-[0.99]">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500"><UploadCloud size={18} /></div>
-                            <span className="font-bold text-sm text-textPrimary">استيراد نسخة سابقة</span>
+                            <span className="font-bold text-sm text-textPrimary">{t('importBackup')}</span>
                         </div>
                     </button>
 
                 </div>
 
                 <div className="pt-6">
-                    <p className="text-[10px] font-bold px-2 mb-2 uppercase text-rose-500">منطقة الخطر</p>
+                    <p className="text-[10px] font-bold px-2 mb-2 uppercase text-rose-500">{t('dangerZoneTitle')}</p>
                     <div className="rounded-2xl overflow-hidden border border-rose-500/20 bg-rose-500/5 transition-all">
                         <button onClick={handleFactoryReset} className="w-full p-4 flex items-center justify-between transition-colors hover:bg-rose-500/10 active:scale-[0.99]">
                             <div className="flex items-center gap-3">
