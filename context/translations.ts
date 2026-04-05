@@ -122,8 +122,8 @@ export const translations = {
   "civilIdHint": "مطلوب لتمكين ولي الأمر من جلب درجات الطالب بأمان",
   "exportBackupLocal": "تصدير نسخة احتياطية (محلياً)",
   "importBackup": "استيراد نسخة سابقة",
-  "dangerZoneTitle": "منطقة الخطر"
-    settingsTitle: "الإعدادات",
+  "dangerZoneTitle": "منطقة الخطر",
+    settingsTitle: "الإعدادات ",
     settingsSubtitle: "تخصيص الهوية وإدارة البيانات السحابية والمحلية",
     profileTitle: "الملف الشخصي",
     profileSubtitle: "الرقم المدني هو مفتاحك السري للمزامنة السحابية",
@@ -643,7 +643,7 @@ export const translations = {
   "secSyncCard1Title": "الربط مع Google Drive",
   "secSyncCard1Desc": "اربط التطبيق بحسابك في جوجل لتأمين قاعدة بياناتك ومزامنتها بين هاتفك وحاسوبك تلقائياً.",
   "secSyncCard2Title": "النسخ الاحتياطي المحلي",
-  "secSyncCard2Desc": "يمكنك تصدير بيانات التطبيق كملف مشفر والاحتفاظ به على جهازك لاستعادته في أي وقت."
+  "secSyncCard2Desc": "يمكنك تصدير بيانات التطبيق كملف مشفر والاحتفاظ به على جهازك لاستعادته في أي وقت.",
     rasedGuideTitle: "دليل راصد",
     dashboardMenu: "1. لوحة القيادة",
     attendanceMenu: "2. الحضور والغياب",
@@ -1464,7 +1464,7 @@ navMore: "More",
   "secSyncCard1Title": "Connect with Google Drive",
   "secSyncCard1Desc": "Link the app to your Google account to secure your database and automatically sync it across your devices.",
   "secSyncCard2Title": "Local Backup",
-  "secSyncCard2Desc": "Export your app data as an encrypted file and keep it on your device for easy restoration at any time."
+  "secSyncCard2Desc": "Export your app data as an encrypted file and keep it on your device for easy restoration at any time.",
     rasedGuideTitle: "Rased Guide",
     dashboardMenu: "1. Dashboard",
     attendanceMenu: "2. Attendance",
