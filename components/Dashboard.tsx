@@ -6,7 +6,7 @@ import {
     PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
     X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
     AlertTriangle, Palette, Award, Heart, Plus, Trash2, RefreshCcw,
-    BookOpen, MapPin // 👈 أيقونات جديدة أضفناها للتنسيق الأفقي
+    BookOpen, MapPin
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../theme/ThemeProvider'; 
@@ -49,6 +49,51 @@ interface AssessmentMonth {
     tasks: string[];
 }
 
+// 🆕 1. إضافة واجهات وبيانات الخطة الفصلية (18 أسبوع فقط)
+interface TermWeekPlan {
+    id: string;
+    name: string;
+    start: string;
+    end: string;
+    unit: string;
+    lesson: string;
+    defaultTopic: string;
+}
+
+const TERM_WEEKS_DATA: TermWeekPlan[] = [
+    { id: "721187", name: "الأسبوع الأول", start: "2026-01-25", end: "2026-01-29", unit: "", lesson: "", defaultTopic: "تهيئة ومراجعة" },
+    { id: "721217", name: "الأسبوع الثاني", start: "2026-02-01", end: "2026-02-05", unit: "", lesson: "", defaultTopic: "الدرس الأول" },
+    { id: "721252", name: "الأسبوع الثالث", start: "2026-02-08", end: "2026-02-12", unit: "", lesson: "", defaultTopic: "الدرس الثاني" },
+    { id: "721292", name: "الأسبوع الرابع", start: "2026-02-15", end: "2026-02-19", unit: "", lesson: "", defaultTopic: "الدرس الثالث" },
+    { id: "721332", name: "الأسبوع الخامس", start: "2026-02-22", end: "2026-02-26", unit: "", lesson: "", defaultTopic: "الدرس الرابع" },
+    { id: "721379", name: "الأسبوع السادس", start: "2026-03-01", end: "2026-03-05", unit: "", lesson: "", defaultTopic: "مراجعة الوحدة الأولى" },
+    { id: "721428", name: "الأسبوع السابع", start: "2026-03-08", end: "2026-03-12", unit: "", lesson: "", defaultTopic: "الوحدة الثانية: الدرس الأول" },
+    { id: "721480", name: "الأسبوع الثامن", start: "2026-03-15", end: "2026-03-19", unit: "", lesson: "", defaultTopic: "الوحدة الثانية: الدرس الثاني" },
+    { id: "721531", name: "الأسبوع التاسع", start: "2026-03-22", end: "2026-03-26", unit: "", lesson: "", defaultTopic: "الوحدة الثانية: الدرس الثالث" },
+    { id: "721584", name: "الأسبوع العاشر", start: "2026-03-29", end: "2026-04-02", unit: "", lesson: "", defaultTopic: "امتحانات منتصف الفصل" },
+    { id: "721637", name: "الأسبوع 11", start: "2026-04-05", end: "2026-04-09", unit: "", lesson: "", defaultTopic: "الوحدة الثالثة: الدرس الأول" },
+    { id: "721688", name: "الأسبوع 12", start: "2026-04-12", end: "2026-04-16", unit: "", lesson: "", defaultTopic: "الوحدة الثالثة: الدرس الثاني" },
+    { id: "721735", name: "الأسبوع 13", start: "2026-04-19", end: "2026-04-23", unit: "", lesson: "", defaultTopic: "الوحدة الثالثة: الدرس الثالث" },
+    { id: "721785", name: "الأسبوع 14", start: "2026-04-26", end: "2026-04-30", unit: "", lesson: "", defaultTopic: "مراجعة الوحدة الثالثة" },
+    { id: "721837", name: "الأسبوع 15", start: "2026-05-03", end: "2026-05-07", unit: "", lesson: "", defaultTopic: "الوحدة الرابعة: الدرس الأول" },
+    { id: "721883", name: "الأسبوع 16", start: "2026-05-10", end: "2026-05-14", unit: "", lesson: "", defaultTopic: "الوحدة الرابعة: الدرس الثاني" },
+    { id: "721934", name: "الأسبوع 17", start: "2026-05-17", end: "2026-05-21", unit: "", lesson: "", defaultTopic: "الوحدة الرابعة: الدرس الثالث" },
+    { id: "721984", name: "الأسبوع 18", start: "2026-05-24", end: "2026-05-28", unit: "", lesson: "", defaultTopic: "المراجعة النهائية" }
+];
+
+const getCurrentWeekId = () => {
+    const now = new Date();
+    for (let i = 0; i < TERM_WEEKS_DATA.length; i++) {
+        const weekStart = new Date(TERM_WEEKS_DATA[i].start);
+        const nextWeekStart = i < TERM_WEEKS_DATA.length - 1 ? new Date(TERM_WEEKS_DATA[i+1].start) : new Date(TERM_WEEKS_DATA[i].end + 'T23:59:59');
+        if (now >= weekStart && now < nextWeekStart) {
+            return TERM_WEEKS_DATA[i].id;
+        }
+    }
+    return null;
+};
+// 🆕 انتهاء بيانات الخطة الفصلية
+
 const Dashboard: React.FC<DashboardProps> = ({
     students, 
     teacherInfo,
@@ -75,6 +120,21 @@ const Dashboard: React.FC<DashboardProps> = ({
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
     const scheduleFileInputRef = useRef<HTMLInputElement>(null);
+
+    // 🆕 2. مراجع وحالات الخطة الفصلية
+    const termExcelInputRef = useRef<HTMLInputElement>(null);
+    const [showTermPlanModal, setShowTermPlanModal] = useState(false);
+    const [termPlan, setTermPlan] = useState<TermWeekPlan[]>(() => {
+        try {
+            const saved = localStorage.getItem('rased_term_plan');
+            if (saved) return JSON.parse(saved);
+        } catch (e) { console.error(e); }
+        return TERM_WEEKS_DATA;
+    });
+    const [tempTermPlan, setTempTermPlan] = useState<TermWeekPlan[]>([]);
+    const currentWeekId = getCurrentWeekId();
+    const currentWeekPlan = termPlan.find(w => w.id === currentWeekId);
+    // 🆕 انتهاء حالات الخطة الفصلية
 
     const [isImportingPeriods, setIsImportingPeriods] = useState(false);
     const [isImportingSchedule, setIsImportingSchedule] = useState(false);
@@ -215,6 +275,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
     }, [showPlanSettingsModal, assessmentPlan]);
 
+    // 🆕 3. تأثير الخطة الفصلية
+    useEffect(() => {
+        if (showTermPlanModal) {
+            setTempTermPlan(JSON.parse(JSON.stringify(termPlan)));
+        }
+    }, [showTermPlanModal, termPlan]);
+
     const getDisplayImage = (avatar: string | undefined, gender: string | undefined) => {
         if (avatar && avatar.length > 50) return avatar;
         return null;
@@ -267,6 +334,48 @@ const Dashboard: React.FC<DashboardProps> = ({
         localStorage.setItem('rased_assessment_plan', JSON.stringify(tempPlan));
         setShowPlanSettingsModal(false);
     };
+
+    // 🆕 4. دوال الخطة الفصلية
+    const handleSaveTermPlan = () => {
+        setTermPlan(tempTermPlan);
+        localStorage.setItem('rased_term_plan', JSON.stringify(tempTermPlan));
+        setShowTermPlanModal(false);
+        alert(t('saveChanges') || 'تم حفظ الخطة بنجاح');
+    };
+
+    const handleImportTermPlanExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+            const updatedPlan = [...tempTermPlan];
+            jsonData.forEach((row, index) => {
+                if (index === 0 || row.length < 2) return;
+                const weekNum = parseInt(row[0]);
+                if (weekNum >= 1 && weekNum <= 18) {
+                    updatedPlan[weekNum - 1].unit = String(row[1] || "");
+                    updatedPlan[weekNum - 1].lesson = String(row[2] || "");
+                }
+            });
+            setTempTermPlan(updatedPlan);
+            alert('✅ تم استيراد الخطة الفصلية بنجاح');
+        } catch (error) {
+            alert('❌ خطأ في تنسيق ملف الإكسل');
+        } finally {
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const updateWeekData = (idx: number, field: 'unit' | 'lesson', value: string) => {
+        const newPlan = [...tempTermPlan];
+        newPlan[idx][field] = value;
+        setTempTermPlan(newPlan);
+    };
+    // 🆕 انتهاء دوال الخطة الفصلية
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | undefined) => void) => {
         const file = e.target.files?.[0];
@@ -422,7 +531,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     const isToday = todayRaw === dayIndex;
 
     const currentMonthIndex = new Date().getMonth();
-    // جلب بيانات الشهر الحالي فقط للداشبورد (المخ سليم، الفلترة فقط في العرض)
     const currentAssessmentPlan = assessmentPlan.find(p => p.monthIndex === currentMonthIndex);
 
     const monthNames = [t('jan'), t('feb'), t('mar'), t('apr'), t('may'), t('jun'), t('jul'), t('aug'), t('sep'), t('oct'), t('nov'), t('dec')];
@@ -434,7 +542,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             style={{ WebkitAppRegion: 'drag' } as any}
         >
                 <div className="flex justify-between items-start mb-2 pt-2">
-                    {/* 👤 معلومات المعلم والمدرسة (مساحة أكبر للتمدد) */}
+                    {/* 👤 معلومات المعلم والمدرسة */}
                     <div className="flex items-start gap-3 md:gap-5 flex-1 min-w-0 pr-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
                         <div className="relative group shrink-0">
                             <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-bgSoft border border-borderColor flex items-center justify-center overflow-hidden shadow-inner transition-transform hover:scale-105">
@@ -458,7 +566,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 </span>
                             </div>
 
-                            {/* 🏆 الجراحة التجميلية: رص البطاقات الجانبية (المادة، المحافظة، العام) */}
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
                                 {teacherInfo?.subject && (
                                     <span className="text-[10px] font-bold text-primary flex items-center gap-1 bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md truncate">
@@ -479,10 +586,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     </div>
                     
-                    {/* 🎛️ الأزرار العلوية (ترتيب عمودي مزدوج) */}
+                    {/* 🎛️ الأزرار العلوية */}
                     <div className="flex flex-col gap-2 shrink-0 items-end" style={{ WebkitAppRegion: 'no-drag' } as any}>
                         <div className="flex gap-2">
-                            {/* 🌟 1. زر تغيير الثيم */}
                             <button 
                                 onClick={() => {
                                     const themes = ['light', 'dark', 'glass'];
@@ -496,7 +602,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 <Palette size={16} />
                             </button>
 
-                            {/* 👤 2. قائمة الخيارات (تعديل الهوية والاستيراد) */}
                             <div className="relative z-[50]">
                                 <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-9 h-9 md:w-10 md:h-10 bg-bgSoft hover:bg-bgCard border border-borderColor text-textSecondary hover:text-textPrimary rounded-xl flex items-center justify-center transition-all shadow-sm`}>
                                     <User size={16} />
@@ -525,7 +630,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         </div>
 
-                        {/* 🔔 3. زر الإشعارات (في السطر الثاني للترتيب) */}
                         <button onClick={onToggleNotifications} className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all shadow-sm ${notificationsEnabled ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard hover:text-textPrimary'}`}>
                             {notificationsEnabled ? <Bell size={16} className="animate-pulse" /> : <BellOff size={16} />}
                         </button>
@@ -574,7 +678,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                 </div>
 
-                {/* 📅 الجراحة الجذرية: تحويل الجدول لشبكة بطاقات ذكية (2 حصص في كل صف) */}
                 <div className="grid grid-cols-2 gap-2 md:gap-3">
                     {todaySchedule.periods && todaySchedule.periods.map((subject: string, idx: number) => {
                         if (!subject) return null;
@@ -629,6 +732,47 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
+            {/* 🆕 5. واجهة عرض الخطة الفصلية (تظهر قبل التقييم المستمر) */}
+            <div className="px-4 mt-6 relative z-10">
+                <div className={`rounded-[1.5rem] p-5 shadow-sm border glass-panel border-borderColor`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl bg-info/10 text-info`}><BookOpen size={18}/></div>
+                            <h2 className={`text-base font-black text-textPrimary`}>الخطة الفصلية</h2>
+                        </div>
+                        <button onClick={() => setShowTermPlanModal(true)} className={`p-2 rounded-xl transition-colors bg-bgSoft text-textSecondary hover:bg-bgCard hover:text-textPrimary`}>
+                            <Settings size={18} />
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                        {currentWeekPlan ? (
+                            <div className={`p-4 rounded-2xl border transition-all bg-info/10 border-info/30`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className={`text-xs font-black text-info`}>{currentWeekPlan.name}</span>
+                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse bg-info text-white shadow-sm`}>الأسبوع الحالي</span>
+                                </div>
+                                <div className="space-y-1.5 mt-2">
+                                    <div className="flex items-start gap-2 text-[11px] font-bold text-textPrimary">
+                                        <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-info"></div>
+                                        <span><span className="text-info/80">الوحدة:</span> {currentWeekPlan.unit || 'لم تحدد'}</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-[11px] font-bold text-textPrimary">
+                                        <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-info"></div>
+                                        <span><span className="text-info/80">الدرس:</span> {currentWeekPlan.lesson || currentWeekPlan.defaultTopic}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 rounded-2xl border border-dashed border-borderColor text-center text-textSecondary text-xs font-bold bg-bgSoft">
+                                لا توجد خطة للأسبوع الحالي
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* خطة التقويم المستمر الأصلية */}
             <div className="px-4 mt-6 relative z-10">
                 <div className={`rounded-[1.5rem] p-5 shadow-sm border glass-panel border-borderColor`}>
                     <div className="flex justify-between items-center mb-4">
@@ -641,7 +785,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                     </div>
                     
-                    {/* 🎯 إخفاء الأشهر وعرض الشهر الحالي فقط */}
                     <div className="grid grid-cols-1 gap-3">
                         {currentAssessmentPlan ? (
                             <div key={currentAssessmentPlan.id} className={`p-4 rounded-2xl border transition-all bg-primary/10 border-primary/30`}>
@@ -669,6 +812,59 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* المودالز والنوافذ المنبثقة تبقى بكامل قوتها البرمجية وبدون مساس */}
+
+            {/* 🆕 6. نافذة إعدادات الخطة الفصلية (DrawerSheet) */}
+            <DrawerSheet isOpen={showTermPlanModal} onClose={() => setShowTermPlanModal(false)} dir={dir}>
+                <div className="flex flex-col h-full w-full">
+                    <div className={`flex justify-between items-center mb-4 pb-2 border-b border-borderColor`}>
+                        <h3 className="font-black text-lg text-textPrimary">تخصيص الخطة الفصلية</h3>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => termExcelInputRef.current?.click()}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-success/10 text-success hover:bg-success/20`}
+                            >
+                                <Download size={14} /> استيراد إكسل
+                            </button>
+                            <input type="file" ref={termExcelInputRef} onChange={handleImportTermPlanExcel} className="hidden" accept=".xlsx,.xls" />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-3">
+                        {tempTermPlan.map((week, idx) => {
+                            const isCurrent = week.id === currentWeekId;
+                            return (
+                                <div key={week.id} className={`p-4 rounded-xl border transition-all ${isCurrent ? 'bg-info/10 border-info shadow-sm' : 'bg-bgCard border-borderColor'}`}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className={`text-[11px] font-black ${isCurrent ? 'text-info' : 'text-textPrimary'}`}>{week.name}</span>
+                                        <span className={`text-[9px] font-bold ${isCurrent ? 'text-info/80' : 'text-textSecondary'}`}>{week.start} - {week.end}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <input 
+                                            value={week.unit}
+                                            onChange={(e) => updateWeekData(idx, 'unit', e.target.value)}
+                                            placeholder={`اسم الوحدة (مثال: الوحدة الأولى)`}
+                                            className={`w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info`}
+                                        />
+                                        <input 
+                                            value={week.lesson}
+                                            onChange={(e) => updateWeekData(idx, 'lesson', e.target.value)}
+                                            placeholder={`اسم الدرس (الافتراضي: ${week.defaultTopic})`}
+                                            className={`w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info`}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className={`pt-4 mt-auto border-t border-borderColor`}>
+                        <button onClick={handleSaveTermPlan} className={`w-full py-3 text-white rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all bg-primary hover:bg-primary/80`}>
+                            <Save size={16} /> {t('saveChanges')}
+                        </button>
+                    </div>
+                </div>
+            </DrawerSheet>
+
             <DrawerSheet isOpen={showPlanSettingsModal} onClose={() => setShowPlanSettingsModal(false)} dir={dir}>
                 <div className="flex flex-col h-full w-full">
                     <div className={`flex justify-between items-center mb-4 pb-2 border-b border-borderColor`}>
