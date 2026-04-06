@@ -40,9 +40,10 @@ html {
   background-color: #0f172a !important;
 }
 
+/* 💉 تم تعديل لون الجدار الواقي للثيم الفاتح ليطابق النسخة الأولى #f3f4f6 */
 html[data-theme="light"],
 html:not([data-theme="dark"]):not([data-theme="glass"]) {
-  background-color: #f1f5f9 !important;
+  background-color: #f3f4f6 !important;
 }
 
 /* ========================================================= */
@@ -68,8 +69,6 @@ body {
   padding: 0;
   overflow: hidden;
   overscroll-behavior-y: none;
-
-  /* ❌ تم حذف position: fixed (سبب المشكلة) */
 }
 
 /* ========================================================= */
@@ -123,14 +122,8 @@ body {
 /* ========================================================= */
 /* --- 💎 UTILITIES & FIXES --- */
 /* ========================================================= */
-
-/* ✅ Safe Area مصحح */
 .pt-safe { padding-top: var(--safe-top); }
-
-/* ❌ تم تعطيل pb-safe لأنه سبب الفراغ */
 .pb-safe { padding-bottom: 0; }
-
-/* shimmer لا علاقة له بالمشكلة */
 .shimmer-hover { 
   position: relative; 
   overflow: hidden !important; 
@@ -144,7 +137,6 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-
   padding-bottom: var(--safe-bottom);
   background: var(--bg);
 }
@@ -166,36 +158,54 @@ body {
 }
 
 /* ========================================================= */
-/* --- 💡 LIGHT THEME FIX --- */
+/* --- 💉 الجراحة النهائية: استعادة الثيم الكلاسيكي (الأصلي) --- */
 /* ========================================================= */
 @layer base {
+  /* استعادة ألوان الأساسية للـ Body القديم */
   :root[data-theme="light"],
   :root:not([data-theme="dark"]):not([data-theme="glass"]) {
-    --bg: #f1f5f9 !important;
-    --text: #0f172a !important;
-    --text-secondary: #475569 !important;
-    --border: #cbd5e1 !important;
+    --bg: #f3f4f6 !important;          
+    --text: #1e293b !important;        
+    --text-secondary: #64748b !important; 
+    --border: #e2e8f0 !important;      
   }
 }
 
 @layer components {
-  :root[data-theme="light"] .glass-panel,
+  /* تحويل كلاسات الزجاج إلى بطاقات بيضاء صلبة في الثيم الفاتح */
   :root[data-theme="light"] .glass-card,
+  :root[data-theme="light"] .glass-panel,
+  :root[data-theme="light"] .glass-heavy,
+  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-card,
   :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-panel,
-  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-card {
+  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-heavy {
     background-color: #ffffff !important;
-    border: 1px solid rgba(15, 23, 42, 0.12) !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
-    backdrop-filter: blur(24px) !important;
-    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
-  :root[data-theme="light"] .text-slate-400,
-  :root[data-theme="light"] .text-slate-300,
-  :root[data-theme="light"] .text-indigo-200,
-  :root:not([data-theme="dark"]):not([data-theme="glass"]) .text-slate-400,
-  :root:not([data-theme="dark"]):not([data-theme="glass"]) .text-slate-300,
-  :root:not([data-theme="dark"]):not([data-theme="glass"]) .text-indigo-200 {
-    color: var(--text-secondary) !important;
+  /* استعادة حركة الارتفاع (Hover) القديمة للبطاقات */
+  :root[data-theme="light"] .glass-card:hover,
+  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  /* استعادة شكل الحقول (Inputs) القديمة */
+  :root[data-theme="light"] .glass-input,
+  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-input {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  /* استعادة شكل الأيقونات الفرعية القديمة */
+  :root[data-theme="light"] .glass-icon,
+  :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-icon {
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    border: 1px solid #e2e8f0 !important;
   }
 }
