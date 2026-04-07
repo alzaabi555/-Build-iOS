@@ -14,27 +14,22 @@ import {
 import { motion } from 'framer-motion';
 import BrandLogo from './BrandLogo';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../theme/ThemeProvider'; // 👈 استدعاء محرك الثيمات
+import { useTheme } from '../theme/ThemeProvider';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
 const About: React.FC = () => {
   const { t, dir, language } = useApp();
-  const { theme } = useTheme(); // جلب الثيم الحالي إذا لزم الأمر
+  const { theme } = useTheme(); 
 
   return (
-    <div
-      className={`flex flex-col h-full overflow-hidden text-textPrimary transition-colors duration-500 ${
-        language === 'ar' ? 'text-right' : 'text-left'
-      }`}
-      dir={dir}
+    // 💉 تغليف الصفحة بالكامل بالمكون الجديد
+    <PageLayout
+      title={t('navAbout')}
+      icon={<Info size={24} />}
     >
-      {/* Header */}
-      <header className="px-4 py-4 border-b border-borderColor flex items-center gap-3 shrink-0">
-        <Info size={20} className="text-primary" />
-        <h1 className="text-lg font-black">{t('navAbout')}</h1>
-      </header>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-2xl mx-auto w-full custom-scrollbar">
+      
+      {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية تحت الهيدر) ⬇️ */}
+      <div className="space-y-6 max-w-2xl mx-auto w-full animate-in fade-in duration-500 pt-2 pb-10">
 
         {/* App Identity */}
         <motion.div
@@ -111,13 +106,13 @@ const About: React.FC = () => {
         </div>
 
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
 export default About;
 
-/* ================= UI Components ================= */
+/* ================= UI Components (تركت كما هي بأمان) ================= */
 
 interface SectionProps {
   title: string;
