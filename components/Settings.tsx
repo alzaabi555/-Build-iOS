@@ -19,7 +19,9 @@ const Settings = () => {
     periodTimes, setPeriodTimes, assessmentTools, setAssessmentTools,
     certificateSettings, setCertificateSettings, hiddenClasses, setHiddenClasses,
     groups, setGroups, categorizations, setCategorizations, gradeSettings, setGradeSettings,
-    language, setLanguage, t, dir 
+    language, setLanguage, t, dir,
+    // 💉 استدعاء المهام والمكتبة من السياق
+    tasks, setTasks, library, setLibrary
   } = useApp();
 
   const { theme } = useTheme();
@@ -41,13 +43,18 @@ const Settings = () => {
       setCivilId(teacherInfo?.civilId || '');
   }, [teacherInfo]);
 
+  // 💉 الجراحة الأولى: تأمين التصدير
   const handleBackup = async () => {
     setLoading('backup');
     try {
       const dataToSave = {
         version: '3.8.7', timestamp: new Date().toISOString(),
         students, classes, hiddenClasses, groups, schedule, periodTimes, 
-        teacherInfo, assessmentTools, certificateSettings, categorizations, gradeSettings
+        teacherInfo, assessmentTools, certificateSettings, categorizations, gradeSettings,
+        // 💉 حشو البيانات الجديدة في الحقيبة
+        tasks, library,
+        assessmentPlan: JSON.parse(localStorage.getItem('rased_assessment_plan') || 'null'),
+        termPlan: JSON.parse(localStorage.getItem('rased_term_plan') || 'null')
       };
       const fileName = `Rased_Backup_${new Date().toISOString().split('T')[0]}.json`;
       const jsonString = JSON.stringify(dataToSave, null, 2);
@@ -65,6 +72,7 @@ const Settings = () => {
     } catch (error) { alert(t('alertExportError')); } finally { setLoading(null); setActiveDrawer(null); }
   };
 
+  // 💉 الجراحة الثانية: تأمين الاستيراد
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !confirm(t('alertConfirmRestore'))) return;
@@ -76,7 +84,13 @@ const Settings = () => {
             if (data.students) {
                 setStudents(data.students); setClasses(data.classes || []);
                 if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
-                if(data.groups) setGroups(data.groups);
+                
+                // 💉 كيّ النزيف: إجبار المجموعات على الانحفاظ في الذاكرة المحلية
+                if(data.groups) {
+                    setGroups(data.groups);
+                    localStorage.setItem('rased_groups', JSON.stringify(data.groups));
+                }
+                
                 if(data.categorizations) setCategorizations(data.categorizations);
                 if(data.schedule) setSchedule(data.schedule);
                 if(data.periodTimes) setPeriodTimes(data.periodTimes);
@@ -85,6 +99,20 @@ const Settings = () => {
                 if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
                 if(data.gradeSettings) setGradeSettings(data.gradeSettings);
                 
+                // 💉 استيراد المهام والمكتبة وحقنها في الذاكرة
+                if(data.tasks) {
+                    if(setTasks) setTasks(data.tasks);
+                    localStorage.setItem('rased_tasks', JSON.stringify(data.tasks));
+                }
+                if(data.library) {
+                    if(setLibrary) setLibrary(data.library);
+                    localStorage.setItem('rased_library', JSON.stringify(data.library));
+                }
+
+                // 💉 استيراد الخطط الفصلية والتقويمية
+                if(data.assessmentPlan) localStorage.setItem('rased_assessment_plan', JSON.stringify(data.assessmentPlan));
+                if(data.termPlan) localStorage.setItem('rased_term_plan', JSON.stringify(data.termPlan));
+
                 if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
                     await Filesystem.writeFile({ path: 'raseddatabasev2.json', data: event.target?.result as string, directory: Directory.Data, encoding: Encoding.UTF8 });
                 }
