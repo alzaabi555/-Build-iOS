@@ -12,6 +12,7 @@ import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
 interface GradeBookProps {
   students: Student[];
@@ -441,216 +442,213 @@ const GradeBook: React.FC<GradeBookProps> = ({
 
   // 🌍 تطبيق الـ dir
   return (
-   <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
-            
-  <header 
-    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary`}
-    style={{ WebkitAppRegion: 'drag' } as any}
->
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-bgSoft p-1.5 rounded-xl border border-borderColor">
-              <BarChart3 className="w-5 h-5 text-textPrimary" />
-            </div>
-            <h1 className="text-lg md:text-2xl font-black tracking-wide">{t('gradeBookTitle')}</h1>
+    // 💉 الغلاف الشامل PageLayout
+    <PageLayout
+      title={t('gradeBookTitle')}
+      icon={<BarChart3 size={24} />}
+      
+      // 💉 الأزرار العلوية يميناً (الإعدادات + القائمة المنسدلة)
+      rightActions={
+        <div className="flex items-center gap-2">
             <button 
                 onClick={() => setShowToolsManager(true)} 
-                className="p-1.5 bg-bgSoft hover:bg-bgCard rounded-full transition-colors active:scale-95 border border-borderColor cursor-pointer relative z-50" 
+                className="p-2.5 bg-bgSoft hover:bg-bgCard rounded-xl transition-colors active:scale-95 border border-borderColor cursor-pointer relative z-50 text-textSecondary hover:text-textPrimary" 
                 title={t('manageTools')}
                 style={{ WebkitAppRegion: 'no-drag' } as any}
             >
-              <Settings className="w-4 h-4 text-textSecondary hover:text-textPrimary" />
+              <Settings size={20} />
             </button>
-          </div>
-          
-          <div className="relative z-[9999]" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <button onClick={() => setShowMenu(!showMenu)} className={`cursor-pointer relative z-50 p-2 rounded-xl border border-borderColor active:scale-95 transition-all ${showMenu ? 'bg-bgCard text-primary' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}>
-              <SlidersHorizontal className="w-5 h-5" />
-            </button>
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-64 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
-                  <div className="p-1">
-                    <button onClick={() => { setShowDistModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b hover:bg-bgSoft border-borderColor`}>
-                      <PieChart className={`w-4 h-4 text-primary`} />
-                      <div className="flex flex-col items-start text-xs font-bold">
-                        <span className="text-textPrimary">{t('gradeDistributionSettings')}</span>
-                        <span className={`text-[9px] text-textSecondary`}>{t('setFinalGradeAndWeight')}</span>
-                      </div>
-                    </button>
+            
+            <div className="relative z-[9999]" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                <button onClick={() => setShowMenu(!showMenu)} className={`cursor-pointer relative z-50 p-2.5 rounded-xl border border-borderColor active:scale-95 transition-all ${showMenu ? 'bg-bgCard text-primary' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}>
+                    <SlidersHorizontal size={20} />
+                </button>
+                {showMenu && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
+                    <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-64 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
+                        <div className="p-1">
+                            <button onClick={() => { setShowDistModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b hover:bg-bgSoft border-borderColor`}>
+                                <PieChart className={`w-4 h-4 text-primary`} />
+                                <div className="flex flex-col items-start text-xs font-bold">
+                                    <span className="text-textPrimary">{t('gradeDistributionSettings')}</span>
+                                    <span className={`text-[9px] text-textSecondary`}>{t('setFinalGradeAndWeight')}</span>
+                                </div>
+                            </button>
 
-                    <button onClick={handleDownloadTemplate} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b hover:bg-bgSoft border-borderColor`}>
-                      <FileSpreadsheet className={`w-4 h-4 text-warning`} />
-                      <span className={`text-xs font-bold text-textPrimary`}>{t('downloadEmptyTemplate')}</span>
-                    </button>
+                            <button onClick={handleDownloadTemplate} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b hover:bg-bgSoft border-borderColor`}>
+                                <FileSpreadsheet className={`w-4 h-4 text-warning`} />
+                                <span className={`text-xs font-bold text-textPrimary`}>{t('downloadEmptyTemplate')}</span>
+                            </button>
 
-                    <button onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} hover:bg-bgSoft`}>
-                      {isImporting ? <Loader2 className={`w-4 h-4 animate-spin text-success`} /> : <FileUp className={`w-4 h-4 text-success`} />}
-                      <span className={`text-xs font-bold text-textPrimary`}>{t('importFromExcel')}</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
+                            <button onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} hover:bg-bgSoft`}>
+                                {isImporting ? <Loader2 className={`w-4 h-4 animate-spin text-success`} /> : <FileUp className={`w-4 h-4 text-success`} />}
+                                <span className={`text-xs font-bold text-textPrimary`}>{t('importFromExcel')}</span>
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleImportExcel} accept=".xlsx, .xls" className="hidden" />
 
-                    <button onClick={handleExportExcel} disabled={isExporting} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} hover:bg-bgSoft`}>
-                      {isExporting ? <Loader2 className={`w-4 h-4 animate-spin text-primary`} /> : <FileDown className={`w-4 h-4 text-primary`} />}
-                      <span className={`text-xs font-bold text-textPrimary`}>{t('exportReport')}</span>
-                    </button>
+                            <button onClick={handleExportExcel} disabled={isExporting} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} hover:bg-bgSoft`}>
+                                {isExporting ? <Loader2 className={`w-4 h-4 animate-spin text-primary`} /> : <FileDown className={`w-4 h-4 text-primary`} />}
+                                <span className={`text-xs font-bold text-textPrimary`}>{t('exportReport')}</span>
+                            </button>
 
-                    <button onClick={handleClearGrades} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-t hover:bg-danger/10 text-danger border-borderColor`}>
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-xs font-bold">{t('resetSemesterGrades')}</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+                            <button onClick={handleClearGrades} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-t hover:bg-danger/10 text-danger border-borderColor`}>
+                                <Trash2 className="w-4 h-4" />
+                                <span className="text-xs font-bold">{t('resetSemesterGrades')}</span>
+                            </button>
+                        </div>
+                    </div>
+                </>
+                )}
+            </div>
         </div>
+      }
 
-        {/* ✅ الحاوية للخطوط الثلاثة */}
-        <div className="space-y-3 relative z-50 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          
-          {/* ================= 1. كبسولة الفصول والصفوف (مدمجة) ================= */}
-          <div className="w-full overflow-x-auto no-scrollbar pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
-                  
-                  {/* زر (الكل) */}
-                  <button 
-                      onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
-                      className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                  >
-                      {t('allGradesList')}
-                  </button>
+      // 💉 الفلاتر والأدوات (تختفي بذكاء مع النزول للأسفل)
+      leftActions={
+        <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {/* ================= 1. كبسولة الفصول والصفوف (مدمجة) ================= */}
+            <div className="w-full overflow-x-auto no-scrollbar pb-1">
+                <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
+                    {/* زر (الكل) */}
+                    <button 
+                        onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
+                        className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+                    >
+                        {t('allGradesList')}
+                    </button>
 
-                  {/* أزرار الصفوف (Grades) */}
-                  {availableGrades.map(g => (
-                      <React.Fragment key={`grade-${g}`}>
-                          <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
-                          <button 
-                              onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
-                              className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                          >
-                              {t('gradePrefix')} {g}
-                          </button>
-                      </React.Fragment>
-                  ))}
+                    {/* أزرار الصفوف (Grades) */}
+                    {availableGrades.map(g => (
+                        <React.Fragment key={`grade-${g}`}>
+                            <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
+                            <button 
+                                onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
+                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+                            >
+                                {t('gradePrefix')} {g}
+                            </button>
+                        </React.Fragment>
+                    ))}
 
-                  {/* أزرار الفصول (Classes) */}
-                  {visibleClasses.map(c => (
-                      <React.Fragment key={`class-${c}`}>
-                          <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
-                          <button 
-                              onClick={() => setSelectedClass(c)} 
-                              className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                          >
-                              {c}
-                          </button>
-                      </React.Fragment>
-                  ))}
-              </div>
-          </div>
+                    {/* أزرار الفصول (Classes) */}
+                    {visibleClasses.map(c => (
+                        <React.Fragment key={`class-${c}`}>
+                            <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
+                            <button 
+                                onClick={() => setSelectedClass(c)} 
+                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+                            >
+                                {c}
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
 
-          {/* ================= 2. كبسولة أدوات التقويم (Tools) ================= */}
-          <div className="w-full overflow-x-auto no-scrollbar pb-1 mt-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-primary/10 border-primary/20`}>
-                  {tools.map((tool, index) => (
-                      <React.Fragment key={tool.id}>
-                          {index > 0 && <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-primary/20`} />}
-                          <button 
-                              onClick={() => setActiveToolId(tool.id)} 
-                              className={`relative px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-300 ${activeToolId === tool.id ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-primary hover:bg-primary/10'}`}
-                          >
-                              {activeToolId === tool.id && <Check className="w-3.5 h-3.5" />}
-                              {tool.isFinal && <span className="text-warning">★</span>}
-                              {tool.name}
-                          </button>
-                      </React.Fragment>
-                  ))}
-                  {tools.length === 0 && (
-                      <span className={`px-4 py-2 text-xs font-bold text-textSecondary`}>{t('noToolsAdded')}</span>
-                  )}
-              </div>
-          </div>
+            {/* ================= 2. كبسولة أدوات التقويم (Tools) ================= */}
+            <div className="w-full overflow-x-auto no-scrollbar pb-1">
+                <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-primary/5 border-primary/20`}>
+                    {tools.map((tool, index) => (
+                        <React.Fragment key={tool.id}>
+                            {index > 0 && <div className={`w-[1px] h-4 mx-1.5 rounded-full shrink-0 bg-primary/20`} />}
+                            <button 
+                                onClick={() => setActiveToolId(tool.id)} 
+                                className={`relative px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-300 ${activeToolId === tool.id ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-primary hover:bg-primary/10'}`}
+                            >
+                                {activeToolId === tool.id && <Check className="w-3 h-3" />}
+                                {tool.isFinal && <span className="text-warning text-[10px]">★</span>}
+                                {tool.name}
+                            </button>
+                        </React.Fragment>
+                    ))}
+                    {tools.length === 0 && (
+                        <span className={`px-4 py-2 text-[10px] font-bold text-textSecondary`}>{t('noToolsAdded')}</span>
+                    )}
+                </div>
+            </div>
 
-          <div className={`grid grid-cols-3 gap-2 mt-2 p-2 rounded-xl border bg-bgSoft border-borderColor shadow-inner`}>
-            {tools.length > 0 && (
-              <button 
-                onClick={handleCopyContinuousTotal} 
-                className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-warning hover:bg-warning/80`}
-                title={t('copyContinuousTotalTitle')}
-              >
-                <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('continuousAssessment')}
-              </button>
-            )}
-
-            {activeToolId && (
-              <>
+            {/* ================= 3. أزرار الإجراءات السريعة للتقويم ================= */}
+            <div className={`grid grid-cols-3 gap-2 mt-1 p-1.5 rounded-xl border bg-bgSoft border-borderColor shadow-inner`}>
+                {tools.length > 0 && (
                 <button 
-                  onClick={() => {
-                    const tool = tools.find(t => t.id === activeToolId);
-                    if (!tool) return;
-                    
-                    const gradesList = filteredStudents.map(student => {
-                      const grade = getStudentGradeForActiveTool(student);
-                      return grade !== '' ? grade : ''; 
-                    });
-                    
-                    const textToCopy = gradesList.join('\n');
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                      alert(`${t('alertToolCopied1')}${tool.name}${t('alertToolCopied2')}`);
-                    }).catch(() => alert(t('alertCopyError')));
-                  }} 
-                  className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-success hover:bg-success/80`}
+                    onClick={handleCopyContinuousTotal} 
+                    className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-warning hover:bg-warning/80`}
+                    title={t('copyContinuousTotalTitle')}
                 >
-                  <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('copyTool')}
+                    <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('continuousAssessment')}
                 </button>
+                )}
 
-                <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-primary hover:bg-primary/80`}>
-                  <Wand2 className="w-3.5 h-3.5 mb-0.5" /> {t('bulkFill')}
-                </button>
-              </>
-            )}
-          </div>
+                {activeToolId && (
+                <>
+                    <button 
+                    onClick={() => {
+                        const tool = tools.find(t => t.id === activeToolId);
+                        if (!tool) return;
+                        
+                        const gradesList = filteredStudents.map(student => {
+                        const grade = getStudentGradeForActiveTool(student);
+                        return grade !== '' ? grade : ''; 
+                        });
+                        
+                        const textToCopy = gradesList.join('\n');
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                        alert(`${t('alertToolCopied1')}${tool.name}${t('alertToolCopied2')}`);
+                        }).catch(() => alert(t('alertCopyError')));
+                    }} 
+                    className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-success hover:bg-success/80`}
+                    >
+                    <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('copyTool')}
+                    </button>
 
+                    <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-primary hover:bg-primary/80`}>
+                    <Wand2 className="w-3.5 h-3.5 mb-0.5" /> {t('bulkFill')}
+                    </button>
+                </>
+                )}
+            </div>
         </div>
-      </header>
+      }
+    >
 
-      <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {filteredStudents.map(student => {
-            const currentGrade = getStudentGradeForActiveTool(student);
-            const semGrades = getSemesterGrades(student, currentSemester);
-            const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
-            const symbolColor = getSymbolColor(totalScore);
+      {/* ⬇️ محتوى الصفحة المباشر (كروت الطلاب للدرجات) ⬇️ */}
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 animate-in fade-in duration-500 pt-2">
+        {filteredStudents.map(student => {
+          const currentGrade = getStudentGradeForActiveTool(student);
+          const semGrades = getSemesterGrades(student, currentSemester);
+          const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
+          const symbolColor = getSymbolColor(totalScore);
 
-            return (
-              <div key={student.id} className={`glass-panel rounded-2xl p-2 border border-borderColor flex flex-col items-center relative transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
-                <StudentAvatar gender={student.gender} className={`w-10 h-10 mb-1.5 border-2 shadow-sm border-borderColor`} />
-                
-                <h3 className={`font-bold text-[10px] leading-[1.2] text-center break-words mb-2 w-full min-h-[30px] flex items-center justify-center text-textPrimary`}>
-                  {student.name}
-                </h3>
-                
-                <div className={`flex items-center justify-center gap-1.5 mb-2 w-full py-1 rounded-lg border bg-bgSoft border-borderColor`}>
-                    <span className={`text-sm font-black ${symbolColor.split(' ')[0]}`}>{totalScore}</span>
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${symbolColor}`}>{getGradeSymbol(totalScore)}</span>
-                </div>
-                
-                <div className="w-full relative mt-auto">
-                    <input 
-                        type="tel" 
-                        maxLength={3} 
-                        value={currentGrade} 
-                        onChange={e => handleGradeChange(student.id, e.target.value)} 
-                        placeholder="-" 
-                        className={`w-full h-8 rounded-lg text-center font-black text-sm outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} 
-                    />
-                </div>
+          return (
+            <div key={student.id} className={`glass-panel rounded-2xl p-2 border border-borderColor flex flex-col items-center relative transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
+              <StudentAvatar gender={student.gender} className={`w-10 h-10 mb-1.5 border-2 shadow-sm border-borderColor`} />
+              
+              <h3 className={`font-bold text-[10px] leading-[1.2] text-center break-words mb-2 w-full min-h-[30px] flex items-center justify-center text-textPrimary`}>
+                {student.name}
+              </h3>
+              
+              <div className={`flex items-center justify-center gap-1.5 mb-2 w-full py-1 rounded-lg border bg-bgSoft border-borderColor`}>
+                  <span className={`text-sm font-black ${symbolColor.split(' ')[0]}`}>{totalScore}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${symbolColor}`}>{getGradeSymbol(totalScore)}</span>
               </div>
-            );
-          })}
-        </div>
+              
+              <div className="w-full relative mt-auto">
+                  <input 
+                      type="tel" 
+                      maxLength={3} 
+                      value={currentGrade} 
+                      onChange={e => handleGradeChange(student.id, e.target.value)} 
+                      placeholder="-" 
+                      className={`w-full h-8 rounded-lg text-center font-black text-sm outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} 
+                  />
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* ================= النوافذ المنزلقة (توضع كما هي بأمان) ================= */}
 
       {/* 🌟 1. اللوحة المنزلقة: إدارة أدوات التقويم */}
       <DrawerSheet isOpen={showToolsManager} onClose={() => { setShowToolsManager(false); setIsAddingTool(false); }} isRamadan={isRamadan} dir={dir} mode="side">
@@ -745,7 +743,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
         )}
       </DrawerSheet>
 
-    </div>
+    </PageLayout>
   );
 };
 
