@@ -21,11 +21,11 @@ type DetailCardProps = {
   desc: string;
   details?: string[];
   isNew?: boolean; 
-  newLabel?: string; // 👈 تمت إضافة هذا لكي نستقبل الترجمة من المكون الأب
+  newLabel?: string; 
 };
 
 const DetailCard: React.FC<DetailCardProps> = ({ icon: Icon, title, desc, details, isNew, newLabel }) => (
-  <div className="glass-card p-6 border border-borderColor transition-all duration-300 hover:border-primary/50 hover:bg-bgSoft">
+  <div className="glass-card p-6 border border-borderColor transition-all duration-300 hover:border-primary/50 hover:bg-bgSoft rounded-2xl">
     <div className="flex items-start gap-4">
       <div className="p-3 rounded-2xl shrink-0 bg-primary/10 text-primary shadow-inner">
         <Icon size={24} />
@@ -144,7 +144,7 @@ const UserGuide: React.FC = () => {
           glass-panel border-borderColor rounded-none
         `}
       >
-        <div className="h-full flex flex-col pt-[env(safe-area-inset-top)]">
+        <div className="h-full flex flex-col pt-[max(env(safe-area-inset-top),16px)] pb-[env(safe-area-inset-bottom)]">
           <div className="p-6 border-b border-borderColor flex justify-between items-center shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -197,7 +197,7 @@ const UserGuide: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto relative scroll-smooth custom-scrollbar">
+      <main className="flex-1 overflow-y-auto relative scroll-smooth custom-scrollbar bg-bgMain">
         
         <button
           onClick={() => setSidebarOpen(true)}
@@ -206,7 +206,8 @@ const UserGuide: React.FC = () => {
           <Menu size={24} />
         </button>
 
-        <div id="guide-content-inner" className="w-full" dir={dir}>
+        {/* 💉 أضفنا pb-32 لمنع اختفاء المحتوى خلف القائمة السفلية */}
+        <div id="guide-content-inner" className="w-full pb-32" dir={dir}>
 
             <header id="hero" className="relative px-6 text-center border-b border-borderColor transition-all pb-12 pt-[calc(env(safe-area-inset-top)+4rem)]">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-6 bg-primary/10 border border-primary/20 text-primary">
@@ -220,7 +221,7 @@ const UserGuide: React.FC = () => {
               </p>
             </header>
 
-            <div className="max-w-5xl mx-auto px-6 pb-32 space-y-24 pt-12">
+            <div className="max-w-5xl mx-auto px-6 space-y-24 pt-12">
               
               <section id="dashboard" className="scroll-mt-24">
                 <div className="flex items-center gap-3 mb-8">
