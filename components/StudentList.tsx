@@ -10,6 +10,8 @@ import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
+
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
@@ -286,14 +288,11 @@ const StudentList: React.FC<StudentListProps> = ({
         const todayStr = new Date().toLocaleDateString('en-CA');
         const now = new Date();
 
-        // 1. تصفية الطلاب المتاحين (استبعاد الغائبين + أصحاب السلوك السلبي اليوم)
         const eligibleStudents = filteredStudents.filter(student => {
-            // استبعاد الغائب أو الهارب
             const attendanceRecord = student.attendance?.find(a => a.date === todayStr);
             const isAbsentOrTruant = attendanceRecord?.status === 'absent' || attendanceRecord?.status === 'truant';
             if (isAbsentOrTruant) return false;
 
-            // استبعاد من لديه سلوك سلبي في نفس اليوم
             const hasNegativeToday = (student.behaviors || []).some(b => {
                 const bDate = new Date(b.date);
                 return b.type === 'negative' && 
@@ -303,33 +302,28 @@ const StudentList: React.FC<StudentListProps> = ({
             });
             if (hasNegativeToday) return false;
 
-            return true; // الطالب حاضر وسلوكه نظيف اليوم!
+            return true; 
         });
 
-        // إذا لم يكن هناك أي طالب متاح (الكل إما غائب أو معاقب)
         if (eligibleStudents.length === 0) {
             alert(t('alertNoPresentStudentsForDraw') || 'لا يوجد طلاب متاحين للقرعة (الجميع غائب أو لديه سلوك سلبي)');
             return;
         }
 
-        // 2. تصفية الطلاب الذين لم يسبق اختيارهم في هذه الجولة
         let candidates = eligibleStudents.filter(s => !pickedStudentIds.includes(s.id));
 
-        // 3. إعادة الضبط الذكي في حال تم سحب جميع الطلاب المتاحين
         if (candidates.length === 0) {
             if (confirm(t('alertAllPresentSelected') || 'تم سحب جميع الطلاب المتاحين. هل تريد تصفير القرعة والبدء من جديد؟')) {
-                setPickedStudentIds([]); // تصفير الذاكرة
-                candidates = eligibleStudents; // إعادة إدخال جميع الطلاب المتاحين للقرعة من جديد
+                setPickedStudentIds([]); 
+                candidates = eligibleStudents; 
             } else {
-                return; // إلغاء العملية إذا لم يرد المعلم التصفير
+                return; 
             }
         }
 
-        // 4. السحب العشوائي العادل من القائمة النقية
         const randomIndex = Math.floor(Math.random() * candidates.length);
         const winner = candidates[randomIndex];
 
-        // تسجيل الطالب كـ "تم اختياره" حتى لا يتكرر
         setPickedStudentIds(prev => [...prev, winner.id]);
         setRandomWinner(winner);
         playSound('positive'); 
@@ -551,25 +545,15 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     return (
-   <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+        // 💉 الغلاف الشامل PageLayout
+        <PageLayout
+            title={t('studentsTitle')}
+            subtitle={`${safeStudents.length} ${t('registeredStudents')}`}
+            icon={<Users size={24} />}
             
-<header 
-    className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary`}
-    style={{ WebkitAppRegion: 'drag' } as any}
->
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="bg-bgSoft p-2 rounded-xl border border-borderColor transition-all duration-300">
-                        <Users className="w-5 h-5 text-textPrimary" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-black tracking-wide">{t('studentsTitle')}</h1>
-                        <p className={`text-[10px] font-bold opacity-80 text-textSecondary`}>{safeStudents.length} {t('registeredStudents')}</p>
-                    </div>
-                </div>
-
+            // 💉 الأزرار العلوية يميناً (الوارد، المؤقت، القرعة، القائمة)
+            rightActions={
                 <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    
                     {/* 📥 صندوق الوارد (رسائل الآباء) */}
                     <button 
                         onClick={() => { setIsMessagesModalOpen(true); fetchParentMessages(); }} 
@@ -637,66 +621,66 @@ const StudentList: React.FC<StudentListProps> = ({
                         )}
                     </div>
                 </div>
-            </div>
+            }
 
-            <div className="space-y-3 relative z-10" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                <div className="relative">
-                    <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
-                    <input 
-                        type="text" 
-                        placeholder={t('searchStudent')} 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
-                    />
-                </div>
-                
-               {/* ================= شريط اختيار الفصول (الكبسولة الزجاجية الفخمة) ================= */}
-                <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
-                    <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
-                        
-                        {/* زر (الكل) */}
-                        <button 
-                            onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
-                            className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
-                        >
-                            {t('all')}
-                        </button>
+            // 💉 البحث والفلاتر (تختفي بذكاء عند التمرير لأسفل)
+            leftActions={
+                <div className="space-y-3 relative z-10 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    <div className="relative w-full">
+                        <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
+                        <input 
+                            type="text" 
+                            placeholder={t('searchStudent')} 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
+                        />
+                    </div>
+                    
+                    {/* ================= شريط اختيار الفصول ================= */}
+                    <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
+                        <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
+                            
+                            {/* زر (الكل) */}
+                            <button 
+                                onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
+                                className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
+                            >
+                                {t('all')}
+                            </button>
 
-                        {/* أزرار الصفوف (Grades) */}
-                        {availableGrades.map(g => (
-                            <React.Fragment key={`grade-${g}`}>
-                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
-                                <button 
-                                    onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
-                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
-                                >
-                                    {t('gradePrefix')} {g}
-                                </button>
-                            </React.Fragment>
-                        ))}
+                            {/* أزرار الصفوف (Grades) */}
+                            {availableGrades.map(g => (
+                                <React.Fragment key={`grade-${g}`}>
+                                    <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
+                                    <button 
+                                        onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
+                                        className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
+                                    >
+                                        {t('gradePrefix')} {g}
+                                    </button>
+                                </React.Fragment>
+                            ))}
 
-                        {/* أزرار الفصول (Classes) */}
-                        {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
-                            <React.Fragment key={`class-${c}`}>
-                                <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
-                                <button 
-                                    onClick={() => setSelectedClass(c)} 
-                                    className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
-                                >
-                                    {c}
-                                </button>
-                            </React.Fragment>
-                        ))}
-
-                   </div>
-                </div>
-            </div> 
-        </header>
-
-        {/* List */}
-      <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                            {/* أزرار الفصول (Classes) */}
+                            {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
+                                <React.Fragment key={`class-${c}`}>
+                                    <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
+                                    <button 
+                                        onClick={() => setSelectedClass(c)} 
+                                        className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
+                                    >
+                                        {c}
+                                    </button>
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
+                </div> 
+            }
+        >
+            {/* ⬇️ محتوى الصفحة المباشر (ينزلق تحت الهيدر والفلاتر) ⬇️ */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in duration-500 pt-2">
                 {filteredStudents.length > 0 ? filteredStudents.map(student => {
                     const totalPoints = calculateTotalPoints(student);
                     return (
@@ -757,9 +741,8 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 )}
             </div>
-        </div>
 
-        {/* ================= النوافذ المنزلقة الجديدة (DrawerSheets) ================= */}
+        {/* ================= النوافذ المنزلقة والمودال (تترك كما هي خارج التدفق البصري) ================= */}
 
         {/* 📥 1. نافذة صندوق الوارد للرسائل */}
         <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
@@ -801,7 +784,6 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className={`glass-panel p-4 rounded-xl border border-borderColor text-sm font-bold text-textPrimary leading-relaxed shadow-sm ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                                     {msg.message}
                                 </div>
-                                {/* 💬 زر الرد عبر الواتساب */}
                                 <div className="mt-3 flex justify-end">
                                     <button 
                                         onClick={() => handleReplyToMessage(msg)}
@@ -1167,8 +1149,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             </div>
         </DrawerSheet>
-
-    </div>
+    </PageLayout>
   );
 };
 
