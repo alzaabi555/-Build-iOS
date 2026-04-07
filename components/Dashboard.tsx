@@ -340,7 +340,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         setTermPlan(tempTermPlan);
         localStorage.setItem('rased_term_plan', JSON.stringify(tempTermPlan));
         setShowTermPlanModal(false);
-        alert(t('saveChanges') || 'تم حفظ الخطة بنجاح');
+        // تم دمج الترجمة هنا 💉
+        alert(t('alertTermPlanSaved') || 'تم حفظ الخطة بنجاح');
     };
 
     const handleImportTermPlanExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,9 +363,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                 }
             });
             setTempTermPlan(updatedPlan);
-            alert('✅ تم استيراد الخطة الفصلية بنجاح');
+            // تم دمج الترجمة هنا 💉
+            alert(t('alertTermPlanImported') || '✅ تم استيراد الخطة الفصلية بنجاح');
         } catch (error) {
-            alert('❌ خطأ في تنسيق ملف الإكسل');
+            // تم دمج الترجمة هنا 💉
+            alert(t('alertExcelFormatError') || '❌ خطأ في تنسيق ملف الإكسل');
         } finally {
             if (e.target) e.target.value = '';
         }
@@ -732,13 +735,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* 🆕 5. واجهة عرض الخطة الفصلية (تظهر قبل التقييم المستمر) */}
+            {/* 🆕 5. واجهة عرض الخطة الفصلية (تظهر قبل التقييم المستمر) - تم دمج الترجمة والتاريخ 💉 */}
             <div className="px-4 mt-6 relative z-10">
                 <div className={`rounded-[1.5rem] p-5 shadow-sm border glass-panel border-borderColor`}>
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl bg-info/10 text-info`}><BookOpen size={18}/></div>
-                            <h2 className={`text-base font-black text-textPrimary`}>الخطة الفصلية</h2>
+                            <h2 className={`text-base font-black text-textPrimary`}>{t('termPlanTitle') || 'الخطة الفصلية'}</h2>
                         </div>
                         <button onClick={() => setShowTermPlanModal(true)} className={`p-2 rounded-xl transition-colors bg-bgSoft text-textSecondary hover:bg-bgCard hover:text-textPrimary`}>
                             <Settings size={18} />
@@ -749,23 +752,31 @@ const Dashboard: React.FC<DashboardProps> = ({
                         {currentWeekPlan ? (
                             <div className={`p-4 rounded-2xl border transition-all bg-info/10 border-info/30`}>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className={`text-xs font-black text-info`}>{currentWeekPlan.name}</span>
-                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse bg-info text-white shadow-sm`}>الأسبوع الحالي</span>
+                                    {/* 💉 التعديل هنا: إضافة التاريخ بجانب رقم الأسبوع */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`text-xs font-black text-info`}>{currentWeekPlan.name}</span>
+                                        <span className={`text-[9px] font-bold text-info/70 bg-info/5 px-1.5 py-0.5 rounded-md`}>
+                                            ({currentWeekPlan.start} - {currentWeekPlan.end})
+                                        </span>
+                                    </div>
+                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-lg animate-pulse bg-info text-white shadow-sm shrink-0`}>
+                                        {t('currentWeekBadge') || 'الأسبوع الحالي'}
+                                    </span>
                                 </div>
                                 <div className="space-y-1.5 mt-2">
                                     <div className="flex items-start gap-2 text-[11px] font-bold text-textPrimary">
                                         <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-info"></div>
-                                        <span><span className="text-info/80">الوحدة:</span> {currentWeekPlan.unit || 'لم تحدد'}</span>
+                                        <span><span className="text-info/80">{t('unitLabel') || 'الوحدة:'}</span> {currentWeekPlan.unit || t('notSpecified') || 'لم تحدد'}</span>
                                     </div>
                                     <div className="flex items-start gap-2 text-[11px] font-bold text-textPrimary">
                                         <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-info"></div>
-                                        <span><span className="text-info/80">الدرس:</span> {currentWeekPlan.lesson || currentWeekPlan.defaultTopic}</span>
+                                        <span><span className="text-info/80">{t('lessonLabel') || 'الدرس:'}</span> {currentWeekPlan.lesson || currentWeekPlan.defaultTopic}</span>
                                     </div>
                                 </div>
                             </div>
                         ) : (
                             <div className="p-4 rounded-2xl border border-dashed border-borderColor text-center text-textSecondary text-xs font-bold bg-bgSoft">
-                                لا توجد خطة للأسبوع الحالي
+                                {t('noPlanForCurrentWeek') || 'لا توجد خطة للأسبوع الحالي'}
                             </div>
                         )}
                     </div>
@@ -811,19 +822,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
 
-            {/* المودالز والنوافذ المنبثقة تبقى بكامل قوتها البرمجية وبدون مساس */}
-
-            {/* 🆕 6. نافذة إعدادات الخطة الفصلية (DrawerSheet) */}
+            {/* 🆕 6. نافذة إعدادات الخطة الفصلية (DrawerSheet) - تم دمج الترجمة 💉 */}
             <DrawerSheet isOpen={showTermPlanModal} onClose={() => setShowTermPlanModal(false)} dir={dir}>
                 <div className="flex flex-col h-full w-full">
                     <div className={`flex justify-between items-center mb-4 pb-2 border-b border-borderColor`}>
-                        <h3 className="font-black text-lg text-textPrimary">تخصيص الخطة الفصلية</h3>
+                        <h3 className="font-black text-lg text-textPrimary">{t('customizeTermPlan') || 'تخصيص الخطة الفصلية'}</h3>
                         <div className="flex gap-2">
                             <button 
                                 onClick={() => termExcelInputRef.current?.click()}
                                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-success/10 text-success hover:bg-success/20`}
                             >
-                                <Download size={14} /> استيراد إكسل
+                                <Download size={14} /> {t('importExcelTermPlan') || 'استيراد إكسل'}
                             </button>
                             <input type="file" ref={termExcelInputRef} onChange={handleImportTermPlanExcel} className="hidden" accept=".xlsx,.xls" />
                         </div>
@@ -842,13 +851,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         <input 
                                             value={week.unit}
                                             onChange={(e) => updateWeekData(idx, 'unit', e.target.value)}
-                                            placeholder={`اسم الوحدة (مثال: الوحدة الأولى)`}
+                                            placeholder={t('unitNamePlaceholder') || 'اسم الوحدة (مثال: الوحدة الأولى)'}
                                             className={`w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info`}
                                         />
                                         <input 
                                             value={week.lesson}
                                             onChange={(e) => updateWeekData(idx, 'lesson', e.target.value)}
-                                            placeholder={`اسم الدرس (الافتراضي: ${week.defaultTopic})`}
+                                            placeholder={`${t('lessonNamePlaceholderPrefix') || 'اسم الدرس (الافتراضي: '} ${week.defaultTopic})`}
                                             className={`w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info`}
                                         />
                                     </div>
@@ -865,6 +874,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </DrawerSheet>
 
+            {/* المودالز الأصلية لم تُمس إطلاقاً 👇 */}
             <DrawerSheet isOpen={showPlanSettingsModal} onClose={() => setShowPlanSettingsModal(false)} dir={dir}>
                 <div className="flex flex-col h-full w-full">
                     <div className={`flex justify-between items-center mb-4 pb-2 border-b border-borderColor`}>
