@@ -7,6 +7,7 @@ import {
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '../theme/ThemeProvider';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
 const STUDENT_APP_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec";
 const PARENT_APP_URL = "https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec";
@@ -244,165 +245,174 @@ const GlobalSyncManager: React.FC = () => {
   };
 
   return (
-  <div className="w-full max-w-6xl mx-auto p-4 md:p-6 space-y-6 text-textPrimary" dir={dir}>
+    // 💉 تغليف الصفحة بالكامل بالمكون الجديد
+    <PageLayout
+      title={t('syncMenuTitle')}
+      subtitle={t('syncMenuSubtitle')}
+      icon={<CloudSync size={24} />}
+      
+      // 💉 الأزرار العلوية يميناً
+      rightActions={
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] md:text-xs font-bold flex items-center gap-1 text-success bg-success/10 px-2 py-1 rounded-md border border-success/20">
+            <Server className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">{t('connectedStatus')}</span>
+          </span>
 
-    {/* Header */}
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold">
-          {t('syncMenuTitle')}
-        </h1>
-        <p className="text-sm text-textSecondary font-bold mt-1">
-          {t('syncMenuSubtitle')}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-bold flex items-center gap-1 text-success">
-          <Server className="w-4 h-4" />
-          {t('connectedStatus')}
-        </span>
-
-        <button
-          onClick={() => handleSync('student')}
-          className="px-4 py-2 rounded-xl border border-primary bg-primary text-white font-bold flex items-center gap-2 hover:bg-primary/90 hover:scale-[1.03] transition shadow-md"
-        >
-          <CloudSync className="w-4 h-4" />
-          {t('quickSyncBtn')}
-        </button>
-      </div>
-    </div>
-
-    {/* Status Section */}
-    {syncState !== 'idle' && (
-      <div className="rounded-2xl border border-borderColor bg-bgCard p-6 flex flex-col items-center justify-center text-center min-h-[200px] shadow-sm animate-in fade-in">
-
-        {syncState === 'syncing' && (
-          <>
-            <Loader2 className="w-10 h-10 animate-spin mb-4 text-primary" />
-            <p className="font-bold text-textPrimary">{syncMessage}</p>
-          </>
-        )}
-
-        {syncState === 'success' && (
-          <>
-            <CheckCircle2 className="w-10 h-10 mb-4 text-success animate-bounce" />
-            <p className="font-bold text-textPrimary">{syncMessage}</p>
-          </>
-        )}
-
-        {syncState === 'error' && (
-          <>
-            <AlertCircle className="w-10 h-10 mb-4 text-danger animate-pulse" />
-            <p className="font-bold mb-4 text-textPrimary">{syncMessage}</p>
-            <button
-              onClick={() => setSyncState('idle')}
-              className="px-6 py-2 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold hover:bg-bgCard transition"
-            >
-              {t('backBtn')}
-            </button>
-          </>
-        )}
-      </div>
-    )}
-
-    {/* Main Grid */}
-    {syncState === 'idle' && (
-      <>
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
-            <p className="text-xs font-bold text-textSecondary mb-1">{t('studentsCountLabel')}</p>
-            <h3 className="text-xl font-black text-textPrimary">{students.length}</h3>
-          </div>
-
-          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
-            <p className="text-xs font-bold text-textSecondary mb-1">{t('classesCountLabel')}</p>
-            <h3 className="text-xl font-black text-textPrimary">{classes.length}</h3>
-          </div>
-
-          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
-            <p className="text-xs font-bold text-textSecondary mb-1">{t('toolsCountLabel')}</p>
-            <h3 className="text-xl font-black text-textPrimary">{assessmentTools.length}</h3>
-          </div>
-
-          <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm">
-            <p className="text-xs font-bold text-textSecondary mb-1">{t('statusLabel')}</p>
-            <h3 className="text-xl font-black text-success">{t('readyStatus')}</h3>
-          </div>
+          <button
+            onClick={() => handleSync('student')}
+            className="px-3 md:px-4 py-2 rounded-xl border border-primary bg-primary text-white font-bold flex items-center gap-2 hover:bg-primary/90 transition shadow-md active:scale-95"
+            title={t('quickSyncBtn')}
+          >
+            <CloudSync className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs">{t('quickSyncBtn')}</span>
+          </button>
         </div>
+      }
+    >
 
-        {/* Content */}
-        <div className="grid md:grid-cols-3 gap-6">
+      {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية تحت الهيدر) ⬇️ */}
+      <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500 pt-4">
 
-          {/* Apps */}
-          <div className="md:col-span-2 rounded-2xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
-            <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3">{t('appsSectionTitle')}</h2>
+        {/* 🚦 Status Section (شاشة التحميل والنجاح والخطأ) */}
+        {syncState !== 'idle' && (
+          <div className="rounded-2xl border border-borderColor bg-bgCard p-6 flex flex-col items-center justify-center text-center min-h-[200px] shadow-sm animate-in zoom-in-95 duration-300">
+            {syncState === 'syncing' && (
+              <>
+                <Loader2 className="w-10 h-10 animate-spin mb-4 text-primary" />
+                <p className="font-bold text-textPrimary text-lg">{syncMessage}</p>
+              </>
+            )}
 
-            {/* Student App */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
-              <div>
-                <h4 className="font-bold text-textPrimary">{t('studentAppTitle')}</h4>
-                <p className="text-xs font-bold text-textSecondary mt-1">{t('studentAppDesc')}</p>
+            {syncState === 'success' && (
+              <>
+                <CheckCircle2 className="w-12 h-12 mb-4 text-success animate-bounce" />
+                <p className="font-bold text-textPrimary text-lg">{syncMessage}</p>
+              </>
+            )}
+
+            {syncState === 'error' && (
+              <>
+                <AlertCircle className="w-12 h-12 mb-4 text-danger animate-pulse" />
+                <p className="font-bold mb-6 text-textPrimary text-lg">{syncMessage}</p>
+                <button
+                  onClick={() => setSyncState('idle')}
+                  className="px-6 py-2.5 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold hover:bg-bgCard transition active:scale-95"
+                >
+                  {t('backBtn')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* 📊 Main Grid (عندما لا يكون هناك مزامنة جارية) */}
+        {syncState === 'idle' && (
+          <>
+            {/* 📈 Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm transition-all hover:shadow-md">
+                <p className="text-xs font-bold text-textSecondary mb-1">{t('studentsCountLabel')}</p>
+                <h3 className="text-xl md:text-2xl font-black text-textPrimary">{students.length}</h3>
               </div>
 
-              <button
-                onClick={() => handleSync('student')}
-                className="px-4 py-2 rounded-xl border border-primary/30 bg-primary/10 text-primary font-bold flex items-center gap-2 hover:bg-primary hover:text-white transition"
-              >
-                <GraduationCap className="w-4 h-4" />
-                {t('syncBtn')}
-              </button>
+              <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm transition-all hover:shadow-md">
+                <p className="text-xs font-bold text-textSecondary mb-1">{t('classesCountLabel')}</p>
+                <h3 className="text-xl md:text-2xl font-black text-textPrimary">{classes.length}</h3>
+              </div>
+
+              <div className="rounded-xl border border-borderColor bg-bgCard p-4 shadow-sm transition-all hover:shadow-md">
+                <p className="text-xs font-bold text-textSecondary mb-1">{t('toolsCountLabel')}</p>
+                <h3 className="text-xl md:text-2xl font-black text-textPrimary">{assessmentTools.length}</h3>
+              </div>
+
+              <div className="rounded-xl border border-success/30 bg-success/5 p-4 shadow-sm transition-all hover:shadow-md">
+                <p className="text-xs font-bold text-textSecondary mb-1">{t('statusLabel')}</p>
+                <h3 className="text-xl md:text-2xl font-black text-success">{t('readyStatus')}</h3>
+              </div>
             </div>
 
-            {/* Parent App */}
-            <div className="flex items-center justify-between p-4 rounded-xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
-              <div>
-                <h4 className="font-bold text-textPrimary">{t('parentAppTitle')}</h4>
-                <p className="text-xs font-bold text-textSecondary mt-1">{t('parentAppDesc')}</p>
+            {/* 📱 Content Apps & Cloud */}
+            <div className="grid md:grid-cols-3 gap-6">
+
+              {/* 📲 Apps */}
+              <div className="md:col-span-2 rounded-3xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
+                <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3 flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-primary" />
+                  {t('appsSectionTitle')}
+                </h2>
+
+                {/* Student App */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-base text-textPrimary">{t('studentAppTitle')}</h4>
+                    <p className="text-xs font-bold text-textSecondary mt-1 leading-relaxed">{t('studentAppDesc')}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleSync('student')}
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-primary/30 bg-primary/10 text-primary font-bold flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition active:scale-95 shrink-0"
+                  >
+                    <GraduationCap className="w-5 h-5" />
+                    {t('syncBtn')}
+                  </button>
+                </div>
+
+                {/* Parent App */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-borderColor bg-bgSoft hover:bg-bgCard hover:shadow-md transition">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-base text-textPrimary">{t('parentAppTitle')}</h4>
+                    <p className="text-xs font-bold text-textSecondary mt-1 leading-relaxed">{t('parentAppDesc')}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleSync('parent')}
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-warning/30 bg-warning/10 text-warning font-bold flex items-center justify-center gap-2 hover:bg-warning hover:text-white transition active:scale-95 shrink-0"
+                  >
+                    <Users className="w-5 h-5" />
+                    {t('syncBtn')}
+                  </button>
+                </div>
+
               </div>
 
-              <button
-                onClick={() => handleSync('parent')}
-                className="px-4 py-2 rounded-xl border border-warning/30 bg-warning/10 text-warning font-bold flex items-center gap-2 hover:bg-warning hover:text-white transition"
-              >
-                <Users className="w-4 h-4" />
-                {t('syncBtn')}
-              </button>
+              {/* ☁️ Backup & Restore */}
+              <div className="rounded-3xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm flex flex-col">
+                <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3 flex items-center gap-2">
+                  <CloudSync className="w-5 h-5 text-primary" />
+                  {t('cloudSectionTitle')}
+                </h2>
+
+                <div className="flex flex-col gap-3 flex-1 justify-center">
+                  <button
+                    onClick={() => handleSync('backup')}
+                    className="w-full p-4 rounded-2xl border-2 border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-primary group active:scale-95"
+                  >
+                    <span className="text-sm">{t('uploadBackupBtn')}</span>
+                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition">
+                        <CloudUpload className="w-5 h-5" />
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleSync('restore')}
+                    className="w-full p-4 rounded-2xl border-2 border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-success group active:scale-95"
+                  >
+                    <span className="text-sm">{t('restoreDataBtn')}</span>
+                    <div className="p-2.5 rounded-xl bg-success/10 text-success group-hover:bg-success group-hover:text-white transition">
+                        <CloudDownload className="w-5 h-5" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+
             </div>
+          </>
+        )}
+      </div>
 
-          </div>
-
-          {/* Backup & Restore */}
-          <div className="rounded-2xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
-            <h2 className="font-black text-lg text-textPrimary border-b border-borderColor pb-3">{t('cloudSectionTitle')}</h2>
-
-            <button
-              onClick={() => handleSync('backup')}
-              className="w-full p-4 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-primary group"
-            >
-              <span>{t('uploadBackupBtn')}</span>
-              <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition">
-                  <CloudUpload className="w-5 h-5" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleSync('restore')}
-              className="w-full p-4 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold flex items-center justify-between hover:bg-bgCard hover:shadow-md transition hover:border-success group"
-            >
-              <span>{t('restoreDataBtn')}</span>
-              <div className="p-2 rounded-lg bg-success/10 text-success group-hover:bg-success group-hover:text-white transition">
-                  <CloudDownload className="w-5 h-5" />
-              </div>
-            </button>
-          </div>
-
-        </div>
-      </>
-    )}
-  </div>
-);
+    </PageLayout>
+  );
 };
 
 export default GlobalSyncManager;
