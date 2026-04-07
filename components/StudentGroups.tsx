@@ -1,73 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../theme/ThemeProvider'; 
 import { Users, Plus, Trash2, X, Edit2, Check, UserMinus, FolderPlus, ArrowRight, UserPlus, CheckCircle2 } from 'lucide-react';
-
-const DrawerSheet: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    children: React.ReactNode;
-    dir: string;
-    mode?: 'bottom' | 'side' | 'full'; 
-}> = ({ isOpen, onClose, children, dir, mode = 'side' }) => {
-    
-    useEffect(() => {
-        if (isOpen) document.body.style.overflow = 'hidden';
-        else document.body.style.overflow = '';
-        return () => { document.body.style.overflow = ''; };
-    }, [isOpen]);
-
-    let positioningStyles = '';
-    let transformStyles = '';
-
-    if (mode === 'full') {
-        positioningStyles = 'inset-0 w-full h-full rounded-none';
-        transformStyles = isOpen ? 'translate-y-0' : 'translate-y-full';
-    } 
-    else if (mode === 'side') {
-        positioningStyles = `top-0 bottom-0 h-full w-[85%] max-w-[450px] ${dir === 'rtl' ? 'left-0 rounded-r-[2.5rem] border-r' : 'right-0 rounded-l-[2.5rem] border-l'}`;
-        transformStyles = isOpen ? 'translate-x-0' : (dir === 'rtl' ? '-translate-x-full' : 'translate-x-full');
-    } 
-    else {
-        positioningStyles = `max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[92vh] max-md:rounded-t-[2.5rem] md:inset-y-0 ${dir === 'rtl' ? 'md:left-0 md:rounded-r-[2.5rem] border-r' : 'md:right-0 md:rounded-l-[2.5rem] border-l'} md:w-[450px] md:h-full`;
-        transformStyles = isOpen ? 'translate-y-0 md:translate-x-0' : `max-md:translate-y-full ${dir === 'rtl' ? 'md:-translate-x-full' : 'md:translate-x-full'}`;
-    }
-
-    return (
-        <>
-            <div
-                className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-                onClick={onClose}
-            />
-            
-            <div
-                className={`fixed z-[101] flex flex-col shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                    ${positioningStyles}
-                    bg-bgCard border-borderColor text-textPrimary backdrop-blur-3xl
-                    ${transformStyles}
-                `}
-            >
-                {mode === 'bottom' && (
-                    <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onClick={onClose}>
-                        <div className="w-10 h-1.5 rounded-full bg-borderColor" />
-                    </div>
-                )}
-
-                <button
-                    onClick={onClose}
-                    className={`absolute top-4 ${dir === 'rtl' ? 'right-4' : 'left-4'} p-2 rounded-full transition-colors z-[102] hover:bg-bgSoft text-textSecondary hover:text-textPrimary ${mode === 'bottom' ? 'hidden md:flex' : 'flex'}`}
-                >
-                    <X size={20} />
-                </button>
-
-                <div className={`flex-1 flex flex-col overflow-hidden ${mode === 'bottom' ? 'md:pt-10' : 'pt-14'} 
-                    ${mode === 'bottom' ? 'max-md:pb-[calc(env(safe-area-inset-bottom)+3rem)] pb-8 md:pb-0' : ''}`}>
-                    {children}
-                </div>
-            </div>
-        </>
-    );
-};
+import { Drawer as DrawerSheet } from './ui/Drawer';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
 interface StudentGroupsProps {
   onBack?: () => void;
@@ -226,45 +162,32 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   }
 
   return (
-    <div className={`flex flex-col h-full overflow-hidden text-textPrimary bg-transparent ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    // 💉 الغلاف الشامل PageLayout
+    <PageLayout
+      title={t('manageGroupsTitle')}
+      subtitle={t('groupsSubtitle')}
+      icon={<Users size={24} />}
+      showBackButton={!!onBack}
+      onBack={onBack}
       
-    {/* ================= 🩺 الهيدر القياسي ================= */}
-    <header 
-      className="shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary"
-      style={{ WebkitAppRegion: 'drag' } as any}
-    >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {onBack && (
-              <button onClick={onBack} style={{ WebkitAppRegion: 'no-drag' } as any} className="p-2 rounded-full transition-colors hover:bg-bgCard text-textPrimary">
-                <ArrowRight className={`w-6 h-6 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
-              </button>
-            )}
-            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <div style={{ WebkitAppRegion: 'no-drag' } as any}>
-              <h1 className="text-xl md:text-2xl font-black tracking-wide">{t('manageGroupsTitle')}</h1>
-              <p className="text-[10px] font-bold opacity-80 text-textSecondary">{t('groupsSubtitle')}</p>
-            </div>
-          </div>
-
-          <select 
+      // 💉 قائمة الفصول في الجانب
+      rightActions={
+        <select 
             value={selectedClass} 
             onChange={(e) => { setSelectedClass(e.target.value); setActiveCatId(''); }}
             style={{ WebkitAppRegion: 'no-drag' } as any}
-            className="p-2 md:p-3 rounded-xl border border-borderColor font-black text-sm md:text-lg outline-none cursor-pointer min-w-[150px] md:min-w-[200px] bg-bgCard text-textPrimary focus:border-primary transition-colors"
-          >
+            className="p-2 md:p-3 rounded-xl border border-borderColor font-black text-sm md:text-lg outline-none cursor-pointer min-w-[120px] md:min-w-[150px] bg-bgCard text-textPrimary focus:border-primary transition-colors"
+        >
             {classes.map(c => <option key={c} value={c} className="bg-bgCard text-textPrimary">{c}</option>)}
-          </select>
-        </div>
-      </header>
+        </select>
+      }
+    >
 
-      {/* ================= 📝 محتوى الصفحة الداخلي ================= */}
-      <div className="flex-1 overflow-y-auto px-2 pt-4 pb-28 custom-scrollbar relative z-10 flex flex-col md:flex-row gap-4">
+      {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية) ⬇️ */}
+      <div className="flex flex-col md:flex-row gap-4 animate-in fade-in duration-500 pt-2 min-h-[calc(100vh-150px)]">
         
         {/* ================= 🗂️ العمود الأيمن: التقسيمات ================= */}
-        <div className="w-full md:w-1/3 flex flex-col shrink-0 glass-panel rounded-3xl overflow-hidden shadow-sm">
+        <div className="w-full md:w-1/3 flex flex-col shrink-0 glass-panel rounded-3xl overflow-hidden shadow-sm h-full min-h-[400px] border border-borderColor">
           <div className="p-5 border-b border-borderColor shrink-0">
             <h2 className="font-black text-lg mb-4 flex items-center gap-2 text-textPrimary">
               <FolderPlus className="w-5 h-5 text-primary" /> {t('classCategorizations')}
@@ -319,7 +242,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         </div>
 
         {/* ================= 🧩 العمود الأيسر: إدارة المجموعات ================= */}
-        <div className="flex-1 flex flex-col overflow-hidden relative min-h-[400px] md:min-h-0 glass-panel rounded-3xl shadow-sm">
+        <div className="flex-1 flex flex-col overflow-hidden relative min-h-[400px] h-full glass-panel rounded-3xl shadow-sm border border-borderColor">
           {!activeCat ? (
             <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-50 text-textSecondary">
               <Users className="w-24 h-24 mb-6" />
@@ -384,7 +307,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
                 </div>
 
                 {/* صناديق المجموعات */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-10">
                   {activeCat.groups.map(group => {
                     const groupColor = groupColors.find(c => c.id === group.color) || groupColors[0];
                     const groupStudents = students.filter(s => group.studentIds.includes(s.id));
@@ -459,7 +382,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* ================= 🎯 نافذة التحديد الجماعي الذكية (تمت فلترتها بذكاء) ================= */}
+      {/* ================= 🎯 نافذة التحديد الجماعي الذكية (لا تُمس أبداً) ================= */}
       {assigningToGroup && activeCat && (
         <DrawerSheet isOpen={true} onClose={() => setAssigningToGroup(null)} dir={dir}>
           <div className="flex flex-col h-full w-full">
@@ -474,12 +397,10 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
             </div>
             
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-bgMain">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 💉 الجراحة الذكية: فلترة الطلاب لتخفيف الازدحام! */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
                 {classStudents.filter(student => {
                     const isSelected = selectedStudentIds.has(student.id);
                     const isInAnotherGroup = activeCat.groups.some(g => g.id !== assigningToGroup.groupId && g.studentIds.includes(student.id));
-                    // عرض الطالب فقط إذا كان في المجموعة الحالية (لإمكانية إزالته) أو إذا لم يكن في أي مجموعة أخرى إطلاقاً
                     return isSelected || !isInAnotherGroup;
                 }).map(student => {
                   const isSelected = selectedStudentIds.has(student.id);
@@ -520,7 +441,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
           </div>
         </DrawerSheet>
       )}
-    </div>
+
+    </PageLayout>
   );
 };
 
