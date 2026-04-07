@@ -249,7 +249,7 @@ const TeacherLibrary: React.FC = () => {
                             <div className="flex justify-between items-start gap-3">
                                 <div className="flex items-start gap-3 flex-1 min-w-0">
                                     <div className={`p-2.5 rounded-xl shrink-0 flex items-center justify-center ${item.type === 'youtube' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                                        {item.type === 'youtube' ? <Youtube className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                                        {item.type === 'youtube' ? < MonitorPlay className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h4 className="text-sm font-black text-textPrimary leading-snug truncate">{item.title}</h4>
