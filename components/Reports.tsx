@@ -3,11 +3,12 @@ import { ArrowRight, Check, Loader2, Award } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
-import { Drawer as DrawerSheet } from './ui/Drawer'; // ✅ استبدال Modal القديم بالنافذة الحديثة
+import { Drawer as DrawerSheet } from './ui/Drawer'; 
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
 // ✅ استدعاء قالب البطاقات الجديد
 import ParentCardsTemplate from './ParentCardsTemplate';
@@ -1051,7 +1052,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   ];
 
   return (
-    <div className={`flex flex-col h-full relative font-sans transition-colors duration-500 text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+    <>
       <PrintPreviewModal
         isOpen={previewData.isOpen}
         onClose={() => setPreviewData({ ...previewData, isOpen: false })}
@@ -1060,41 +1061,33 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
         landscape={previewData.landscape}
       />
 
-      {/* ================= HEADER ================= */}
-      <header className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary`}>
+      <PageLayout
+        title={t('reportsCenter')}
+        subtitle={t('printStatementsAndCertificates')}
+        icon={<Icon3DReportCenter className="w-full h-full p-1" />}
         
-        {/* 1. منطقة السحب (Drag Area): مخصصة فقط للعنوان لتجنب تعطيل الأزرار */}
-        <div className="flex items-center gap-3 mb-6 mt-4 px-2 cursor-move" style={{ WebkitAppRegion: 'drag' } as any}>
-          <div className="p-2.5 rounded-xl border bg-bgSoft backdrop-blur-md border-borderColor" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <Icon3DReportCenter className="w-6 h-6" />
+        // 💉 هنا تم نقل الألسنة (Tabs) لتختفي وتظهر بذكاء مع حركة الشاشة
+        leftActions={
+          <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2 px-1 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {tabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${isActive ? 'bg-primary text-white shadow-md backdrop-blur-md' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+                >
+                  <tab.icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'text-textSecondary opacity-80'}`} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-wide">{t('reportsCenter')}</h1>
-            <p className="text-[10px] font-bold opacity-80 text-textSecondary">{t('printStatementsAndCertificates')}</p>
-          </div>
-        </div>
+        }
+      >
 
-        {/* 2. منطقة الأزرار (Tabs): حرة تماماً لتعمل النقرات والتمرير (Scroll) 100% */}
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-1 relative z-50" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          {tabs.map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${isActive ? 'bg-primary text-white shadow-md backdrop-blur-md' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
-              >
-                <tab.icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'text-textSecondary opacity-80'}`} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </header>
-
-      {/* ================= CONTENT AREA ================= */}
-      <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
-        <div className="rounded-[2rem] p-6 shadow-sm border min-h-[400px] transition-colors glass-panel border-borderColor text-textPrimary">
+        {/* ================= CONTENT AREA ================= */}
+        <div className="rounded-[2rem] p-4 md:p-6 shadow-sm border min-h-[400px] transition-colors glass-panel border-borderColor text-textPrimary animate-in fade-in duration-500 mt-2">
           
           {activeTab === 'student_report' && (
             <div className="space-y-6">
@@ -1371,22 +1364,23 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* ✅ استخدام DrawerSheet لخيارات الشهادة */}
-      <DrawerSheet isOpen={showCertSettingsModal} onClose={() => setShowCertSettingsModal(false)} dir={dir} mode="bottom">
-        <div className="text-center p-6 bg-bgCard border-borderColor flex flex-col h-full w-full">
-          <h3 className="font-black text-lg mb-4 text-textPrimary">{t('certificateSettingsTitle')}</h3>
-          <div className="space-y-3">
-            <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className="w-full p-3 border rounded-xl font-bold outline-none transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateTitlePlaceholder')} />
-            <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className="w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateBodyPlaceholder')} />
-            <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className="w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all bg-primary hover:bg-primary/80 text-white">{t('saveBtn')}</button>
+        </div>
+
+        {/* ✅ نافذة إعدادات الشهادات */}
+        <DrawerSheet isOpen={showCertSettingsModal} onClose={() => setShowCertSettingsModal(false)} dir={dir} mode="bottom">
+          <div className="text-center p-6 bg-bgCard border-borderColor flex flex-col h-full w-full">
+            <h3 className="font-black text-lg mb-4 text-textPrimary">{t('certificateSettingsTitle')}</h3>
+            <div className="space-y-3">
+              <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className="w-full p-3 border rounded-xl font-bold outline-none transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateTitlePlaceholder')} />
+              <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className="w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateBodyPlaceholder')} />
+              <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className="w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all bg-primary hover:bg-primary/80 text-white">{t('saveBtn')}</button>
+            </div>
           </div>
-        </div>
-      </DrawerSheet>
+        </DrawerSheet>
 
-    </div>
+      </PageLayout>
+    </>
   );
 };
 
