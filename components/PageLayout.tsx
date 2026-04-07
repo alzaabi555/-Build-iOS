@@ -7,7 +7,7 @@ interface PageLayoutProps {
   subtitle?: string;
   icon?: React.ReactNode;
   rightActions?: React.ReactNode;
-  leftActions?: React.ReactNode; // 👈 ممتاز لشريط البحث أو فلاتر التصفية
+  leftActions?: React.ReactNode; 
   children: React.ReactNode;
   showBackButton?: boolean;
   onBack?: () => void;
@@ -26,49 +26,43 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const { dir } = useApp();
   const [scrollY, setScrollY] = useState(0);
 
-  // 💉 قراءة الانسيابية من حركة الإصبع داخل الصفحة
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     setScrollY(e.currentTarget.scrollTop);
   };
 
-  // حساب درجة التقلص والشفافية (من 0 إلى 1)
-  const progress = Math.min(scrollY / 60, 1);
+  // 💉 إذا نزل المستخدم للأسفل أكثر من 20 بكسل، نفعّل حالة التقلص
+  const isScrolled = scrollY > 20;
   const BackIcon = dir === 'rtl' ? ChevronRight : ChevronLeft;
 
   return (
-    // 💉 إجبار الصفحة على أخذ حجم الشاشة الكامل مع منع تسرب النظام
     <div className="relative w-full h-[100dvh] flex flex-col bg-bgSoft text-textPrimary overflow-hidden" dir={dir}>
       
-      {/* ================= 🩺 الهيدر الزجاجي العائم (Fixed & Glassy) ================= */}
-      <div 
-        className="absolute top-0 left-0 w-full z-50 transition-all duration-300 border-b"
+      {/* ================= 🩺 الهيدر الثابت (Fixed Edge-to-Edge) ================= */}
+      {/* 💉 1. fixed left-0 right-0 w-full تضمن أنه من الحافة للحافة ولن يرتفع أبداً */}
+      <header 
+        className={`fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 border-b ${
+          isScrolled 
+            ? 'bg-bgCard/90 backdrop-blur-md border-borderColor shadow-sm' // 💉 4. يدعم الثيم الداكن والزجاجي تلقائياً!
+            : 'bg-bgSoft border-transparent'
+        }`}
         style={{
-          // 💉 التأثير الزجاجي الذي يجعل المحتوى يظهر بضبابية تحته عند التمرير
-          backgroundColor: `rgba(var(--bg-card-rgb, 255, 255, 255), ${0.6 + progress * 0.35})`,
-          backdropFilter: `blur(${10 + progress * 10}px)`,
-          WebkitBackdropFilter: `blur(${10 + progress * 10}px)`,
-          borderColor: `rgba(var(--border-color-rgb, 226, 232, 240), ${progress})`, // الخط السفلي يظهر فقط مع النزول
-          paddingTop: 'env(safe-area-inset-top)' // 💉 حماية الكاميرا في الآيفون/الأندرويد
+          // 💉 2. دالة max تحمي النوتش ولا تترك فراغات ضخمة
+          paddingTop: 'max(env(safe-area-inset-top), 12px)' 
         }}
       >
-        <div className="px-4 py-3 flex flex-col">
-          <div className="flex items-center justify-between">
+        <div className="px-4 pb-3 flex flex-col w-full">
+          <div className="flex items-center justify-between w-full">
             
             <div className="flex items-center gap-3">
               {showBackButton && (
-                <button onClick={onBack} className="p-2 -ml-2 rounded-xl text-textSecondary hover:bg-bgCard active:scale-95 transition-all">
+                <button onClick={onBack} className="p-2 -mx-2 rounded-xl text-textSecondary hover:bg-bgCard active:scale-95 transition-all">
                   <BackIcon size={24} />
                 </button>
               )}
               
               {icon && (
                 <div 
-                  className="rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-all duration-300 shadow-sm"
-                  style={{
-                    width: `${44 - progress * 10}px`,
-                    height: `${44 - progress * 10}px`,
-                    opacity: 1 - progress * 0.1
-                  }}
+                  className={`rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-all duration-300 shrink-0 ${isScrolled ? 'w-9 h-9' : 'w-11 h-11'}`}
                 >
                   {icon}
                 </div>
@@ -77,67 +71,68 @@ const PageLayout: React.FC<PageLayoutProps> = ({
               <div className="flex flex-col justify-center">
                 <h1 
                   className="font-black text-textPrimary transition-all duration-300 origin-left"
-                  style={{
-                    fontSize: `${22 - progress * 4}px`,
-                    transform: `translateY(${progress * 2}px)`
-                  }}
+                  style={{ fontSize: isScrolled ? '18px' : '22px' }}
                 >
                   {title}
                 </h1>
                 
                 {subtitle && (
-                  <p 
-                    className="text-[11px] font-bold text-textSecondary transition-all duration-300"
+                  <div 
+                    className="transition-all duration-300 overflow-hidden"
                     style={{
-                      height: `${(1 - progress) * 16}px`,
-                      opacity: Math.max(0, 1 - progress * 2),
-                      overflow: 'hidden'
+                      height: isScrolled ? '0px' : '18px',
+                      opacity: isScrolled ? 0 : 1
                     }}
                   >
-                    {subtitle}
-                  </p>
+                    <p className="text-[11px] font-bold text-textSecondary mt-0.5 whitespace-nowrap">
+                      {subtitle}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {rightActions}
             </div>
           </div>
 
-          {/* 💉 الفلاتر أو الأزرار السفلية (تختفي بذكاء مع التمرير للأسفل) */}
+          {/* 💉 الفلاتر والبحث (تختفي بذكاء مع النزول لتوسيع الشاشة) */}
           {leftActions && (
             <div 
-              className="transition-all duration-300 overflow-hidden"
+              className="w-full transition-all duration-300 overflow-hidden origin-top"
               style={{
-                height: `${(1 - progress) * 44}px`,
-                opacity: Math.max(0, 1 - progress * 1.5),
-                marginTop: `${(1 - progress) * 12}px`
+                maxHeight: isScrolled ? '0px' : '150px',
+                opacity: isScrolled ? 0 : 1,
+                marginTop: isScrolled ? '0px' : '16px'
               }}
             >
               {leftActions}
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* ================= 📝 منطقة المحتوى الانسيابي ================= */}
-      {/* 💉 custom-scrollbar تحتوي على webkit-overflow-scrolling للانسيابية */}
-      <div 
-        className="flex-1 overflow-y-auto custom-scrollbar w-full h-full relative"
+      {/* ================= 📝 منطقة المحتوى (Scrollable Area) ================= */}
+      {/* 💉 3. المحتوى هنا ينزلق بأمان "تحت" الهيدر الثابت */}
+      <main 
+        className="flex-1 w-full h-full overflow-y-auto custom-scrollbar relative"
         onScroll={handleScroll}
       >
-        {/* 💉 هذه المساحة الفارغة المخفية تجعل المحتوى يبدأ من تحت الهيدر بالضبط */}
+        {/* 💉 مساحة دافعة ديناميكية (Spacer): 
+            هذه المساحة تساوي حجم الهيدر تماماً لكي لا يختفي أول عنصر تحت الهيدر 
+        */}
         <div 
           className="w-full shrink-0 transition-all duration-300" 
-          style={{ height: leftActions ? '145px' : '95px' }} 
+          style={{ height: leftActions ? 'calc(env(safe-area-inset-top) + 130px)' : 'calc(env(safe-area-inset-top) + 70px)' }} 
         />
         
-        {/* 💉 pb-32 هي ما يمنع القائمة السفلية من تغطية آخر عنصر في الصفحة! */}
-        <div className="px-4 pb-32 min-h-full">
+        {/* الحاوية الداخلية للبطاقات */}
+        <div className="px-4 pb-32 w-full">
           {children}
         </div>
-      </div>
+      </main>
+
     </div>
   );
 };
