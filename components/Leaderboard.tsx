@@ -3,7 +3,8 @@ import { Student } from '../types';
 import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal } from 'lucide-react'; 
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
-import { Drawer as DrawerSheet } from './ui/Drawer'; // 👈 هنا استدعينا النافذة المنزلقة الحديثة
+import { Drawer as DrawerSheet } from './ui/Drawer';
+import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 import positiveSound from '../assets/positive.mp3';
 
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -213,31 +214,32 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     };
 
     return (
-        <div className={`flex flex-col h-full space-y-6 pb-24 md:pb-8 overflow-hidden relative text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+        // 💉 الغلاف الشامل PageLayout
+        <PageLayout
+            title={getPageTitle()}
+            icon={<Crown className="w-6 h-6 text-warning" />} // تم استبدال الأيقونة الكبيرة بهذه
             
-            <header 
-                className={`shrink-0 z-40 px-4 pt-[env(safe-area-inset-top)] w-full transition-all duration-300 bg-transparent text-textPrimary`}
-                style={{ WebkitAppRegion: 'drag' } as any}
-            >
-                <div className="flex flex-col items-center text-center relative">
-                    <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-0 flex gap-2`} style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <select 
-                            value={schoolType} 
-                            onChange={(e) => setSchoolType(e.target.value as any)}
-                            className={`border rounded-lg text-[10px] p-1 outline-none font-bold cursor-pointer transition-colors bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
-                        >
-                            <option value="mixed" className="bg-bgCard text-textPrimary">{t('mixedSchool')}</option>
-                            <option value="boys" className="bg-bgCard text-textPrimary">{t('boysSchool')}</option>
-                            <option value="girls" className="bg-bgCard text-textPrimary">{t('girlsSchool')}</option>
-                        </select>
-                    </div>
+            // 💉 الأزرار العلوية يميناً (تغيير نوع المدرسة)
+            rightActions={
+                <div className={`flex gap-2`} style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    <select 
+                        value={schoolType} 
+                        onChange={(e) => setSchoolType(e.target.value as any)}
+                        className={`border rounded-lg text-[10px] p-2 outline-none font-bold cursor-pointer transition-colors bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
+                    >
+                        <option value="mixed" className="bg-bgCard text-textPrimary">{t('mixedSchool')}</option>
+                        <option value="boys" className="bg-bgCard text-textPrimary">{t('boysSchool')}</option>
+                        <option value="girls" className="bg-bgCard text-textPrimary">{t('girlsSchool')}</option>
+                    </select>
+                </div>
+            }
 
-                    <div className={`p-3 rounded-2xl border mb-3 shadow-inner bg-bgSoft border-borderColor`}>
-                        <Crown className="w-8 h-8 text-warning fill-warning animate-bounce" />
-                    </div>
-                    <h1 className="text-2xl font-black tracking-wide mb-1 text-textPrimary">{getPageTitle()}</h1>
-
-                    <div className={`w-full max-w-2xl mt-3 mb-2 flex items-center rounded-xl border overflow-hidden shadow-sm bg-bgSoft border-borderColor backdrop-blur-md`} style={{ WebkitAppRegion: 'no-drag' } as any}>
+            // 💉 الفلاتر والبحث وشريط الأخبار (تختفي بذكاء مع النزول للأسفل)
+            leftActions={
+                <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    
+                    {/* شريط الأخبار المتحرك */}
+                    <div className={`w-full flex items-center rounded-xl border overflow-hidden shadow-sm bg-bgSoft border-borderColor backdrop-blur-md`}>
                         <div className={`px-4 py-2 flex items-center gap-1 font-black text-[11px] shrink-0 z-10 bg-warning text-white`}>
                             <Sparkles size={14} className="animate-pulse" />
                             {t('newsTickerTitle')}
@@ -249,40 +251,53 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                             </marquee>
                         </div>
                     </div>
-                    
-                    <div className="relative w-full max-w-sm my-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
-                        <input type="text" placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10' : 'pl-10'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`} />
-                    </div>
 
-                    <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                        <div className={`inline-flex items-center p-1.5 rounded-full border transition-all bg-bgSoft border-borderColor backdrop-blur-md`}>
-                            <button 
-                                onClick={() => setSelectedClass('all')} 
-                                className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
-                            >
-                                {t('all')}
-                            </button>
+                    <div className="flex gap-2">
+                        {/* حقل البحث */}
+                        <div className="relative flex-1">
+                            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
+                            <input 
+                                type="text" 
+                                placeholder={t('searchPlaceholder')} 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`} 
+                            />
+                        </div>
 
-                             {safeClasses.map(c => (
-                                <React.Fragment key={c}>
-                                    <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
-                                    <button 
-                                        onClick={() => setSelectedClass(c)} 
-                                        className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
-                                    >
-                                        {c}
-                                    </button>
-                                </React.Fragment>
-                            ))}
+                        {/* كبسولة الفصول المدمجة */}
+                        <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
+                            <div className={`inline-flex items-center p-1 rounded-xl border backdrop-blur-md transition-all bg-bgSoft border-borderColor h-full`}>
+                                <button 
+                                    onClick={() => setSelectedClass('all')} 
+                                    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+                                >
+                                    {t('all')}
+                                </button>
+                                {safeClasses.map(c => (
+                                    <React.Fragment key={c}>
+                                        <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
+                                        <button 
+                                            onClick={() => setSelectedClass(c)} 
+                                            className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+                                        >
+                                            {c}
+                                        </button>
+                                    </React.Fragment>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div> 
-            </header>
+                </div>
+            }
+        >
 
-            <div className="flex-1 overflow-y-auto px-2 pt-2 pb-28 custom-scrollbar relative z-10">
+            {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية) ⬇️ */}
+            <div className="animate-in fade-in duration-500 pt-4">
+                
+                {/* منصة التتويج للثلاثة الأوائل */}
                 {topThree.length > 0 && (
-                    <div className="flex justify-center items-end gap-2 md:gap-6 py-4">
+                    <div className="flex justify-center items-end gap-2 md:gap-6 py-4 mb-6">
                         {[topThree[1], topThree[0], topThree[2]].map((s, i) => {
                             if (!s) return null; 
                             return (
@@ -311,7 +326,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     </div>
                 )}
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mt-8 pb-20">
+                {/* بقية الطلاب */}
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-3 pb-8">
                     {restOfStudents.map((s, index) => {
                         if (!s) return null;
                         return (
@@ -330,9 +346,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     )})}
                 </div>
+
             </div>
 
-            {/* 👈 هنا قمنا باستبدال Modal القديم بالنافذة المنزلقة الحديثة والآمنة */}
+            {/* النافذة المنزلقة للشهادات (أبقيتها كما هي) */}
             <DrawerSheet isOpen={!!certificateStudent} onClose={() => !isGeneratingPdf && setCertificateStudent(null)} dir={dir} mode="full">
                 {certificateStudent && (
                     <div className="flex flex-col h-full bg-bgCard">
@@ -361,7 +378,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     </div>
                 )}
             </DrawerSheet>
-        </div>
+            
+        </PageLayout>
     );
 };
 
