@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Library, Link as LinkIcon, Send, Loader2, CheckCircle2, Youtube, FileText, Check, Trash2, History, ExternalLink } from 'lucide-react';
+import { Library, Link as LinkIcon, Send, Loader2, CheckCircle2, MonitorPlay, FileText, Check, Trash2, History, ExternalLink } from 'lucide-react';
 import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
