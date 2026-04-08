@@ -20,7 +20,6 @@ interface TeacherTasksProps {
 }
 
 const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
-  // 🌍 استدعاء محرك الترجمة (t) مع الاتجاه (dir) والفصول
   const { t, dir, classes } = useApp(); 
 
   const safeClasses = Array.isArray(classes) ? classes : [];
@@ -33,29 +32,26 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
-  // 🧠 حالة التحديد المتعدد للفصول بدلاً من قائمة منسدلة
+  // 🧠 حالة التحديد المتعدد للفصول
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
-  // 🧠 حفظ أي تغيير يحدث في المهام إلى الذاكرة المحلية (الأرشيف)
   useEffect(() => {
     localStorage.setItem('rased_teacher_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  // دالة لاختيار/إلغاء اختيار الفصول
   const toggleClass = (className: string) => {
     setSelectedClasses(prev => 
       prev.includes(className) 
-        ? prev.filter(c => c !== className) // إلغاء التحديد
-        : [...prev, className]              // إضافة التحديد
+        ? prev.filter(c => c !== className) 
+        : [...prev, className]              
     );
   };
 
-  // دالة لتحديد الكل / إلغاء تحديد الكل
   const toggleAllClasses = () => {
     if (selectedClasses.length === safeClasses.length) {
-      setSelectedClasses([]); // إلغاء الكل
+      setSelectedClasses([]); 
     } else {
-      setSelectedClasses([...safeClasses]); // تحديد الكل
+      setSelectedClasses([...safeClasses]); 
     }
   };
 
@@ -63,13 +59,11 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
     
-    // التحقق من اختيار فصل واحد على الأقل
     if (selectedClasses.length === 0) {
-        alert(t('alertSelectOneClass') || 'الرجاء اختيار فصل واحد على الأقل.');
+        alert(t('alertSelectOneClass') || 'الرجاء اختيار فصل واحد على الأقل من الشريط العلوي.');
         return;
     }
 
-    // 🧠 دمج الفصول المحددة (أو كتابة "الكل" إذا تم تحديد جميع الفصول)
     const finalTargetClass = selectedClasses.length === safeClasses.length 
         ? (t('allClasses') || 'الكل') 
         : selectedClasses.join(' , ');
@@ -82,10 +76,9 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
       createdAt: new Date().toISOString()
     };
 
-    // إضافة المهمة الجديدة لأعلى الأرشيف
     setTasks([newTask, ...tasks]);
     setNewTaskTitle(''); 
-    setSelectedClasses([]); // تصفير التحديد بعد الإرسال
+    setSelectedClasses([]); 
   };
 
   const handleDeleteTask = (id: string) => {
@@ -94,18 +87,54 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
     }
   };
 
+  // 🛡️ حماية من ظهور مفتاح الترجمة ككلمة إنجليزية
+  const archiveTitleText = t('archiveTitle') === 'archiveTitle' ? 'سجل المهام (الأرشيف)' : (t('archiveTitle') || 'سجل المهام (الأرشيف)');
+
   return (
     // 💉 تغليف الصفحة بالكامل بالمكون الجديد
     <PageLayout
       title={t('tasksTitle') || 'المهام والواجبات'}
       subtitle={t('tasksSubtitle') || 'أرسل الواجبات لطلابك بسرعة بضغطة زر'}
       icon={<CheckSquare size={24} />}
+      
+      // 💉 نقلنا كبسولة اختيار الفصول لتكون هنا في الهيدر!
+      leftActions={
+        <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <div className="w-full overflow-x-auto no-scrollbar pb-1">
+                <div className={`inline-flex items-center p-1 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
+                    <button 
+                        type="button" 
+                        onClick={toggleAllClasses}
+                        className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClasses.length === safeClasses.length ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+                    >
+                        {selectedClasses.length === safeClasses.length ? (t('deselectAll') || 'إلغاء الكل') : (t('selectAll') || 'تحديد الكل')}
+                    </button>
+
+                    {safeClasses.map(c => {
+                        const isSelected = selectedClasses.includes(c);
+                        return (
+                            <React.Fragment key={c}>
+                                <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
+                                <button 
+                                    type="button" 
+                                    onClick={() => toggleClass(c)}
+                                    className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${isSelected ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+                                >
+                                    {c}
+                                </button>
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+      }
     >
       
-      {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية تحت الهيدر) ⬇️ */}
-      <div className="space-y-6 animate-in fade-in duration-500 pt-2">
+      {/* ⬇️ محتوى الصفحة المباشر ⬇️ */}
+      <div className="space-y-6 animate-in fade-in duration-500 pt-4 min-h-[calc(100vh-100px)]">
         
-        {/* 📝 بطاقة الإضافة */}
+        {/* 📝 بطاقة الإضافة (أصبحت الآن أصغر وأكثر ترتيباً) */}
         <div className={`glass-panel p-5 rounded-[2rem] border border-borderColor shadow-sm`}>
           <h2 className={`text-sm font-black mb-4 flex items-center gap-2 text-textPrimary`}>
             <Plus size={18} className="text-primary" /> {t('addNewTask') || 'إضافة مهمة جديدة'}
@@ -130,47 +159,11 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
               </div>
             </div>
 
-            {/* 🧠 منطقة التحديد المتعدد للفصول */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className={`text-[10px] font-bold ml-1 text-textSecondary`}>
-                  {t('targetClassLabel') || 'الفصول المستهدفة:'}
-                </label>
-                <button 
-                  type="button" 
-                  onClick={toggleAllClasses}
-                  className={`text-[10px] font-bold px-3 py-1 rounded-lg transition-colors bg-bgSoft text-textSecondary hover:bg-bgCard hover:text-primary`}
-                >
-                  {selectedClasses.length === safeClasses.length ? (t('deselectAll') || 'إلغاء الكل') : (t('selectAll') || 'تحديد الكل')}
-                </button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                {safeClasses.map((c, i) => {
-                  const isSelected = selectedClasses.includes(c);
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => toggleClass(c)}
-                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
-                        isSelected 
-                          ? 'bg-primary text-white border-primary shadow-md'
-                          : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard'
-                      }`}
-                    >
-                      {isSelected && <Check size={12} className="text-white" />}
-                      {c}
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedClasses.length === 0 && <p className="text-[10px] text-danger font-bold">{t('alertSelectOneClass') || 'يرجى اختيار فصل واحد على الأقل'}</p>}
-            </div>
+            {selectedClasses.length === 0 && <p className="text-[10px] text-danger font-bold text-center bg-danger/10 py-2 rounded-lg">{t('alertSelectOneClass') || 'يرجى اختيار فصل واحد على الأقل من الشريط العلوي 👆'}</p>}
 
             <button 
               type="submit" 
-              disabled={selectedClasses.length === 0}
+              disabled={selectedClasses.length === 0 || !newTaskTitle.trim()}
               className={`w-full py-4 mt-2 rounded-xl text-sm font-black shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-primary hover:bg-primary/80 text-white`}
             >
               <Plus size={18} /> {t('sendTaskBtn') || 'إضافة المهمة'}
@@ -179,10 +172,10 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
         </div>
 
         {/* 🗂️ أرشيف المهام */}
-        <div className="mt-8">
+        <div className="mt-8 pb-20">
           <h3 className={`text-base font-black mb-4 flex items-center gap-2 text-textPrimary`}>
             <History className="w-5 h-5 text-primary" />
-            {t('archiveTitle') || 'سجل المهام (الأرشيف)'}
+            {archiveTitleText}
           </h3>
           
           {tasks.length === 0 ? (
@@ -200,7 +193,7 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <h4 className={`text-sm font-black leading-snug text-textPrimary truncate`}>{task.title}</h4>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {/* 💉 تاريخ المهمة */}
                         <span className="flex items-center gap-1 text-[10px] font-bold text-textSecondary px-2 py-1 rounded-md bg-bgSoft border border-borderColor">
                             <CalendarDays size={10} />
