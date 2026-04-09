@@ -31,12 +31,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const { theme } = useTheme();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
-  // 💉 الضربة القاضية المطلقة: السيطرة على لون نظام تشغيل الهاتف نفسه!
   useEffect(() => {
-    // نحدد اللون بناءً على الثيم (رمادي فاتح للثيم الفاتح، وكحلي عميق للداكن والزجاجي)
     const systemColor = theme === 'light' ? '#f1f5f9' : '#0f172a'; 
     
-    // 1. إجبار الميتا تاج الخاص بمتصفح الجوال
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute('content', systemColor);
@@ -47,7 +44,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       document.head.appendChild(meta);
     }
 
-    // 2. إجبار الجدار الخلفي المطلق للمتصفح (HTML & Body) لكي لا يظهر أي بياض عند السحب
     document.body.style.backgroundColor = systemColor;
     document.documentElement.style.backgroundColor = systemColor;
   }, [theme]);
@@ -136,28 +132,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </nav>
         </aside>
 
+        {/* 💉 التعديل المعماري الأكبر لحماية كافة الصفحات من التمدد */}
         <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe">
-            <div className="max-w-5xl mx-auto w-full min-h-full py-6">
+          {/* تم إضافة overflow-x-hidden لمنع أي عنصر داخلي من كسر عرض الشاشة */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe flex flex-col items-center">
+            {/* تم توحيد العرض (max-w-md للجوال) و (md:max-w-5xl للكمبيوتر) ليتطابق المحتوى مع الشريط السفلي تماماً */}
+            <div className="w-full max-w-md md:max-w-5xl mx-auto min-h-full py-6">
               {children}
             </div>
           </div>
         </main>
+
       </div>
 
-      {/* 💉 الجراحة النهائية للشريط السفلي: استخدام fixed بدلاً من absolute، وتمديد الشريط للأسفل عبر الـ padding */}
       <div 
-        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col m-0"
+        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col items-center m-0"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex justify-around items-center px-1 pt-2 pb-1 h-16 w-full relative z-10">
+        <div className="w-full max-w-md flex justify-between items-center px-1 pt-2 pb-1 h-16 relative z-10">
           {mobileNavItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className="relative flex flex-col items-center justify-center p-2 min-w-[4rem] transition-all duration-300 active:scale-90"
+                className="relative flex flex-col items-center justify-center p-1 flex-1 transition-all duration-300 active:scale-90"
               >
                 <div className={cn(
                   "relative z-10 transition-all duration-500",
@@ -178,7 +177,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           {extraNavItems.length > 0 && (
              <button
                 onClick={() => setShowMoreMenu(true)}
-                className="relative flex flex-col items-center justify-center p-2 min-w-[4rem] transition-all duration-300 active:scale-90"
+                className="relative flex flex-col items-center justify-center p-1 flex-1 transition-all duration-300 active:scale-90"
               >
                 <div className={cn(
                   "relative z-10 transition-all duration-500",
