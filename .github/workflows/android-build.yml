@@ -34,12 +34,12 @@ jobs:
           fi
           npx cap sync android
 
-      # 👈 رفعنا رقم الإصدار إلى 5 لكي يقبله متجر جوجل كتحديث جديد
+      # 👈 رفعنا رقم الإصدار إلى 8 لكي يقبله متجر جوجل كتحديث جديد
       - name: Update Version and API
         run: |
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/versionCode [0-9]*/versionCode 7/g' android/app/build.gradle
-            sed -i 's/versionName "[^"]*"/versionName "1.0.7"/g' android/app/build.gradle
+            sed -i 's/versionName "[^"]*"/versionName "1.0.8"/g' android/app/build.gradle
           fi
 
       # 👈 الحقنة الجديدة: زرع التوافق مع أندرويد 15 (Edge-to-Edge)
