@@ -34,21 +34,21 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   const BackIcon = dir === 'rtl' ? ChevronRight : ChevronLeft;
 
   return (
-    // 💉 إزالة الأبعاد الثابتة (Fixed/Absolute) لكي يحترم المكون القائمة الجانبية والشريط العلوي
     <div className="flex flex-col h-full w-full bg-bgSoft text-textPrimary" dir={dir}>
       
-      {/* 🩺 الهيدر أصبح جزءاً من التدفق الطبيعي للصفحة (shrink-0) ولن يطير ليغطي أزرار الويندوز */}
       <header 
         className={`shrink-0 z-30 transition-all duration-300 border-b ${
           isScrolled 
-            ? 'bg-bgCard/95 backdrop-blur-md border-borderColor shadow-sm pb-3' 
+            ? 'bg-bgCard/95 backdrop-blur-md border-borderColor shadow-sm pb-2' 
             : 'bg-bgSoft border-transparent pb-2'
         }`}
         style={{
-          paddingTop: 'max(env(safe-area-inset-top), 16px)' 
+          // 💉 السر هنا: إرجاع النوتش لحجمه الطبيعي تماماً بدون أي زيادات مبالغ فيها
+          paddingTop: 'env(safe-area-inset-top)' 
         }}
       >
-        <div className="px-4 flex flex-col w-full">
+        {/* 💉 تقليل المسافة العلوية pt-2 بدلاً من الفراغ الكبير السابق */}
+        <div className="px-4 pt-2 flex flex-col w-full">
           <div className="flex items-center justify-between w-full">
             
             <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
             </div>
           </div>
 
-          {/* הפلاتر تنسدل بذكاء */}
+          {/* الفلاتر تنسدل بذكاء */}
           {leftActions && (
             <div 
               className="w-full transition-all duration-300 overflow-hidden origin-top"
@@ -100,7 +100,6 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
       </header>
 
-      {/* 📝 منطقة المحتوى المتمررة (تأخذ باقي المساحة تلقائياً بدون تداخل) */}
       <main 
         className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar w-full"
         onScroll={handleScroll}
