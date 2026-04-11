@@ -12,7 +12,7 @@ import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
-import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
+import PageLayout from '../components/PageLayout'; 
 
 interface GradeBookProps {
   students: Student[];
@@ -39,7 +39,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   onSemesterChange, 
   teacherInfo 
 }) => {
-  // 🌍 محرك الترجمة والاتجاه
   const { assessmentTools, setAssessmentTools, t, dir } = useApp();
   const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
 
@@ -65,7 +64,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   
-  // States for Modals (Now Drawers)
   const [showToolsManager, setShowToolsManager] = useState(false);
   const [isAddingTool, setIsAddingTool] = useState(false);
   const [newToolName, setNewToolName] = useState('');
@@ -76,7 +74,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [distTotal, setDistTotal] = useState<number>(gradingSettings.totalScore || 100);
   const [distFinalScore, setDistFinalScore] = useState<number>(gradingSettings.finalExamWeight || 40);
   
-  // 🌟 فلترة ذكية لاسم الامتحان النهائي القادم من الذاكرة لكي يدعم الترجمة
   const finalExamNameRaw = gradingSettings.finalExamName || 'الامتحان النهائي';
   const isDefaultExamName = finalExamNameRaw === 'الامتحان النهائي' || finalExamNameRaw === 'Final Exam';
   const defaultFinalExamNameTranslated = isDefaultExamName ? t('finalExamNameDefault') : finalExamNameRaw;
@@ -87,8 +84,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [activeToolId, setActiveToolId] = useState<string>('');
 
   const [summonData, setSummonData] = useState<{ student: Student; score: string; category: string } | null>(null);
-
-  // 💉 ميزة إظهار الطلاب الذين لم يتم رصد درجات لهم
   const [showMissingGradesOnly, setShowMissingGradesOnly] = useState(false);
 
   const isRamadan = true;
@@ -445,7 +440,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
     }
   };
 
-  // 💉 الجراحة الدقيقة: تحديث منطق إرسال الاستدعاء ليكون مطابقاً لمنطق صفحة الطلاب ويدعم Electron (الكمبيوتر)
   const sendSummonMessage = () => {
     if (!summonData) return;
     if (!summonData.student.parentPhone) {
@@ -472,32 +466,27 @@ const GradeBook: React.FC<GradeBookProps> = ({
     setSummonData(null);
   };
 
-  // 💉 فلترة الطلاب المرئيين بناءً على خيار "من لم يُرصد لهم درجات"
   const displayedStudents = showMissingGradesOnly 
     ? filteredStudents.filter(student => getStudentGradeForActiveTool(student) === '')
     : filteredStudents;
 
-  // 🌍 تطبيق الـ dir
   return (
-    // 💉 الغلاف الشامل PageLayout
     <PageLayout
       title={t('gradeBookTitle')}
       icon={<BarChart3 size={24} />}
       
-      // 💉 الأزرار العلوية يميناً (الإعدادات + القائمة المنسدلة)
       rightActions={
         <div className="flex items-center gap-2">
             <button 
                 onClick={() => setShowToolsManager(true)} 
-                className="p-2.5 bg-bgSoft hover:bg-bgCard rounded-xl transition-colors active:scale-95 border border-borderColor cursor-pointer relative z-50 text-textSecondary hover:text-textPrimary" 
+                className="p-2.5 bg-bgSoft hover:bg-bgCard rounded-xl transition-colors active:scale-95 border border-borderColor cursor-pointer text-textSecondary hover:text-textPrimary" 
                 title={t('manageTools')}
-                style={{ WebkitAppRegion: 'no-drag' } as any}
             >
               <Settings size={20} />
             </button>
             
-            <div className="relative z-[9999]" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                <button onClick={() => setShowMenu(!showMenu)} className={`cursor-pointer relative z-50 p-2.5 rounded-xl border border-borderColor active:scale-95 transition-all ${showMenu ? 'bg-bgCard text-primary' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}>
+            <div className="relative z-[9999]">
+                <button onClick={() => setShowMenu(!showMenu)} className={`cursor-pointer p-2.5 rounded-xl border border-borderColor active:scale-95 transition-all ${showMenu ? 'bg-bgCard text-primary' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}>
                     <SlidersHorizontal size={20} />
                 </button>
                 {showMenu && (
@@ -541,13 +530,11 @@ const GradeBook: React.FC<GradeBookProps> = ({
         </div>
       }
 
-      // 💉 الفلاتر والأدوات (تختفي بذكاء مع النزول للأسفل)
       leftActions={
-        <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            {/* ================= 1. كبسولة الفصول والصفوف (مدمجة) ================= */}
+        <div className="space-y-2 w-full mt-1">
+            {/* ================= 1. كبسولة الفصول والصفوف ================= */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
                 <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
-                    {/* زر (الكل) */}
                     <button 
                         onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
                         className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
@@ -555,7 +542,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
                         {t('allGradesList')}
                     </button>
 
-                    {/* أزرار الصفوف (Grades) */}
                     {availableGrades.map(g => (
                         <React.Fragment key={`grade-${g}`}>
                             <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
@@ -568,7 +554,6 @@ const GradeBook: React.FC<GradeBookProps> = ({
                         </React.Fragment>
                     ))}
 
-                    {/* أزرار الفصول (Classes) */}
                     {visibleClasses.map(c => (
                         <React.Fragment key={`class-${c}`}>
                             <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
@@ -583,7 +568,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
                 </div>
             </div>
 
-            {/* ================= 2. كبسولة أدوات التقويم (Tools) ================= */}
+            {/* ================= 2. كبسولة أدوات التقويم ================= */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
                 <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-primary/5 border-primary/20`}>
                     {tools.map((tool, index) => (
@@ -605,15 +590,16 @@ const GradeBook: React.FC<GradeBookProps> = ({
                 </div>
             </div>
 
-            {/* ================= 3. أزرار الإجراءات السريعة للتقويم ================= */}
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 mt-1 p-1.5 rounded-xl border bg-bgSoft border-borderColor shadow-inner`}>
+            {/* ================= 3. أزرار الإجراءات السريعة (عصرية ومدمجة جداً) ================= */}
+            <div className={`flex items-center justify-between gap-2 mt-1 p-2 rounded-2xl border bg-bgCard border-borderColor shadow-sm`}>
                 {tools.length > 0 && (
                 <button 
                     onClick={handleCopyContinuousTotal} 
-                    className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-warning hover:bg-warning/80`}
+                    className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl active:scale-95 transition-all bg-warning/10 text-warning hover:bg-warning/20 border border-warning/20`}
                     title={t('copyContinuousTotalTitle')}
                 >
-                    <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('continuousAssessment')}
+                    <Copy className="w-4 h-4 md:w-5 md:h-5 mb-1" /> 
+                    <span className="text-[8px] md:text-[9px] font-black whitespace-nowrap">{t('continuousAssessment')}</span>
                 </button>
                 )}
 
@@ -623,32 +609,33 @@ const GradeBook: React.FC<GradeBookProps> = ({
                     onClick={() => {
                         const tool = tools.find(t => t.id === activeToolId);
                         if (!tool) return;
-                        
                         const gradesList = filteredStudents.map(student => {
-                        const grade = getStudentGradeForActiveTool(student);
-                        return grade !== '' ? grade : ''; 
+                            const grade = getStudentGradeForActiveTool(student);
+                            return grade !== '' ? grade : ''; 
                         });
-                        
                         const textToCopy = gradesList.join('\n');
                         navigator.clipboard.writeText(textToCopy).then(() => {
-                        alert(`${t('alertToolCopied1')}${tool.name}${t('alertToolCopied2')}`);
+                            alert(`${t('alertToolCopied1')}${tool.name}${t('alertToolCopied2')}`);
                         }).catch(() => alert(t('alertCopyError')));
                     }} 
-                    className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-success hover:bg-success/80`}
+                    className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl active:scale-95 transition-all bg-success/10 text-success hover:bg-success/20 border border-success/20`}
                     >
-                    <Copy className="w-3.5 h-3.5 mb-0.5" /> {t('copyTool')}
+                    <Copy className="w-4 h-4 md:w-5 md:h-5 mb-1" /> 
+                    <span className="text-[8px] md:text-[9px] font-black whitespace-nowrap">{t('copyTool')}</span>
                     </button>
 
-                    <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`py-2 px-1 text-white rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center bg-primary hover:bg-primary/80`}>
-                    <Wand2 className="w-3.5 h-3.5 mb-0.5" /> {t('bulkFill')}
+                    <button onClick={() => setBulkFillTool(tools.find(t => t.id === activeToolId) || null)} className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl active:scale-95 transition-all bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20`}>
+                    <Wand2 className="w-4 h-4 md:w-5 md:h-5 mb-1" /> 
+                    <span className="text-[8px] md:text-[9px] font-black whitespace-nowrap">{t('bulkFill')}</span>
                     </button>
 
                     {/* 💉 الفلتر الجديد لإظهار من لم يتم الرصد لهم */}
                     <button 
                         onClick={() => setShowMissingGradesOnly(!showMissingGradesOnly)} 
-                        className={`py-2 px-1 rounded-lg text-[9px] md:text-[10px] font-bold flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-colors text-center ${showMissingGradesOnly ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-transparent border border-borderColor text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+                        className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl active:scale-95 transition-all border ${showMissingGradesOnly ? 'bg-rose-500 text-white border-rose-600 shadow-md' : 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20'}`}
                     >
-                        <Filter className="w-3.5 h-3.5 mb-0.5" /> {showMissingGradesOnly ? 'إلغاء الفلتر' : 'بدون رصد'}
+                        <Filter className="w-4 h-4 md:w-5 md:h-5 mb-1" /> 
+                        <span className="text-[8px] md:text-[9px] font-black whitespace-nowrap">{showMissingGradesOnly ? 'إلغاء الفلتر' : 'بدون رصد'}</span>
                     </button>
                 </>
                 )}
@@ -658,7 +645,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
     >
 
       {/* ⬇️ محتوى الصفحة المباشر (كروت الطلاب للدرجات) ⬇️ */}
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 animate-in fade-in duration-500 pt-2">
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 animate-in fade-in duration-500 pt-2">
         {displayedStudents.length > 0 ? displayedStudents.map(student => {
           const currentGrade = getStudentGradeForActiveTool(student);
           const semGrades = getSemesterGrades(student, currentSemester);
@@ -673,9 +660,8 @@ const GradeBook: React.FC<GradeBookProps> = ({
           const needsSummon = isShortQuiz && !isNaN(scoreNum) && scoreNum < 10 && currentGrade !== '';
 
           return (
-            <div key={student.id} className={`glass-panel rounded-2xl p-2 border border-borderColor flex flex-col items-center relative transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
+            <div key={student.id} className={`glass-panel rounded-2xl p-3 border border-borderColor flex flex-col items-center relative transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
               
-              {/* 🚨 زر الإنذار والاستدعاء */}
               {needsSummon && (
                 <button
                   onClick={() => setSummonData({ student, score: currentGrade, category: activeTool?.name || '' })}
@@ -686,15 +672,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
                 </button>
               )}
 
-              <StudentAvatar gender={student.gender} className={`w-10 h-10 mb-1.5 border-2 shadow-sm border-borderColor`} />
+              <StudentAvatar gender={student.gender} className={`w-12 h-12 mb-2 border-2 shadow-sm border-borderColor`} />
               
-              <h3 className={`font-bold text-[10px] leading-[1.2] text-center break-words mb-2 w-full min-h-[30px] flex items-center justify-center text-textPrimary`}>
+              <h3 className={`font-bold text-xs leading-[1.3] text-center break-words mb-3 w-full min-h-[35px] flex items-center justify-center text-textPrimary`}>
                 {student.name}
               </h3>
               
-              <div className={`flex items-center justify-center gap-1.5 mb-2 w-full py-1 rounded-lg border bg-bgSoft border-borderColor`}>
-                  <span className={`text-sm font-black ${symbolColor.split(' ')[0]}`}>{totalScore}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${symbolColor}`}>{getGradeSymbol(totalScore)}</span>
+              <div className={`flex items-center justify-center gap-2 mb-3 w-full py-1.5 rounded-lg border bg-bgSoft border-borderColor`}>
+                  <span className={`text-base font-black ${symbolColor.split(' ')[0]}`}>{totalScore}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${symbolColor}`}>{getGradeSymbol(totalScore)}</span>
               </div>
               
               <div className="w-full relative mt-auto">
@@ -704,15 +690,15 @@ const GradeBook: React.FC<GradeBookProps> = ({
                       value={currentGrade} 
                       onChange={e => handleGradeChange(student.id, e.target.value)} 
                       placeholder="-" 
-                      className={`w-full h-8 rounded-lg text-center font-black text-sm outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary ${needsSummon ? 'border-danger/50 text-danger' : ''}`} 
+                      className={`w-full h-10 rounded-xl text-center font-black text-base outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary ${needsSummon ? 'border-danger/50 text-danger bg-danger/5' : ''}`} 
                   />
               </div>
             </div>
           );
         }) : (
-          <div className="col-span-full py-16 flex flex-col items-center justify-center opacity-70">
-            <Filter className="w-12 h-12 mb-3 text-textSecondary" />
-            <p className="font-bold text-sm text-textSecondary">{showMissingGradesOnly ? 'تم رصد الدرجات لجميع الطلاب المحددين في هذه الأداة!' : 'لا يوجد طلاب مطابقين للبحث'}</p>
+          <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-70">
+            <Filter className="w-16 h-16 mb-4 text-textSecondary" />
+            <p className="font-bold text-base text-textSecondary">{showMissingGradesOnly ? 'ممتاز! تم رصد الدرجات لجميع الطلاب في هذه الأداة 🎉' : 'لا يوجد طلاب مطابقين للبحث'}</p>
           </div>
         )}
       </div>
