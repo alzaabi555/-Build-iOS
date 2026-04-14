@@ -55,7 +55,7 @@ html {
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
   background-color: var(--bg);
   overscroll-behavior-y: none;
  max-width: 100vw; /* 💉 منع تخطي عرض الشاشة */
@@ -129,7 +129,7 @@ body {
 /* --- 💎 UTILITIES & FIXES --- */
 /* ========================================================= */
 .pt-safe { padding-top: var(--safe-top); }
-.pb-safe { padding-bottom: 0; }
+padding-bottom: max(env(safe-area-inset-bottom), 12px);
 .shimmer-hover { 
   position: relative; 
   overflow: hidden !important; 
@@ -148,7 +148,7 @@ body {
      إذا كان الهاتف آيفون (safe-area 34px) سيستخدمها.
      إذا كان الهاتف إنفينكس/أندرويد ويعطي (0px)، سيستخدم 20px إجبارياً كدرع واقي! 
   */
-  padding-bottom: max(env(safe-area-inset-bottom), 20px) !important;
+   padding-bottom: env(safe-area-inset-bottom);
   
   background: var(--bg);
   z-index: 50;
