@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '../../utils/cn';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Menu, X, Minus, Square } from 'lucide-react'; 
+
 import { Drawer as DrawerSheet } from '../ui/Drawer'; 
-// 💉 استيراد الـ Hook الجديد
-import { useDisplayPort } from '../../hooks/useDisplayPort';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,11 +29,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   appSubtitle
 }) => {
   const { theme } = useTheme();
-  // 💉 استخدام Hook العرض المحسّن
-  const viewport = useDisplayPort();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
-  // 💉 إعدادات الثيم وألوان النظام
   useEffect(() => {
     const systemColor = theme === 'light' ? '#f1f5f9' : '#0f172a'; 
     
@@ -51,17 +47,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     document.body.style.backgroundColor = systemColor;
     document.documentElement.style.backgroundColor = systemColor;
   }, [theme]);
-
-  // 💉 إضافة فئة Android للتعاملات الخاصة
-  useEffect(() => {
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      document.documentElement.classList.add('android-fix');
-    }
-    return () => {
-      document.documentElement.classList.remove('android-fix');
-    };
-  }, []);
 
   const mobileNavIds = mobileNavItems.map(item => item.id);
   const extraNavItems = desktopNavItems.filter(item => !mobileNavIds.includes(item.id));
@@ -83,31 +68,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     }
   };
 
-  // 💉 حساب الهامش السفلي الديناميكي للشريط السفلي
-  const bottomBarPadding = viewport.isMobile 
-    ? `calc(${viewport.safeAreaBottom}px + 1rem)` 
-    : 'env(safe-area-inset-bottom)';
-
   return (
-    // 💉 استخدام الارتفاع الديناميكي مع فالدحة --vh
-    <div 
-      className="fixed inset-0 w-full flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent"
-      style={{ 
-        height: 'calc(var(--vh, 1vh) * 100)',
-        // 💉 منع التمدد الأفقي في وضع الاتجاه
-        [dir === 'rtl' ? 'right' : 'left']: 0,
-      }}
-      dir={dir}
-    >
+    <div className="fixed inset-0 w-full h-[100dvh] flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent" dir={dir}>
       
       {isDesktop && (
         <div 
-          className="flex justify-between items-center px-4 h-10 shrink-0 z-[99999] glass-panel border-b border-borderColor rounded-none bg-bgCard/40 backdrop-blur-md contain-layout"
-          style={{ 
-            WebkitAppRegion: 'drag',
-            [dir === 'rtl' ? 'right' : 'left']: 0,
-            [dir === 'rtl' ? 'left' : 'right']: 0,
-          } as any} 
+          className="flex justify-between items-center px-4 h-10 shrink-0 z-[99999] glass-panel border-b border-borderColor rounded-none bg-bgCard/40 backdrop-blur-md"
+          style={{ WebkitAppRegion: 'drag' } as any} 
         >
           <div className="flex items-center gap-2 text-textSecondary text-xs font-bold pointer-events-none">
             {Logo && <div className="w-4 h-4 flex items-center justify-center">{Logo}</div>}
@@ -127,7 +94,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
       )}
 
-      {/* خلفية التطبيق */}
       <div className="fixed inset-0 z-[-2] transition-colors duration-500" style={{ background: 'var(--bg)' }} />
       <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
@@ -136,10 +102,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       <div className="flex flex-1 overflow-hidden relative z-10 w-full h-full">
         
-        {/* الشريط الجانبي للكمبيوتر */}
         <aside className={cn(
-          "hidden md:flex w-72 flex-col z-50 h-full relative glass-panel rounded-none contain-layout",
-          dir === 'rtl' ? 'border-l border-borderColor right-0' : 'border-r border-borderColor left-0'
+          "hidden md:flex w-72 flex-col z-50 h-full relative glass-panel rounded-none",
+          dir === 'rtl' ? 'border-l border-borderColor' : 'border-r border-borderColor'
         )}>
           <div className="p-8 flex items-center gap-4 shrink-0">
             <div className="w-12 h-12 shrink-0">{Logo}</div>
@@ -167,21 +132,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </nav>
         </aside>
 
-        {/* منطقة المحتوى الرئيسية */}
+        {/* 💉 التعديل المعماري الأكبر لحماية كافة الصفحات من التمدد */}
         <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          <div 
-            className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-[calc(5rem+var(--safe-bottom,0px))] md:pb-6 px-4 md:px-10 pt-safe flex flex-col items-center contain-layout"
-            style={{ 
-              maxWidth: '100%',
-              width: '100%',
-            }}
-          >
-            <div 
-              className="w-full max-w-md md:max-w-5xl mx-auto min-h-full py-6 box-border"
-              style={{ 
-                maxWidth: 'calc(100% - 2rem)',
-              }}
-            >
+          {/* تم إضافة overflow-x-hidden لمنع أي عنصر داخلي من كسر عرض الشاشة */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 px-4 md:px-10 pt-safe flex flex-col items-center">
+            {/* تم توحيد العرض (max-w-md للجوال) و (md:max-w-5xl للكمبيوتر) ليتطابق المحتوى مع الشريط السفلي تماماً */}
+            <div className="w-full max-w-md md:max-w-5xl mx-auto min-h-full py-6">
               {children}
             </div>
           </div>
@@ -189,16 +145,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       </div>
 
-      {/* 💉 الشريط السفلي للجوال - محسّن مع الـ Hook */}
       <div 
-        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col items-center m-0 contain-layout"
-        style={{ 
-          paddingBottom: bottomBarPadding,
-          width: '100%',
-          maxWidth: '100%',
-          transform: 'translateZ(0)',
-          [dir === 'rtl' ? 'right' : 'left']: 0,
-        }}
+        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-[9999] glass-panel border-t border-borderColor border-x-0 border-b-0 !rounded-none transition-all duration-500 flex flex-col items-center m-0"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="w-full max-w-md flex justify-between items-center px-1 pt-2 pb-1 h-16 relative z-10">
           {mobileNavItems.map((item) => {
@@ -247,7 +196,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
       </div>
 
-      {/* قائمة "المزيد" المنبثقة */}
       {showMoreMenu && (
         <div className="relative z-[99999]">
             <DrawerSheet isOpen={showMoreMenu} onClose={() => setShowMoreMenu(false)} dir={dir} mode="bottom">
@@ -292,4 +240,4 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
     </div>
   );
-};
+}; 
