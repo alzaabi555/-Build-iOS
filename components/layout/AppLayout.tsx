@@ -69,7 +69,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent" dir={dir}>
+    <div className="fixed top-0 left-0 right-0 bottom-0 w-full h-[100dvh] flex flex-col font-sans overflow-hidden text-textPrimary animate-smooth bg-transparent" dir={dir}>
       
       {isDesktop && (
         <div 
