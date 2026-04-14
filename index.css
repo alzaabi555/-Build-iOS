@@ -6,11 +6,10 @@
 @tailwind utilities;
 
 /* ========================================================= */
-/* --- 💉 الطبقة الأساسية: إعادة تعيين شاملة وانتقالات --- */
+/* --- 💉 حقنة التخدير الشامل (منع ومضة الثيمات) --- */
 /* ========================================================= */
 @layer base {
   *, *::before, *::after {
-    box-sizing: border-box; /* 💉 يمنع تمدد العناصر بسبب الحواشي والحدود */
     transition-property: background-color, border-color, color, fill, stroke, box-shadow;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 500ms;
@@ -20,210 +19,153 @@
     transition-property: transform, opacity !important;
     transition-duration: 300ms !important;
   }
-
-  /* 💉 إصلاح تسريع GPU لأجهزة أندرويد */
-  .android-fix .glass-panel,
-  .android-fix .glass-card,
-  .android-fix [class*="fixed"],
-  .android-fix [class*="absolute"] {
-    transform: translateZ(0) !important;
-    will-change: transform;
-    backface-visibility: hidden;
-  }
 }
 
 /* ========================================================= */
-/* --- 🌍 المتغيرات الأساسية وفالدحة العرض الديناميكي --- */
+/* --- 🌍 ROOT VARIABLES --- */
 /* ========================================================= */
 :root {
   font-family: 'Tajawal', sans-serif;
   -webkit-tap-highlight-color: transparent;
 
-  /* 💉 يتم تحديث هذه القيم تلقائيًا عبر Hook الـ Viewport */
-  --vh: 1vh;
-  --safe-top: 0px;
-  --safe-bottom: 0px;
-  --safe-left: 0px;
-  --safe-right: 0px;
+  /* ✅ إصلاح Safe Area */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
 /* ========================================================= */
-/* --- 📐 حماية الإطار ومنع التمدد الأفقي --- */
+/* --- 💉 الجدار الواقي (الثيم) --- */
+/* ========================================================= */
+html {
+  background-color: #0f172a !important;
+}
+
+/* 💉 تم تعديل لون الجدار الواقي للثيم الفاتح ليطابق النسخة الأولى #f3f4f6 */
+html[data-theme="light"],
+html:not([data-theme="dark"]):not([data-theme="glass"]) {
+  background-color: #f3f4f6 !important;
+}
+
+/* ========================================================= */
+/* --- 🌍 CORE APP SETTINGS --- */
 /* ========================================================= */
 html {
   height: 100%;
-  height: calc(var(--vh, 1vh) * 100); /* 💉 بديل لـ 100dvh غير المدعوم في بعض المتصفحات */
+  height: 100dvh; /* ✅ إصلاح Capacitor */
   width: 100%;
-  max-width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
-  overflow-x: hidden !important;
   background-color: var(--bg);
   overscroll-behavior-y: none;
-  contain: layout style paint; /* 💉 يحسن الأداء ويمنع تسرب التخطيط */
-  direction: ltr; /* 💉 إعادة تعيين الاتجاه، يتحكم الأطفال في RTL/LTR */
-}
-
-html[dir="rtl"] {
-  direction: rtl;
+ max-width: 100vw; /* 💉 منع تخطي عرض الشاشة */
+  overflow-x: hidden !important; /* 💉 بتر أي تسرب أفقي */
 }
 
 body {
-  height: 100%;
-  height: calc(var(--vh, 1vh) * 100);
+  background-color: var(--bg);
+  color: var(--text);
+  height: 100dvh;
   width: 100%;
-  max-width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
-  overflow-x: hidden !important;
-  background-color: var(--bg);
-  color: var(--text);
   overscroll-behavior-y: none;
-  contain: layout style;
-  direction: inherit;
+ max-width: 100vw;
+  overflow-x: hidden !important;
 }
 
+/* ========================================================= */
+/* --- 🧱 ROOT --- */
+/* ========================================================= */
 #root {
-  height: 100%;
-  height: calc(var(--vh, 1vh) * 100);
+  height: 100dvh;
   width: 100%;
-  max-width: 100%;
   overflow: hidden;
-  overflow-x: hidden !important;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
-  contain: layout style paint;
-  direction: inherit;
+ max-width: 100vw;
+  overflow-x: hidden !important;
 }
 
 /* ========================================================= */
-/* --- 🖱️ أشرطة التمرير المخصصة ومنع التسرب الأفقي --- */
+/* --- 🖱️ SCROLLBARS --- */
 /* ========================================================= */
-.custom-scrollbar {
-  overflow-y: auto;
-  overflow-x: hidden !important; /* 💉 يمنع أي تمرير جانبي داخل المناطق القابلة للتمرير */
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
-  contain: layout style;
+.custom-scrollbar { 
+  overflow-y: auto; 
+  touch-action: pan-y; 
+  -webkit-overflow-scrolling: touch; 
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 14px; 
+  height: 14px; 
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: var(--secondary);
-  border-radius: 10px;
-  border: 4px solid transparent;
-  background-clip: padding-box;
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background-color: var(--secondary); 
+  border-radius: 10px; 
+  border: 4px solid transparent; 
+  background-clip: padding-box; 
   opacity: 0.5;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: var(--primary);
-  border: 3px solid transparent;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background-color: var(--primary); 
+  border: 3px solid transparent; 
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* ========================================================= */
-/* --- 💎 أدوات المساعدة والمناطق الآمنة (Safe Areas) --- */
-/* ========================================================= */
-.pt-safe { padding-top: var(--safe-top, env(safe-area-inset-top, 0px)); }
-.pb-safe { padding-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px)); }
-.ps-safe { padding-left: var(--safe-left, env(safe-area-inset-left, 0px)); }
-.pe-safe { padding-right: var(--safe-right, env(safe-area-inset-right, 0px)); }
-
-.shimmer-hover {
-  position: relative;
-  overflow: hidden !important;
+.no-scrollbar::-webkit-scrollbar { 
+  display: none; 
 }
 
 /* ========================================================= */
-/* --- 🔥 حماية العناصر الثابتة والشريط السفلي --- */
+/* --- 💎 UTILITIES & FIXES --- */
 /* ========================================================= */
-/* 💉 قاعدة عامة لأي عنصر ثابت في الأسفل (مثل القائمة السفلية للجوال) */
-[class*="fixed"][class*="bottom-0"] {
+.pt-safe { padding-top: var(--safe-top); }
+.pb-safe { padding-bottom: 0; }
+.shimmer-hover { 
+  position: relative; 
+  overflow: hidden !important; 
+}
+
+/* ========================================================= */
+/* --- 🔥 FIX القائمة السفلية (علاج تداخل أزرار الأندرويد) --- */
+/* ========================================================= */
+.bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-  contain: layout style;
-  padding-bottom: calc(var(--safe-bottom, 0px) + 0px);
-  padding-left: var(--safe-left, 0px);
-  padding-right: var(--safe-right, 0px);
-}
-
-/* 💉 ضبط RTL للعناصر الثابتة في الأسفل */
-html[dir="rtl"] [class*="fixed"][class*="bottom-0"] {
-  left: auto;
-  right: 0;
-}
-
-.glass-panel,
-.glass-card,
-[class*="fixed"] {
-  contain: layout style;
-  transform-style: preserve-3d;
+  
+  /* 💉 الحقنة السحرية: 
+     إذا كان الهاتف آيفون (safe-area 34px) سيستخدمها.
+     إذا كان الهاتف إنفينكس/أندرويد ويعطي (0px)، سيستخدم 20px إجبارياً كدرع واقي! 
+  */
+  padding-bottom: max(env(safe-area-inset-bottom), 20px) !important;
+  
+  background: var(--bg);
+  z-index: 50;
+  
+  /* إضافة ظل خفيف للأعلى لتبدو القائمة مفصولة عن النظام */
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 /* ========================================================= */
-/* --- 📱 تحسينات الجوال والوضع الأفقي --- */
-/* ========================================================= */
-@media (max-width: 768px) {
-  html, body, #root {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-  }
-
-  main > div:first-child {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* 💉 ضمان عدم اختفاء المحتوى خلف الشريط السفلي */
-  main .overflow-y-auto {
-    padding-bottom: calc(var(--safe-bottom, 0px) + 5rem) !important;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  .pt-safe {
-    padding-top: calc(var(--safe-top, 0px) * 0.5);
-  }
-  .hide-in-landscape {
-    display: none !important;
-  }
-}
-
-/* ========================================================= */
-/* --- 🖨️ إصلاح طبقة الطباعة --- */
+/* --- PRINT OVERLAY FIX --- */
 /* ========================================================= */
 #temp-print-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   z-index: 99999;
   background-color: #ffffff;
   overflow-y: auto;
@@ -232,9 +174,10 @@ html[dir="rtl"] [class*="fixed"][class*="bottom-0"] {
 }
 
 /* ========================================================= */
-/* --- 🌙 استعادة الثيم الكلاسيكي (الوضع الفاتح) --- */
+/* --- 💉 الجراحة النهائية: استعادة الثيم الكلاسيكي (الأصلي) --- */
 /* ========================================================= */
 @layer base {
+  /* استعادة ألوان الأساسية للـ Body القديم */
   :root[data-theme="light"],
   :root:not([data-theme="dark"]):not([data-theme="glass"]) {
     --bg: #f3f4f6 !important;          
@@ -245,6 +188,7 @@ html[dir="rtl"] [class*="fixed"][class*="bottom-0"] {
 }
 
 @layer components {
+  /* تحويل كلاسات الزجاج إلى بطاقات بيضاء صلبة في الثيم الفاتح */
   :root[data-theme="light"] .glass-card,
   :root[data-theme="light"] .glass-panel,
   :root[data-theme="light"] .glass-heavy,
@@ -258,12 +202,14 @@ html[dir="rtl"] [class*="fixed"][class*="bottom-0"] {
     -webkit-backdrop-filter: none !important;
   }
 
+  /* استعادة حركة الارتفاع (Hover) القديمة للبطاقات */
   :root[data-theme="light"] .glass-card:hover,
   :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-card:hover {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     transform: translateY(-1px) !important;
   }
 
+  /* استعادة شكل الحقول (Inputs) القديمة */
   :root[data-theme="light"] .glass-input,
   :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-input {
     background-color: #ffffff !important;
@@ -271,6 +217,7 @@ html[dir="rtl"] [class*="fixed"][class*="bottom-0"] {
     color: #0f172a !important;
   }
 
+  /* استعادة شكل الأيقونات الفرعية القديمة */
   :root[data-theme="light"] .glass-icon,
   :root:not([data-theme="dark"]):not([data-theme="glass"]) .glass-icon {
     background-color: #f8fafc !important;
