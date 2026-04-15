@@ -14,7 +14,7 @@ const PARENT_APP_URL = "https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcY
 const DEVICE_SYNC_URL = "https://script.google.com/macros/s/AKfycbxXUII_Q_6K6TuewJ0k44mi8mCB-6LQNbDo9rhVdaVOvYCyKFRNCBuddLe_PyLorCdT/exec";
 
 // 💉 إضافة الجراح: رابط العقل المدبر لراصد الإدارة (ضع الرابط الجديد هنا)
-const ADMIN_APP_URL = "ضع_رابط_الويب_اب_الخاص_بالادارة_هنا";
+const ADMIN_APP_URL = "https://script.google.com/macros/s/AKfycbwLErSPojSjPzOmzcJfT3yVQ-vamH2le2EbkAnJguWQi9w8knmy5WfniKQK35TIa0bc8w/exec";
 
 const GlobalSyncManager: React.FC = () => {
   const { 
