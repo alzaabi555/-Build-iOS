@@ -36,6 +36,22 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      # 💉 الحقنة الأولى: إجبار السيرفر على تثبيت كل أدوات التطوير (Vite)
+      - name: Install dependencies
+        run: npm install --include=dev --legacy-peer-deps
+        
+      # 💉 الحقنة الثانية: البناء باستخدام اسم مستودعك الفعلي الذي ظهر في الخطأ
+      - name: Build project
+        run: npx vite build --base=/-Build-iOS/
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
