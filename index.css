@@ -58,7 +58,7 @@ html {
   overflow-x: hidden;
   background-color: var(--bg);
   overscroll-behavior-y: none;
- max-width: 100vw; /* 💉 منع تخطي عرض الشاشة */
+  max-width: 100vw; /* 💉 منع تخطي عرض الشاشة */
   overflow-x: hidden !important; /* 💉 بتر أي تسرب أفقي */
 }
 
@@ -71,7 +71,7 @@ body {
   padding: 0;
   overflow: hidden;
   overscroll-behavior-y: none;
- max-width: 100vw;
+  max-width: 100vw;
   overflow-x: hidden !important;
 }
 
@@ -86,7 +86,7 @@ body {
   flex-direction: column;
   position: relative;
   z-index: 1;
- max-width: 100vw;
+  max-width: 100vw;
   overflow-x: hidden !important;
 }
 
@@ -129,7 +129,12 @@ body {
 /* --- 💎 UTILITIES & FIXES --- */
 /* ========================================================= */
 .pt-safe { padding-top: var(--safe-top); }
-padding-bottom: max(env(safe-area-inset-bottom), 12px);
+
+/* 💉 إصلاح الخطأ: تغليف padding-bottom داخل Class جديد */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+
 .shimmer-hover { 
   position: relative; 
   overflow: hidden !important; 
@@ -180,8 +185,8 @@ padding-bottom: max(env(safe-area-inset-bottom), 12px);
   /* استعادة ألوان الأساسية للـ Body القديم */
   :root[data-theme="light"],
   :root:not([data-theme="dark"]):not([data-theme="glass"]) {
-    --bg: #f3f4f6 !important;          
-    --text: #1e293b !important;        
+    --bg: #f3f4f6 !important;         
+    --text: #1e293b !important;       
     --text-secondary: #64748b !important; 
     --border: #e2e8f0 !important;      
   }
