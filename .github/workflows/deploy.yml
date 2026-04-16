@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build project
-        run: npm run build
+        run: npx vite build --base=/rased-teacher/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
