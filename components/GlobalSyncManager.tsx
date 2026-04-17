@@ -137,8 +137,10 @@ const GlobalSyncManager: React.FC = () => {
             timestamp: new Date().toLocaleString('ar-OM')
         };
 
-        const response = await fetch(ADMIN_APP_URL, { // تأكد من وضع رابط الإدارة في أعلى الملف
+       const response = await fetch(ADMIN_APP_URL, {
             method: 'POST',
+            // 💉 الحقنة السحرية لاختراق جدار حماية جوجل (CORS)
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(adminPayload)
         });
 
