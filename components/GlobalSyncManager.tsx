@@ -105,51 +105,60 @@ const GlobalSyncManager: React.FC = () => {
         await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(parentPayload) });
       }
 
-     // 🏫 3. تطبيق راصد الإدارة (مستقل ويستخدم كود المدرسة)
+    // 🏫 3. تطبيق راصد الإدارة
       else if (type === 'admin') {
         setSyncMessage('جاري إرسال التقرير الشامل للإدارة...');
         localStorage.setItem('rased_admin_school_code', adminSchoolCode.trim());
 
         const teacherName = teacherInfo?.name || "معلم غير محدد";
-        const todayStr = new Date().toDateString();
+        
+        // 💉 ذكاء اصطناعي: نستخدم نفس صيغة التاريخ الموجودة في شاشة التحضير لضمان التطابق
+        const todayCA = new Date().toLocaleDateString('en-CA'); 
         
         let absentStudentsNames: string[] = [];
         let lateStudentsNames: string[] = [];
         let truantStudentsNames: string[] = [];
 
-        // فرز الطلاب حسب حالتهم اليوم
         students.forEach(s => {
-            const todayRecord = s.attendance?.find(a => new Date(a.date).toDateString() === todayStr);
+            // نبحث عن سجل اليوم بدقة
+            const todayRecord = s.attendance?.find(a => a.date === todayCA || new Date(a.date).toDateString() === new Date().toDateString());
+            
             if (todayRecord) {
-                if (todayRecord.status === 'absent' || todayRecord.status === 'غائب') absentStudentsNames.push(s.name);
-                if (todayRecord.status === 'late' || todayRecord.status === 'متأخر') lateStudentsNames.push(s.name);
-                if (todayRecord.status === 'escaped' || todayRecord.status === 'متسرب') truantStudentsNames.push(s.name);
+                const st = String(todayRecord.status).toLowerCase().trim();
+                
+                if (st === 'absent' || st === 'غائب') {
+                    absentStudentsNames.push(s.name);
+                } 
+                else if (st === 'late' || st === 'متأخر') {
+                    lateStudentsNames.push(s.name);
+                } 
+                // 🟣 هنا كان الفخ! أضفنا 'truant' ليتطابق مع زر التحضير
+                else if (st === 'truant' || st === 'escaped' || st === 'متسرب') {
+                    truantStudentsNames.push(s.name);
+                }
             }
         });
 
+        // 📦 تجهيز طرد البيانات للإرسال
         const adminPayload = {
             schoolCode: adminSchoolCode.trim(),
             teacherName: teacherName,
             className: classes[0] || "كل الفصول", 
             absentStudents: absentStudentsNames,
             lateStudents: lateStudentsNames,
-            truantStudents: truantStudentsNames,
-            timestamp: new Date().toLocaleString('ar-OM')
+            truantStudents: truantStudentsNames, // 👈 تأكد أن هذا السطر موجود ليرسل التسرب
+            timestamp: new Date().toISOString()
         };
 
         try {
-            // 💉 الكود السحري: وضع no-cors لاختراق حماية GitHub وجوجل
             await fetch(ADMIN_APP_URL, {
                 method: 'POST',
-                mode: 'no-cors', // 👈 هذه هي الحقنة القاضية
+                mode: 'no-cors', // 💉 لكسر جدار حماية جوجل وجيت هب
                 headers: {
                     'Content-Type': 'text/plain;charset=utf-8',
                 },
                 body: JSON.stringify(adminPayload)
             });
-            
-            // في وضع no-cors لا يمكننا قراءة الرد (response.json)، لذلك نفترض النجاح فوراً إذا لم يسقط الاتصال
-            
         } catch (error) {
              throw new Error("تأكد من الاتصال بالإنترنت");
         }
