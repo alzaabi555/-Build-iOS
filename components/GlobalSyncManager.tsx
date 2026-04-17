@@ -262,7 +262,7 @@ const GlobalSyncManager: React.FC = () => {
           if (hasData) {
               const dataToSave = {
                 version: '4.4.1',
-                timestamp: new Date().toISOString(),
+               timestamp: new Date().toISOString()
                 students: newStudents,
                 classes: newClasses,
                 hiddenClasses: newHiddenClasses,
