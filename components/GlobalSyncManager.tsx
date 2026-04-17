@@ -105,34 +105,39 @@ const GlobalSyncManager: React.FC = () => {
         await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(parentPayload) });
       }
 
-      // 🏫 3. تطبيق راصد الإدارة (مستقل ويستخدم كود المدرسة)
+     // 🏫 3. تطبيق راصد الإدارة (مستقل ويستخدم كود المدرسة)
       else if (type === 'admin') {
-        setSyncMessage('جاري إرسال تقرير الغياب للإدارة...');
-        
-        // حفظ كود المدرسة لكي لا يضطر المعلم لكتابته كل مرة
+        setSyncMessage('جاري إرسال التقرير الشامل للإدارة...');
         localStorage.setItem('rased_admin_school_code', adminSchoolCode.trim());
 
         const teacherName = teacherInfo?.name || "معلم غير محدد";
         const todayStr = new Date().toDateString();
+        
         let absentStudentsNames: string[] = [];
+        let lateStudentsNames: string[] = [];
+        let truantStudentsNames: string[] = [];
 
-        // استخراج غياب اليوم فقط
+        // فرز الطلاب حسب حالتهم اليوم
         students.forEach(s => {
             const todayRecord = s.attendance?.find(a => new Date(a.date).toDateString() === todayStr);
-            if (todayRecord && (todayRecord.status === 'absent' || todayRecord.status === 'غائب')) {
-                absentStudentsNames.push(s.name);
+            if (todayRecord) {
+                if (todayRecord.status === 'absent' || todayRecord.status === 'غائب') absentStudentsNames.push(s.name);
+                if (todayRecord.status === 'late' || todayRecord.status === 'متأخر') lateStudentsNames.push(s.name);
+                if (todayRecord.status === 'escaped' || todayRecord.status === 'متسرب') truantStudentsNames.push(s.name);
             }
         });
 
         const adminPayload = {
-            schoolCode: adminSchoolCode.trim(), // 💉 نستخدم الكود المخصص هنا
+            schoolCode: adminSchoolCode.trim(),
             teacherName: teacherName,
             className: classes[0] || "كل الفصول", 
             absentStudents: absentStudentsNames,
+            lateStudents: lateStudentsNames,
+            truantStudents: truantStudentsNames,
             timestamp: new Date().toLocaleString('ar-OM')
         };
 
-        const response = await fetch(ADMIN_APP_URL, {
+        const response = await fetch(ADMIN_APP_URL, { // تأكد من وضع رابط الإدارة في أعلى الملف
             method: 'POST',
             body: JSON.stringify(adminPayload)
         });
@@ -140,7 +145,6 @@ const GlobalSyncManager: React.FC = () => {
         const result = await response.json();
         if (result.status !== 'success') throw new Error("فشل الاتصال بنظام الإدارة");
       }
-      
       // ☁️ 4. السحابة المركزية: رفع احتياطي (تستخدم الرقم المدني)
       else if (type === 'backup') {
         setSyncMessage(t('syncingBackupMsg'));
