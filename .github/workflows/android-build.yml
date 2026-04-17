@@ -38,7 +38,7 @@ jobs:
       - name: Update Version and API
         run: |
           if [ -f "android/app/build.gradle" ]; then
-            sed -i 's/versionCode [0-9]*/versionCode 9/g' android/app/build.gradle
+            sed -i 's/versionCode [0-100]*/versionCode 10/g' android/app/build.gradle
             sed -i 's/versionName "[^"]*"/versionName "1.1.1"/g' android/app/build.gradle
           fi
 
