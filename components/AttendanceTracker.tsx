@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Student, AttendanceStatus } from '../types';
-import { MessageCircle, Loader2, Share2, DoorOpen, UserCircle2, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { MessageCircle, Loader2, Share2, DoorOpen, UserCircle2, ChevronLeft, ChevronRight, Search, X, Send, CheckCircle2 } from 'lucide-react'; // 💉 تم إضافة Send, CheckCircle2 هنا
 import { Browser } from '@capacitor/browser';
 import * as XLSX from 'xlsx';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -11,6 +11,9 @@ import { useApp } from '../context/AppContext';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
 
+// 💉 رابط تطبيق الإدارة المزروع من GlobalSyncManager
+const ADMIN_APP_URL = "https://script.google.com/macros/s/AKfycbwZHhZ-RPWUpBGIlw0qTFPUmOPmq9WpcvW4WLklcjb_A9U3MW0luIXYPnHznI29ThpbMA/exec";
+
 interface AttendanceTrackerProps {
   students: Student[];
   classes: string[];
@@ -18,7 +21,8 @@ interface AttendanceTrackerProps {
 }
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes, setStudents }) => {
-  const { t, dir, language } = useApp();
+  // 💉 استدعاء teacherInfo لاسم المعلم أثناء الإرسال
+  const { t, dir, language, teacherInfo } = useApp(); 
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today.toLocaleDateString('en-CA'));
   const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
@@ -27,6 +31,10 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<{student: Student, type: 'absent' | 'late' | 'truant'} | null>(null);
   
+  // 💉 حالة زر مزامنة الإدارة
+  const [isSyncingAdmin, setIsSyncingAdmin] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+
   const isRamadan = true;
 
   useEffect(() => {
@@ -195,6 +203,62 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
       } catch (error) { alert(t('exportError')); } finally { setIsExportingExcel(false); }
   };
 
+  // =========================================================================
+  // 🚀 3. دالة إرسال الغياب للإدارة المزروعة (بدون المساس بالكود الأصلي)
+  // =========================================================================
+  const handleAdminSync = async () => {
+    const adminSchoolCode = localStorage.getItem('rased_admin_school_code');
+    if (!adminSchoolCode || adminSchoolCode.trim().length < 2) {
+      alert("الرجاء إدخال كود المدرسة في شاشة تسجيل الدخول للاتصال بالإدارة.");
+      return;
+    }
+
+    setIsSyncingAdmin(true);
+    setSyncSuccess(false);
+
+    const teacherName = teacherInfo?.name || "معلم غير محدد";
+    const todayCA = new Date().toLocaleDateString('en-CA'); 
+    
+    let absentStudentsNames: string[] = [];
+    let lateStudentsNames: string[] = [];
+    let truantStudentsNames: string[] = [];
+
+    students.forEach(s => {
+        const todayRecord = s.attendance?.find(a => a.date === todayCA || new Date(a.date).toDateString() === new Date().toDateString());
+        if (todayRecord) {
+            const st = String(todayRecord.status).toLowerCase().trim();
+            if (st === 'absent' || st === 'غائب') absentStudentsNames.push(s.name);
+            else if (st === 'late' || st === 'متأخر') lateStudentsNames.push(s.name);
+            else if (st === 'truant' || st === 'escaped' || st === 'متسرب') truantStudentsNames.push(s.name);
+        }
+    });
+
+    const adminPayload = {
+        schoolCode: adminSchoolCode.trim(),
+        teacherName: teacherName,
+        className: classFilter !== 'all' ? classFilter : (classes[0] || "كل الفصول"), 
+        absentStudents: absentStudentsNames,
+        lateStudents: lateStudentsNames,
+        truantStudents: truantStudentsNames,
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        await fetch(ADMIN_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(adminPayload)
+        });
+        setSyncSuccess(true);
+        setTimeout(() => setSyncSuccess(false), 3000);
+    } catch (error) {
+         alert("تأكد من الاتصال بالإنترنت لإرسال التقرير.");
+    } finally {
+        setIsSyncingAdmin(false);
+    }
+  };
+
   return (
     // 💉 الغلاف الشامل PageLayout
     <PageLayout
@@ -213,19 +277,30 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         </div>
       }
       
-      // 💉 الأزرار العلوية يميناً (بحث الموبايل + الإكسل)
+      // 💉 الأزرار العلوية يميناً (بحث الموبايل + الإكسل + الإدارة المضاف حديثاً)
       rightActions={
         <div className="flex items-center gap-2">
-            <div className="sm:hidden relative w-32">
-                <Search className={`absolute ${dir === 'rtl' ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
+            <div className="sm:hidden relative w-24">
+                <Search className={`absolute ${dir === 'rtl' ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3 h-3 text-textSecondary`} />
                 <input 
                     type="text" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={t('searchStudentPlaceholder')} 
-                    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-8 pl-2' : 'pl-8 pr-2'} text-[10px] font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
+                    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-7 pl-2' : 'pl-7 pr-2'} text-[10px] font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
                 />
             </div>
+
+            {/* 🚀 زر الإرسال للإدارة المزروع هنا */}
+            <button 
+                onClick={handleAdminSync} 
+                disabled={isSyncingAdmin} 
+                className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${syncSuccess ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}
+                title="إرسال تقرير اليوم للإدارة"
+            >
+                {isSyncingAdmin ? <Loader2 className="w-5 h-5 animate-spin"/> : syncSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5"/>}
+            </button>
+
             <button 
                 onClick={handleExportDailyExcel} 
                 disabled={isExportingExcel} 
