@@ -5,7 +5,8 @@ import { ThemeProvider } from './theme/ThemeProvider'; // 👈 The new Theme Eng
 // 🚀 Icons
 import {
   LayoutDashboard, Users, CalendarCheck, BarChart3,
-  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare, Library, CloudSync
+  Settings as SettingsIcon, Info, FileText, BookOpen, Medal, Loader2, CheckSquare, Library, CloudSync,
+  Fingerprint, School, ArrowLeft // 💉 تمت إضافة أيقونات شاشة الدخول
 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -31,6 +32,82 @@ import { useSchoolBell } from './hooks/useSchoolBell';
 // 🌍 The New Global Layout Engine
 import { AppLayout } from './components/layout/AppLayout';
 
+// ==================================================================
+// 💉 شاشة تسجيل الدخول المدمجة للمعلم (تظهر قبل فتح التطبيق)
+// ==================================================================
+const TeacherLoginScreen: React.FC<{
+  onLogin: () => void;
+  teacherInfo: any;
+  setTeacherInfo: any;
+}> = ({ onLogin, teacherInfo, setTeacherInfo }) => {
+  const [civilId, setCivilId] = useState(() => localStorage.getItem('rased_teacher_civil_id') || teacherInfo?.civilId || '');
+  const [schoolCode, setSchoolCode] = useState(() => localStorage.getItem('rased_admin_school_code') || '');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!civilId || !schoolCode) return;
+    setIsLoading(true);
+
+    // 💉 حفظ البيانات في الذاكرة العميقة
+    localStorage.setItem('rased_teacher_civil_id', civilId.trim());
+    localStorage.setItem('rased_admin_school_code', schoolCode.trim());
+
+    // 💉 تحديث إعدادات المعلم ليعتمد عليها نظام المزامنة وكأنه أدخلها في الإعدادات
+    if (setTeacherInfo) {
+      setTeacherInfo((prev: any) => ({ ...prev, civilId: civilId.trim() }));
+    }
+
+    setTimeout(() => {
+      setIsLoading(false);
+      onLogin();
+    }, 800);
+  };
+
+  return (
+    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center font-sans overflow-hidden relative px-6" dir="rtl"
+         style={{ backgroundColor: "#0f172a", backgroundImage: `radial-gradient(at 0% 0%, #1e1b4b 0px, transparent 50%), radial-gradient(at 100% 100%, #312e81 0px, transparent 50%)` }}>
+      <main className="w-full max-w-md relative z-10 flex flex-col items-center">
+        <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center justify-center p-5 rounded-2xl bg-white/10 backdrop-blur-md mb-6 shadow-2xl border border-white/10">
+            <School className="w-12 h-12 text-indigo-400" />
+          </div>
+          <h1 className="text-5xl font-black text-white tracking-tight mb-2">راصد المعلم</h1>
+          <p className="text-indigo-200 font-bold tracking-wide text-sm">بوابة التحضير والمتابعة الذكية</p>
+        </div>
+
+        <div className="w-full bg-white/10 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/20">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-white/90 px-1 text-right">الرقم المدني / الوظيفي</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-indigo-300"><Fingerprint className="w-6 h-6" /></div>
+                <input type="number" value={civilId} onChange={(e) => setCivilId(e.target.value)} className="block w-full pr-14 pl-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-4 focus:ring-indigo-500/30 text-white font-black text-lg outline-none text-left placeholder:text-indigo-200/50" placeholder="أدخل الرقم" required />
+              </div>
+              <p className="text-[10px] text-indigo-300 text-right px-1">يُستخدم لمزامنة بياناتك مع الطلاب وأولياء الأمور</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-white/90 px-1 text-right">كود المدرسة</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-amber-300"><School className="w-6 h-6" /></div>
+                <input type="text" value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="block w-full pr-14 pl-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-4 focus:ring-amber-500/30 text-white font-black text-lg outline-none text-left placeholder:text-amber-200/50 uppercase" placeholder="مثال: 1234" required />
+              </div>
+              <p className="text-[10px] text-amber-200/70 text-right px-1">يُستخدم لإرسال الغياب للإدارة المدرسية</p>
+            </div>
+
+            <button type="submit" disabled={isLoading || !civilId || !schoolCode} className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+              {isLoading ? <Loader2 className="animate-spin" /> : <><span>دخول</span><ArrowLeft className="w-5 h-5" /></>}
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+
 // ------------------------------------------------------------------
 // BUSINESS LOGIC & ROUTING ONLY (No UI styling clutter here)
 // ------------------------------------------------------------------
@@ -46,6 +123,11 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [appVersion, setAppVersion] = useState('4.4.1');
   
+  // 💉 حالة تسجيل الدخول (نتأكد من وجود البيانات في الذاكرة)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return !!localStorage.getItem('rased_teacher_civil_id') && !!localStorage.getItem('rased_admin_school_code');
+  });
+
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => localStorage.getItem('bell_enabled') === 'true');
 
@@ -111,6 +193,11 @@ const AppContent: React.FC = () => {
         <p className="font-medium text-sm text-textSecondary">{t('loadingData') || (dir === 'rtl' ? 'جاري تحميل البيانات...' : 'Loading Data...')}</p>
       </div>
     );
+  }
+
+  // 💉 إذا لم يسجل الدخول، نعرض شاشة الدخول المدمجة
+  if (!isLoggedIn) {
+    return <TeacherLoginScreen onLogin={() => setIsLoggedIn(true)} teacherInfo={teacherInfo} setTeacherInfo={setTeacherInfo} />;
   }
 
   if (showWelcome) return <WelcomeScreen onFinish={handleFinishWelcome} />;
