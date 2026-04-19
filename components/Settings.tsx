@@ -72,25 +72,23 @@ const Settings = () => {
     } catch (error) { alert(t('alertExportError')); } finally { setLoading(null); setActiveDrawer(null); }
   };
 
-  // 💉 الجراحة الثانية: تأمين الاستيراد
+  // 💉 الجراحة الثانية: تأمين الاستيراد (النسخة النهائية المضادة للفشل)
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !confirm(t('alertConfirmRestore'))) return;
     setLoading('restore');
     const reader = new FileReader();
+    
     reader.onload = async (event) => {
         try {
             const data = JSON.parse(event.target?.result as string);
             if (data.students) {
-                setStudents(data.students); setClasses(data.classes || []);
+                // 1. حقن البيانات في الذاكرة الحية لكي تظهر فوراً في الشاشة
+                setStudents(data.students); 
+                setClasses(data.classes || []);
                 if(data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
                 
-                // 💉 كيّ النزيف: إجبار المجموعات على الانحفاظ في الذاكرة المحلية
-                if(data.groups) {
-                    setGroups(data.groups);
-                    localStorage.setItem('rased_groups', JSON.stringify(data.groups));
-                }
-                
+                if(data.groups) { setGroups(data.groups); localStorage.setItem('rased_groups', JSON.stringify(data.groups)); }
                 if(data.categorizations) setCategorizations(data.categorizations);
                 if(data.schedule) setSchedule(data.schedule);
                 if(data.periodTimes) setPeriodTimes(data.periodTimes);
@@ -99,27 +97,36 @@ const Settings = () => {
                 if(data.certificateSettings) setCertificateSettings(data.certificateSettings);
                 if(data.gradeSettings) setGradeSettings(data.gradeSettings);
                 
-                // 💉 استيراد المهام والمكتبة وحقنها في الذاكرة
-                if(data.tasks) {
-                    if(setTasks) setTasks(data.tasks);
-                    localStorage.setItem('rased_tasks', JSON.stringify(data.tasks));
-                }
-                if(data.library) {
-                    if(setLibrary) setLibrary(data.library);
-                    localStorage.setItem('rased_library', JSON.stringify(data.library));
-                }
-
-                // 💉 استيراد الخطط الفصلية والتقويمية
+                if(data.tasks) { if(setTasks) setTasks(data.tasks); localStorage.setItem('rased_tasks', JSON.stringify(data.tasks)); }
+                if(data.library) { if(setLibrary) setLibrary(data.library); localStorage.setItem('rased_library', JSON.stringify(data.library)); }
                 if(data.assessmentPlan) localStorage.setItem('rased_assessment_plan', JSON.stringify(data.assessmentPlan));
                 if(data.termPlan) localStorage.setItem('rased_term_plan', JSON.stringify(data.termPlan));
 
+                // 2. 🛡️ الدعامة الأمنية: التفريق بين التطبيق والمتصفح
                 if (Capacitor.isNativePlatform() || (window as any).electron !== undefined) {
+                    // في حالة التطبيق المثبت (Android/iOS/Windows): يحفظ في ملف النظام ويعمل ريفريش
                     await Filesystem.writeFile({ path: 'raseddatabasev2.json', data: event.target?.result as string, directory: Directory.Data, encoding: Encoding.UTF8 });
+                    alert(t('alertRestoreSuccess'));
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    // في حالة المتصفح (Web / Vercel):
+                    // نحقن البيانات الأساسية في الذاكرة العميقة للمتصفح فوراً لحمايتها
+                    localStorage.setItem('rased_students', JSON.stringify(data.students));
+                    localStorage.setItem('rased_classes', JSON.stringify(data.classes || []));
+                    if(data.teacherInfo) localStorage.setItem('rased_teacher_info', JSON.stringify(data.teacherInfo));
+                    if(data.schedule) localStorage.setItem('rased_schedule', JSON.stringify(data.schedule));
+                    if(data.periodTimes) localStorage.setItem('rased_period_times', JSON.stringify(data.periodTimes));
+                    
+                    alert(t('alertRestoreSuccess') + " 🚀");
+                    // 🛑 لا نقوم بعمل ريفريش هنا! الريأكت سيقوم بعرض الطلاب فور إغلاق هذه الرسالة
                 }
-                alert(t('alertRestoreSuccess'));
-                setTimeout(() => window.location.reload(), 1000);
             }
-        } catch (error) { alert(t('alertInvalidFile')); } finally { setLoading(null); setActiveDrawer(null); }
+        } catch (error) { 
+            alert(t('alertInvalidFile')); 
+        } finally { 
+            setLoading(null); 
+            setActiveDrawer(null); 
+        }
     };
     reader.readAsText(file);
   };
