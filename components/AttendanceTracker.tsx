@@ -204,18 +204,29 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
   };
 
   // =========================================================================
-  // 🚀 3. دالة إرسال الغياب للإدارة المزروعة (بدون المساس بالكود الأصلي)
+  // 🚀 3. دالة إرسال الغياب للإدارة المزروعة (تم تعديلها لحل مشكلة الصفر غياب وتحديد الحصة)
   // =========================================================================
-  const handleAdminSync = async () => {
+  
+  // 💉 حالة جديدة للتحكم بظهور نافذة اختيار الحصة
+  const [showPeriodSelector, setShowPeriodSelector] = useState(false);
+
+  // 💉 هذه الدالة تفتح نافذة الاختيار أولاً
+  const initiateAdminSync = () => {
     const adminSchoolCode = localStorage.getItem('rased_admin_school_code');
     if (!adminSchoolCode || adminSchoolCode.trim().length < 2) {
-      alert("الرجاء إدخال كود المدرسة في شاشة تسجيل الدخول للاتصال بالإدارة.");
+      alert("الرجاء إدخال كود المدرسة في شاشة الإعدادات للاتصال بالإدارة.");
       return;
     }
+    setShowPeriodSelector(true);
+  };
 
+  // 💉 هذه الدالة ترسل البيانات بعد اختيار الحصة
+  const executeAdminSync = async (periodNumber: string) => {
+    setShowPeriodSelector(false);
     setIsSyncingAdmin(true);
     setSyncSuccess(false);
 
+    const adminSchoolCode = localStorage.getItem('rased_admin_school_code') || '';
     const teacherName = teacherInfo?.name || "معلم غير محدد";
     const todayCA = new Date().toLocaleDateString('en-CA'); 
     
@@ -233,10 +244,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         }
     });
 
+    // 💉 علاج "الصفر غياب": إذا لم يكن هناك أي غياب، نرسل إشعاراً بأن "الكل حاضر"
+    if (absentStudentsNames.length === 0 && lateStudentsNames.length === 0 && truantStudentsNames.length === 0) {
+        absentStudentsNames.push("الكل حاضر (لا يوجد غياب)");
+    }
+
     const adminPayload = {
         schoolCode: adminSchoolCode.trim(),
         teacherName: teacherName,
         className: classFilter !== 'all' ? classFilter : (classes[0] || "كل الفصول"), 
+        period: periodNumber, // 💉 إرفاق رقم الحصة للإدارة
         absentStudents: absentStudentsNames,
         lateStudents: lateStudentsNames,
         truantStudents: truantStudentsNames,
@@ -277,9 +294,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         </div>
       }
       
-      // 💉 الأزرار العلوية يميناً (بحث الموبايل + الإكسل + الإدارة المضاف حديثاً)
+      // 💉 الأزرار العلوية يميناً
       rightActions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
             <div className="sm:hidden relative w-24">
                 <Search className={`absolute ${dir === 'rtl' ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3 h-3 text-textSecondary`} />
                 <input 
@@ -291,15 +308,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 />
             </div>
 
-            {/* 🚀 زر الإرسال للإدارة المزروع هنا */}
+            {/* 🚀 زر الإرسال للإدارة المزروع (يفتح النافذة الآن بدلاً من الإرسال المباشر) */}
             <button 
-                onClick={handleAdminSync} 
+                onClick={initiateAdminSync} 
                 disabled={isSyncingAdmin} 
                 className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${syncSuccess ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}
                 title="إرسال تقرير اليوم للإدارة"
             >
                 {isSyncingAdmin ? <Loader2 className="w-5 h-5 animate-spin"/> : syncSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5"/>}
             </button>
+
+            {/* 💉 نافذة اختيار الحصة المنبثقة (Modal) */}
+            {showPeriodSelector && (
+                <div className="absolute top-12 left-0 w-48 bg-bgCard border border-borderColor shadow-xl rounded-xl p-3 z-50 animate-in fade-in zoom-in duration-200">
+                    <p className="text-xs font-bold text-center mb-3 text-textPrimary">هذا الغياب لأي حصة؟</p>
+                    <div className="flex flex-col gap-2">
+                        <button onClick={() => executeAdminSync("الحصة الأولى")} className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors">الحصة الأولى</button>
+                        <button onClick={() => executeAdminSync("الحصة الخامسة")} className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors">الحصة الخامسة</button>
+                        <button onClick={() => setShowPeriodSelector(false)} className="py-2 px-3 mt-1 bg-bgSoft text-textSecondary hover:text-danger rounded-lg text-xs font-bold transition-colors">إلغاء</button>
+                    </div>
+                </div>
+            )}
 
             <button 
                 onClick={handleExportDailyExcel} 
