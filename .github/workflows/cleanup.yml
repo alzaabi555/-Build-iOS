@@ -1,0 +1,25 @@
+name: 🧹 Bulk Delete Artifacts
+on: 
+  workflow_dispatch:
+
+# 🔑 هذا هو المفتاح السحري الذي كان ينقصنا (إعطاء صلاحية الحذف)
+permissions:
+  actions: write
+
+jobs:
+  delete-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "جاري البحث عن الملفات وتدميرها... 🚀"
+          # جلب المعرفات (IDs) وتجاهل الأسطر الفارغة لتجنب أخطاء xargs
+          ids=$(gh api repos/${{ github.repository }}/actions/artifacts --paginate -q '.artifacts[].id')
+          if [ -z "$ids" ]; then
+            echo "المستودع نظيف بالفعل! لا توجد ملفات لحذفها. ✨"
+          else
+            echo "$ids" | xargs -I{} gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/{}
+            echo "تم تنظيف المستودع وتدمير الملفات بنجاح! 🧹✨"
+          fi
