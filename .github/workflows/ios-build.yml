@@ -63,7 +63,8 @@ jobs:
         run: |
           PLIST="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'يحتاج تطبيق الراصد للوصول للكاميرا لالتقاط صورة الطالب'" $PLIST || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'يحتاج تطبيق الراصد للوصول للمعرض لاختيار صورة الطالب'" $PLIST || true
+         /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'يحتاج تطبيق الراصد للوصول للمعرض لاختيار صورة الطالب'" $PLIST || true
+         /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'يحتاج تطبيق الراصد للوصول للمايكروفون لتسجيل الملاحظات الصوتية'" $PLIST || true
 
       - name: Build Xcode Archive (Unsigned)
         run: |
