@@ -13,6 +13,7 @@ export interface Student {
   spentCoins?: number; 
   groupId?: string | null; // معرف الفريق (ديناميكي)
   examPapers?: ExamPaper[];
+  rasedId?: string; // 💉 كود راصد السري الآمن
   parentCode?: string; // ✅ الكود السري الخاص بتطبيق ولي الأمر
 }
 

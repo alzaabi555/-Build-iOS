@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
+// 💉 1. حقن ملف التوكنات الأصلي (الذي يحتوي على ألوان وهوية المعلم)
+import './theme/tokens.css';
+
+// 💉 2. حقن ملف الستايل الأساسي للمعلم
+import './index.css'; 
+
 import { AppProvider, useApp } from './context/AppContext';
-import { ThemeProvider } from './theme/ThemeProvider'; 
+import { ThemeProvider } from './theme/ThemeProvider';
 
 // 🚀 Icons
 import {
@@ -27,6 +33,11 @@ import WelcomeScreen from './components/WelcomeScreen';
 import StudentGroups from './components/StudentGroups';
 import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager'; 
+// 💉 تم استدعاء شاشة مركز القيادة للمعلم الأول
+import SeniorDashboard from './components/SeniorDashboard'; 
+// 🎙️ 1. استدعاء المساعد الصوتي الخارق
+import VoiceAssistant from './components/VoiceAssistant';
+
 import { useSchoolBell } from './hooks/useSchoolBell';
 
 // 🌍 The New Global Layout Engine
@@ -73,7 +84,7 @@ const TeacherLoginScreen: React.FC<{
           onLogin();
         } else {
           setIsLoading(false);
-          setErrorMsg('بيانات الدخول غير مطابقة! الرجاء التأكد من الرقم المدني وكود المدرسة.');
+          setErrorMsg('بيانات الدخول غير مطابقة! الرجاء التأكد من رقمك الخاص  وكود المدرسة.');
         }
       }
     }, 800);
@@ -110,7 +121,7 @@ const TeacherLoginScreen: React.FC<{
           <form onSubmit={handleSubmit} className="space-y-6">
             
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white/90 px-1 text-right">الرقم المدني / الوظيفي</label>
+              <label className="block text-xs font-bold text-white/90 px-1 text-right">الدخول برقمك الخاص </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-indigo-300"><Fingerprint className="w-6 h-6" /></div>
                 <input type="number" value={civilId} onChange={(e) => setCivilId(e.target.value)} className="block w-full pr-14 pl-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-4 focus:ring-indigo-500/30 text-white font-black text-lg outline-none text-left placeholder:text-indigo-200/50" placeholder="أدخل الرقم" required />
@@ -203,17 +214,20 @@ const AppContent: React.FC = () => {
     setShowWelcome(false);
   };
 
-  // Navigation config passed to AppLayout
+  // 💉 إضافة زر "إدارة القسم" في القائمة السفلية (يظهر فقط للمعلم الأول)
   const mobileNavItems = [
     { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), IconComponent: LayoutDashboard },
+    ...(teacherInfo?.role === 'senior' ? [{ id: 'senior_dashboard', label: dir === 'rtl' ? 'القيادة' : 'Leader', IconComponent: ShieldCheck }] : []),
     { id: 'attendance', label: t('navAttendance') || (dir === 'rtl' ? 'الغياب' : 'Attendance'), IconComponent: CalendarCheck },
     { id: 'students', label: t('navStudents') || (dir === 'rtl' ? 'الطلاب' : 'Students'), IconComponent: Users },
     { id: 'grades', label: t('navGrades') || (dir === 'rtl' ? 'الدرجات' : 'Grades'), IconComponent: BarChart3 },
     { id: 'tasks', label: t('navTasks') || t('tasks') || (dir === 'rtl' ? 'المهام' : 'Tasks'), IconComponent: CheckSquare },
   ];
   
+  // 💉 إضافة زر "إدارة القسم" في القائمة الجانبية (يظهر فقط للمعلم الأول)
   const desktopNavItems = [
     { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), icon: LayoutDashboard },
+    ...(teacherInfo?.role === 'senior' ? [{ id: 'senior_dashboard', label: dir === 'rtl' ? 'إدارة القسم' : 'Dept. Admin', icon: ShieldCheck }] : []),
     { id: 'attendance', label: t('navAttendance') || (dir === 'rtl' ? 'الغياب' : 'Attendance'), icon: CalendarCheck },
     { id: 'students', label: t('navStudents') || (dir === 'rtl' ? 'الطلاب' : 'Students'), icon: Users },
     { id: 'groups', label: t('navGroups') || (dir === 'rtl' ? 'المجموعات' : 'Groups'), icon: Users },
@@ -258,6 +272,8 @@ const AppContent: React.FC = () => {
           notificationsEnabled={notificationsEnabled} onToggleNotifications={handleToggleNotifications}
           currentSemester={currentSemester} onSemesterChange={setCurrentSemester}
         />;
+      // 💉 المسار الجديد: شاشة مركز القيادة للمعلم الأول
+      case 'senior_dashboard': return <SeniorDashboard />;
       case 'tasks': return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
       case 'library': return <TeacherLibrary />;
       case 'attendance': return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
@@ -295,6 +311,10 @@ const AppContent: React.FC = () => {
       appSubtitle={t('appSubtitleMain') || 'النسخة المتقدمة'}
     >
       {renderContent()}
+      
+      {/* 🎙️ 2. زراعة الكبسولة وتمرير مفاتيح التنقل لها */}
+      <VoiceAssistant onNavigate={handleNavigate} />
+      
     </AppLayout>
   );
 };
