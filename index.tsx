@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 
+// 💉 هـــذا هـــو السطر السري المفقود! شريان الحياة للتصميم!
+import './theme/tokens.css'; 
+
 const container = document.getElementById('root');
 
 const hideLoader = () => {
@@ -18,7 +21,7 @@ if (container) {
     const root = createRoot(container);
     root.render(
       <React.StrictMode>
-        {/* 👇 2. تغليف التطبيق بـ HashRouter هو السر لعمل Electron 👇 */}
+        {/* 👇 تغليف التطبيق بـ HashRouter هو السر لعمل Electron 👇 */}
         <HashRouter>
            <App />
         </HashRouter>
