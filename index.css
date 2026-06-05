@@ -1,7 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
 
 /* 💉 الجراحة: استدعاء الألوان هنا ليقرأها Tailwind ويدمجها */
 /* ثم ضع باقي أكوادك الخاصة أسفلها */
