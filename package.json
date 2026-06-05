@@ -11,8 +11,8 @@
   },
  "scripts": {
     "prebuild": "node -e \"require('fs').mkdirSync('www', {recursive: true})\"",
-    "build": "npm run prebuild && npx tailwindcss -i ./index.css -o ./www/index.css --minify && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --target=es2020 --loader:.js=jsx --loader:.png=dataurl --loader:.mp3=file --define:process.env.NODE_ENV=\\\"'production'\\\" && node ./copy-assets.js",
-    "dev": "npm run build && concurrently \"npx tailwindcss -i ./index.css -o ./www/index.css --watch\" \"npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --sourcemap --watch --target=es2020 --loader:.js=jsx --loader:.mp3=file --loader:.png=dataurl --loader:.svg=file --loader:.jpg=file --define:process.env.NODE_ENV=\\\"'development'\\\"\" \"npx serve www\"",
+    "build": "npm run prebuild && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --target=es2020 --loader:.js=jsx --loader:.png=dataurl --loader:.mp3=file --define:process.env.NODE_ENV=\\\"'production'\\\" && npx tailwindcss -i ./theme/tokens.css -o ./www/index.css --minify && node ./copy-assets.js",
+    "dev": "npm run build && concurrently \"npx tailwindcss -i ./theme/tokens.css -o ./www/index.css --watch\" \"npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --sourcemap --watch --target=es2020 --loader:.js=jsx --loader:.mp3=file --loader:.png=dataurl --loader:.svg=file --loader:.jpg=file --define:process.env.NODE_ENV=\\\"'development'\\\"\" \"npx serve www\"",
     "electron:dist": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
