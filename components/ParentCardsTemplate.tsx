@@ -1,6 +1,6 @@
 import React from 'react';
-import { School, Fingerprint, Info, Smartphone, User } from 'lucide-react';
-import { useApp } from '../context/AppContext'; // 🌍 استيراد محرك اللغات
+import { School, Key, Info, Smartphone, User } from 'lucide-react'; // 🔑 تم استبدال Fingerprint بـ Key
+import { useApp } from '../context/AppContext';
 
 interface ParentCardsTemplateProps {
   students: any[];
@@ -10,29 +10,32 @@ interface ParentCardsTemplateProps {
 }
 
 const ParentCardsTemplate: React.FC<ParentCardsTemplateProps> = ({ students, schoolName, teacherName, selectedClass }) => {
-  // 🌍 استدعاء دوال الترجمة والاتجاه
   const { t, dir } = useApp();
 
   const targetStudents = selectedClass === 'all'
     ? students
     : students.filter((s: any) => s.classes && s.classes.includes(selectedClass));
 
-  const validStudents = targetStudents.filter((s: any) => s.parentCode && s.parentCode.trim() !== '');
+  // 🔑 تعديل الفلترة لتبحث عن الكود السري (rasedId أو secretCode) بدلاً من parentCode
+  const validStudents = targetStudents.filter((s: any) => 
+    (s.rasedId && s.rasedId.trim() !== '') || 
+    (s.secretCode && s.secretCode.trim() !== '') ||
+    (s.parentCode && s.parentCode.trim() !== '') // كحل احتياطي للنسخ القديمة
+  );
 
   if (validStudents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-center" dir={dir}>
         <Info className="w-16 h-16 text-amber-500 mb-4 opacity-50" />
         <h2 className="text-xl font-black text-slate-800 mb-2">{t('cannotGenerateCards')}</h2>
-        <p className="text-slate-500 font-bold">{t('noStudentsWithCivilId')}</p>
+        {/* 🔑 تعديل النص التوضيحي ليتناسب مع "الكود السري" */}
+        <p className="text-slate-500 font-bold">لا يوجد طلاب يمتلكون أكواد سرية في هذا الفصل</p>
       </div>
     );
   }
 
-  // ✅ مسار ملف الباركود الثابت من assets
   const qrCodeImageUrl = "assets/qr-code.png"; 
 
-  // 🌍 إضافة dir للحاوية الرئيسية لتعكس البطاقات كاملة
   return (
     <div className={`w-full bg-white p-8 font-sans text-black print:p-0 ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
       <div className="mb-6 text-center border-b-2 border-black pb-4 print:mb-6">
@@ -51,7 +54,6 @@ const ParentCardsTemplate: React.FC<ParentCardsTemplateProps> = ({ students, sch
               <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-amber-500 rounded-full mix-blend-multiply filter blur-2xl opacity-20 pointer-events-none print:hidden"></div>
 
               {/* ================= القسم الأيمن (بيانات الطالب) ================= */}
-              {/* 🌍 تعديل اتجاه الحدود الداخلية والمسافات بناءً على اللغة */}
               <div className={`flex-1 flex flex-col justify-between z-10 border-white/10 gap-1 ${dir === 'rtl' ? 'border-l pl-3' : 'border-r pr-3'}`}>
                 {/* الترويسة العلوية للمدرسة */}
                 <div className="flex items-start gap-2 border-b border-white/20 pb-2 mb-1 shrink-0">
@@ -74,16 +76,19 @@ const ParentCardsTemplate: React.FC<ParentCardsTemplateProps> = ({ students, sch
                   </div>
                 </div>
 
-                {/* الرقم المدني */}
+                {/* 🔑 الكود السري بدلاً من الرقم المدني */}
                 <div className="bg-white rounded-xl p-2 flex items-center justify-between shadow-inner border border-slate-100 shrink-0 mb-1 mt-1">
                   <div className="flex items-center gap-1">
                     <div className="bg-blue-50 p-1 rounded-md shrink-0">
-                      <Fingerprint className="w-3.5 h-3.5 text-[#1e3a8a]" />
+                      {/* 🔑 تم استخدام أيقونة المفتاح */}
+                      <Key className="w-3.5 h-3.5 text-[#1e3a8a]" />
                     </div>
-                    <span className="text-[8px] font-black text-slate-600">{t('civilIdLabelCard')}</span>
+                    {/* 🔑 تم التغيير من "الرقم المدني" إلى "الكود السري" */}
+                    <span className="text-[8px] font-black text-slate-600">الكود السري</span>
                   </div>
                   <span className="font-mono font-black text-[13px] text-[#1e3a8a] tracking-widest bg-slate-50 px-1.5 py-0.5 rounded shrink-0">
-                    {student.parentCode}
+                    {/* 🔑 يطبع الكود السري بأولوية */}
+                    {student.rasedId || student.secretCode || student.parentCode}
                   </span>
                 </div>
 

@@ -4,19 +4,18 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus, 
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle, X, 
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles, Phone, Send, Star, Loader2, Mail, RefreshCcw 
+    Sparkles, Phone, Send, Star, Loader2, Mail, RefreshCcw, Printer, Reply 
 } from 'lucide-react';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
-import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
+import PageLayout from '../components/PageLayout'; 
 
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
 import alarmSound from '../assets/alarm.mp3';
-
 
 interface StudentListProps {
     students: Student[];
@@ -90,6 +89,12 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showManageClasses, setShowManageClasses] = useState(false); 
     const [showMenu, setShowMenu] = useState(false);
 
+    // 💉 حالة بطاقات الربط والرد على الرسائل الداخلي
+    const [showCardsModal, setShowCardsModal] = useState(false);
+    const [replyingToMsg, setReplyingToMsg] = useState<any>(null);
+    const [replyText, setReplyText] = useState('');
+    const [isSendingReply, setIsSendingReply] = useState(false);
+
     const [newClassInput, setNewClassInput] = useState('');
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     
@@ -97,7 +102,6 @@ const StudentList: React.FC<StudentListProps> = ({
     const [newStudentPhone, setNewStudentPhone] = useState('');
     const [newStudentGender, setNewStudentGender] = useState<'male' | 'female'>(defaultStudentGender);
     const [newStudentClass, setNewStudentClass] = useState('');
-    const [newStudentCivilID, setNewStudentCivilID] = useState(''); 
 
     const [showNegativeModal, setShowNegativeModal] = useState(false);
     const [showPositiveModal, setShowPositiveModal] = useState(false);
@@ -146,34 +150,37 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    const handleReplyToMessage = (msg: any) => {
-        const student = students.find(s => 
-            String(s.parentCode || '').trim() === String(msg.civilID || '').trim()
-        );
-        
-        if (!student) {
-            alert(t('alertNoStudentFoundWithCivilId'));
-            return;
-        }
-        if (!student.parentPhone) {
-            alert(`${t('alertNoParentPhone')} ${student.name}`);
-            return;
-        }
+    // 💉 دالة الرد الداخلي السحابي
+    const handleSendReplyInternal = async (msg: any) => {
+        if (!replyText.trim()) return;
+        setIsSendingReply(true);
+        try {
+            const student = students.find(s => String(s.parentCode || '').trim() === String(msg.civilID || '').trim() || s.rasedId === msg.rasedId);
+            const targetId = student?.rasedId || msg.rasedId || msg.civilID || student?.parentCode;
 
-        const truncatedMsg = msg.message.length > 60 ? msg.message.substring(0, 60) + '...' : msg.message;
-        const replyText = `${t('whatsappReplyIntro')} "${student.name}"${t('whatsappReplyRegarding')} "${truncatedMsg}"${t('whatsappReplyInform')}`;
-        const encodedText = encodeURIComponent(replyText);
+            const url = `${GOOGLE_WEB_APP_URL}`;
+            await fetch(url, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'sendTeacherReply',
+                    targetId: targetId,
+                    teacherName: teacherInfo?.name || '',
+                    subject: teacherInfo?.subject || '',
+                    message: replyText,
+                    originalMsgId: msg.id || ''
+                })
+            });
 
-        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
-        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
-
-        if ((window as any).electron) { 
-            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${encodedText}`); 
-        } else { 
-            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`; 
-            window.open(universalUrl, '_blank'); 
+            alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
+            setReplyingToMsg(null);
+            setReplyText('');
+        } catch (error) {
+            console.error("Error sending reply:", error);
+            alert('حدث خطأ أثناء إرسال الرد');
+        } finally {
+            setIsSendingReply(false);
         }
     };
 
@@ -506,12 +513,12 @@ const StudentList: React.FC<StudentListProps> = ({
         setShowMenu(false);
     };
 
+    // 💉 إزالة التحقق من الرقم المدني عند الإضافة
     const handleManualAddSubmit = () => {
-        if (newStudentName && newStudentClass && newStudentCivilID) {
-            onAddStudentManually(newStudentName, newStudentClass, newStudentPhone, undefined, newStudentGender, newStudentCivilID);
+        if (newStudentName && newStudentClass) {
+            onAddStudentManually(newStudentName, newStudentClass, newStudentPhone, undefined, newStudentGender);
             setNewStudentName('');
             setNewStudentPhone('');
-            setNewStudentCivilID('');
             setShowManualAddModal(false);
         } else {
             alert(t('alertEnterStudentInfo'));
@@ -526,12 +533,9 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
     
+    // 💉 إزالة التحقق من الرقم المدني عند التعديل
     const handleEditStudentSave = () => {
         if (editingStudent) {
-            if (!editingStudent.parentCode || editingStudent.parentCode.trim() === '') {
-                alert(t('alertCivilIdRequiredForCloud'));
-                return;
-            }
             onUpdateStudent(editingStudent);
             setEditingStudent(null);
         }
@@ -545,16 +549,13 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     return (
-        // 💉 الغلاف الشامل PageLayout
         <PageLayout
             title={t('studentsTitle')}
             subtitle={`${safeStudents.length} ${t('registeredStudents')}`}
             icon={<Users size={24} />}
             
-            // 💉 الأزرار العلوية يميناً (الوارد، المؤقت، القرعة، القائمة)
             rightActions={
                 <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    {/* 📥 صندوق الوارد (رسائل الآباء) */}
                     <button 
                         onClick={() => { setIsMessagesModalOpen(true); fetchParentMessages(); }} 
                         className={`relative p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${isRamadan ? 'bg-purple-600/80 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-purple-600 border-purple-500 text-white shadow-lg hover:bg-purple-700'}`}
@@ -599,6 +600,11 @@ const StudentList: React.FC<StudentListProps> = ({
                             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
                             <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-56 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
                                 <div className="p-1">
+                                        <button onClick={() => { setShowCardsModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
+                                            <Printer className={`w-4 h-4 text-indigo-500`} /> طباعة بطاقات الربط السرية
+                                        </button>
+                                        <div className={`my-1 border-t border-borderColor`}></div>
+
                                         <button onClick={handleQuietAndDiscipline} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold border-b hover:bg-bgSoft border-borderColor text-textPrimary`}>
                                             <Sparkles className={`w-4 h-4 text-purple-500`} /> {t('rewardDiscipline')}
                                         </button>
@@ -623,7 +629,6 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div>
             }
 
-            // 💉 البحث والفلاتر (تختفي بذكاء عند التمرير لأسفل)
             leftActions={
                 <div className="space-y-3 relative z-10 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
                     <div className="relative w-full">
@@ -637,11 +642,9 @@ const StudentList: React.FC<StudentListProps> = ({
                         />
                     </div>
                     
-                    {/* ================= شريط اختيار الفصول ================= */}
                     <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
                         <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
                             
-                            {/* زر (الكل) */}
                             <button 
                                 onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
                                 className={`relative px-6 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'bg-transparent text-textSecondary hover:text-textPrimary'}`}
@@ -649,7 +652,6 @@ const StudentList: React.FC<StudentListProps> = ({
                                 {t('all')}
                             </button>
 
-                            {/* أزرار الصفوف (Grades) */}
                             {availableGrades.map(g => (
                                 <React.Fragment key={`grade-${g}`}>
                                     <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
@@ -662,7 +664,6 @@ const StudentList: React.FC<StudentListProps> = ({
                                 </React.Fragment>
                             ))}
 
-                            {/* أزرار الفصول (Classes) */}
                             {safeClasses.filter(c => selectedGrade === 'all' || c.startsWith(selectedGrade)).map(c => (
                                 <React.Fragment key={`class-${c}`}>
                                     <div className={`w-[1px] h-5 mx-1.5 rounded-full shrink-0 bg-borderColor`} />
@@ -679,7 +680,6 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div> 
             }
         >
-            {/* ⬇️ محتوى الصفحة المباشر (ينزلق تحت الهيدر والفلاتر) ⬇️ */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in duration-500 pt-2">
                 {filteredStudents.length > 0 ? filteredStudents.map(student => {
                     const totalPoints = calculateTotalPoints(student);
@@ -708,7 +708,6 @@ const StudentList: React.FC<StudentListProps> = ({
 
                         <div className={`w-full h-px bg-borderColor`}></div>
 
-                        {/* أزرار الإجراءات */}
                         <div className={`flex w-full divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} divide-borderColor`}>
                             
                             <button onClick={() => handleBehavior(student, 'positive')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-emerald-500/10 active:bg-emerald-500/20`} title={t('positiveReinforcement')}>
@@ -742,9 +741,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 )}
             </div>
 
-        {/* ================= النوافذ المنزلقة والمودال (تترك كما هي خارج التدفق البصري) ================= */}
-
-        {/* 📥 1. نافذة صندوق الوارد للرسائل */}
+        {/* 📥 1. نافذة صندوق الوارد للرسائل (محدثة للرد السحابي) */}
         <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
             <div className="flex flex-col h-full w-full">
                 <div className={`flex justify-between items-center mb-6 border-b pb-4 shrink-0 border-borderColor`}>
@@ -775,7 +772,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className={`flex justify-between items-start mb-3 ${dir === 'rtl' ? 'pl-2' : 'pr-2'}`}>
                                     <div>
                                         <h4 className="font-black text-textPrimary text-lg">{msg.studentName}</h4>
-                                        <p className="text-[10px] font-bold text-textSecondary font-mono mt-0.5">{t('civilIdPrefix')} {msg.civilID}</p>
+                                        <p className="text-[10px] font-bold text-textSecondary font-mono mt-0.5">{t('civilIdPrefix')} {msg.rasedId || msg.civilID}</p>
                                     </div>
                                     <span className="text-[10px] font-bold bg-bgCard text-textSecondary px-2 py-1 rounded-lg border border-borderColor shadow-sm">
                                         {new Date(msg.date).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -784,14 +781,36 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className={`glass-panel p-4 rounded-xl border border-borderColor text-sm font-bold text-textPrimary leading-relaxed shadow-sm ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                                     {msg.message}
                                 </div>
-                                <div className="mt-3 flex justify-end">
-                                    <button 
-                                        onClick={() => handleReplyToMessage(msg)}
-                                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black shadow-sm active:scale-95 transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20`}
-                                    >
-                                        <MessageCircle size={14} />
-                                        {t('replyViaWhatsapp')}
-                                    </button>
+                                
+                                <div className="mt-4 flex flex-col items-end w-full border-t border-borderColor/50 pt-3">
+                                    {replyingToMsg === msg ? (
+                                        <div className="flex flex-col gap-3 w-full animate-in fade-in zoom-in-95 duration-200">
+                                            <textarea
+                                                value={replyText}
+                                                onChange={e => setReplyText(e.target.value)}
+                                                placeholder={t('writeYourReplyHere') || 'اكتب ردك لولي الأمر هنا...'}
+                                                className="w-full border rounded-xl p-3 text-sm font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary"
+                                                rows={3}
+                                            />
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => { setReplyingToMsg(null); setReplyText(''); }} className="px-4 py-2 text-xs font-bold text-textSecondary bg-bgSoft hover:bg-bgCard rounded-lg active:scale-95 transition-all">
+                                                    إلغاء
+                                                </button>
+                                                <button onClick={() => handleSendReplyInternal(msg)} disabled={isSendingReply} className="px-5 py-2 text-xs font-bold text-white bg-emerald-500 rounded-lg active:scale-95 flex items-center gap-2 disabled:opacity-50 transition-all shadow-md hover:bg-emerald-600">
+                                                    {isSendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}
+                                                    إرسال الرد
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={() => setReplyingToMsg(msg)}
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black shadow-sm active:scale-95 transition-all bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20`}
+                                        >
+                                            <Reply size={16} />
+                                            الرد عبر المنظومة
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -800,7 +819,49 @@ const StudentList: React.FC<StudentListProps> = ({
             </div>
         </DrawerSheet>
 
-        {/* ➕ 2. الإضافة اليدوية */}
+        {/* 🪪 نافذة طباعة بطاقات الربط السرية */}
+        <DrawerSheet isOpen={showCardsModal} onClose={() => setShowCardsModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
+            <div className="flex flex-col h-full w-full bg-bgSoft">
+                <div className="flex justify-between items-center p-6 border-b border-borderColor bg-bgCard shrink-0 print:hidden">
+                    <div>
+                        <h3 className="font-black text-xl text-primary flex items-center gap-2">
+                            <Printer className="w-6 h-6" /> بطاقات راصد السرية (جوازات المرور)
+                        </h3>
+                        <p className="text-xs text-textSecondary font-bold mt-1">قم بطباعة هذه البطاقات وتوزيعها على الطلاب ليتمكن أولياء الأمور من الدخول</p>
+                    </div>
+                    <button onClick={() => window.print()} className="px-6 py-2.5 bg-primary text-white text-sm font-black rounded-xl shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center gap-2">
+                        <Printer size={18} /> بدء الطباعة
+                    </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4 print:w-full print:bg-white">
+                        {filteredStudents.map(student => (
+                            <div key={student.id} className="bg-bgCard print:bg-white border-2 border-dashed border-borderColor print:border-gray-400 p-5 rounded-2xl flex flex-col items-center text-center shadow-sm relative overflow-hidden">
+                                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] print:opacity-[0.05] pointer-events-none">
+                                    <Sparkles className="w-32 h-32 text-primary print:text-black" />
+                                </div>
+                                <div className="relative z-10 w-full">
+                                    <h4 className="font-black text-lg text-textPrimary print:text-black mb-1 line-clamp-1">{student.name}</h4>
+                                    <span className="text-xs font-bold bg-bgSoft print:bg-gray-100 text-textSecondary print:text-gray-600 px-3 py-1 rounded-full">الصف: {student.classes[0]}</span>
+                                    
+                                    <div className="mt-5 mb-4 p-4 bg-primary/5 print:bg-gray-50 border border-primary/20 print:border-gray-300 rounded-xl w-full">
+                                        <p className="text-[10px] font-bold text-textSecondary print:text-gray-500 mb-1 uppercase tracking-wider">كود الدخول السري</p>
+                                        <p className="font-mono text-xl md:text-2xl font-black text-primary print:text-black tracking-widest">{student.rasedId || 'جاري التوليد...'}</p>
+                                    </div>
+                                    
+                                    <p className="text-[9px] font-bold text-textSecondary/70 print:text-gray-500 leading-relaxed">
+                                        يرجى إدخال هذا الكود في بوابة (ولي الأمر) أو (الطالب) لمتابعة التقييم المستمر.
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </DrawerSheet>
+
+        {/* ➕ 2. الإضافة اليدوية (تم استئصال الرقم المدني) */}
         <DrawerSheet isOpen={showManualAddModal} onClose={() => setShowManualAddModal(false)} isRamadan={isRamadan} dir={dir} mode="side">
              <div className="flex flex-col h-full w-full text-center pb-4">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border shrink-0 bg-primary/10 text-primary border-primary/20`}>
@@ -813,7 +874,6 @@ const StudentList: React.FC<StudentListProps> = ({
                         <option value="" disabled className="bg-bgCard">{t('selectClassPlaceholder')}</option>
                         {safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}
                     </select>
-                    <input type="number" placeholder={t('civilIdPlaceholderMandatory')} value={newStudentCivilID} onChange={(e) => setNewStudentCivilID(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-amber-500/10 border-amber-500/30 focus:border-amber-500 text-textPrimary`} />
                     <input type="tel" placeholder={t('parentPhoneOptional')} value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} />
                      <div className="flex gap-2">
                         <button onClick={() => setNewStudentGender('male')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${newStudentGender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button>
@@ -821,12 +881,12 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 </div>
                 <div className="mt-auto pt-2 shrink-0">
-                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass || !newStudentCivilID} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 bg-primary text-white hover:bg-primary/80`}>{t('saveStudentBtn')}</button>
+                    <button onClick={handleManualAddSubmit} disabled={!newStudentName || !newStudentClass} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 bg-primary text-white hover:bg-primary/80`}>{t('saveStudentBtn')}</button>
                 </div>
             </div>
         </DrawerSheet>
 
-        {/* 📊 3. استيراد إكسل */}
+        {/* 📊 3. استيراد إكسل (محدث للاعتماد على الاسم فقط) */}
         <DrawerSheet isOpen={showImportModal} onClose={() => setShowImportModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
             <div className="flex-1 w-full h-full flex flex-col">
                 <ExcelImport 
@@ -846,17 +906,14 @@ const StudentList: React.FC<StudentListProps> = ({
                             const updatedStudents = [...prevStudents];
                             importedStudents.forEach(imported => {
                                 const normalizedImportedName = normalizeArabicName(imported.name);
-                                let existingIndex = -1;
-                                if (imported.parentCode && imported.parentCode.trim() !== '') {
-                                    existingIndex = updatedStudents.findIndex(s => s.parentCode === imported.parentCode);
-                                }
-                                if (existingIndex === -1) {
-                                    existingIndex = updatedStudents.findIndex(s => normalizeArabicName(s.name) === normalizedImportedName);
-                                }
+                                
+                                // البحث عن الطالب بالاسم فقط لتجنب التكرار
+                                const existingIndex = updatedStudents.findIndex(s => normalizeArabicName(s.name) === normalizedImportedName);
+                                
                                 if (existingIndex >= 0) {
+                                    // تحديث بيانات الطالب (مع الحفاظ على rasedId و parentCode القديم إن وجد)
                                     updatedStudents[existingIndex] = {
                                         ...updatedStudents[existingIndex],
-                                        parentCode: (imported.parentCode && imported.parentCode.trim() !== '') ? imported.parentCode : updatedStudents[existingIndex].parentCode,
                                         parentPhone: (imported.parentPhone && imported.parentPhone.trim() !== '') ? imported.parentPhone : updatedStudents[existingIndex].parentPhone,
                                         gender: imported.gender || updatedStudents[existingIndex].gender
                                     };
@@ -1034,7 +1091,7 @@ const StudentList: React.FC<StudentListProps> = ({
             </div>
         </DrawerSheet>
 
-        {/* ✏️ 8. تعديل بيانات طالب */}
+        {/* ✏️ 8. تعديل بيانات طالب (تم استئصال الرقم المدني) */}
         <DrawerSheet isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} isRamadan={isRamadan} dir={dir}>
             {editingStudent && (
                  <div className="flex flex-col h-full w-full text-center pb-4">
@@ -1045,17 +1102,6 @@ const StudentList: React.FC<StudentListProps> = ({
                             {safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}
                         </select>
                         <input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({...editingStudent, parentPhone: e.target.value})} className={`w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary`} placeholder={t('phoneNumberPlaceholder')} />
-                        
-                        <div className="relative mt-2">
-                            <p className={`text-[10px] ${dir === 'rtl' ? 'text-right' : 'text-left'} mb-1 font-bold text-textSecondary`}>{t('civilIdEssentialNote')}</p>
-                            <input 
-                                type="number" 
-                                value={editingStudent.parentCode || ''} 
-                                onChange={(e) => setEditingStudent({...editingStudent, parentCode: e.target.value})}
-                                placeholder={t('enterCivilIdHere')}
-                                className={`w-full p-4 rounded-xl font-mono text-center font-black tracking-widest outline-none border transition-colors bg-amber-500/10 border-amber-500/30 focus:border-amber-500 text-textPrimary`} 
-                            />
-                        </div>
 
                         <div className="flex gap-2 pt-2">
                             <button onClick={() => setEditingStudent({...editingStudent, gender: 'male'})} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button>

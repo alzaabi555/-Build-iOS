@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowRight, Check, Loader2, Award } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Award, TrendingUp, Users, FileText } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
@@ -8,10 +8,20 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
-import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
+import PageLayout from '../components/PageLayout'; 
 
-// ✅ استدعاء قالب البطاقات الجديد
 import ParentCardsTemplate from './ParentCardsTemplate';
+
+// =================================================================================
+// ✅ الثوابت (تصنيفات الدرجات)
+// =================================================================================
+const GRADE_CATEGORIES = [
+    { key: 'A', label: 'أ (ممتاز)', color: 'bg-emerald-100', bar: 'bg-emerald-500', text: 'text-emerald-700' },
+    { key: 'B', label: 'ب (جيد جداً)', color: 'bg-blue-100', bar: 'bg-blue-500', text: 'text-blue-700' },
+    { key: 'C', label: 'ج (جيد)', color: 'bg-yellow-100', bar: 'bg-yellow-400', text: 'text-yellow-700' },
+    { key: 'D', label: 'د (مقبول)', color: 'bg-orange-100', bar: 'bg-orange-400', text: 'text-orange-700' },
+    { key: 'F', label: 'هـ (ضعيف)', color: 'bg-rose-100', bar: 'bg-rose-500', text: 'text-rose-700' },
+];
 
 // =================================================================================
 // ✅ أيقونات 3D 
@@ -174,10 +184,36 @@ const Icon3DEye = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const Icon3DAnalytics = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className || "w-6 h-6"} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradBar1" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+      <linearGradient id="gradBar2" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#60a5fa" />
+        <stop offset="100%" stopColor="#2563eb" />
+      </linearGradient>
+      <linearGradient id="gradBar3" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#f472b6" />
+        <stop offset="100%" stopColor="#db2777" />
+      </linearGradient>
+    </defs>
+    <rect x="15" y="50" width="15" height="35" rx="4" fill="url(#gradBar1)" />
+    <rect x="42" y="25" width="15" height="60" rx="4" fill="url(#gradBar2)" />
+    <rect x="69" y="40" width="15" height="45" rx="4" fill="url(#gradBar3)" />
+    <path d="M10 90 H90" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+    <path d="M22 40 L49 15 L76 30" fill="none" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="49" cy="15" r="4" fill="#fbbf24" />
+    <circle cx="76" cy="30" r="4" fill="#fbbf24" />
+  </svg>
+);
+
 // =================================================================================
 
 interface ReportsProps {
-  initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon';
+  initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon' | 'analytics';
 }
 
 const getGradingSettings = () => {
@@ -275,7 +311,7 @@ const PrintPreviewModal: React.FC<{
               padding: '0',
               direction: dir, 
               fontFamily: 'Tajawal, sans-serif',
-              backgroundColor: '#ffffff', // 👈 حماية للطباعة بالحبر الأبيض والأسود
+              backgroundColor: '#ffffff',
               color: '#000000',
               boxSizing: 'border-box'
             }}
@@ -289,8 +325,167 @@ const PrintPreviewModal: React.FC<{
 };
 
 // =================================================================================
-// ✅ القوالب المحدثة (للتباعة: تظل دائمًا بخلفية بيضاء لتوفير الحبر)
+// ✅ القوالب المحدثة (للتباعة)
 // =================================================================================
+
+// 💉 قالب طباعة الإحصائيات (محدث بالتفصيل للفصول)
+const AnalyticsTemplate = ({ data, teacherInfo, targetClass }: any) => {
+    const { t, dir, language } = useApp();
+    const date = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+
+    // 💉 تصحيح اسم الدالة لتطابق استخدامها في القالب
+    const renderBar = (count: number, total: number, color: string, label: string) => {
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        return (
+            <div className="mb-2 text-[10px]">
+                <div className="flex justify-between font-bold mb-1">
+                    <span>{label}</span>
+                    <span>{count} طالب ({pct}%)</span>
+                </div>
+                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                    <div className={`h-full ${color}`} style={{ width: `${pct}%` }}></div>
+                </div>
+            </div>
+        );
+    };
+
+    const reportSections = [
+        { id: 'sem1', title: 'تفصيل نتائج الفصل الدراسي الأول', dataObj: data.sem1, isFinal: false },
+        { id: 'sem2', title: 'تفصيل نتائج الفصل الدراسي الثاني', dataObj: data.sem2, isFinal: false },
+        { id: 'final', title: 'تفصيل النتيجة العامة النهائية', dataObj: data.final, isFinal: true },
+    ];
+
+    return (
+        <div className="w-full text-black bg-white p-8" dir={dir}>
+            {/* Header */}
+            <div className="text-center mb-6 border-b-2 border-black pb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className={`text-${dir === 'rtl' ? 'right' : 'left'} text-sm font-bold leading-relaxed`}>
+                  <p>{t('sultanateOfOman')}</p>
+                  <p>{t('ministryOfEducation')}</p>
+                  <p>{t('schoolWord')} {teacherInfo?.school}</p>
+                </div>
+                <div className="text-center">
+                    {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-14 object-contain mx-auto mb-2" />}
+                    <h1 className="text-xl font-black underline text-black">التقرير الإحصائي الشامل للنتائج</h1>
+                </div>
+                <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-sm font-bold leading-relaxed`}>
+                  <p>المادة: {teacherInfo?.subject || '........'}</p>
+                  <p>الصف: {targetClass === 'all' ? 'جميع الصفوف المحددة' : targetClass}</p>
+                  <p>التاريخ: {date}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="flex justify-between gap-4 mb-6 text-center">
+                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
+                    <p className="text-[10px] font-bold">إجمالي الطلاب</p>
+                    <p className="font-black text-lg">{data.totalStudents}</p>
+                </div>
+                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
+                    <p className="text-[10px] font-bold">متوسط ف1</p>
+                    <p className="font-black text-lg">{Math.round(data.sem1.totalScore / data.totalStudents) || 0}</p>
+                </div>
+                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
+                    <p className="text-[10px] font-bold">متوسط ف2</p>
+                    <p className="font-black text-lg">{Math.round(data.sem2.totalScore / data.totalStudents) || 0}</p>
+                </div>
+                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-amber-50">
+                    <p className="text-[10px] font-bold text-amber-800">الأول على الصف</p>
+                    <p className="font-black text-sm text-amber-900 truncate">{data.topStudent.name}</p>
+                </div>
+            </div>
+
+            {/* Visual Chart Row */}
+            <div className="flex gap-4 mb-8 border-b-2 border-black pb-8">
+                <div className="flex-1 border border-black p-3 rounded-xl">
+                    <h4 className="font-bold text-[10px] text-center mb-3">نسب نتائج الفصل الأول</h4>
+                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.sem1[c.key as keyof typeof data.sem1].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
+                <div className="flex-1 border border-black p-3 rounded-xl">
+                    <h4 className="font-bold text-[10px] text-center mb-3">نسب نتائج الفصل الثاني</h4>
+                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.sem2[c.key as keyof typeof data.sem2].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
+                <div className="flex-1 border-2 border-black p-3 rounded-xl bg-indigo-50/30">
+                    <h4 className="font-black text-xs text-center mb-3">النتيجة العامة النهائية</h4>
+                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.final[c.key as keyof typeof data.final].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
+            </div>
+
+            {/* Detailed Tables (Iterating over semesters and final) */}
+            {reportSections.map((section, secIdx) => (
+                <div key={section.id} className={`${secIdx > 0 ? 'mt-8' : ''}`}>
+                    <h3 className="font-black text-sm mb-4 border-b border-black inline-block pb-1">{section.title}:</h3>
+                    
+                    {GRADE_CATEGORIES.map(cat => {
+                        const studentsList = section.dataObj[cat.key as keyof typeof section.dataObj] as any[];
+                        if (!studentsList || studentsList.length === 0) return null;
+                        
+                        return (
+                            <div key={cat.key} className="mb-4 html2pdf__page-break-avoid" style={{ pageBreakInside: 'avoid' }}>
+                                <div className={`border border-black border-b-0 p-2 font-bold text-[11px] ${cat.color} flex justify-between`}>
+                                    <span>الطلاب الحاصلون على تقدير: {cat.label}</span>
+                                    <span>العدد: {studentsList.length} طلاب</span>
+                                </div>
+                                <table className="w-full border-collapse border border-black text-[10px]">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            <th className="border border-black p-1.5 w-8 text-center">م</th>
+                                            <th className={`border border-black p-1.5 text-${dir === 'rtl' ? 'right' : 'left'}`}>اسم الطالب</th>
+                                            {section.isFinal ? (
+                                                <>
+                                                    <th className="border border-black p-1.5 w-16 text-center">مجموع ف1</th>
+                                                    <th className="border border-black p-1.5 w-16 text-center">مجموع ف2</th>
+                                                    <th className="border border-black p-1.5 w-20 text-center font-bold">المعدل النهائي</th>
+                                                </>
+                                            ) : (
+                                                <th className="border border-black p-1.5 w-24 text-center font-bold">درجة الفصل</th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {[...studentsList].sort((a, b) => section.isFinal ? b.final - a.final : b.score - a.score).map((s, idx) => (
+                                            <tr key={idx}>
+                                                <td className="border border-black p-1.5 text-center">{idx + 1}</td>
+                                                <td className={`border border-black p-1.5 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{s.name}</td>
+                                                {section.isFinal ? (
+                                                    <>
+                                                        <td className="border border-black p-1.5 text-center">{s.sem1}</td>
+                                                        <td className="border border-black p-1.5 text-center">{s.sem2}</td>
+                                                        <td className="border border-black p-1.5 text-center font-black">{s.final}</td>
+                                                    </>
+                                                ) : (
+                                                    <td className="border border-black p-1.5 text-center font-black">{s.score}</td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    })}
+                </div>
+            ))}
+
+            {/* Signatures */}
+            <div className="flex justify-between items-end pt-8 mt-8 border-t-2 border-black relative html2pdf__page-break-avoid" style={{ pageBreakInside: 'avoid' }}>
+                <div className="text-center w-1/3">
+                    <p className="font-bold text-xs mb-6">معلم المادة</p>
+                    <p className="font-black text-sm">{teacherInfo?.name || '....................'}</p>
+                </div>
+                {teacherInfo?.stamp && (
+                    <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 w-24 opacity-80 mix-blend-multiply">
+                        <img src={teacherInfo.stamp} className="w-full object-contain" alt="Stamp" />
+                    </div>
+                )}
+                <div className="text-center w-1/3">
+                    <p className="font-bold text-xs mb-6">مدير المدرسة</p>
+                    <p className="font-black text-sm">....................</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ... القوالب القديمة باقية كما هي دون أي تغيير ...
 
 const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: any) => {
   const { t, dir } = useApp();
@@ -347,6 +542,10 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
                   )}
                   <th className="border border-black p-1 bg-gray-300 text-center font-black text-black">{t('overallLabel')} ({settings.totalScore})</th>
                   <th className="border border-black p-1 text-center text-black">{t('gradeSymbolLabel')}</th>
+                  <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع ف1</th>
+                  <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع ف2</th>
+                  <th className="border border-black p-1 bg-emerald-100 text-center text-black font-black">المعدل النهائي</th>
+                  <th className="border border-black p-1 bg-emerald-100 text-center text-black font-bold">التقدير العام</th>
                 </tr>
               </thead>
 
@@ -381,6 +580,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
                   }
 
                   const total = contSum + finalVal;
+
                   const getSymbol = (sc: number) => {
                     const percent = (sc / settings.totalScore) * 100;
                     if (dir === 'rtl') {
@@ -398,6 +598,22 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
                     }
                   };
 
+                  const sem1Grades = (s.grades || []).filter((g: any) => (g.semester || '1') === '1');
+                  const sem2Grades = (s.grades || []).filter((g: any) => (g.semester || '1') === '2');
+                  let sem1Total = 0;
+                  let sem2Total = 0;
+                  
+                  tools.forEach((t: any) => {
+                      const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+                      if (g1) sem1Total += (Number(g1.score) || 0);
+                      
+                      const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+                      if (g2) sem2Total += (Number(g2.score) || 0);
+                  });
+
+                  const finalAverage = (sem1Total + sem2Total) / 2;
+                  const finalYearSymbol = getSymbol(finalAverage);
+
                   return (
                     <tr key={s.id || i}>
                       <td className="border border-black p-1 text-center text-black">{globalIndex}</td>
@@ -407,6 +623,10 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
                       {finalWeight > 0 && finalCell}
                       <td className="border border-black p-1 text-center font-black bg-gray-100 text-black">{total}</td>
                       <td className="border border-black p-1 text-center font-bold text-black">{getSymbol(total)}</td>
+                      <td className="border border-black p-1 text-center bg-amber-50 text-black">{sem1Total > 0 ? sem1Total : '-'}</td>
+                      <td className="border border-black p-1 text-center bg-amber-50 text-black">{sem2Total > 0 ? sem2Total : '-'}</td>
+                      <td className="border border-black p-1 text-center font-black bg-emerald-50 text-black">{finalAverage > 0 ? finalAverage : '-'}</td>
+                      <td className="border border-black p-1 text-center font-bold bg-emerald-50 text-emerald-700">{finalAverage > 0 ? finalYearSymbol : '-'}</td>
                     </tr>
                   );
                 })}
@@ -681,6 +901,24 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
     return map[desc] || desc; 
   };
 
+  const getSymbol = (sc: number) => {
+    const totalPossible = settings?.totalScore || 100;
+    const percent = (sc / totalPossible) * 100;
+    if (dir === 'rtl') {
+        if (percent >= 90) return 'أ';
+        if (percent >= 80) return 'ب';
+        if (percent >= 65) return 'ج';
+        if (percent >= 50) return 'د';
+        return 'هـ';
+    } else {
+        if (percent >= 90) return 'A';
+        if (percent >= 80) return 'B';
+        if (percent >= 65) return 'C';
+        if (percent >= 50) return 'D';
+        return 'F';
+    }
+  };
+
   return (
     <div className="w-full text-black bg-white" dir={dir}>
       {safeStudents.map((student: any) => {
@@ -708,6 +946,20 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
         const truantCount = (student.attendance || []).filter((a: any) => a.status === 'truant').length;
         const totalPositive = posBehaviors.reduce((acc: number, b: any) => acc + b.points, 0);
         const totalNegative = negBehaviors.reduce((acc: number, b: any) => acc + Math.abs(b.points), 0);
+
+        const sem1Grades = (student.grades || []).filter((g: any) => (g.semester || '1') === '1');
+        const sem2Grades = (student.grades || []).filter((g: any) => (g.semester || '1') === '2');
+        let sem1Total = 0;
+        let sem2Total = 0;
+        
+        safeTools.forEach((t: any) => {
+            const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+            if (g1) sem1Total += (Number(g1.score) || 0);
+            
+            const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+            if (g2) sem2Total += (Number(g2.score) || 0);
+        });
+        const finalAverage = (sem1Total + sem2Total) / 2;
 
         return (
           <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
@@ -743,7 +995,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 
             <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block text-black">{t('academicAchievement')}</h3>
 
-            <table className="w-full border-collapse border border-black text-sm mb-8 text-black">
+            <table className="w-full border-collapse border border-black text-sm mb-4 text-black">
               <thead>
                 <tr className="bg-gray-100">
                   <th className={`border border-black p-3 text-${dir === 'rtl' ? 'right' : 'left'}`}>{t('subjectCol')}</th>
@@ -778,6 +1030,30 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                 </tr>
               </tbody>
             </table>
+
+            <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
+                <div className="bg-amber-200 p-4 border-l-2 border-black flex items-center justify-center font-black text-black">
+                    النتيجة النهائية<br/>للعام الدراسي
+                </div>
+                <div className="flex-1 flex justify-around items-center p-4">
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
+                        <p className="font-black text-lg">{sem1Total}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
+                        <p className="font-black text-lg">{sem2Total}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1">المعدل النهائي</p>
+                        <p className="font-black text-xl text-blue-800">{finalAverage}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs font-bold mb-1">التقدير العام</p>
+                        <p className="font-black text-2xl text-emerald-700">{getSymbol(finalAverage)}</p>
+                    </div>
+                </div>
+            </div>
 
             <div className="flex gap-6 mb-8">
               <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
@@ -856,7 +1132,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 // =================================================================================
 const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const { students, setStudents, classes, teacherInfo, currentSemester, assessmentTools, certificateSettings, setCertificateSettings, t, dir, language } = useApp(); 
-  const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon'>(initialTab || 'student_report');
+  const [activeTab, setActiveTab] = useState<'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon' | 'analytics'>(initialTab || 'student_report');
 
   const [stGrade, setStGrade] = useState<string>('all');
   const [stClass, setStClass] = useState<string>('');
@@ -890,11 +1166,15 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const [cardsGrade, setCardsGrade] = useState<string>('all');
   const [cardsClass, setCardsClass] = useState<string>('all');
 
+  // 💉 حالة قسم الإحصائيات 
+  const [analyticsGrade, setAnalyticsGrade] = useState<string>('all');
+  const [analyticsClass, setAnalyticsClass] = useState<string>('all');
+  const [analyticsDetailTab, setAnalyticsDetailTab] = useState<'sem1' | 'sem2' | 'final'>('final');
+
   const [previewData, setPreviewData] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; landscape?: boolean }>({
     isOpen: false, title: '', content: null
   });
 
-  // 🛡️ دروع الحماية الأساسية من أي بيانات فاسدة أو طلاب ناقصين
   const safeStudents = Array.isArray(students) ? students : [];
   const safeClasses = Array.isArray(classes) ? classes : [];
 
@@ -930,7 +1210,6 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
     });
   };
 
-  // 🛡️ الفلاتر المدرعة لمنع أي انهيار بسبب الفصول المفقودة
   const filteredStudentsForStudentTab = useMemo(() => safeStudents.filter(s => Array.isArray(s?.classes) && s.classes.includes(stClass)), [safeStudents, stClass]);
   const filteredStudentsForGrades = useMemo(() => safeStudents.filter(s => gradesClass === 'all' || (Array.isArray(s?.classes) && s.classes.includes(gradesClass))), [safeStudents, gradesClass]);
   const filteredStudentsForCert = useMemo(() => safeStudents.filter(s => Array.isArray(s?.classes) && s.classes.includes(certClass)), [safeStudents, certClass]);
@@ -940,6 +1219,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   useEffect(() => { const cls = getClassesForGrade(certGrade); if (cls.length > 0) setCertClass(cls[0]); }, [certGrade, classes]);
   useEffect(() => { const cls = getClassesForGrade(summonGrade); if (cls.length > 0) setSummonClass(cls[0]); }, [summonGrade, classes]);
   useEffect(() => { const cls = getClassesForGrade(cardsGrade); if (cls.length > 0) setCardsClass('all'); }, [cardsGrade, classes]); 
+  useEffect(() => { const cls = getClassesForGrade(analyticsGrade); if (cls.length > 0) setAnalyticsClass('all'); }, [analyticsGrade, classes]); 
   useEffect(() => { if (certificateSettings) setTempCertSettings(certificateSettings); }, [certificateSettings]);
 
   const handleUpdateStudent = (updatedStudent: Student) => {
@@ -1019,6 +1299,17 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
     });
   };
 
+  // 💉 فتح نافذة الطباعة الخاصة بالإحصائيات
+  const openAnalyticsPreview = () => {
+      if (analyticsData.totalStudents === 0) return alert('لا يوجد طلاب مطابقين لعرض وطباعة الإحصائيات');
+      setPreviewData({
+          isOpen: true,
+          title: 'التقرير الإحصائي الشامل للنتائج',
+          landscape: false,
+          content: <AnalyticsTemplate data={analyticsData} teacherInfo={teacherInfo} targetClass={analyticsClass} />
+      });
+  };
+
   const selectAllCertStudents = () => {
     if (selectedCertStudents.length === filteredStudentsForCert.length) {
       setSelectedCertStudents([]);
@@ -1029,6 +1320,86 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
 
   const toggleCertStudent = (id: string) => {
     setSelectedCertStudents(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+  };
+
+  // 💉 محرك الإحصائيات المحدث (تخزين بيانات الطلاب للتفاصيل والطباعة)
+  const analyticsData = useMemo(() => {
+      const targetStudents = safeStudents.filter(s => analyticsClass === 'all' || (Array.isArray(s?.classes) && s.classes.includes(analyticsClass)));
+      
+      const stats = {
+          totalStudents: targetStudents.length,
+          sem1: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
+          sem2: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
+          final: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
+          topStudent: { name: '-', score: 0 }
+      };
+
+      if (targetStudents.length === 0) return stats;
+
+      const safeTools = Array.isArray(assessmentTools) ? assessmentTools : [];
+      const totalPossibleScore = getGradingSettings()?.totalScore || 100;
+
+      const getCat = (sc: number) => {
+          const p = (sc / totalPossibleScore) * 100;
+          if (p >= 90) return 'A';
+          if (p >= 80) return 'B';
+          if (p >= 65) return 'C';
+          if (p >= 50) return 'D';
+          return 'F';
+      };
+
+      targetStudents.forEach(student => {
+          const sem1Grades = (student.grades || []).filter((g: any) => (g.semester || '1') === '1');
+          const sem2Grades = (student.grades || []).filter((g: any) => (g.semester || '1') === '2');
+          
+          let s1Total = 0;
+          let s2Total = 0;
+          
+          safeTools.forEach((t: any) => {
+              const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+              if (g1) s1Total += (Number(g1.score) || 0);
+              
+              const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+              if (g2) s2Total += (Number(g2.score) || 0);
+          });
+
+          const fAvg = (s1Total + s2Total) / 2;
+
+          stats.sem1[getCat(s1Total) as keyof typeof stats.sem1].push({ name: student.name, score: s1Total } as never);
+          stats.sem1.totalScore += s1Total;
+
+          stats.sem2[getCat(s2Total) as keyof typeof stats.sem2].push({ name: student.name, score: s2Total } as never);
+          stats.sem2.totalScore += s2Total;
+
+          stats.final[getCat(fAvg) as keyof typeof stats.final].push({
+              name: student.name,
+              sem1: s1Total,
+              sem2: s2Total,
+              final: fAvg
+          } as never);
+          stats.final.totalScore += fAvg;
+
+          if (fAvg > stats.topStudent.score) {
+              stats.topStudent = { name: student.name, score: fAvg };
+          }
+      });
+
+      return stats;
+  }, [safeStudents, analyticsClass, assessmentTools]);
+
+  const renderProgressBar = (count: number, total: number, colorClass: string, label: string) => {
+      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+      return (
+          <div className="mb-3">
+              <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-textPrimary">{label}</span>
+                  <span className="text-textSecondary">{count} طالب ({percentage}%)</span>
+              </div>
+              <div className="w-full bg-bgSoft rounded-full h-3 overflow-hidden border border-borderColor">
+                  <div className={`h-full ${colorClass} transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
+              </div>
+          </div>
+      );
   };
 
   if (viewingStudent) {
@@ -1049,6 +1420,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
     { id: 'certificates', label: t('certificatesTab'), icon: Icon3DCertificate },
     { id: 'parent_cards', label: t('parentCardsTab'), icon: Icon3DParentCard }, 
     { id: 'summon', label: t('summonTab'), icon: Icon3DSummon },
+    { id: 'analytics', label: t('analyticsTab') || 'التحليل الإحصائي', icon: Icon3DAnalytics },
   ];
 
   return (
@@ -1066,7 +1438,6 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
         subtitle={t('printStatementsAndCertificates')}
         icon={<Icon3DReportCenter className="w-full h-full p-1" />}
         
-        // 💉 هنا تم نقل الألسنة (Tabs) لتختفي وتظهر بذكاء مع حركة الشاشة
         leftActions={
           <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2 px-1 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
             {tabs.map(tab => {
@@ -1362,6 +1733,124 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                   <Icon3DEye className="w-5 h-5" /> {t('previewLetter')}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* 💉 التبويب الجديد: الإحصائيات (Analytics) مع شاشة التفاصيل */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex items-center gap-3 border-b pb-4 mb-2 border-borderColor">
+                <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600"><Icon3DAnalytics className="w-5 h-5" /></div>
+                <h3 className="font-black text-lg text-textPrimary">التحليل الإحصائي للنتائج</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {availableGrades.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => { setAnalyticsGrade(g); setAnalyticsClass('all'); }}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${analyticsGrade === g ? 'bg-indigo-600 text-white border-indigo-600 backdrop-blur-sm' : 'bg-bgSoft text-textSecondary border-borderColor hover:bg-bgCard backdrop-blur-sm'}`}
+                    >
+                      {t('gradePrefix')} {g}
+                    </button>
+                  ))}
+                </div>
+
+                <select value={analyticsClass} onChange={(e) => setAnalyticsClass(e.target.value)} className="w-full p-4 border rounded-2xl font-bold outline-none transition-colors text-sm bg-bgCard border-borderColor text-textPrimary focus:border-indigo-600 backdrop-blur-md">
+                  <option value="all" className="bg-bgCard text-textPrimary">{t('allClassesInGrade').split(' ')[0]}</option>
+                  {getClassesForGrade(analyticsGrade).map(c => <option key={c} value={c} className="bg-bgCard text-textPrimary">{c}</option>)}
+                </select>
+              </div>
+
+              {analyticsData.totalStudents > 0 ? (
+                  <>
+                      {/* لوحة المعلومات السريعة */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                          <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">إجمالي الطلاب</p>
+                              <p className="text-2xl font-black text-indigo-600">{analyticsData.totalStudents}</p>
+                          </div>
+                          <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">متوسط الفصل 1</p>
+                              <p className="text-xl font-black text-textPrimary">{Math.round(analyticsData.sem1.totalScore / analyticsData.totalStudents)}</p>
+                          </div>
+                          <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">متوسط الفصل 2</p>
+                              <p className="text-xl font-black text-textPrimary">{Math.round(analyticsData.sem2.totalScore / analyticsData.totalStudents)}</p>
+                          </div>
+                          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center">
+                              <p className="text-[10px] font-bold text-amber-700 mb-1">الأول على الصف</p>
+                              <p className="text-sm font-black text-amber-900 truncate">{analyticsData.topStudent.name}</p>
+                          </div>
+                      </div>
+
+                      {/* الرسومات البيانية */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                          <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
+                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">نتائج الفصل الأول</h4>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem1[c.key as keyof typeof analyticsData.sem1].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+
+                          <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
+                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">نتائج الفصل الثاني</h4>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem2[c.key as keyof typeof analyticsData.sem2].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+
+                          <div className="border-2 border-indigo-100 bg-indigo-50/50 p-5 rounded-2xl shadow-sm">
+                              <h4 className="font-black text-sm text-center mb-6 text-indigo-900 flex items-center justify-center gap-2">
+                                  <TrendingUp className="w-4 h-4" /> النتيجة العامة النهائية
+                              </h4>
+                               {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.final[c.key as keyof typeof analyticsData.final].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+                      </div>
+
+                      {/* 💉 قسم جديد: تفاصيل الأسماء في واجهة التطبيق */}
+                      <div className="mt-8 border-t border-borderColor pt-6">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                              <h4 className="font-black text-base text-textPrimary flex items-center gap-2"><Users className="w-5 h-5 text-indigo-600"/> قوائم تفصيلية للنتائج:</h4>
+                              <div className="flex bg-bgSoft p-1 rounded-xl border border-borderColor shadow-inner">
+                                  <button onClick={() => setAnalyticsDetailTab('sem1')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem1' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>الفصل الأول</button>
+                                  <button onClick={() => setAnalyticsDetailTab('sem2')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem2' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>الفصل الثاني</button>
+                                  <button onClick={() => setAnalyticsDetailTab('final')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'final' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>النتيجة النهائية</button>
+                              </div>
+                          </div>
+
+                          {GRADE_CATEGORIES.map(cat => {
+                              const list = analyticsData[analyticsDetailTab][cat.key as keyof typeof analyticsData.sem1] as any[];
+                              if (!list || list.length === 0) return null;
+                              return (
+                                  <div key={cat.key} className="mb-4 bg-bgCard border border-borderColor rounded-2xl overflow-hidden shadow-sm">
+                                      <div className={`p-3 ${cat.color.replace('bg-', 'bg-opacity-20 bg-')} flex justify-between items-center border-b border-borderColor`}>
+                                          <span className={`font-black text-sm ${cat.text}`}>تقدير: {cat.label}</span>
+                                          <span className={`text-xs font-black bg-white/60 px-2 py-1 rounded-lg ${cat.text}`}>{list.length} طلاب</span>
+                                      </div>
+                                      <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                          {[...list].sort((a,b) => analyticsDetailTab === 'final' ? b.final - a.final : b.score - a.score).map((s, idx) => (
+                                              <div key={idx} className="flex justify-between items-center bg-bgSoft p-2.5 rounded-xl border border-borderColor hover:border-indigo-300 transition-colors">
+                                                  <span className="font-bold text-xs text-textPrimary truncate px-1">{s.name}</span>
+                                                  <span className="text-xs font-black px-2 py-1 rounded bg-bgCard text-textPrimary shadow-sm border border-borderColor min-w-[35px] text-center">
+                                                      {analyticsDetailTab === 'final' ? s.final : s.score}
+                                                  </span>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  </div>
+                              )
+                          })}
+                      </div>
+
+                      {/* زر الطباعة */}
+                      <div className="flex justify-end pt-4 mt-6 border-t border-borderColor">
+                          <button onClick={openAnalyticsPreview} className="w-full text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all bg-indigo-600 hover:bg-indigo-700">
+                              <Icon3DPrint className="w-5 h-5" /> طباعة التقرير الإحصائي التفصيلي (لجميع الفصول)
+                          </button>
+                      </div>
+                  </>
+              ) : (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-60">
+                      <Icon3DAnalytics className="w-16 h-16 grayscale opacity-50 mb-4" />
+                      <p className="text-textSecondary font-bold">لا يوجد طلاب مطابقين لعرض الإحصائيات</p>
+                  </div>
+              )}
+
             </div>
           )}
 

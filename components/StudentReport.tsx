@@ -62,6 +62,43 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   const fallbackTotal = currentSemesterGrades.reduce((a, b) => a + (Number(b.score) || 0), 0);
   const totalScore = assessmentTools.length > 0 ? (continuousSum + finalScore) : fallbackTotal;
 
+  // =========================================================================
+  // 💉 الجراحة الدقيقة: حساب النتيجة النهائية للعام (ف1 + ف2)
+  // =========================================================================
+  const sem1Grades = (student.grades || []).filter(g => (g.semester || '1') === '1');
+  const sem2Grades = (student.grades || []).filter(g => (g.semester || '1') === '2');
+  let sem1Total = 0;
+  let sem2Total = 0;
+  
+  assessmentTools.forEach((t: any) => {
+      const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+      if (g1) sem1Total += (Number(g1.score) || 0);
+      
+      const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+      if (g2) sem2Total += (Number(g2.score) || 0);
+  });
+  
+  const finalAverage = (sem1Total + sem2Total) / 2;
+
+  const getSymbol = (sc: number) => {
+      const totalPossible = gradeSettings?.totalScore || 100;
+      const percent = (sc / totalPossible) * 100;
+      if (dir === 'rtl') {
+          if (percent >= 90) return 'أ';
+          if (percent >= 80) return 'ب';
+          if (percent >= 65) return 'ج';
+          if (percent >= 50) return 'د';
+          return 'هـ';
+      } else {
+          if (percent >= 90) return 'A';
+          if (percent >= 80) return 'B';
+          if (percent >= 65) return 'C';
+          if (percent >= 50) return 'D';
+          return 'F';
+      }
+  };
+  // =========================================================================
+
   const absenceRecords = (student.attendance || []).filter(a => a.status === 'absent');
   const truantRecords = (student.attendance || []).filter(a => a.status === 'truant');
 
@@ -275,6 +312,31 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                {/* 💉 الجراحة الدقيقة: الصندوق الذهبي للنتيجة النهائية للعام */}
+                <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
+                    <div className={`bg-amber-200 p-4 ${dir === 'rtl' ? 'border-l-2' : 'border-r-2'} border-black flex items-center justify-center font-black text-black text-center`}>
+                        النتيجة النهائية<br/>للعام الدراسي
+                    </div>
+                    <div className="flex-1 flex justify-around items-center p-4">
+                        <div className="text-center">
+                            <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
+                            <p className="font-black text-lg">{sem1Total}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
+                            <p className="font-black text-lg">{sem2Total}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs font-bold mb-1">المعدل النهائي</p>
+                            <p className="font-black text-xl text-blue-800">{finalAverage}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs font-bold mb-1">التقدير العام</p>
+                            <p className="font-black text-2xl text-emerald-700">{getSymbol(finalAverage)}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Attendance Summary and Details */}

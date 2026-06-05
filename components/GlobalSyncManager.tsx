@@ -41,9 +41,9 @@ const GlobalSyncManager: React.FC = () => {
 
   const handleSync = async (type: 'student' | 'parent' | 'backup' | 'restore' | 'admin') => {
     
-    // حماية السحابة المركزية (تتطلب الرقم المدني)
+    // حماية السحابة المركزية (النسخ الاحتياطي الخاص بالمعلم يتطلب رقمه المدني)
     if ((type === 'backup' || type === 'restore') && !teacherInfo?.civilId) {
-      alert(t('alertEnterCivilId'));
+      alert("الرجاء إدخال رقمك المدني (كمعلم) في الإعدادات لربط نسختك الاحتياطية.");
       return;
     }
 
@@ -67,6 +67,7 @@ const GlobalSyncManager: React.FC = () => {
       if (type === 'student') {
         setSyncMessage(t('syncingStudentMsg'));
         const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
+        // نرسل الطلاب كما هم (لأنهم أصبحوا يمتلكون rasedId تلقائياً من AppContext)
         const payload = { students: students, tasks: savedTasks, className: 'الكل' };
         await fetch(STUDENT_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
       }
@@ -79,7 +80,8 @@ const GlobalSyncManager: React.FC = () => {
         const currentYear = today.getFullYear();
 
         const parentPayload = students
-            .filter(s => s.parentCode && s.parentCode.trim() !== "")
+            // 💉 التعديل السحري: السماح بالمرور عبر كود راصد السري
+            .filter(s => s.rasedId && s.rasedId.trim() !== "")
             .map(s => {
                 const monthlyPoints = (s.behaviors || [])
                     .filter(b => {
@@ -89,7 +91,7 @@ const GlobalSyncManager: React.FC = () => {
                     .reduce((acc, b) => acc + b.points, 0);
 
                 return {
-                    parentCode: s.parentCode,
+                    rasedId: s.rasedId, // 💉 إرسال الكود السري للسحابة
                     name: s.name,
                     className: s.classes[0] || "",
                     subject: teacherInfo?.subject || t('unspecified'), 
@@ -101,7 +103,8 @@ const GlobalSyncManager: React.FC = () => {
                 };
             });
 
-        if (parentPayload.length === 0) throw new Error(t('alertNoCivilIdToSync'));
+        // 💉 رسالة خطأ صريحة توضح المشكلة إذا كان الفصل فارغاً
+        if (parentPayload.length === 0) throw new Error("لا يوجد أي طالب يمتلك كود راصد السري (RSD) للمزامنة!");
         await fetch(PARENT_APP_URL, { method: 'POST', body: JSON.stringify(parentPayload) });
       }
 
@@ -163,7 +166,7 @@ const GlobalSyncManager: React.FC = () => {
              throw new Error("تأكد من الاتصال بالإنترنت");
         }
       }
-      // ☁️ 4. السحابة المركزية: رفع احتياطي (تستخدم الرقم المدني)
+      // ☁️ 4. السحابة المركزية: رفع احتياطي (تستخدم الرقم المدني للمعلم)
       else if (type === 'backup') {
         setSyncMessage(t('syncingBackupMsg'));
         const cleanId = teacherInfo.civilId.trim();
@@ -207,7 +210,7 @@ const GlobalSyncManager: React.FC = () => {
         if (result.status !== 'success') throw new Error("Server Error");
       } 
       
-      // 📥 5. السحابة المركزية: استرجاع البيانات (تستخدم الرقم المدني)
+      // 📥 5. السحابة المركزية: استرجاع البيانات (تستخدم الرقم المدني للمعلم)
       else if (type === 'restore') {
         setSyncMessage(t('syncingRestoreMsg'));
         const cleanId = teacherInfo.civilId.trim();
@@ -313,10 +316,10 @@ const GlobalSyncManager: React.FC = () => {
         setSyncState('idle');
       }, 3000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setSyncState('error');
-      setSyncMessage(t('syncError'));
+      setSyncMessage(error.message || t('syncError'));
       setTimeout(() => setSyncState('idle'), 4000);
     }
   };

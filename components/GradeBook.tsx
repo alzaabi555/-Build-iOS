@@ -270,17 +270,46 @@ const GradeBook: React.FC<GradeBookProps> = ({
     try {
       const data = filteredStudents.map(student => {
         const row: any = { [t('nameLabel')]: student.name, [t('classLabelTemplate').replace(':', '')]: student.classes[0] || '' };
+        
+        // --- 1. حساب درجات الفصل الحالي (كما كانت سابقاً) ---
         const semGrades = getSemesterGrades(student, currentSemester);
-        let total = 0;
+        let currentSemTotal = 0;
         
         tools.forEach(tool => {
           const g = semGrades.find(grade => grade.category.trim() === tool.name.trim());
           row[tool.name] = g ? g.score : '';
-          total += g ? Number(g.score) : 0;
+          currentSemTotal += g ? Number(g.score) : 0;
         });
         
-        row[t('excelTotal')] = total;
-        row[t('excelGrade')] = getGradeSymbol(total);
+        row[t('excelTotal')] = currentSemTotal;
+        row[t('excelGrade')] = getGradeSymbol(currentSemTotal);
+
+        // ========================================================
+        // 💉 الجراحة الدقيقة: إضافة النتيجة النهائية للعام الدراسي في الإكسل
+        // ========================================================
+        const sem1Grades = getSemesterGrades(student, '1');
+        const sem2Grades = getSemesterGrades(student, '2');
+        let sem1Total = 0;
+        let sem2Total = 0;
+
+        tools.forEach(tool => {
+           const g1 = sem1Grades.find(grade => grade.category.trim() === tool.name.trim());
+           if (g1) sem1Total += Number(g1.score);
+           
+           const g2 = sem2Grades.find(grade => grade.category.trim() === tool.name.trim());
+           if (g2) sem2Total += Number(g2.score);
+        });
+
+        // حساب النتيجة النهائية (المتوسط)
+        const finalAverage = (sem1Total + sem2Total) / 2;
+        
+        // إدراج البيانات كأعمدة جديدة في نهاية التقرير
+        row['مجموع الفصل الأول'] = sem1Total;
+        row['مجموع الفصل الثاني'] = sem2Total;
+        row['النتيجة النهائية (المعدل)'] = finalAverage;
+        row['التقدير العام'] = getGradeSymbol(finalAverage); // نستخدم نفس دالة الرمز المعتمدة لديك
+        // ========================================================
+
         return row;
       });
 
