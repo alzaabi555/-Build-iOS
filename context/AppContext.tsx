@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import type { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings, GroupCategorization } from '../types';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
-// ✅ 1. استيراد القاموس من الملف الخارجي
 import { translations } from './translations'; 
 
 type Language = 'ar' | 'en';
@@ -18,6 +17,9 @@ interface TeacherInfo {
   academicYear?: string;
   gender?: 'male' | 'female';
   civilId?: string; 
+  // 💉 الجينات الجديدة: تحديد دور المعلم والقسم الذي يشرف عليه
+  role?: 'teacher' | 'senior'; 
+  departmentName?: string;
 }
 
 interface AppContextType {
@@ -58,13 +60,36 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const DBFILENAME = 'raseddatabasev2.json';
+const DBFILENAME = 'teacher_raseddatabasev2.json';
+
+// 💉 1. دالة تنظيف وتوحيد الأسماء العربية
+const normalizeArabicName = (name: string) => {
+  if (!name) return '';
+  return name.replace(/[أإآءؤئ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/عبد /g, 'عبد').replace(/\s+/g, '').trim();
+};
+
+// 💉 2. التشفير البصمي السري
+const generateRasedId = (name: string, className: string) => {
+  if (!name || !className) {
+     return `RSD-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+  }
+
+  const normalizedString = `${normalizeArabicName(name)}-${className}`;
+  
+  let hash = 5381;
+  for (let i = 0; i < normalizedString.length; i++) {
+    hash = (hash * 33) ^ normalizedString.charCodeAt(i);
+  }
+  
+  const code = Math.abs(hash).toString(36).toUpperCase().padStart(5, '0').substring(0, 5);
+  return `RSD-${code}`;
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const [language, setLanguage] = useState<Language>(
-    (localStorage.getItem('appLanguage') as Language) || 'ar'
+    (localStorage.getItem('teacher_appLanguage') as Language) || 'ar'
   );
 
   const currentMonth = new Date().getMonth();
@@ -101,9 +126,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ? `${now.getFullYear()} / ${now.getFullYear() + 1}` 
     : `${now.getFullYear() - 1} / ${now.getFullYear()}`;
 
+  // 💉 تهيئة الحقول الجديدة للقيادة
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo>({
     name: '', school: '', subject: '', governorate: '', avatar: '', stamp: '',
-    ministryLogo: '', academicYear: defaultAcademicYear, gender: 'male', civilId: ''
+    ministryLogo: '', academicYear: defaultAcademicYear, gender: 'male', civilId: '',
+    role: 'teacher', departmentName: ''
   });
 
   const [assessmentTools, setAssessmentTools] = useState<AssessmentTool[]>([]);
@@ -145,39 +172,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         if (!data) {
-          const lsStudents = localStorage.getItem('studentData');
+          const lsStudents = localStorage.getItem('teacher_studentData');
           if (lsStudents) {
             data = {
               students: JSON.parse(lsStudents),
-              classes: JSON.parse(localStorage.getItem('classesData') || '[]'),
-              hiddenClasses: JSON.parse(localStorage.getItem('hiddenClasses') || '[]'),
-              groups: JSON.parse(localStorage.getItem('groupsData') || '[]'),
-              categorizations: JSON.parse(localStorage.getItem('categorizationsData') || '[]'),
-              schedule: JSON.parse(localStorage.getItem('scheduleData') || '[]'),
-              periodTimes: JSON.parse(localStorage.getItem('periodTimes') || '[]'),
-              assessmentTools: JSON.parse(localStorage.getItem('assessmentTools') || '[]'),
-              gradeSettings: JSON.parse(localStorage.getItem('gradeSettings') || 'null'),
-              currentSemester: localStorage.getItem('currentSemester'),
+              classes: JSON.parse(localStorage.getItem('teacher_classesData') || '[]'),
+              hiddenClasses: JSON.parse(localStorage.getItem('teacher_hiddenClasses') || '[]'),
+              groups: JSON.parse(localStorage.getItem('teacher_groupsData') || '[]'),
+              categorizations: JSON.parse(localStorage.getItem('teacher_categorizationsData') || '[]'),
+              schedule: JSON.parse(localStorage.getItem('teacher_scheduleData') || '[]'),
+              periodTimes: JSON.parse(localStorage.getItem('teacher_periodTimes') || '[]'),
+              assessmentTools: JSON.parse(localStorage.getItem('teacher_assessmentTools') || '[]'),
+              gradeSettings: JSON.parse(localStorage.getItem('teacher_gradeSettings') || 'null'),
+              currentSemester: localStorage.getItem('teacher_currentSemester'),
               teacherInfo: {
-                name: localStorage.getItem('teacherName') || '',
-                school: localStorage.getItem('schoolName') || '',
-                subject: localStorage.getItem('subjectName') || '',
-                governorate: localStorage.getItem('governorate') || '',
-                avatar: localStorage.getItem('teacherAvatar') || '',
-                stamp: localStorage.getItem('teacherStamp') || '',
-                ministryLogo: localStorage.getItem('ministryLogo') || '',
-                academicYear: localStorage.getItem('academicYear') || defaultAcademicYear,
-                gender: localStorage.getItem('teacherGender') || 'male',
-                civilId: localStorage.getItem('civilId') || '',
+                name: localStorage.getItem('teacher_teacherName') || '',
+                school: localStorage.getItem('teacher_schoolName') || '',
+                subject: localStorage.getItem('teacher_subjectName') || '',
+                governorate: localStorage.getItem('teacher_governorate') || '',
+                avatar: localStorage.getItem('teacher_teacherAvatar') || '',
+                stamp: localStorage.getItem('teacher_teacherStamp') || '',
+                ministryLogo: localStorage.getItem('teacher_ministryLogo') || '',
+                academicYear: localStorage.getItem('teacher_academicYear') || defaultAcademicYear,
+                gender: localStorage.getItem('teacher_teacherGender') || 'male',
+                civilId: localStorage.getItem('teacher_civilId') || '',
+                // 💉 استرجاع الدور والقسم من الذاكرة
+                role: localStorage.getItem('teacher_role') || 'teacher',
+                departmentName: localStorage.getItem('teacher_departmentName') || '',
               },
-              certificateSettings: JSON.parse(localStorage.getItem('certificateSettings') || 'null'),
-              defaultStudentGender: localStorage.getItem('defaultStudentGender') || 'male',
+              certificateSettings: JSON.parse(localStorage.getItem('teacher_certificateSettings') || 'null'),
+              defaultStudentGender: localStorage.getItem('teacher_defaultStudentGender') || 'male',
             };
           }
         }
 
         if (data) {
-          if (data.students) setStudents(data.students);
+          // المهاجر السري: حقن أكواد RSD
+          if (data.students && data.students.length > 0) {
+            const migratedStudents = data.students.map((student: any) => {
+              const { civilID, parentCode, ...cleanStudent } = student; 
+              if (!cleanStudent.rasedId) {
+                const studentClass = cleanStudent.classes && cleanStudent.classes.length > 0 ? cleanStudent.classes[0] : 'عادي';
+                const newId = generateRasedId(cleanStudent.name, studentClass);
+                return { ...cleanStudent, rasedId: newId };
+              }
+              return cleanStudent;
+            });
+            setStudents(migratedStudents);
+          } else {
+            setStudents([]);
+          }
+
           if (data.classes) setClasses(data.classes);
           if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
           if (data.groups) setGroups(data.groups);
@@ -229,21 +274,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       try {
-        localStorage.setItem('lastLocalUpdate', Date.now().toString());
-        localStorage.setItem('teacherName', teacherInfo.name || '');
-        localStorage.setItem('schoolName', teacherInfo.school || '');
-        localStorage.setItem('subjectName', teacherInfo.subject || '');
-        localStorage.setItem('academicYear', teacherInfo.academicYear || '');
-        localStorage.setItem('currentSemester', String(currentSemester));
-        localStorage.setItem('defaultStudentGender', defaultStudentGender);
-        localStorage.setItem('civilId', teacherInfo.civilId || '');
-        localStorage.setItem('appLanguage', language);
+        localStorage.setItem('teacher_lastLocalUpdate', Date.now().toString());
+        localStorage.setItem('teacher_teacherName', teacherInfo.name || '');
+        localStorage.setItem('teacher_schoolName', teacherInfo.school || '');
+        localStorage.setItem('teacher_subjectName', teacherInfo.subject || '');
+        localStorage.setItem('teacher_academicYear', teacherInfo.academicYear || '');
+        localStorage.setItem('teacher_currentSemester', String(currentSemester));
+        localStorage.setItem('teacher_defaultStudentGender', defaultStudentGender);
+        localStorage.setItem('teacher_civilId', teacherInfo.civilId || '');
+        localStorage.setItem('teacher_appLanguage', language);
+        
+        // 💉 حفظ الجينات الجديدة للإدارة
+        localStorage.setItem('teacher_role', teacherInfo.role || 'teacher');
+        localStorage.setItem('teacher_departmentName', teacherInfo.departmentName || '');
 
         if (!isHeavy) {
-            localStorage.setItem('studentData', JSON.stringify(students));
-            localStorage.setItem('classesData', JSON.stringify(classes));
-            localStorage.setItem('assessmentTools', JSON.stringify(assessmentTools));
-            localStorage.setItem('categorizationsData', JSON.stringify(categorizations));
+            localStorage.setItem('teacher_studentData', JSON.stringify(students));
+            localStorage.setItem('teacher_classesData', JSON.stringify(classes));
+            localStorage.setItem('teacher_assessmentTools', JSON.stringify(assessmentTools));
+            localStorage.setItem('teacher_categorizationsData', JSON.stringify(categorizations));
         }
       } catch (e) {}
     }, 2000); 
@@ -251,7 +300,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender, categorizations, language]);
 
-  // ✅ 2. محرك الترجمة يعتمد على الملف الخارجي
   const t = (key: keyof typeof translations['ar'] | string): string => {
     return (translations[language] as any)[key] || key;
   };
