@@ -2,17 +2,27 @@
 module.exports = {
   content: [
     "./index.html",
-  "./**/*.{js,ts,jsx,tsx,html}",
+    // 🚨 مسح الملفات الموجودة في الجذر مباشرة (مثل App.tsx و main.tsx)
+    "./*.{js,ts,jsx,tsx}",
+    
+    // 🚨 مسح المجلدات باحتمالي (الحرف الصغير والكبير) لكسر عناد Linux
     "./components/**/*.{js,ts,jsx,tsx}",
-    "./context/**/*.{js,ts,jsx,tsx}",
-    "./theme/**/*.{js,ts,jsx,tsx}",
-    "./utils/**/*.{js,ts,jsx,tsx}",
+    "./Components/**/*.{js,ts,jsx,tsx}",
+    
     "./pages/**/*.{js,ts,jsx,tsx}",
+    "./Pages/**/*.{js,ts,jsx,tsx}",
+    
+    "./theme/**/*.{js,ts,jsx,tsx}",
+    "./Theme/**/*.{js,ts,jsx,tsx}",
+    
+    "./context/**/*.{js,ts,jsx,tsx}",
+    "./Context/**/*.{js,ts,jsx,tsx}",
+    
+    "./utils/**/*.{js,ts,jsx,tsx}",
+    "./Utils/**/*.{js,ts,jsx,tsx}",
+    
     "./hooks/**/*.{js,ts,jsx,tsx}",
-    "!./node_modules/**/*",
-    "!./dist/**/*",
-    "!./build/**/*",
-    "!./.git/**/*"
+    "./Hooks/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {
