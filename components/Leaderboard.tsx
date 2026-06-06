@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Student } from '../types';
-import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal } from 'lucide-react'; 
+import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal, History } from 'lucide-react'; // 💉 تمت إضافة History
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
-import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
+import PageLayout from '../components/PageLayout'; 
 import positiveSound from '../assets/positive.mp3';
 
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -61,6 +61,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const certificateRef = useRef<HTMLDivElement>(null);
+    
+    // 💉 حالة جديدة لفتح وإغلاق نافذة الأرشيف
+    const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
     const safeStudents = Array.isArray(students) ? students : [];
     const safeClasses = Array.isArray(classes) ? classes : [];
@@ -161,6 +164,69 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
 
+    // 💉 المنطق السري: استخراج الفرسان للشهور السابقة بدون التأثير على الشهر الحالي
+    const archiveData = useMemo(() => {
+        try {
+            const dataMap = new Map<string, Map<string, Student & { points: number }>>();
+
+            safeStudents.forEach(student => {
+                (student.behaviors || []).forEach(b => {
+                    if (!b || !b.date) return;
+                    const d = new Date(b.date);
+                    if (isNaN(d.getTime())) return;
+
+                    // استثناء الشهر الحالي
+                    if (d.getMonth() === currentMonth && d.getFullYear() === today.getFullYear()) return;
+
+                    const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+
+                    if (!dataMap.has(monthKey)) {
+                        dataMap.set(monthKey, new Map());
+                    }
+
+                    const monthStudents = dataMap.get(monthKey)!;
+                    if (!monthStudents.has(student.id)) {
+                        monthStudents.set(student.id, { ...student, points: 0 });
+                    }
+
+                    const sRecord = monthStudents.get(student.id)!;
+                    sRecord.points += Number(b.points || 0);
+                });
+            });
+
+            const result: { year: number, month: number, monthName: string, top3: any[] }[] = [];
+            
+            dataMap.forEach((studentMap, monthKey) => {
+                const [yearStr, monthStr] = monthKey.split('-');
+                const year = parseInt(yearStr);
+                const month = parseInt(monthStr);
+                
+                const sorted = Array.from(studentMap.values())
+                    .filter(s => s.points > 0)
+                    .sort((a, b) => b.points - a.points)
+                    .slice(0, 3); // أخذ أول 3 فقط لكل شهر
+
+                if (sorted.length > 0) {
+                    result.push({
+                        year,
+                        month,
+                        monthName: t(monthKeys[month]) || '',
+                        top3: sorted
+                    });
+                }
+            });
+
+            // ترتيب الشهور من الأحدث للأقدم
+            return result.sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            });
+        } catch (error) {
+            console.error("Archive Error:", error);
+            return [];
+        }
+    }, [safeStudents, currentMonth, t]);
+
     const handleAddPoints = (student: Student) => {
         if (!onUpdateStudent) return;
         new Audio(positiveSound).play().catch(() => {});
@@ -214,14 +280,23 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     };
 
     return (
-        // 💉 الغلاف الشامل PageLayout
         <PageLayout
             title={getPageTitle()}
-            icon={<Crown className="w-6 h-6 text-warning" />} // تم استبدال الأيقونة الكبيرة بهذه
+            icon={<Crown className="w-6 h-6 text-warning" />}
             
-            // 💉 الأزرار العلوية يميناً (تغيير نوع المدرسة)
+            // 💉 إضافة زر الأرشيف بجانب اختيار نوع المدرسة بسلاسة
             rightActions={
                 <div className={`flex gap-2`} style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    {/* 💉 زر أرشيف الفرسان الجديد */}
+                    <button 
+                        onClick={() => setIsArchiveOpen(true)}
+                        className={`flex items-center gap-1 border rounded-lg text-[10px] px-2 py-1 outline-none font-bold cursor-pointer transition-colors border-borderColor text-textSecondary hover:bg-primary/10 hover:text-primary hover:border-primary/30`}
+                        title={t('archive') || 'أرشيف الفرسان'}
+                    >
+                        <History size={14} />
+                        <span className="hidden sm:inline">{t('archive') || 'الأرشيف'}</span>
+                    </button>
+
                     <select 
                         value={schoolType} 
                         onChange={(e) => setSchoolType(e.target.value as any)}
@@ -234,10 +309,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 </div>
             }
 
-            // 💉 الفلاتر والبحث وشريط الأخبار (تختفي بذكاء مع النزول للأسفل)
             leftActions={
                 <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    
                     {/* شريط الأخبار المتحرك */}
                     <div className={`w-full flex items-center rounded-xl border overflow-hidden shadow-sm bg-bgSoft border-borderColor backdrop-blur-md`}>
                         <div className={`px-4 py-2 flex items-center gap-1 font-black text-[11px] shrink-0 z-10 bg-warning text-white`}>
@@ -349,7 +422,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
             </div>
 
-            {/* النافذة المنزلقة للشهادات (أبقيتها كما هي) */}
+            {/* النافذة المنزلقة للشهادات */}
             <DrawerSheet isOpen={!!certificateStudent} onClose={() => !isGeneratingPdf && setCertificateStudent(null)} dir={dir} mode="full">
                 {certificateStudent && (
                     <div className="flex flex-col h-full bg-bgCard">
@@ -377,6 +450,62 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     </div>
                 )}
+            </DrawerSheet>
+
+            {/* 💉 النافذة المنزلقة الجديدة: أرشيف الفرسان */}
+            <DrawerSheet isOpen={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} dir={dir} mode="right">
+                <div className="flex flex-col h-full bg-bgCard">
+                    <div className="flex justify-between items-center p-4 bg-bgCard border-b border-borderColor shrink-0">
+                        <div className="flex items-center gap-2">
+                            <History className="w-5 h-5 text-primary" />
+                            <h3 className="font-black text-textPrimary">{t('archive') || 'أرشيف الفرسان (الشهور السابقة)'}</h3>
+                        </div>
+                        <button onClick={() => setIsArchiveOpen(false)} className="p-2 text-textSecondary hover:text-danger transition-colors rounded-lg bg-bgSoft hover:bg-danger/10"><X size={20} /></button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        {archiveData.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-40 text-textSecondary opacity-50">
+                                <History size={48} className="mb-2" />
+                                <p className="font-bold text-sm">لا يوجد أرشيف لشهور سابقة بعد</p>
+                            </div>
+                        ) : (
+                            archiveData.map((monthData, idx) => (
+                                <div key={idx} className="border border-borderColor bg-bgSoft rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -z-10" />
+                                    
+                                    <h4 className="font-black text-lg text-primary mb-4 flex items-center gap-2 border-b border-borderColor/50 pb-2">
+                                        <Trophy size={18} className="text-warning" />
+                                        فرسان شهر {monthData.monthName} {monthData.year}
+                                    </h4>
+                                    
+                                    <div className="space-y-3">
+                                        {monthData.top3.map((student, rank) => {
+                                            const medals = ['🥇', '🥈', '🥉'];
+                                            const colors = ['bg-warning/20 border-warning', 'bg-slate-300/30 border-slate-400', 'bg-amber-600/20 border-amber-600/50'];
+                                            
+                                            return (
+                                                <div key={student.id} className={`flex items-center gap-3 p-2 rounded-xl border ${colors[rank]} bg-bgCard shadow-sm`}>
+                                                    <div className="text-2xl w-8 text-center">{medals[rank]}</div>
+                                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-borderColor bg-bgSoft shrink-0">
+                                                        <StudentAvatar gender={student.gender} className="w-full h-full" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-sm truncate text-textPrimary">{student.name}</p>
+                                                        <p className="text-[10px] text-textSecondary">{student.classes?.[0] || 'بدون فصل'}</p>
+                                                    </div>
+                                                    <div className="font-black text-warning bg-warning/10 px-3 py-1 rounded-lg border border-warning/20">
+                                                        {student.points} <span className="text-[10px]">نقطة</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </DrawerSheet>
             
         </PageLayout>
