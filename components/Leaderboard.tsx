@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Student } from '../types';
-import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal, History } from 'lucide-react'; // 💉 تمت إضافة History
+import { Trophy, Crown, Sparkles, Star, Search, Award, Download, X, Loader2, MinusCircle, Medal, History } from 'lucide-react'; 
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
@@ -62,7 +62,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const certificateRef = useRef<HTMLDivElement>(null);
     
-    // 💉 حالة جديدة لفتح وإغلاق نافذة الأرشيف
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
     const safeStudents = Array.isArray(students) ? students : [];
@@ -164,12 +163,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
 
-    // 💉 المنطق السري: استخراج الفرسان للشهور السابقة بدون التأثير على الشهر الحالي
+    // 💉 المنطق السري الجديد: استخراج الفرسان للشهور السابقة مقسمين حسب الفصول (Class-Based Archive)
     const archiveData = useMemo(() => {
         try {
-            const dataMap = new Map<string, Map<string, Student & { points: number }>>();
+            // Map<MonthKey, Map<ClassName, Map<StudentId, Student>>>
+            const dataMap = new Map<string, Map<string, Map<string, Student & { points: number }>>>();
 
             safeStudents.forEach(student => {
+                const sClass = (student.classes && student.classes.length > 0) ? student.classes[0] : 'بدون فصل';
+
                 (student.behaviors || []).forEach(b => {
                     if (!b || !b.date) return;
                     const d = new Date(b.date);
@@ -183,35 +185,51 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     if (!dataMap.has(monthKey)) {
                         dataMap.set(monthKey, new Map());
                     }
+                    const monthClasses = dataMap.get(monthKey)!;
 
-                    const monthStudents = dataMap.get(monthKey)!;
-                    if (!monthStudents.has(student.id)) {
-                        monthStudents.set(student.id, { ...student, points: 0 });
+                    if (!monthClasses.has(sClass)) {
+                        monthClasses.set(sClass, new Map());
+                    }
+                    const classStudents = monthClasses.get(sClass)!;
+
+                    if (!classStudents.has(student.id)) {
+                        classStudents.set(student.id, { ...student, points: 0 });
                     }
 
-                    const sRecord = monthStudents.get(student.id)!;
+                    const sRecord = classStudents.get(student.id)!;
                     sRecord.points += Number(b.points || 0);
                 });
             });
 
-            const result: { year: number, month: number, monthName: string, top3: any[] }[] = [];
+            const result: { year: number, month: number, monthName: string, classGroups: { className: string, top3: any[] }[] }[] = [];
             
-            dataMap.forEach((studentMap, monthKey) => {
+            dataMap.forEach((monthClasses, monthKey) => {
                 const [yearStr, monthStr] = monthKey.split('-');
                 const year = parseInt(yearStr);
                 const month = parseInt(monthStr);
                 
-                const sorted = Array.from(studentMap.values())
-                    .filter(s => s.points > 0)
-                    .sort((a, b) => b.points - a.points)
-                    .slice(0, 3); // أخذ أول 3 فقط لكل شهر
+                const classGroups: { className: string, top3: any[] }[] = [];
 
-                if (sorted.length > 0) {
+                monthClasses.forEach((studentMap, className) => {
+                    const sorted = Array.from(studentMap.values())
+                        .filter(s => s.points > 0)
+                        .sort((a, b) => b.points - a.points)
+                        .slice(0, 3); // أخذ أول 3 فقط لكل فصل
+
+                    if (sorted.length > 0) {
+                        classGroups.push({ className, top3: sorted });
+                    }
+                });
+
+                // ترتيب الفصول أبجدياً
+                classGroups.sort((a, b) => a.className.localeCompare(b.className));
+
+                if (classGroups.length > 0) {
                     result.push({
                         year,
                         month,
                         monthName: t(monthKeys[month]) || '',
-                        top3: sorted
+                        classGroups
                     });
                 }
             });
@@ -284,10 +302,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             title={getPageTitle()}
             icon={<Crown className="w-6 h-6 text-warning" />}
             
-            // 💉 إضافة زر الأرشيف بجانب اختيار نوع المدرسة بسلاسة
             rightActions={
                 <div className={`flex gap-2`} style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    {/* 💉 زر أرشيف الفرسان الجديد */}
                     <button 
                         onClick={() => setIsArchiveOpen(true)}
                         className={`flex items-center gap-1 border rounded-lg text-[10px] px-2 py-1 outline-none font-bold cursor-pointer transition-colors border-borderColor text-textSecondary hover:bg-primary/10 hover:text-primary hover:border-primary/30`}
@@ -311,7 +327,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
             leftActions={
                 <div className="space-y-2 w-full mt-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    {/* شريط الأخبار المتحرك */}
                     <div className={`w-full flex items-center rounded-xl border overflow-hidden shadow-sm bg-bgSoft border-borderColor backdrop-blur-md`}>
                         <div className={`px-4 py-2 flex items-center gap-1 font-black text-[11px] shrink-0 z-10 bg-warning text-white`}>
                             <Sparkles size={14} className="animate-pulse" />
@@ -326,7 +341,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     </div>
 
                     <div className="flex gap-2">
-                        {/* حقل البحث */}
                         <div className="relative flex-1">
                             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
                             <input 
@@ -338,7 +352,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                             />
                         </div>
 
-                        {/* كبسولة الفصول المدمجة */}
                         <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
                             <div className={`inline-flex items-center p-1 rounded-xl border backdrop-blur-md transition-all bg-bgSoft border-borderColor h-full`}>
                                 <button 
@@ -365,10 +378,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             }
         >
 
-            {/* ⬇️ محتوى الصفحة المباشر (ينزلق بانسيابية) ⬇️ */}
             <div className="animate-in fade-in duration-500 pt-4">
                 
-                {/* منصة التتويج للثلاثة الأوائل */}
                 {topThree.length > 0 && (
                     <div className="flex justify-center items-end gap-2 md:gap-6 py-4 mb-6">
                         {[topThree[1], topThree[0], topThree[2]].map((s, i) => {
@@ -399,7 +410,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     </div>
                 )}
 
-                {/* بقية الطلاب */}
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3 pb-8">
                     {restOfStudents.map((s, index) => {
                         if (!s) return null;
@@ -422,7 +432,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
 
             </div>
 
-            {/* النافذة المنزلقة للشهادات */}
             <DrawerSheet isOpen={!!certificateStudent} onClose={() => !isGeneratingPdf && setCertificateStudent(null)} dir={dir} mode="full">
                 {certificateStudent && (
                     <div className="flex flex-col h-full bg-bgCard">
@@ -452,7 +461,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 )}
             </DrawerSheet>
 
-            {/* 💉 النافذة المنزلقة الجديدة: أرشيف الفرسان */}
+            {/* 💉 الأرشيف المعدل: مفصول بالشهور ثم الفصول */}
             <DrawerSheet isOpen={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} dir={dir} mode="right">
                 <div className="flex flex-col h-full bg-bgCard">
                     <div className="flex justify-between items-center p-4 bg-bgCard border-b border-borderColor shrink-0">
@@ -479,27 +488,36 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                         فرسان شهر {monthData.monthName} {monthData.year}
                                     </h4>
                                     
-                                    <div className="space-y-3">
-                                        {monthData.top3.map((student, rank) => {
-                                            const medals = ['🥇', '🥈', '🥉'];
-                                            const colors = ['bg-warning/20 border-warning', 'bg-slate-300/30 border-slate-400', 'bg-amber-600/20 border-amber-600/50'];
-                                            
-                                            return (
-                                                <div key={student.id} className={`flex items-center gap-3 p-2 rounded-xl border ${colors[rank]} bg-bgCard shadow-sm`}>
-                                                    <div className="text-2xl w-8 text-center">{medals[rank]}</div>
-                                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-borderColor bg-bgSoft shrink-0">
-                                                        <StudentAvatar gender={student.gender} className="w-full h-full" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-bold text-sm truncate text-textPrimary">{student.name}</p>
-                                                        <p className="text-[10px] text-textSecondary">{student.classes?.[0] || 'بدون فصل'}</p>
-                                                    </div>
-                                                    <div className="font-black text-warning bg-warning/10 px-3 py-1 rounded-lg border border-warning/20">
-                                                        {student.points} <span className="text-[10px]">نقطة</span>
-                                                    </div>
+                                    {/* 💉 تكرار الفصول داخل الشهر */}
+                                    <div className="space-y-4">
+                                        {monthData.classGroups.map((cg, cIdx) => (
+                                            <div key={cIdx} className="bg-bgCard/50 p-3 rounded-xl border border-borderColor/50">
+                                                <h5 className="font-bold text-sm mb-2 text-primary border-b border-borderColor/30 pb-1">
+                                                   فصل: {cg.className}
+                                                </h5>
+                                                <div className="space-y-2">
+                                                    {cg.top3.map((student, rank) => {
+                                                        const medals = ['🥇', '🥈', '🥉'];
+                                                        const colors = ['bg-warning/20 border-warning', 'bg-slate-300/30 border-slate-400', 'bg-amber-600/20 border-amber-600/50'];
+                                                        
+                                                        return (
+                                                            <div key={student.id} className={`flex items-center gap-3 p-2 rounded-xl border ${colors[rank]} bg-bgCard shadow-sm`}>
+                                                                <div className="text-2xl w-8 text-center">{medals[rank]}</div>
+                                                                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-borderColor bg-bgSoft shrink-0">
+                                                                    <StudentAvatar gender={student.gender} className="w-full h-full" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-bold text-sm truncate text-textPrimary">{student.name}</p>
+                                                                </div>
+                                                                <div className="font-black text-warning bg-warning/10 px-3 py-1 rounded-lg border border-warning/20">
+                                                                    {student.points} <span className="text-[10px]">نقطة</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))
