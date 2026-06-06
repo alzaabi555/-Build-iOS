@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, MicOff, Volume2, CheckCircle, XCircle, Bot } from 'lucide-react';
+import { Mic, MicOff, CheckCircle, XCircle, Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 
@@ -7,7 +7,6 @@ interface VoiceAssistantProps {
   onNavigate?: (tab: string) => void;
 }
 
-// أداة التعرف على الصوت المدعومة في المتصفحات
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
@@ -19,41 +18,41 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
   
   const recognitionRef = useRef<any>(null);
   const feedbackTimerRef = useRef<NodeJS.Timeout>();
-  const silenceWatchdogRef = useRef<NodeJS.Timeout>(); // 🛡️ حارس الصمت لمنع التعليق
+  
+  // 🌟 هذا هو السر الجديد: متغير يخبر التطبيق أنك تريد المايك مفتوحاً دائماً
+  const isIntentionallyListening = useRef(false); 
 
   const studentsRef = useRef(students);
   useEffect(() => { studentsRef.current = students; }, [students]);
   const navigateRef = useRef(onNavigate);
   useEffect(() => { navigateRef.current = onNavigate; }, [onNavigate]);
 
-  // 🗣️ شخصية المساعد الذكي (التحدث)
+  // 🗣️ التحدث بصوت المساعد
   const speak = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // إيقاف أي كلام سابق لتجنب التداخل
+      window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ar-SA';
-      utterance.rate = 1.1; // سرعة الرد
-      utterance.pitch = 1.0;
+      utterance.rate = 1.1; 
       window.speechSynthesis.speak(utterance);
     }
   }, []);
 
   const displayFeedback = useCallback((msg: string, type: 'success' | 'error' | 'info' | null, spokenText?: string) => {
     setFeedback({ message: msg, type });
-    if (spokenText) speak(spokenText); // التحدث بالرد إذا وجد
+    if (spokenText) speak(spokenText); 
 
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     feedbackTimerRef.current = setTimeout(() => {
       setFeedback({ message: '', type: null }); 
-    }, 4000); // إبقاء الرسالة لـ 4 ثواني ثم إخفاؤها
+    }, 4000); 
   }, [speak]);
 
-  // 🧹 معالجة النصوص القادمة من جوجل لزيادة دقة الفهم
+  // 🧹 معالجة النصوص 
   const normalizeText = (text: string) => {
     return text
-      .replace(/[\u064B-\u065F\u0640]/g, '') // إزالة التشكيل
+      .replace(/[\u064B-\u065F\u0640]/g, '') 
       .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
-      .replace(/^(ل|ب|ك|ف|ال)/, '') // إزالة السوابق
       .toLowerCase().trim();
   };
 
@@ -64,34 +63,37 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     if (text.match(/(خمس|5)/)) return 5;
     if (text.match(/(ست|6)/)) return 6;
     if (text.match(/(عشر|10)/)) return 10;
-    return 1; // الافتراضي نقطة واحدة
+    return 1; 
   };
 
-  // 🧠 المعالج اللغوي المركزي
+  // 🧠 المعالج اللغوي
   const processCommand = useCallback((command: string) => {
     if (!command.trim()) return;
     const text = normalizeText(command);
     
-    // 1. أوامر الانتقال السريع
-    const isNavigationWord = text.match(/(افتح|روح|انتقل|عرض|هات|صفح|شاش|ودني|ورني|قسم)/);
-    if (isNavigationWord) {
-        if (text.match(/(رئيسي|داشبورد|لوحه)/)) { navigateRef.current?.('dashboard'); displayFeedback('تم', 'success', 'حاضر، فتحت لك الرئيسية'); return; }
-        if (text.match(/(تقرير|احصائيات|نتايج)/)) { navigateRef.current?.('reports'); displayFeedback('تم', 'success', 'إليك التقارير'); return; }
-        if (text.match(/(درجات|رصد)/)) { navigateRef.current?.('grades'); displayFeedback('تم', 'success', 'سجل الدرجات جاهز'); return; }
-        if (text.match(/(حضور|غياب|تحضير)/)) { navigateRef.current?.('attendance'); displayFeedback('تم', 'success', 'فتحت سجل الغياب'); return; }
-        if (text.match(/(طلاب|طلبه)/)) { navigateRef.current?.('students'); displayFeedback('تم', 'success', 'قائمة الطلاب أمامك'); return; }
-        if (text.match(/(فرسان|شرف|اوائل)/)) { navigateRef.current?.('leaderboard'); displayFeedback('تم', 'success', 'لوحة الشرف والفرسان'); return; }
+    // 1. أوامر الانتقال السريع (تمت إعادة "المزيد" وتوسيع الكلمات)
+    const isNavigationWord = text.match(/(افتح|روح|انتقل|عرض|هات|صفح|شاش|ودني|ورني|قسم|مزيد|المزيد)/);
+    if (isNavigationWord || text.match(/(المزيد|اعدادات)/)) {
+        if (text.match(/(رئيسي|داشبورد|لوحه)/)) { navigateRef.current?.('dashboard'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(تقرير|احصائيات|نتايج)/)) { navigateRef.current?.('reports'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(درجات|رصد)/)) { navigateRef.current?.('grades'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(حضور|غياب|تحضير)/)) { navigateRef.current?.('attendance'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(طلاب|طلبه)/)) { navigateRef.current?.('students'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(فرسان|شرف|اوائل)/)) { navigateRef.current?.('leaderboard'); displayFeedback('تم', 'success'); return; }
+        if (text.match(/(مزيد|المزيد|اعدادات|قائمه)/)) { navigateRef.current?.('more'); displayFeedback('تم', 'success'); return; } // 🌟 إصلاح المزيد
     }
 
-    // 2. البحث عن الطالب في السجل
+    // 2. البحث عن الطالب
     let foundStudent: Student | undefined;
+    const searchWords = text.split(' ').filter(w => !w.match(/^(ل|ب|ك|ف|ال|يا)$/)); // فلترة سريعة
+    
     for (const s of studentsRef.current) {
       const studentWords = s.name.split(' ').map(normalizeText);
       const firstName = studentWords[0];
-      // السماح بتطابق الاسم الأول إذا كان مميزاً، أو الاسم الأول والثاني لمزيد من الدقة
+      
       if (firstName.length >= 2 && text.includes(firstName)) {
         foundStudent = s;
-        if (studentWords.length > 1 && text.includes(studentWords[1])) break; // تطابق قوي
+        if (studentWords.length > 1 && text.includes(studentWords[1])) break; 
       }
     }
 
@@ -106,55 +108,47 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
       if (isAbsent) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, attendance: [...(s.attendance || []), { date: new Date().toISOString(), status: 'absent' }] } : s));
-        displayFeedback(`تم تسجيل غياب: ${foundStudent.name}`, 'success', `تم تسجيل غياب ${shortName}`); 
+        displayFeedback(`تم تسجيل غياب: ${foundStudent.name}`, 'success', `غياب ${shortName}`); 
         return;
       }
       else if (isPresent) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, attendance: [...(s.attendance || []), { date: new Date().toISOString(), status: 'present' }] } : s));
-        displayFeedback(`تم تحضير: ${foundStudent.name}`, 'success', `تم تحضير ${shortName}`); 
+        displayFeedback(`تم تحضير: ${foundStudent.name}`, 'success', `حاضر ${shortName}`); 
         return;
       }
       else if (isNegative) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, behaviors: [...(s.behaviors || []), { id: Math.random().toString(), date: new Date().toISOString(), description: `تقويم سلوك (${amount})`, type: 'negative', points: -amount }] } : s));
-        displayFeedback(`خصم ${amount} من: ${foundStudent.name}`, 'success', `تم خصم ${amount} من ${shortName}`); 
+        displayFeedback(`خصم ${amount} من: ${foundStudent.name}`, 'success', `خصم ${amount} من ${shortName}`); 
         return;
       }
       else if (isPositive) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, behaviors: [...(s.behaviors || []), { id: Math.random().toString(), date: new Date().toISOString(), description: `مشاركة وتفاعل (${amount})`, type: 'positive', points: amount }] } : s));
-        const replies = [`كفو يا ${shortName}`, `تم إضافة ${amount} للبطل ${shortName}`, `ممتاز يا ${shortName}`];
-        displayFeedback(`إضافة ${amount} لـ: ${foundStudent.name}`, 'success', replies[Math.floor(Math.random() * replies.length)]); 
+        displayFeedback(`إضافة ${amount} لـ: ${foundStudent.name}`, 'success', `تم لـ ${shortName}`); 
         return;
       }
     }
 
-    // إذا لم يفهم الأمر
-    displayFeedback(`لم أتمكن من تنفيذ: "${command}"`, 'error', 'عفواً، لم أفهم الأمر، حاول مجدداً');
+    displayFeedback(`لم أفهم: "${command}"`, 'error');
   }, [displayFeedback, setStudents]);
 
-  // 🎙️ تهيئة المايكروفون وإدارته بذكاء
+  // 🎙️ محرك الاستماع المستمر (Continuous Engine)
   useEffect(() => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    // 💉 جعلناه false ليعمل بنظام (اضغط وتحدث) مثل سيري لتجنب التعليق وصوت التطنين المتكرر
-    recognition.continuous = false; 
-    recognition.interimResults = false; // 💉 ننتظر الجملة النهائية لسرعة الاستجابة ودقتها
-    recognition.lang = 'ar-OM'; // يمكن تغييرها لـ ar-SA
+    recognition.continuous = true; // 🌟 عودة الاستماع المستمر المفتوح
+    recognition.interimResults = false; // الانتظار حتى تنهي الجملة لسرعة التنفيذ
+    recognition.lang = 'ar-OM'; 
 
     recognition.onstart = () => { 
         setIsListening(true); 
-        setFeedback({ message: 'راصد يسمعك الآن، تفضل...', type: 'info' }); 
-        
-        // 🛡️ تشغيل حارس الصمت: إذا لم يقل شيئاً خلال 6 ثواني، يتم الإغلاق تلقائياً
-        if (silenceWatchdogRef.current) clearTimeout(silenceWatchdogRef.current);
-        silenceWatchdogRef.current = setTimeout(() => {
-            recognition.stop();
-        }, 6000);
+        setFeedback({ message: 'راصد يستمع إليك باستمرار...', type: 'info' }); 
     };
     
     recognition.onresult = (event: any) => {
-        if (silenceWatchdogRef.current) clearTimeout(silenceWatchdogRef.current); // إيقاف الحارس لأنه تحدث
-        const finalText = event.results[0][0].transcript;
+        // التقاط الجملة الأخيرة فقط من سلسلة الاستماع المستمر
+        const currentIdx = event.resultIndex;
+        const finalText = event.results[currentIdx][0].transcript;
         
         setTranscript(finalText);
         if (finalText) {
@@ -163,32 +157,41 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     };
 
     recognition.onend = () => {
-        setIsListening(false);
-        if (silenceWatchdogRef.current) clearTimeout(silenceWatchdogRef.current);
+        // 🛡️ هذا هو محرك الإنعاش: إذا أغلق الأندرويد المايك، نفتحه نحن فوراً ما دمت لم تضغط زر الإيقاف!
+        if (isIntentionallyListening.current) {
+            try {
+                recognition.start();
+            } catch (error) {
+                // إذا فشل الإنعاش الفوري، ننتظر نصف ثانية ونحاول مجدداً بصمت
+                setTimeout(() => {
+                    if (isIntentionallyListening.current && recognitionRef.current) {
+                        try { recognitionRef.current.start(); } catch (e) {}
+                    }
+                }, 500);
+            }
+        } else {
+            setIsListening(false);
+        }
     };
 
     recognition.onerror = (event: any) => {
-        setIsListening(false);
-        if (silenceWatchdogRef.current) clearTimeout(silenceWatchdogRef.current);
-        
         if (event.error === 'not-allowed') {
-            displayFeedback('الرجاء السماح للتطبيق باستخدام المايكروفون', 'error', 'عذراً، يجب إعطاء صلاحية المايكروفون أولاً');
-        } else if (event.error === 'no-speech') {
-            // لا تفعل شيئاً، سينتهي بهدوء
-        } else {
-            console.error("Mic Error: ", event.error);
+            isIntentionallyListening.current = false;
+            setIsListening(false);
+            displayFeedback('الرجاء السماح للتطبيق باستخدام المايكروفون', 'error');
         }
+        // تجاهل أخطاء الصمت لأن محرك الإنعاش سيعالجه
     };
 
     recognitionRef.current = recognition;
 
     return () => { 
-        if (silenceWatchdogRef.current) clearTimeout(silenceWatchdogRef.current);
+        isIntentionallyListening.current = false;
         recognition.stop(); 
     };
   }, [processCommand, displayFeedback]); 
 
-  // 🎯 زر التشغيل (إدارة ذكية)
+  // 🎯 زر التشغيل والإيقاف اليدوي
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
         displayFeedback('متصفحك لا يدعم الأوامر الصوتية', 'error');
@@ -196,16 +199,19 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     }
 
     if (isListening) {
+        isIntentionallyListening.current = false; // إيقاف مقصود من المستخدم
         recognitionRef.current.stop();
+        setFeedback({ message: 'تم إيقاف المساعد الصوتي', type: 'info' });
+        speak('تم الإيقاف');
     } else {
+        isIntentionallyListening.current = true; // تشغيل مقصود للاستماع المستمر
         try {
-            // 🗣️ تشغيل صوت خفيف لتهيئة التخاطب (اختياري)
-            speak('نعم أستاذي'); 
+            speak('معك أستاذي'); 
             setTimeout(() => {
                 recognitionRef.current.start();
-            }, 600); // تأخير بسيط حتى ينتهي من قول "نعم"
+            }, 500);
         } catch (e) {
-            console.warn("Mic already started or error: ", e);
+            console.warn(e);
         }
     }
   }, [isListening, displayFeedback, speak]);
@@ -214,13 +220,13 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
   return (
     <div className={`fixed bottom-24 md:bottom-8 ${dir === 'rtl' ? 'left-6' : 'right-6'} z-[99999] flex flex-col items-${dir === 'rtl' ? 'start' : 'end'} pointer-events-none`} dir={dir}>
-      {/* 💭 فقاعة المحادثة الذكية */}
+      {/* 💭 فقاعة المحادثة */}
       {(isListening || transcript || feedback.message) && (
         <div className="mb-4 bg-white/95 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-3xl p-4 max-w-xs md:max-w-sm pointer-events-auto animate-in slide-in-from-bottom-4 fade-in duration-300 shadow-indigo-500/20">
           <div className="flex items-center gap-2 mb-2">
             {isListening ? (
               <div className="flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[11px] font-bold animate-pulse tracking-wide">
-                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></div> المساعد يسمعك...
+                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></div> المايك مفتوح...
               </div>
             ) : feedback.type === 'success' ? (
               <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[11px] font-bold">
@@ -256,7 +262,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
             <Mic className="w-7 h-7 relative z-10 animate-pulse" />
           </div>
         ) : (
-          <Mic className="w-7 h-7" />
+          <MicOff className="w-7 h-7" />
         )}
       </button>
     </div>
