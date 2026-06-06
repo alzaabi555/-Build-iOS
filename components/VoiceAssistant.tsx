@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, MicOff, Loader2, Volume2, CheckCircle, XCircle } from 'lucide-react';
+import { Mic, MicOff, Volume2, CheckCircle, XCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 
@@ -18,6 +18,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
   
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
+  const feedbackTimerRef = useRef<NodeJS.Timeout>();
 
   const studentsRef = useRef(students);
   useEffect(() => { studentsRef.current = students; }, [students]);
@@ -33,16 +34,32 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     }
   };
 
+  // 👁️ الميزة الجديدة: إخفاء المربع الذكي بعد التنفيذ
+  const displayFeedback = useCallback((msg: string, type: 'success' | 'error' | 'info' | null) => {
+    setFeedback({ message: msg, type });
+    
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    
+    // إخفاء أو إعادة تعيين الرسالة بعد 3 ثواني
+    feedbackTimerRef.current = setTimeout(() => {
+      if (shouldListenRef.current) {
+        setFeedback({ message: 'راصد يستمع الآن...', type: 'info' });
+      } else {
+        setFeedback({ message: '', type: null }); // إخفاء المربع بالكامل
+      }
+    }, 3000);
+  }, []);
+
   // 1️⃣ تنظيف النص
   const normalizeText = (text: string) => {
     return text
-      .replace(/[\u064B-\u065F\u0640]/g, '') // إزالة التشكيل
+      .replace(/[\u064B-\u065F\u0640]/g, '')
       .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
-      .replace(/^(ل|ب|ك|ف)/, '') // إزالة الحروف المتصلة من بداية الكلمة للتسهيل
+      .replace(/^(ل|ب|ك|ف|ال)/, '') 
       .toLowerCase();
   };
 
-  // 2️⃣ استخراج الأرقام (الكميات) من الصوت
+  // 2️⃣ استخراج الأرقام
   const extractAmount = (text: string): number => {
     const words = text.split(' ');
     for (let w of words) {
@@ -56,153 +73,153 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
       if (w.match(/(تسع|9)/)) return 9;
       if (w.match(/(عشر|10)/)) return 10;
     }
-    return 1; // الافتراضي
+    return 1;
   };
 
-  // 3️⃣ خريطة طرق تعتمد على قاموس (Translations) الخاص بتطبيقك
+  // 3️⃣ خريطة التنقل المركزي
   const getTargetRoute = (text: string): string | null => {
     const cmd = text.toLowerCase();
-    
-    // التوافق مع: navDashboard, dashboardMenu, رئيسية
     if (cmd.match(/(رئيسي|داشبورد|لوحه القياده|شاشه رئيسي)/)) return 'dashboard';
-    
-    // التوافق مع: navReports, reportsMenu, تقارير
     if (cmd.match(/(تقرير|تقارير|احصائيات|نتايج|نتائج|شهادات|استدعاء)/)) return 'reports';
-    
-    // التوافق مع: navGrades, gradesMenu, درجات
     if (cmd.match(/(درجات|درجه|رصد|سجل الدرجات)/)) return 'grades';
-    
-    // التوافق مع: navAttendance, attendanceMenu, حضور
     if (cmd.match(/(حضور|غياب|سجل الغياب|تحضير)/)) return 'attendance';
-    
-    // التوافق مع: navStudents, studentsMenu, طلاب
     if (cmd.match(/(طلاب|طلبه|قائمه الطلاب|سجل الطلاب|وارد الاباء)/)) return 'students';
-    
-    // التوافق مع: navGroups, groupsMenu, مجموعات
     if (cmd.match(/(مجموع|مجموعات|فرق|مجموعه)/)) return 'groups';
-    
-    // التوافق مع: navKnights, knightsMenu, فرسان
     if (cmd.match(/(فرسان|شرف|اوائل|متصدر|لوحه الشرف)/)) return 'leaderboard';
-    
-    // التوافق مع: navTasks, tasksMenu, مهام
     if (cmd.match(/(مهام|واجب|تاسك|مهمه)/)) return 'tasks';
-    
-    // التوافق مع: navLibrary, libraryMenu, مكتبة
     if (cmd.match(/(مكتبه|مكتبة|مصادر|كتب|ملفات)/)) return 'library';
-    
-    // التوافق مع: navSync, syncMenu, مزامنة
     if (cmd.match(/(مزامنه|مزامنة|سحاب|تزامن|رفع|باك اب|احتياطي|نسخ)/)) return 'sync';
-    
-    // التوافق مع: navSettings, settingsMenu, إعدادات
     if (cmd.match(/(اعدادات|ضبط|خصائص|تفضيل)/)) return 'settings';
-    
-    // التوافق مع: navGuide, userGuide, دليل
     if (cmd.match(/(دليل|شرح|مساعده|استخدام)/)) return 'guide';
-    
-    // التوافق مع: navAbout, aboutMenu, حول
     if (cmd.match(/(حول|عن التطبيق|تطبيق)/)) return 'about';
     
-    // في حال طلب الخروج / تسجيل خروج
-    if (cmd.match(/(قفل|خروج|اغلاق)/)) {
+    if (cmd.match(/(قفل|خروج|اغلاق التطبيق|تسجيل خروج)/)) {
        window.location.reload();
        return null;
     }
-
     return null;
   };
 
-  // 🧠 المعالج اللغوي المطور والفاصل بين التنقل والتقييم
+  // 👁️ محرك البحث والتفاعل الذكي مع مكونات الشاشة (الإصبع الافتراضي)
+  const scanAndClick = (command: string): boolean => {
+    const actionsMap: { [key: string]: RegExp } = {
+      'add': /(اضافه|جديد|اضف|انشاء)/,
+      'save': /(حفظ|تأكيد|تاكيد|موافق|تم)/,
+      'cancel': /(الغاء|تراجع)/,
+      'close': /(اغلاق النافذه|اغلق|سكّر|رجوع|عوده|اكس)/,
+      'edit': /(تعديل|حرر|غير)/,
+      'delete': /(حذف|امسح|ازاله|ازالة)/,
+      'export': /(تصدير|اكسل|بي دي اف|pdf|طباعه|اطبع)/,
+      'search': /(بحث|ابحث|دور)/,
+      'filter': /(تصفيه|فلتر)/
+    };
+
+    const clickableElements = Array.from(document.querySelectorAll('button, a, [role="button"], input[type="submit"]'));
+    let bestMatch: HTMLElement | null = null;
+
+    for (const el of clickableElements) {
+      const elementText = normalizeText((el.textContent || '').trim());
+      const ariaLabel = normalizeText(el.getAttribute('aria-label') || '');
+      const voiceData = normalizeText(el.getAttribute('data-voice') || ''); 
+
+      if (elementText && command.includes(elementText)) {
+        bestMatch = el as HTMLElement; break;
+      }
+      
+      if (ariaLabel && command.includes(ariaLabel)) {
+        bestMatch = el as HTMLElement; break;
+      }
+
+      for (const [action, regex] of Object.entries(actionsMap)) {
+        if (regex.test(command)) {
+          if (regex.test(elementText) || regex.test(ariaLabel) || regex.test(voiceData)) {
+            bestMatch = el as HTMLElement; break;
+          }
+        }
+      }
+      if (bestMatch) break;
+    }
+
+    if (bestMatch) {
+      bestMatch.style.boxShadow = '0 0 0 4px rgba(99, 102, 241, 0.5)';
+      setTimeout(() => { if (bestMatch) bestMatch.style.boxShadow = ''; }, 300);
+      bestMatch.click(); 
+      return true;
+    }
+
+    return false;
+  };
+
+  // 🧠 المعالج اللغوي الشامل
   const processCommand = (command: string) => {
     if (!command.trim()) return;
     
-    // نحتفظ بالنص الأصلي لبعض العمليات
     const originalText = command.trim();
     const text = normalizeText(originalText);
     
-    // أ) تصنيف نية المتحدث (هل يريد الانتقال أم يريد تقييم طالب؟)
+    if (scanAndClick(text)) {
+      displayFeedback(`تم تنفيذ الإجراء`, 'success');
+      return;
+    }
+
     const isNavigationWord = text.match(/(افتح|روح|انتقل|عرض|هات|صفح|شاش|ودني|ورني|قسم)/);
     const targetRoute = getTargetRoute(text);
 
-    // ب) البحث عن الطالب
     let foundStudent: Student | undefined;
     for (const s of studentsRef.current) {
       const studentWords = s.name.split(' ').map(normalizeText);
       const firstName = studentWords[0];
-      
       if (firstName.length >= 2 && text.includes(firstName)) {
         foundStudent = s;
-        // تقوية التطابق في حال ذكر الاسم الثاني
-        if (studentWords.length > 1 && text.includes(studentWords[1])) {
-          break; // تطابق قوي جداً
-        }
+        if (studentWords.length > 1 && text.includes(studentWords[1])) break;
       }
     }
 
-    // ==========================================
-    // 1️⃣ أولوية التنقل: إذا نطق كلمة واضحة للتنقل (بدون اسم طالب، أو بوجود كلمة "افتح")
-    // ==========================================
     if (targetRoute && (isNavigationWord || !foundStudent)) {
       if (navigateRef.current) {
         navigateRef.current(targetRoute);
-        setFeedback({ message: `جاري الانتقال...`, type: 'success' });
-        // speak(`جاري فتح القسم`); // قللناها لعدم الإزعاج
+        displayFeedback(`جاري الانتقال...`, 'success');
         return;
       }
     }
 
-    // ==========================================
-    // 2️⃣ أولوية تقييم الطالب (إذا وجدنا اسم طالب، والنية ليست تنقلاً صريحاً)
-    // ==========================================
     if (foundStudent && !isNavigationWord) {
-      
       const isAbsent = text.match(/(غايب|غائب|غياب|غاب|مريض)/);
       const isPresent = text.match(/(حاضر|حضر|موجود)/);
-      // الكلمات السلبية صارمة لمنع التداخل
       const isNegative = text.match(/(خصم|ناقص|ازعاج|مزعج|نايم|نام|تاخير|متاخر|خطا|غلط|سيء|ضعيف|نقص|اسحب)/);
-      // الكلمات الإيجابية (تعمل فقط إذا لم تكن الجملة سلبية)
       const isPositive = !isNegative && text.match(/(نجم|نقط|درج|ممتاز|بطل|مشارك|صح|شاطر|كفو|عظيم|مبدع|زيد|اعط|ضيف)/);
-      
       const amount = extractAmount(text);
 
       if (isAbsent) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, attendance: [...(s.attendance || []), { date: new Date().toISOString(), status: 'absent' }] } : s));
-        setFeedback({ message: `غياب: ${foundStudent.name}`, type: 'success' });
+        displayFeedback(`غياب: ${foundStudent.name}`, 'success');
         speak(`تم الغياب`);
         return;
       }
       else if (isPresent) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, attendance: [...(s.attendance || []), { date: new Date().toISOString(), status: 'present' }] } : s));
-        setFeedback({ message: `حضور: ${foundStudent.name}`, type: 'success' });
+        displayFeedback(`حضور: ${foundStudent.name}`, 'success');
         return;
       }
       else if (isNegative) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, behaviors: [...(s.behaviors || []), { id: Math.random().toString(), date: new Date().toISOString(), description: `تقويم سلوك (${amount})`, type: 'negative', points: -amount }] } : s));
-        setFeedback({ message: `خصم ${amount} من: ${foundStudent.name}`, type: 'success' });
+        displayFeedback(`خصم ${amount} من: ${foundStudent.name}`, 'success');
         speak(`خصم ${amount}`);
         return;
       }
       else if (isPositive) {
         setStudents(prev => prev.map(s => s.id === foundStudent!.id ? { ...s, behaviors: [...(s.behaviors || []), { id: Math.random().toString(), date: new Date().toISOString(), description: `مشاركة وتفاعل (${amount})`, type: 'positive', points: amount }] } : s));
-        setFeedback({ message: `إضافة ${amount} لـ: ${foundStudent.name}`, type: 'success' });
+        displayFeedback(`إضافة ${amount} لـ: ${foundStudent.name}`, 'success');
         speak(`إضافة ${amount}`);
-        return;
-      }
-      else {
-        // وجد الاسم لكن لم يفهم الفعل
-        setFeedback({ message: `الطالب ${foundStudent.name.split(' ')[0]} موجود، ماذا أفعل؟`, type: 'error' });
         return;
       }
     }
 
-    // ==========================================
-    // 3️⃣ الرد عند عدم فهم أي شيء
-    // ==========================================
-    setFeedback({ message: `أمر غير واضح: "${originalText}"`, type: 'error' });
+    displayFeedback(`أمر غير واضح: "${originalText}"`, 'error');
   };
 
   useEffect(() => {
     if (!SpeechRecognition) return;
-
     const recognition = new SpeechRecognition();
     recognition.continuous = true; 
     recognition.interimResults = true; 
@@ -210,6 +227,8 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
     recognition.onstart = () => {
       setIsListening(true);
+      // مسح أي مؤقت سابق وتثبيت رسالة الاستماع
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
       setFeedback({ message: 'راصد يستمع الآن...', type: 'info' });
     };
 
@@ -238,7 +257,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
         try { recognition.start(); } catch (e) {}
       } else {
         setIsListening(false);
-        setFeedback({ message: 'تم الإيقاف', type: null });
+        displayFeedback('تم الإيقاف', null);
       }
     };
 
@@ -246,7 +265,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
       if (event.error === 'not-allowed') {
          shouldListenRef.current = false;
          setIsListening(false);
-         setFeedback({ message: 'الرجاء السماح للتطبيق باستخدام المايكروفون', type: 'error' });
+         displayFeedback('الرجاء السماح للتطبيق باستخدام المايكروفون', 'error');
       }
     };
 
@@ -256,14 +275,12 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
        shouldListenRef.current = false;
        recognition.stop();
     }
-  }, []); 
+  }, [displayFeedback]); 
 
   const toggleListening = useCallback(() => {
     shouldListenRef.current = !shouldListenRef.current;
     if (shouldListenRef.current) {
-      try {
-        recognitionRef.current?.start();
-      } catch (e) {}
+      try { recognitionRef.current?.start(); } catch (e) {}
     } else {
       recognitionRef.current?.stop();
     }
@@ -272,14 +289,15 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
   if (!SpeechRecognition) return null;
 
   return (
-    <div className={`fixed bottom-6 ${dir === 'rtl' ? 'left-6' : 'right-6'} z-[99999] flex flex-col items-${dir === 'rtl' ? 'start' : 'end'} pointer-events-none`} dir={dir}>
+    // 💉 التعديل الهندسي الأهم هنا: bottom-24 للموبايل ليرتفع فوق القائمة السفلية، و md:bottom-8 للشاشات الكبيرة
+    <div className={`fixed bottom-24 md:bottom-8 ${dir === 'rtl' ? 'left-6' : 'right-6'} z-[99999] flex flex-col items-${dir === 'rtl' ? 'start' : 'end'} pointer-events-none`} dir={dir}>
       
       {(isListening || transcript || feedback.message) && (
         <div className="mb-4 bg-white/95 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-2xl p-4 max-w-sm pointer-events-auto animate-in slide-in-from-bottom-2 fade-in shadow-indigo-500/10">
           <div className="flex items-center gap-2 mb-2">
             {isListening ? (
               <div className="flex items-center gap-1.5 bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[11px] font-bold animate-pulse tracking-wide">
-                <div className="w-2 h-2 bg-rose-600 rounded-full animate-ping"></div> وضع التجول نشط
+                <div className="w-2 h-2 bg-rose-600 rounded-full animate-ping"></div> المساعد الذكي نشط
               </div>
             ) : feedback.type === 'success' ? (
               <div className="flex items-center gap-1 text-emerald-600 text-[11px] font-bold">
