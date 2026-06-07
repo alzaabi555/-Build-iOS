@@ -40,17 +40,23 @@ const planSingleCommand = (
 
   if (!text.trim()) return [];
 
+  // 1. التراجع
   if (/(تراجع|ارجع|الغ اخر عمليه|الغي اخر عمليه|عفوا)/.test(text)) {
     return [{ type: 'undo' }];
   }
 
-  if (/(اكتب|ضع|ادخل|أدخل|سجل|ابحث عن|بحث عن)/.test(text)) {
+  // 2. الكتابة في الحقول
+  if (/(اكتب|ضع|ادخل|أدخل|ابحث عن|بحث عن)/.test(text)) {
     let value = '';
     let fieldKeyword = 'بحث';
 
     const writeMatch =
-      originalCommand.match(/(?:اكتب|ضع|ادخل|أدخل|سجل)\s+(.+?)\s+(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+)$/) ||
-      originalCommand.match(/(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+?)\s+(?:اكتب|ضع|ادخل|أدخل|سجل)\s+(.+)$/);
+      originalCommand.match(
+        /(?:اكتب|ضع|ادخل|أدخل)\s+(.+?)\s+(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+)$/
+      ) ||
+      originalCommand.match(
+        /(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+?)\s+(?:اكتب|ضع|ادخل|أدخل)\s+(.+)$/
+      );
 
     if (writeMatch) {
       if (writeMatch[1] && writeMatch[2]) {
@@ -62,10 +68,10 @@ const planSingleCommand = (
         .replace(/(ابحث عن|بحث عن|عن)/g, '')
         .trim();
 
-      fieldKeyword = 'بحث';
+      fieldKeyword = text.includes('حضور') ? 'بحث الحضور' : 'بحث';
     } else {
       value = originalCommand
-        .replace(/(اكتب|ضع|ادخل|أدخل|سجل|في خانة|في خانه|في حقل|في مربع|داخل)/g, '')
+        .replace(/(اكتب|ضع|ادخل|أدخل|في خانة|في خانه|في حقل|في مربع|داخل)/g, '')
         .trim();
 
       fieldKeyword = 'بحث';
@@ -82,6 +88,7 @@ const planSingleCommand = (
     ];
   }
 
+  // 3. إنشاء طالب
   if (
     /(طالب جديد|طالبه جديده|اضف طالب|أضف طالب|انشاء طالب|انشئ طالب|أنشئ طالب)/.test(
       text
@@ -112,7 +119,12 @@ const planSingleCommand = (
     ];
   }
 
-  const matchedStudent = findBestStudent(originalCommand, context.students, context.memory);
+  // 4. البحث عن الطالب
+  const matchedStudent = findBestStudent(
+    originalCommand,
+    context.students,
+    context.memory
+  );
 
   if (matchedStudent.ambiguous) {
     const names = matchedStudent.matches
@@ -137,98 +149,107 @@ const planSingleCommand = (
     const shortName = student.name.split(/\s+/)[0];
     const amount = extractAmount(text);
 
-const isAbsent = /(غايب|غائب|غياب|غاب|مريض|سجل غياب)/.test(text);
+    const isAbsent =
+      /(غايب|غائب|غياب|غاب|مريض|سجل غياب)/.test(text);
 
-const isPresent = /(حاضر|حضر|موجود|سجل حضور|تحضير)/.test(text);
+    const isPresent =
+      /(حاضر|حضر|موجود|سجل حضور|تحضير|حضور)/.test(text);
 
-const isLate = /(متاخر|متأخر|تاخير|تأخير|سجل تاخير|سجل تأخير|تاخر|تأخر)/.test(text);
+    const isLate =
+      /(متاخر|متأخر|تاخير|تأخير|سجل تاخير|سجل تأخير|تاخر|تأخر)/.test(text);
 
-const isTruant = /(هروب|هارب|متسرب|تسرب|خروج|خرج من الحصه|خرج من الحصة)/.test(text);
+    const isTruant =
+      /(هروب|هارب|متسرب|تسرب|خروج|خرج من الحصه|خرج من الحصة)/.test(text);
 
-const isNegative =
-  !isLate &&
-  !isTruant &&
-  /(خصم|ناقص|ازعاج|مزعج|نايم|نام|خطا|غلط|سيء|نقص|اسحب)/.test(text);
+    const isNegative =
+      !isLate &&
+      !isTruant &&
+      /(خصم|ناقص|ازعاج|مزعج|نايم|نام|خطا|غلط|سيء|نقص|اسحب)/.test(text);
 
-const isPositive =
-  !isNegative &&
-  !isLate &&
-  !isTruant &&
-  /(نجم|نقط|درج|ممتاز|بطل|مشارك|صح|شاطر|كفو|عظيم|مبدع|زيد|اعط|ضيف)/.test(text);
+    const isPositive =
+      !isNegative &&
+      !isLate &&
+      !isTruant &&
+      /(نجم|نقط|درج|ممتاز|بطل|مشارك|صح|شاطر|كفو|عظيم|مبدع|زيد|اعط|ضيف|تعزيز)/.test(
+        text
+      );
 
-if (isAbsent) {
-  return [
-    {
-      type: 'mark_absent',
-      payload: {
-        studentId: student.id,
-        studentName: shortName
-      }
+    if (isAbsent) {
+      return [
+        {
+          type: 'mark_absent',
+          payload: {
+            studentId: student.id,
+            studentName: shortName
+          }
+        }
+      ];
     }
-  ];
-}
 
-if (isPresent) {
-  return [
-    {
-      type: 'mark_present',
-      payload: {
-        studentId: student.id,
-        studentName: shortName
-      }
+    if (isPresent) {
+      return [
+        {
+          type: 'mark_present',
+          payload: {
+            studentId: student.id,
+            studentName: shortName
+          }
+        }
+      ];
     }
-  ];
-}
 
-if (isLate) {
-  return [
-    {
-      type: 'mark_late',
-      payload: {
-        studentId: student.id,
-        studentName: shortName
-      }
+    if (isLate) {
+      return [
+        {
+          type: 'mark_late',
+          payload: {
+            studentId: student.id,
+            studentName: shortName
+          }
+        }
+      ];
     }
-  ];
-}
 
-if (isTruant) {
-  return [
-    {
-      type: 'mark_truant',
-      payload: {
-        studentId: student.id,
-        studentName: shortName
-      }
+    if (isTruant) {
+      return [
+        {
+          type: 'mark_truant',
+          payload: {
+            studentId: student.id,
+            studentName: shortName
+          }
+        }
+      ];
     }
-  ];
-}
 
-if (isNegative) {
-  return [
-    {
-      type: 'deduct_points',
-      payload: {
-        studentId: student.id,
-        studentName: shortName,
-        amount
-      }
+    if (isNegative) {
+      return [
+        {
+          type: 'deduct_points',
+          payload: {
+            studentId: student.id,
+            studentName: shortName,
+            amount
+          }
+        }
+      ];
     }
-  ];
-}
 
-if (isPositive) {
-  return [
-    {
-      type: 'add_points',
-      payload: {
-        studentId: student.id,
-        studentName: shortName,
-        amount
-      }
+    if (isPositive) {
+      return [
+        {
+          type: 'add_points',
+          payload: {
+            studentId: student.id,
+            studentName: shortName,
+            amount
+          }
+        }
+      ];
     }
-  ];
-}
+  }
+
+  // 5. التنقل
   const route = getTargetRoute(originalCommand);
 
   if (route) {
@@ -242,6 +263,7 @@ if (isPositive) {
     ];
   }
 
+  // 6. fallback للنقر الذكي على عناصر الصفحة
   return [
     {
       type: 'dom_click',
