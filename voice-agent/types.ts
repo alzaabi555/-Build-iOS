@@ -26,7 +26,14 @@ export interface DomIndexItem {
   name: string;
   id: string;
   value: string;
+  title: string;
+  voiceCommand: string;
+  voiceField: string;
+  labelText: string;
+  nearbyText: string;
+  parentText: string;
   scoreText: string;
+}
 }
 
 export interface StudentMatchResult {
