@@ -360,15 +360,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
                             <div className={`inline-flex items-center p-1 rounded-xl border backdrop-blur-md transition-all bg-bgSoft border-borderColor h-full`}>
                                <button
-    data-voice-command="عرض كلCard'}`}    data-voice-command="عرض كل الفرسان عرض كل الفصول في الفرسان"
->
+    data-voice-command="عرض كل الفرسان عرض كل الفصول في الفرسان"
     aria-label="عرض كل الفرسان"
     title="عرض كل الفرسان"
     onClick={() => setSelectedClass('all')} 
-
-                                    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
-                                >
-                                    {t('all')}
+    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+>
+    {t('all')}
+</button>
                                 </button>
                                 {safeClasses.map(c => (
                                     <React.Fragment key={c}>
