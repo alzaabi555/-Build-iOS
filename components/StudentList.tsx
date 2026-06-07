@@ -571,9 +571,13 @@ const StudentList: React.FC<StudentListProps> = ({
                     </button>
 
                     <div className="relative">
-                        <button 
-                            onClick={() => setShowTimerModal(true)} 
-                            className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}
+                        <button
+    data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
+    aria-label="فتح المؤقت"
+    title="فتح المؤقت"
+    onClick={() => setShowTimerModal(true)} 
+    className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}
+>
                             title={t('timerTitle')}
                         >
                             <Timer className="w-5 h-5" />
@@ -583,13 +587,15 @@ const StudentList: React.FC<StudentListProps> = ({
                         </button>
                     </div>
 
-                    <button 
-                        onClick={handleRandomPick} 
-                        className={`p-2.5 rounded-xl border active:scale-95 transition-all bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
-                        title={t('randomDraw')}
-                    >
-                        <Dices className="w-5 h-5" />
-                    </button>
+                    <button
+    data-voice-command="اختيار طالب عشوائي القرعة قرعة عشوائية اختر طالب"
+    aria-label="اختيار طالب عشوائي"
+    title="اختيار طالب عشوائي"
+    onClick={handleRandomPick} 
+    className={`p-2.5 rounded-xl border active:scale-95 transition-all bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
+>
+    <Dices className="w-5 h-5" />
+</button>
 
                     <div className="relative z-[9999]">
                         <button onClick={() => setShowMenu(!showMenu)} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${showMenu ? 'bg-bgCard border-borderColor text-textPrimary' : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}>
@@ -710,13 +716,25 @@ const StudentList: React.FC<StudentListProps> = ({
 
                         <div className={`flex w-full divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} divide-borderColor`}>
                             
-                            <button onClick={() => handleBehavior(student, 'positive')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-emerald-500/10 active:bg-emerald-500/20`} title={t('positiveReinforcement')}>
-                                <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform text-emerald-500`} />
-                            </button>
+                            <button
+    data-voice-command={`تعزيز إيجابي ${student.name} افتح تعزيز ${student.name} نقاط تعزيز ${student.name}`}
+    aria-label={`تعزيز إيجابي ${student.name}`}
+    title={`تعزيز إيجابي ${student.name}`}
+    onClick={() => handleBehavior(student, 'positive')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-emerald-500/10 active:bg-emerald-500/20`}
+>
+    <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform text-emerald-500`} />
+</button>
                             
-                            <button onClick={() => handleBehavior(student, 'negative')} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-rose-500/10 active:bg-rose-500/20`} title={t('behavioralAlert')}>
-                                <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform text-rose-500`} />
-                            </button>
+                           <button
+    data-voice-command={`سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`}
+    aria-label={`تنبيه سلوكي ${student.name}`}
+    title={`تنبيه سلوكي ${student.name}`}
+    onClick={() => handleBehavior(student, 'negative')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-rose-500/10 active:bg-rose-500/20`}
+>
+    <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform text-rose-500`} />
+</button>
 
                             <button onClick={() => handleSendSmartReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-blue-500/10 active:bg-blue-500/20`} title="تقرير الدرجات والتميز (واتساب)">
                                 <MessageCircle className={`w-4 h-4 group-hover:scale-110 transition-transform text-blue-500`} />
@@ -1003,14 +1021,18 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
                     <div className="grid grid-cols-2 gap-2 mb-4">
                         {POSITIVE_BEHAVIORS.map(b => (
-                            <button 
-                                key={b.id}
-                                onClick={() => confirmPositiveBehavior(b.original, b.points)}
-                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
-                            >
-                                <span>{t(b.transKey)}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>+{b.points}</span>
-                            </button>
+    <button 
+        key={b.id}
+        data-voice-command={`${b.original} ${t(b.transKey)} تعزيز ${selectedStudentForBehavior?.name || ''} ${b.points} نقاط`}
+        aria-label={`${b.original} ${selectedStudentForBehavior?.name || ''}`}
+        title={`${b.original} +${b.points}`}
+        onClick={() => confirmPositiveBehavior(b.original, b.points)}
+        className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
+    >
+        <span>{t(b.transKey)}</span>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>+{b.points}</span>
+    </button>
+))}
                         ))}
                     </div>
                 </div>
@@ -1018,23 +1040,30 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p>
                     <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            value={customPositiveReason}
-                            onChange={(e) => setCustomPositiveReason(e.target.value)}
-                            placeholder={t('otherReasonPlaceholder')} 
-                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
+                        <input
+    type="text"
+    data-voice-field="سبب التعزيز"
+    aria-label="سبب التعزيز"
+    title="سبب التعزيز"
+    value={customPositiveReason}
+    onChange={(e) => setCustomPositiveReason(e.target.value)}
+    placeholder={t('otherReasonPlaceholder')} 
+    className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
+/>
                         />
-                        <button 
-                            onClick={() => {
-                                if(customPositiveReason.trim()) {
-                                    confirmPositiveBehavior(customPositiveReason, 1);
-                                }
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600`}
-                        >
-                            <Plus size={14} /> {t('addBtnSmall')}
-                        </button>
+                        <button
+    data-voice-command="إضافة التعزيز المخصص حفظ التعزيز"
+    aria-label="إضافة التعزيز المخصص"
+    title="إضافة التعزيز المخصص"
+    onClick={() => {
+        if(customPositiveReason.trim()) {
+            confirmPositiveBehavior(customPositiveReason, 1);
+        }
+    }}
+    className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600`}
+>
+    <Plus size={14} /> {t('addBtnSmall')}
+</button>
                     </div>
                 </div>
             </div>
@@ -1053,15 +1082,20 @@ const StudentList: React.FC<StudentListProps> = ({
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
                     <div className="grid grid-cols-2 gap-2 mb-4">
-                        {NEGATIVE_BEHAVIORS.map(b => (
-                            <button 
-                                key={b.id}
-                                onClick={() => confirmNegativeBehavior(b.original, b.points)}
-                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20`}
-                            >
-                                <span>{t(b.transKey)}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
-                            </button>
+                       {NEGATIVE_BEHAVIORS.map(b => (
+    <button 
+        key={b.id}
+        data-voice-command={`${b.original} ${t(b.transKey)} تنبيه ${selectedStudentForBehavior?.name || ''} خصم ${Math.abs(b.points)} نقاط`}
+        aria-label={`${b.original} ${selectedStudentForBehavior?.name || ''}`}
+        title={`${b.original} ${b.points}`}
+        data-voice-danger={Math.abs(b.points) >= 3 ? 'true' : 'false'}
+        onClick={() => confirmNegativeBehavior(b.original, b.points)}
+        className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20`}
+    >
+        <span>{t(b.transKey)}</span>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
+    </button>
+))}
                         ))}
                     </div>
                 </div>
@@ -1069,23 +1103,30 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomNote')}</p>
                     <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            value={customNegativeReason}
-                            onChange={(e) => setCustomNegativeReason(e.target.value)}
-                            placeholder={t('otherReasonPlaceholder')} 
-                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary`}
-                        />
-                        <button 
-                            onClick={() => {
-                                if(customNegativeReason.trim()) {
-                                    confirmNegativeBehavior(customNegativeReason, -1);
-                                }
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600`}
-                        >
-                            <Plus size={14} /> {t('addBtnSmall')}
-                        </button>
+                        <input
+    type="text"
+    data-voice-field="سبب التنبيه"
+    aria-label="سبب التنبيه"
+    title="سبب التنبيه"
+    value={customNegativeReason}
+    onChange={(e) => setCustomNegativeReason(e.target.value)}
+    placeholder={t('otherReasonPlaceholder')} 
+    className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary`}
+/>
+                        <button
+    data-voice-command="إضافة التنبيه المخصص حفظ التنبيه"
+    aria-label="إضافة التنبيه المخصص"
+    title="إضافة التنبيه المخصص"
+    data-voice-danger="true"
+    onClick={() => {
+        if(customNegativeReason.trim()) {
+            confirmNegativeBehavior(customNegativeReason, -1);
+        }
+    }}
+    className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600`}
+>
+    <Plus size={14} /> {t('addBtnSmall')}
+</button>
                     </div>
                 </div>
             </div>
@@ -1135,9 +1176,18 @@ const StudentList: React.FC<StudentListProps> = ({
                         {randomWinner.classes[0]}
                     </p>
                     <div className="flex gap-3 w-full">
-                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600`}>
-                            {t('reinforceBtn')}
-                        </button>
+<button
+    data-voice-command={`تعزيز الفائز تعزيز الطالب ${randomWinner.name} افتح تعزيز ${randomWinner.name}`}
+    aria-label={`تعزيز الفائز ${randomWinner.name}`}
+    title={`تعزيز الفائز ${randomWinner.name}`}
+    onClick={() => { 
+        handleBehavior(randomWinner, 'positive'); 
+        setRandomWinner(null); 
+    }}
+    className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600`}
+>
+    {t('reinforceBtn')}
+</button>
                     </div>
                 </div>
             )}
@@ -1153,14 +1203,17 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-3 gap-2 mb-6">
                         {[1, 3, 5, 10, 15, 20].map(min => (
-                            <button 
-                                key={min} 
-                                onClick={() => startTimer(min)} 
-                                className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 bg-transparent border-borderColor text-textSecondary hover:bg-primary/10 hover:border-primary/30 hover:text-primary`}
-                            >
-                                {min} {t('minuteAbbrev')}
-                            </button>
-                        ))}
+    <button 
+        key={min}
+        data-voice-command={`تشغيل مؤقت ${min} دقائق مؤقت ${min} دقائق ${min} دقيقة`}
+        aria-label={`تشغيل مؤقت ${min} دقائق`}
+        title={`تشغيل مؤقت ${min} دقائق`}
+        onClick={() => startTimer(min)} 
+        className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 bg-transparent border-borderColor text-textSecondary hover:bg-primary/10 hover:border-primary/30 hover:text-primary`}
+    >
+        {min} {t('minuteAbbrev')}
+    </button>
+))}
                     </div>
 
                     <div className="flex gap-2 items-center mb-6">
