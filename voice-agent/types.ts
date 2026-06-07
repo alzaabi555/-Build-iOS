@@ -14,9 +14,9 @@ export type VoiceTask =
   | { type: 'add_points'; payload: { studentId: string; studentName: string; amount: number } }
   | { type: 'deduct_points'; payload: { studentId: string; studentName: string; amount: number } }
   | { type: 'mark_absent'; payload: { studentId: string; studentName: string } }
-  | { type: 'mark_present'; payload: { studentId: string; studentName: string } };
-| { type: 'mark_late'; payload: { studentId: string; studentName: string } }
-| { type: 'mark_truant'; payload: { studentId: string; studentName: string } }
+  | { type: 'mark_present'; payload: { studentId: string; studentName: string } }
+  | { type: 'mark_late'; payload: { studentId: string; studentName: string } }
+  | { type: 'mark_truant'; payload: { studentId: string; studentName: string } };
 
 export interface DomIndexItem {
   element: HTMLElement;
