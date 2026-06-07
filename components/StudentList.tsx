@@ -571,7 +571,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     </button>
 
                     <div className="relative">
-                        <button
+                       <button
     data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
     aria-label="فتح المؤقت"
     title="فتح المؤقت"
@@ -580,6 +580,7 @@ const StudentList: React.FC<StudentListProps> = ({
 >
                             title={t('timerTitle')}
                         >
+
                             <Timer className="w-5 h-5" />
                             {timerSeconds > 0 && (
                                 <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
@@ -1030,10 +1031,11 @@ const StudentList: React.FC<StudentListProps> = ({
         className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
     >
         <span>{t(b.transKey)}</span>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>+{b.points}</span>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>
+            +{b.points}
+        </span>
     </button>
 ))}
-                        ))}
                     </div>
                 </div>
 
@@ -1050,7 +1052,7 @@ const StudentList: React.FC<StudentListProps> = ({
     placeholder={t('otherReasonPlaceholder')} 
     className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
 />
-                        />
+                      
                         <button
     data-voice-command="إضافة التعزيز المخصص حفظ التعزيز"
     aria-label="إضافة التعزيز المخصص"
@@ -1096,7 +1098,7 @@ const StudentList: React.FC<StudentListProps> = ({
         <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
     </button>
 ))}
-                        ))}
+                   
                     </div>
                 </div>
 
