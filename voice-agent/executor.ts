@@ -1,10 +1,11 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { Student } from '../types';
 import { VoiceTask, FeedbackType } from './types';
 import { VoiceAgentMemory } from './memory';
 import { scanAndClick, writeToField } from './domIndexer';
 
 interface ExecutorContext {
-  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  setStudents: Dispatch<SetStateAction<Student[]>>;
   currentSemester: string;
   onNavigate?: (tab: string) => void;
   saveSnapshot: () => void;
@@ -13,6 +14,12 @@ interface ExecutorContext {
   displayFeedback: (message: string, type: FeedbackType) => void;
   speak: (message: string) => void;
 }
+
+const todayKey = () => new Date().toLocaleDateString('en-CA');
+
+const normalizeDateKey = (date: string) => {
+  return new Date(date).toLocaleDateString('en-CA');
+};
 
 export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean => {
   const {
@@ -26,10 +33,42 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
     speak
   } = context;
 
+  const updateAttendanceForToday = (
+    studentId: string,
+    status: 'present' | 'absent' | 'late' | 'truant'
+  ) => {
+    const today = todayKey();
+
+    setStudents((prev) =>
+      prev.map((student) => {
+        if (student.id !== studentId) return student;
+
+        const filteredAttendance = (student.attendance || []).filter(
+          (record) => normalizeDateKey(record.date) !== today
+        );
+
+        return {
+          ...student,
+          attendance: [
+            ...filteredAttendance,
+            {
+              date: today,
+              status
+            }
+          ]
+        };
+      })
+    );
+  };
+
   switch (task.type) {
     case 'feedback': {
       displayFeedback(task.payload.message, task.payload.feedbackType);
-      if (task.payload.speak) speak(task.payload.speak);
+
+      if (task.payload.speak) {
+        speak(task.payload.speak);
+      }
+
       return true;
     }
 
@@ -98,7 +137,10 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
       );
 
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تمت إضافة ${task.payload.amount} نقاط لـ ${task.payload.studentName}`, 'success');
+      displayFeedback(
+        `تمت إضافة ${task.payload.amount} نقاط لـ ${task.payload.studentName}`,
+        'success'
+      );
       speak(`تمت إضافة ${task.payload.amount}`);
       return true;
     }
@@ -128,7 +170,10 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
       );
 
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تم خصم ${task.payload.amount} من ${task.payload.studentName}`, 'success');
+      displayFeedback(
+        `تم خصم ${task.payload.amount} من ${task.payload.studentName}`,
+        'success'
+      );
       speak('تم الخصم');
       return true;
     }
@@ -136,22 +181,7 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
     case 'mark_absent': {
       saveSnapshot();
 
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === task.payload.studentId
-            ? {
-                ...student,
-                attendance: [
-                  ...(student.attendance || []),
-                  {
-                    date: new Date().toISOString(),
-                    status: 'absent'
-                  }
-                ]
-              }
-            : student
-        )
-      );
+      updateAttendanceForToday(task.payload.studentId, 'absent');
 
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
       displayFeedback(`تم تسجيل غياب: ${task.payload.studentName}`, 'success');
@@ -162,87 +192,36 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
     case 'mark_present': {
       saveSnapshot();
 
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === task.payload.studentId
-            ? {
-                ...student,
-                attendance: [
-                  ...(student.attendance || []),
-                  {
-                    date: new Date().toISOString(),
-                    status: 'present'
-                  }
-                ]
-              }
-            : student
-        )
-      );
+      updateAttendanceForToday(task.payload.studentId, 'present');
 
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
       displayFeedback(`تم تسجيل حضور: ${task.payload.studentName}`, 'success');
       speak('تم تسجيل الحضور');
       return true;
     }
-case 'mark_late': {
-  saveSnapshot();
 
-  setStudents((prev) =>
-    prev.map((student) =>
-      student.id === task.payload.studentId
-        ? {
-            ...student,
-            attendance: [
-              ...(student.attendance || []).filter(
-                (record) =>
-                  new Date(record.date).toLocaleDateString('en-CA') !==
-                  new Date().toLocaleDateString('en-CA')
-              ),
-              {
-                date: new Date().toLocaleDateString('en-CA'),
-                status: 'late'
-              }
-            ]
-          }
-        : student
-    )
-  );
+    case 'mark_late': {
+      saveSnapshot();
 
-  memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-  displayFeedback(`تم تسجيل تأخر: ${task.payload.studentName}`, 'success');
-  speak('تم تسجيل التأخر');
-  return true;
-}
+      updateAttendanceForToday(task.payload.studentId, 'late');
 
-case 'mark_truant': {
-  saveSnapshot();
+      memory.rememberStudent(task.payload.studentId, task.payload.studentName);
+      displayFeedback(`تم تسجيل تأخر: ${task.payload.studentName}`, 'success');
+      speak('تم تسجيل التأخر');
+      return true;
+    }
 
-  setStudents((prev) =>
-    prev.map((student) =>
-      student.id === task.payload.studentId
-        ? {
-            ...student,
-            attendance: [
-              ...(student.attendance || []).filter(
-                (record) =>
-                  new Date(record.date).toLocaleDateString('en-CA') !==
-                  new Date().toLocaleDateString('en-CA')
-              ),
-              {
-                date: new Date().toLocaleDateString('en-CA'),
-                status: 'truant'
-              }
-            ]
-          }
-        : student
-    )
-  );
+    case 'mark_truant': {
+      saveSnapshot();
 
-  memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-  displayFeedback(`تم تسجيل هروب/تسرب: ${task.payload.studentName}`, 'success');
-  speak('تم تسجيل الحالة');
-  return true;
-}
+      updateAttendanceForToday(task.payload.studentId, 'truant');
+
+      memory.rememberStudent(task.payload.studentId, task.payload.studentName);
+      displayFeedback(`تم تسجيل هروب/تسرب: ${task.payload.studentName}`, 'success');
+      speak('تم تسجيل الحالة');
+      return true;
+    }
+
     case 'navigate': {
       if (!onNavigate) {
         displayFeedback('لا توجد دالة تنقل متاحة', 'error');
@@ -259,6 +238,7 @@ case 'mark_truant': {
       const success =
         writeToField(task.payload.fieldKeyword, task.payload.value) ||
         writeToField('بحث', task.payload.value) ||
+        writeToField('بحث الحضور', task.payload.value) ||
         writeToField('search', task.payload.value) ||
         writeToField('اسم', task.payload.value);
 
