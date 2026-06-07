@@ -284,13 +284,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         // 💉 البحث السريع بجانب العنوان
         <div className="relative group hidden sm:block w-32 md:w-48 transition-all duration-300 focus-within:w-64">
             <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
-            <input 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={t('searchStudentPlaceholder')} 
-                className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
-            />
+<input 
+    type="text"
+    data-voice-field="بحث الحضور"
+    aria-label="بحث الحضور"
+    title="بحث الحضور"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    placeholder={t('searchStudentPlaceholder')} 
+    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
+/>
         </div>
       }
       
@@ -299,22 +302,27 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         <div className="flex items-center gap-2 relative">
             <div className="sm:hidden relative w-24">
                 <Search className={`absolute ${dir === 'rtl' ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3 h-3 text-textSecondary`} />
-                <input 
-                    type="text" 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={t('searchStudentPlaceholder')} 
-                    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-7 pl-2' : 'pl-7 pr-2'} text-[10px] font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
-                />
+                <input
+    type="text"
+    data-voice-field="بحث الحضور"
+    aria-label="بحث الحضور"
+    title="بحث الحضور"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    placeholder={t('searchStudentPlaceholder')} 
+    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-7 pl-2' : 'pl-7 pr-2'} text-[10px] font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
+/>
             </div>
 
             {/* 🚀 زر الإرسال للإدارة المزروع (يفتح النافذة الآن بدلاً من الإرسال المباشر) */}
-            <button 
-                onClick={initiateAdminSync} 
-                disabled={isSyncingAdmin} 
-                className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${syncSuccess ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}
-                title="إرسال تقرير اليوم للإدارة"
-            >
+            <button
+    data-voice-command="إرسال تقرير الحضور للإدارة إرسال الغياب للإدارة رفع الغياب للإدارة"
+    aria-label="إرسال تقرير الحضور للإدارة"
+    title="إرسال تقرير الحضور للإدارة"
+    onClick={initiateAdminSync} 
+    disabled={isSyncingAdmin} 
+    className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${syncSuccess ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'}`}
+>
                 {isSyncingAdmin ? <Loader2 className="w-5 h-5 animate-spin"/> : syncSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-5 h-5"/>}
             </button>
 
@@ -323,9 +331,35 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                 <div className="absolute top-12 left-0 w-48 bg-bgCard border border-borderColor shadow-xl rounded-xl p-3 z-50 animate-in fade-in zoom-in duration-200">
                     <p className="text-xs font-bold text-center mb-3 text-textPrimary">هذا الغياب لأي حصة؟</p>
                     <div className="flex flex-col gap-2">
-                        <button onClick={() => executeAdminSync("الحصة الأولى")} className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors">الحصة الأولى</button>
-                        <button onClick={() => executeAdminSync("الحصة الخامسة")} className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors">الحصة الخامسة</button>
-                        <button onClick={() => setShowPeriodSelector(false)} className="py-2 px-3 mt-1 bg-bgSoft text-textSecondary hover:text-danger rounded-lg text-xs font-bold transition-colors">إلغاء</button>
+                        <button
+    data-voice-command="الحصة الأولى إرسال حصة أولى"
+    aria-label="الحصة الأولى"
+    title="الحصة الأولى"
+    onClick={() => executeAdminSync("الحصة الأولى")}
+    className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors"
+>
+    الحصة الأولى
+</button>
+
+<button
+    data-voice-command="الحصة الخامسة إرسال حصة خامسة"
+    aria-label="الحصة الخامسة"
+    title="الحصة الخامسة"
+    onClick={() => executeAdminSync("الحصة الخامسة")}
+    className="py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors"
+>
+    الحصة الخامسة
+</button>
+
+<button
+    data-voice-command="إلغاء إرسال الحضور إلغاء"
+    aria-label="إلغاء إرسال الحضور"
+    title="إلغاء"
+    onClick={() => setShowPeriodSelector(false)}
+    className="py-2 px-3 mt-1 bg-bgSoft text-textSecondary hover:text-danger rounded-lg text-xs font-bold transition-colors"
+>
+    إلغاء
+</button>
                     </div>
                 </div>
             )}
@@ -370,7 +404,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
             {/* شريط الفصول */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
                 <div className={`inline-flex items-center p-1 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
-                    <button 
+                  <button 
                         onClick={() => { setSelectedGrade('all'); setClassFilter('all'); }} 
                         className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && classFilter === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
                     >
@@ -379,10 +413,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     {availableGrades.map(g => (
                         <React.Fragment key={`grade-${g}`}>
                             <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
-                            <button 
-                                onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} 
-                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && classFilter === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                            >
+                            <button
+    data-voice-command={`عرض الصف ${g} في الحضور حضور الصف ${g}`}
+    aria-label={`عرض الصف ${g} في الحضور`}
+    title={`عرض الصف ${g}`}
+    onClick={() => { setSelectedGrade(g); setClassFilter('all'); }} 
+    className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && classFilter === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+>
                                 {t('gradePrefix')} {g}
                             </button>
                         </React.Fragment>
@@ -390,10 +427,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                     {visibleClasses.map(c => (
                         <React.Fragment key={`class-${c}`}>
                             <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
-                            <button 
-                                onClick={() => setClassFilter(c)} 
-                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${classFilter === c ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                            >
+                            <button
+    data-voice-command={`عرض فصل ${c} في الحضور حضور فصل ${c}`}
+    aria-label={`عرض فصل ${c} في الحضور`}
+    title={`عرض فصل ${c}`}
+    onClick={() => setClassFilter(c)} 
+    className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${classFilter === c ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
+>
                                 {c}
                             </button>
                         </React.Fragment>
@@ -409,11 +449,24 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
         
         {/* إحصائيات سريعة للتحضير (تحضير الكل) */}
         <div className="flex justify-between items-center gap-2 text-center">
-            <button onClick={() => markAll('present')} className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-success/10 border-success/30 hover:bg-success/20`}>
+           <button
+    data-voice-command="تسجيل حضور الجميع حضور الجميع تحضير الجميع"
+    aria-label="تسجيل حضور الجميع"
+    title="تسجيل حضور الجميع"
+    onClick={() => markAll('present')}
+    className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-success/10 border-success/30 hover:bg-success/20`}
+>
                 <span className={`block text-[10px] font-bold mb-1 text-success`}>{t('presentAll')}</span>
                 <span className={`block text-xl font-black text-success`}>{stats.present}</span>
             </button>
-            <button onClick={() => markAll('absent')} className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-danger/10 border-danger/30 hover:bg-danger/20`}>
+           <button
+    data-voice-command="تسجيل غياب الجميع غياب الجميع"
+    data-voice-danger="true"
+    aria-label="تسجيل غياب الجميع"
+    title="تسجيل غياب الجميع"
+    onClick={() => markAll('absent')}
+    className={`flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-danger/10 border-danger/30 hover:bg-danger/20`}
+>
                 <span className={`block text-[10px] font-bold mb-1 text-danger`}>{t('absentAll')}</span>
                 <span className={`block text-xl font-black text-danger`}>{stats.absent}</span>
             </button>
@@ -445,22 +498,46 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
                             <div className={`flex w-full border-t divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} border-borderColor divide-borderColor`}>
                                 
-                                <button onClick={() => toggleAttendance(student.id, 'present')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? 'bg-success/20 text-success' : 'text-textSecondary hover:bg-bgSoft hover:text-success'}`}>
+                              <button
+    data-voice-command={`تسجيل حضور ${student.name} حضور ${student.name} تحضير ${student.name}`}
+    aria-label={`تسجيل حضور ${student.name}`}
+    title={`تسجيل حضور ${student.name}`}
+    onClick={() => toggleAttendance(student.id, 'present')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'present' ? 'bg-success/20 text-success' : 'text-textSecondary hover:bg-bgSoft hover:text-success'}`}
+>
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'present' ? 'bg-success text-white' : 'bg-bgSoft text-textSecondary'}`}>✓</div>
                                     <span className="text-[10px] font-bold">{t('present')}</span>
                                 </button>
 
-                                <button onClick={() => toggleAttendance(student.id, 'absent')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? 'bg-danger/20 text-danger' : 'text-textSecondary hover:bg-bgSoft hover:text-danger'}`}>
+                               <button
+    data-voice-command={`تسجيل غياب ${student.name} غياب ${student.name} غائب ${student.name}`}
+    aria-label={`تسجيل غياب ${student.name}`}
+    title={`تسجيل غياب ${student.name}`}
+    onClick={() => toggleAttendance(student.id, 'absent')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'absent' ? 'bg-danger/20 text-danger' : 'text-textSecondary hover:bg-bgSoft hover:text-danger'}`}
+>
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${status === 'absent' ? 'bg-danger text-white' : 'bg-bgSoft text-textSecondary'}`}>✕</div>
                                     <span className="text-[10px] font-bold">{t('absent')}</span>
                                 </button>
 
-                                <button onClick={() => toggleAttendance(student.id, 'late')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? 'bg-warning/20 text-warning' : 'text-textSecondary hover:bg-bgSoft hover:text-warning'}`}>
+                                <button
+    data-voice-command={`تسجيل تأخر ${student.name} تأخر ${student.name} متأخر ${student.name}`}
+    aria-label={`تسجيل تأخر ${student.name}`}
+    title={`تسجيل تأخر ${student.name}`}
+    onClick={() => toggleAttendance(student.id, 'late')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'late' ? 'bg-warning/20 text-warning' : 'text-textSecondary hover:bg-bgSoft hover:text-warning'}`}
+>
                                     <div className={`text-xs opacity-80 ${status === 'late' ? '' : 'grayscale'}`}>⏰</div>
                                     <span className="text-[10px] font-bold">{t('late')}</span>
                                 </button>
 
-                                <button onClick={() => toggleAttendance(student.id, 'truant')} className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? 'bg-info/20 text-info' : 'text-textSecondary hover:bg-bgSoft hover:text-info'}`}>
+                                <button
+    data-voice-command={`تسجيل هروب ${student.name} هروب ${student.name} تسرب ${student.name} خروج ${student.name}`}
+    aria-label={`تسجيل هروب أو تسرب ${student.name}`}
+    title={`تسجيل هروب أو تسرب ${student.name}`}
+    onClick={() => toggleAttendance(student.id, 'truant')}
+    className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${status === 'truant' ? 'bg-info/20 text-info' : 'text-textSecondary hover:bg-bgSoft hover:text-info'}`}
+>
                                     <div className={`w-6 h-6 flex items-center justify-center`}>
                                         <DoorOpen className={`w-4 h-4 transition-colors ${status === 'truant' ? 'text-info' : 'text-textSecondary'}`} />
                                     </div>
@@ -511,24 +588,34 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
 
                   <div className="space-y-3 w-full mt-auto shrink-0">
                       <button 
-                          onClick={() => performNotification('whatsapp')} 
-                          className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg bg-[#25D366] hover:bg-[#1fa851]`}
-                      >
+                          <button
+    data-voice-command="إرسال واتساب إرسال تنبيه واتساب"
+    aria-label="إرسال تنبيه واتساب"
+    title="إرسال واتساب"
+    onClick={() => performNotification('whatsapp')} 
+    className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg bg-[#25D366] hover:bg-[#1fa851]`}
+>
                           <MessageCircle className="w-5 h-5" />
                           {t('sendWhatsapp')}
                       </button>
 
-                      <button 
-                          onClick={() => performNotification('sms')} 
-                          className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border bg-transparent text-textPrimary border-borderColor hover:bg-bgSoft`}
-                      >
+                      <button
+    data-voice-command="إرسال رسالة نصية إرسال SMS"
+    aria-label="إرسال رسالة نصية"
+    title="إرسال رسالة نصية"
+    onClick={() => performNotification('sms')} 
+    className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border bg-transparent text-textPrimary border-borderColor hover:bg-bgSoft`}
+>
                           {t('sendSms')}
                       </button>
 
-                      <button 
-                          onClick={() => setNotificationTarget(null)} 
-                          className={`w-full py-3 font-bold text-xs transition-colors text-textSecondary hover:text-danger`}
-                      >
+                      <button
+    data-voice-command="إلغاء الإشعار إغلاق الإشعار"
+    aria-label="إلغاء الإشعار"
+    title="إلغاء"
+    onClick={() => setNotificationTarget(null)} 
+    className={`w-full py-3 font-bold text-xs transition-colors text-textSecondary hover:text-danger`}
+>
                           {t('cancelAction')}
                       </button>
                   </div>
