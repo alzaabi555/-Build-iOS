@@ -586,39 +586,38 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ students, classes
                       </div>
                   </div>
 
-                  <div className="space-y-3 w-full mt-auto shrink-0">
-                      <button 
-                          <button
-    data-voice-command="إرسال واتساب إرسال تنبيه واتساب"
-    aria-label="إرسال تنبيه واتساب"
-    title="إرسال واتساب"
-    onClick={() => performNotification('whatsapp')} 
-    className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg bg-[#25D366] hover:bg-[#1fa851]`}
->
-                          <MessageCircle className="w-5 h-5" />
-                          {t('sendWhatsapp')}
-                      </button>
+                <div className="space-y-3 w-full mt-auto shrink-0">
+    <button 
+        data-voice-command="إرسال واتساب إرسال تنبيه واتساب"
+        aria-label="إرسال تنبيه واتساب"
+        title="إرسال واتساب"
+        onClick={() => performNotification('whatsapp')} 
+        className={`w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg bg-[#25D366] hover:bg-[#1fa851]`}
+    >
+        <MessageCircle className="w-5 h-5" />
+        {t('sendWhatsapp')}
+    </button>
 
-                      <button
-    data-voice-command="إرسال رسالة نصية إرسال SMS"
-    aria-label="إرسال رسالة نصية"
-    title="إرسال رسالة نصية"
-    onClick={() => performNotification('sms')} 
-    className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border bg-transparent text-textPrimary border-borderColor hover:bg-bgSoft`}
->
-                          {t('sendSms')}
-                      </button>
+    <button 
+        data-voice-command="إرسال رسالة نصية إرسال SMS"
+        aria-label="إرسال رسالة نصية"
+        title="إرسال رسالة نصية"
+        onClick={() => performNotification('sms')} 
+        className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border bg-transparent text-textPrimary border-borderColor hover:bg-bgSoft`}
+    >
+        {t('sendSms')}
+    </button>
 
-                      <button
-    data-voice-command="إلغاء الإشعار إغلاق الإشعار"
-    aria-label="إلغاء الإشعار"
-    title="إلغاء"
-    onClick={() => setNotificationTarget(null)} 
-    className={`w-full py-3 font-bold text-xs transition-colors text-textSecondary hover:text-danger`}
->
-                          {t('cancelAction')}
-                      </button>
-                  </div>
+    <button 
+        data-voice-command="إلغاء الإشعار إغلاق الإشعار"
+        aria-label="إلغاء الإشعار"
+        title="إلغاء"
+        onClick={() => setNotificationTarget(null)} 
+        className={`w-full py-3 font-bold text-xs transition-colors text-textSecondary hover:text-danger`}
+    >
+        {t('cancelAction')}
+    </button>
+</div>
               </div>
           )}
       </DrawerSheet>
