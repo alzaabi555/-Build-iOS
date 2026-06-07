@@ -184,7 +184,65 @@ export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean 
       speak('تم تسجيل الحضور');
       return true;
     }
+case 'mark_late': {
+  saveSnapshot();
 
+  setStudents((prev) =>
+    prev.map((student) =>
+      student.id === task.payload.studentId
+        ? {
+            ...student,
+            attendance: [
+              ...(student.attendance || []).filter(
+                (record) =>
+                  new Date(record.date).toLocaleDateString('en-CA') !==
+                  new Date().toLocaleDateString('en-CA')
+              ),
+              {
+                date: new Date().toLocaleDateString('en-CA'),
+                status: 'late'
+              }
+            ]
+          }
+        : student
+    )
+  );
+
+  memory.rememberStudent(task.payload.studentId, task.payload.studentName);
+  displayFeedback(`تم تسجيل تأخر: ${task.payload.studentName}`, 'success');
+  speak('تم تسجيل التأخر');
+  return true;
+}
+
+case 'mark_truant': {
+  saveSnapshot();
+
+  setStudents((prev) =>
+    prev.map((student) =>
+      student.id === task.payload.studentId
+        ? {
+            ...student,
+            attendance: [
+              ...(student.attendance || []).filter(
+                (record) =>
+                  new Date(record.date).toLocaleDateString('en-CA') !==
+                  new Date().toLocaleDateString('en-CA')
+              ),
+              {
+                date: new Date().toLocaleDateString('en-CA'),
+                status: 'truant'
+              }
+            ]
+          }
+        : student
+    )
+  );
+
+  memory.rememberStudent(task.payload.studentId, task.payload.studentName);
+  displayFeedback(`تم تسجيل هروب/تسرب: ${task.payload.studentName}`, 'success');
+  speak('تم تسجيل الحالة');
+  return true;
+}
     case 'navigate': {
       if (!onNavigate) {
         displayFeedback('لا توجد دالة تنقل متاحة', 'error');
