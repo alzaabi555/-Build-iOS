@@ -577,10 +577,8 @@ const StudentList: React.FC<StudentListProps> = ({
     title="فتح المؤقت"
     onClick={() => setShowTimerModal(true)} 
     className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}
->
+>                
                             title={t('timerTitle')}
-                        >
-
                             <Timer className="w-5 h-5" />
                             {timerSeconds > 0 && (
                                 <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
