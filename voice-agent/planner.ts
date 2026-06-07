@@ -230,7 +230,6 @@ if (isTruant) {
         }
       ];
     }
-  }
 
   const route = getTargetRoute(originalCommand);
 
