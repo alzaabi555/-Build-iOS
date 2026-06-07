@@ -44,16 +44,38 @@ const planSingleCommand = (
     return [{ type: 'undo' }];
   }
 
-  if (/(اكتب|ابحث عن|بحث عن)/.test(text)) {
-    const value = originalCommand
-      .replace(/(اكتب|ابحث عن|بحث عن|في خانة|في خانه|في حقل|عن)/g, '')
-      .trim();
+  if (/(اكتب|ضع|ادخل|أدخل|سجل|ابحث عن|بحث عن)/.test(text)) {
+    let value = '';
+    let fieldKeyword = 'بحث';
+
+    const writeMatch =
+      originalCommand.match(/(?:اكتب|ضع|ادخل|أدخل|سجل)\s+(.+?)\s+(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+)$/) ||
+      originalCommand.match(/(?:في|داخل|بداخل)\s+(?:خانة|خانه|حقل|مربع|مربع النص|قسم)?\s*(.+?)\s+(?:اكتب|ضع|ادخل|أدخل|سجل)\s+(.+)$/);
+
+    if (writeMatch) {
+      if (writeMatch[1] && writeMatch[2]) {
+        value = writeMatch[1].trim();
+        fieldKeyword = writeMatch[2].trim();
+      }
+    } else if (/(ابحث عن|بحث عن)/.test(text)) {
+      value = originalCommand
+        .replace(/(ابحث عن|بحث عن|عن)/g, '')
+        .trim();
+
+      fieldKeyword = 'بحث';
+    } else {
+      value = originalCommand
+        .replace(/(اكتب|ضع|ادخل|أدخل|سجل|في خانة|في خانه|في حقل|في مربع|داخل)/g, '')
+        .trim();
+
+      fieldKeyword = 'بحث';
+    }
 
     return [
       {
         type: 'write_field',
         payload: {
-          fieldKeyword: 'بحث',
+          fieldKeyword,
           value
         }
       }
