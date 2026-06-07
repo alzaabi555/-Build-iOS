@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, CheckCircle, XCircle, Bot } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';import React, { useCallback, useEffect, useRef, useState } from ' Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 
@@ -31,7 +30,11 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
   const recognitionRef = useRef<any>(null);
   const shouldListenRef = useRef(false);
+  const manualStopRef = useRef(false);
+  const isRecognitionStartingRef = useRef(false);
+
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const studentsRef = useRef(students);
   const historyRef = useRef<Student[][]>([]);
@@ -64,31 +67,45 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
     feedbackTimerRef.current = setTimeout(() => {
       if (shouldListenRef.current) {
-        setFeedback({ message: 'الوكيل الذكي يستمع...', type: 'info' });
+        setFeedback({ message: 'وضع الحصة نشط... الوكيل يستمع', type: 'info' });
       } else {
         setFeedback({ message: '', type: null });
       }
-    }, 4000);
+    }, 1800);
   }, []);
 
-  const speak = useCallback(
-    (message: string) => {
-      if (
-        typeof window !== 'undefined' &&
-        'speechSynthesis' in window &&
-        !isElectron
-      ) {
-        window.speechSynthesis.cancel();
+  /**
+   * أثناء الحصة نوقف النطق الصوتي لتقليل البطء ومنع تداخل صوت الجهاز مع المايكروفون.
+   * إذا أردت لاحقًا نضيف إعداد: "تفعيل الرد الصوتي".
+   */
+  const speak = useCallback((_message: string) => {
+    return;
+  }, []);
 
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = 'ar-SA';
-        utterance.rate = 1.08;
+  const restartRecognition = useCallback((delay = 250) => {
+    if (!shouldListenRef.current) return;
+    if (!recognitionRef.current) return;
 
-        window.speechSynthesis.speak(utterance);
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+    }
+
+    restartTimerRef.current = setTimeout(() => {
+      if (!shouldListenRef.current || !recognitionRef.current) return;
+      if (isRecognitionStartingRef.current) return;
+
+      try {
+        isRecognitionStartingRef.current = true;
+        recognitionRef.current.start();
+      } catch {
+        // غالبًا المحرك يعمل بالفعل أو لم ينهِ دورة الإيقاف بعد
+      } finally {
+        setTimeout(() => {
+          isRecognitionStartingRef.current = false;
+        }, 500);
       }
-    },
-    [isElectron]
-  );
+    }, delay);
+  }, []);
 
   const createId = useCallback(() => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -174,9 +191,13 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
       const normalized = normalizeText(originalText);
       const now = Date.now();
 
+      /**
+       * منع التكرار غير المقصود من SpeechRecognition.
+       * خففنا المدة إلى 1200ms حتى لا يمنع المعلم من تكرار أمر مقصود بسرعة.
+       */
       if (
         normalized === lastProcessedRef.current.text &&
-        now - lastProcessedRef.current.time < 2500
+        now - lastProcessedRef.current.time < 1200
       ) {
         return;
       }
@@ -238,9 +259,9 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     },
     [displayFeedback, runTasks, speak]
   );
-
-  useEffect(() => {
-    if (!SpeechRecognitionCtor || isElectron) return;
+  
+useEffect(() => {
+  if (!SpeechRecognitionCtor) return;
 
     try {
       const recognition = new SpeechRecognitionCtor();
@@ -250,6 +271,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
       recognition.lang = 'ar-OM';
 
       recognition.onstart = () => {
+        isRecognitionStartingRef.current = false;
         setIsListening(true);
 
         if (feedbackTimerRef.current) {
@@ -257,7 +279,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
         }
 
         setFeedback({
-          message: 'الوكيل الذكي مستعد...',
+          message: 'وضع الحصة نشط... الوكيل يستمع',
           type: 'info'
         });
       };
@@ -280,42 +302,78 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
 
         setTimeout(() => {
           setTranscript('');
-        }, 2500);
+        }, 1200);
+
+        /**
+         * بعض المتصفحات والجوالات توقف التعرف بعد كل نتيجة.
+         * لذلك نعيد تشغيله بسرعة طالما وضع الحصة مفعل.
+         */
+        restartRecognition(350);
       };
 
       recognition.onend = () => {
+        setIsListening(false);
+
+        if (manualStopRef.current) {
+          manualStopRef.current = false;
+          shouldListenRef.current = false;
+          displayFeedback('تم إيقاف الوكيل', null);
+          return;
+        }
+
         if (shouldListenRef.current) {
-          setTimeout(() => {
-            if (shouldListenRef.current) {
-              try {
-                recognition.start();
-              } catch {
-                // المحرك قد يكون يعمل بالفعل
-              }
-            }
-          }, 350);
+          setFeedback({
+            message: 'إعادة تنشيط الاستماع...',
+            type: 'info'
+          });
+
+          restartRecognition(250);
         } else {
-          setIsListening(false);
           displayFeedback('تم إيقاف الوكيل', null);
         }
       };
 
       recognition.onerror = (event: any) => {
-        if (event.error === 'not-allowed') {
+        const error = event.error;
+
+        if (error === 'not-allowed' || error === 'service-not-allowed') {
+          manualStopRef.current = true;
           shouldListenRef.current = false;
           setIsListening(false);
           displayFeedback('الرجاء السماح للتطبيق بالوصول للمايكروفون', 'error');
+          return;
         }
 
-        if (event.error === 'no-speech') {
-          displayFeedback('لم أسمع أمرًا واضحًا', 'info');
+        if (error === 'no-speech') {
+          if (shouldListenRef.current) {
+            displayFeedback('لم أسمع أمرًا واضحًا... ما زلت أستمع', 'info');
+            restartRecognition(300);
+          }
+          return;
+        }
+
+        if (error === 'aborted' || error === 'network' || error === 'audio-capture') {
+          if (shouldListenRef.current) {
+            displayFeedback('إعادة تشغيل الاستماع...', 'info');
+            restartRecognition(700);
+          }
+          return;
+        }
+
+        if (shouldListenRef.current) {
+          restartRecognition(700);
         }
       };
 
       recognitionRef.current = recognition;
 
       return () => {
+        manualStopRef.current = true;
         shouldListenRef.current = false;
+
+        if (restartTimerRef.current) {
+          clearTimeout(restartTimerRef.current);
+        }
 
         try {
           recognition.stop();
@@ -326,12 +384,16 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
     } catch {
       displayFeedback('تعذر تشغيل التعرف الصوتي', 'error');
     }
-  }, [displayFeedback, isElectron, processCommand]);
+  }, [displayFeedback, isElectron, processCommand, restartRecognition]);
 
   useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) {
         clearTimeout(feedbackTimerRef.current);
+      }
+
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
       }
 
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -341,25 +403,38 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
   }, []);
 
   const toggleListening = useCallback(() => {
-    shouldListenRef.current = !shouldListenRef.current;
-
     if (shouldListenRef.current) {
-      try {
-        recognitionRef.current?.start();
-      } catch {
-        // قد يكون المحرك يعمل
+      manualStopRef.current = true;
+      shouldListenRef.current = false;
+
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
       }
-    } else {
+
       try {
         recognitionRef.current?.stop();
       } catch {
         // تجاهل
       }
+
+      setIsListening(false);
+      displayFeedback('تم إيقاف الوكيل', null);
+      return;
     }
-  }, []);
 
-  if (!SpeechRecognitionCtor || isElectron) return null;
+    manualStopRef.current = false;
+    shouldListenRef.current = true;
 
+    displayFeedback('وضع الحصة نشط... الوكيل يستمع', 'info');
+
+    try {
+      recognitionRef.current?.start();
+    } catch {
+      restartRecognition(300);
+    }
+  }, [displayFeedback, restartRecognition]);
+
+if (!SpeechRecognitionCtor) return null;
   return (
     <div
       className={`fixed bottom-24 md:bottom-8 ${
@@ -373,7 +448,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
             {isListening ? (
               <div className="flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[11px] font-bold animate-pulse tracking-wide">
                 <div className="w-2 h-2 bg-indigo-600 rounded-full animate-ping" />
-                الوكيل الذكي نشط
+                وضع الحصة نشط
               </div>
             ) : feedback.type === 'success' ? (
               <div className="flex items-center gap-1 text-emerald-600 text-[11px] font-bold">
@@ -403,13 +478,21 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onNavigate }) => {
         type="button"
         onClick={toggleListening}
         className={`pointer-events-auto flex items-center justify-center w-16 h-16 rounded-full shadow-2xl transition-all duration-300 active:scale-90 ${
-          isListening
+          isListening || shouldListenRef.current
             ? 'bg-indigo-600 text-white shadow-indigo-500/40 ring-4 ring-indigo-500/20'
             : 'bg-slate-800 text-white hover:bg-slate-700'
         }`}
-        aria-label={isListening ? 'إيقاف الوكيل الصوتي' : 'تشغيل الوكيل الصوتي'}
+        aria-label={
+          isListening || shouldListenRef.current
+            ? 'إيقاف وضع الحصة الصوتي'
+            : 'تشغيل وضع الحصة الصوتي'
+        }
       >
-        {isListening ? <Mic className="w-7 h-7" /> : <MicOff className="w-7 h-7" />}
+        {isListening || shouldListenRef.current ? (
+          <Mic className="w-7 h-7" />
+        ) : (
+          <MicOff className="w-7 h-7" />
+        )}
       </button>
     </div>
   );
