@@ -137,7 +137,7 @@ const planSingleCommand = (
     const shortName = student.name.split(/\s+/)[0];
     const amount = extractAmount(text);
 
-    const isAbsent = /(غايب|غائب|غياب|غاب|مريض|سجل غياب)/.test(text);
+const isAbsent = /(غايب|غائب|غياب|غاب|مريض|سجل غياب)/.test(text);
 
 const isPresent = /(حاضر|حضر|موجود|سجل حضور|تحضير)/.test(text);
 
@@ -149,15 +149,14 @@ const isNegative =
   !isLate &&
   !isTruant &&
   /(خصم|ناقص|ازعاج|مزعج|نايم|نام|خطا|غلط|سيء|نقص|اسحب)/.test(text);
-        text
-      );
-    const isPositive =
-      !isNegative &&
-      /(نجم|نقط|درج|ممتاز|بطل|مشارك|صح|شاطر|كفو|عظيم|مبدع|زيد|اعط|ضيف)/.test(
-        text
-      );
 
-    if (isAbsent) {
+const isPositive =
+  !isNegative &&
+  !isLate &&
+  !isTruant &&
+  /(نجم|نقط|درج|ممتاز|بطل|مشارك|صح|شاطر|كفو|عظيم|مبدع|زيد|اعط|ضيف)/.test(text);
+
+if (isAbsent) {
   return [
     {
       type: 'mark_absent',
@@ -205,32 +204,31 @@ if (isTruant) {
   ];
 }
 
-    if (isNegative) {
-      return [
-        {
-          type: 'deduct_points',
-          payload: {
-            studentId: student.id,
-            studentName: shortName,
-            amount
-          }
-        }
-      ];
+if (isNegative) {
+  return [
+    {
+      type: 'deduct_points',
+      payload: {
+        studentId: student.id,
+        studentName: shortName,
+        amount
+      }
     }
+  ];
+}
 
-    if (isPositive) {
-      return [
-        {
-          type: 'add_points',
-          payload: {
-            studentId: student.id,
-            studentName: shortName,
-            amount
-          }
-        }
-      ];
+if (isPositive) {
+  return [
+    {
+      type: 'add_points',
+      payload: {
+        studentId: student.id,
+        studentName: shortName,
+        amount
+      }
     }
-
+  ];
+}
   const route = getTargetRoute(originalCommand);
 
   if (route) {
