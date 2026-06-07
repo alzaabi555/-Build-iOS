@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, MicOff, CheckCircle, XCircle, Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
