@@ -34,7 +34,6 @@ export interface DomIndexItem {
   parentText: string;
   scoreText: string;
 }
-}
 
 export interface StudentMatchResult {
   student?: Student;
