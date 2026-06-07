@@ -158,28 +158,52 @@ const isNegative =
       );
 
     if (isAbsent) {
-      return [
-        {
-          type: 'mark_absent',
-          payload: {
-            studentId: student.id,
-            studentName: shortName
-          }
-        }
-      ];
+  return [
+    {
+      type: 'mark_absent',
+      payload: {
+        studentId: student.id,
+        studentName: shortName
+      }
     }
+  ];
+}
 
-    if (isPresent) {
-      return [
-        {
-          type: 'mark_present',
-          payload: {
-            studentId: student.id,
-            studentName: shortName
-          }
-        }
-      ];
+if (isPresent) {
+  return [
+    {
+      type: 'mark_present',
+      payload: {
+        studentId: student.id,
+        studentName: shortName
+      }
     }
+  ];
+}
+
+if (isLate) {
+  return [
+    {
+      type: 'mark_late',
+      payload: {
+        studentId: student.id,
+        studentName: shortName
+      }
+    }
+  ];
+}
+
+if (isTruant) {
+  return [
+    {
+      type: 'mark_truant',
+      payload: {
+        studentId: student.id,
+        studentName: shortName
+      }
+    }
+  ];
+}
 
     if (isNegative) {
       return [
