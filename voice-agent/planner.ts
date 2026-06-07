@@ -138,9 +138,17 @@ const planSingleCommand = (
     const amount = extractAmount(text);
 
     const isAbsent = /(غايب|غائب|غياب|غاب|مريض|سجل غياب)/.test(text);
-    const isPresent = /(حاضر|حضر|موجود|سجل حضور)/.test(text);
-    const isNegative =
-      /(خصم|ناقص|ازعاج|مزعج|نايم|نام|تاخير|متاخر|خطا|غلط|سيء|نقص|اسحب)/.test(
+
+const isPresent = /(حاضر|حضر|موجود|سجل حضور|تحضير)/.test(text);
+
+const isLate = /(متاخر|متأخر|تاخير|تأخير|سجل تاخير|سجل تأخير|تاخر|تأخر)/.test(text);
+
+const isTruant = /(هروب|هارب|متسرب|تسرب|خروج|خرج من الحصه|خرج من الحصة)/.test(text);
+
+const isNegative =
+  !isLate &&
+  !isTruant &&
+  /(خصم|ناقص|ازعاج|مزعج|نايم|نام|خطا|غلط|سيء|نقص|اسحب)/.test(text);
         text
       );
     const isPositive =
