@@ -570,21 +570,28 @@ const StudentList: React.FC<StudentListProps> = ({
                         )}
                     </button>
 
-                    <div className="relative">
-                       <button
+      <div className="relative shrink-0">
+  <button
     data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
     aria-label="فتح المؤقت"
-    title="فتح المؤقت"
-    onClick={() => setShowTimerModal(true)} 
-    className={`p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${timerSeconds > 0 ? (isRamadan ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse' : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse') : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}
->                
-                            title={t('timerTitle')}
-                            <Timer className="w-5 h-5" />
-                            {timerSeconds > 0 && (
-                                <span className="text-xs font-black min-w-[30px]">{formatTime(timerSeconds)}</span>
-                            )}
-                        </button>
-                    </div>
+    onClick={() => setShowTimerModal(true)}
+    className={`w-10 h-10 shrink-0 p-2.5 rounded-xl border active:scale-95 transition-all flex items-center justify-center ${
+      timerSeconds > 0
+        ? isRamadan
+          ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse'
+          : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse'
+        : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'
+    }`}
+  >
+    <Timer className="w-5 h-5 shrink-0" />
+  </button>
+
+  {timerSeconds > 0 && (
+    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full shadow">
+      {formatTime(timerSeconds)}
+    </span>
+  )}
+</div>
 
                     <button
     data-voice-command="اختيار طالب عشوائي القرعة قرعة عشوائية اختر طالب"
