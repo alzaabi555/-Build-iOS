@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';import React, { useCallback, useEffect, useRef, useState } from ' Bot } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from ' Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 
