@@ -342,50 +342,58 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
-                            <input
-    type="text"
-    data-voice-field="بحث الفرسان"
-    aria-label="بحث الفرسان"
-    title="بحث الفرسان"
-    placeholder={t('searchPlaceholder')} 
-    value={searchTerm} 
-    onChange={(e) => setSearchTerm(e.target.value)} 
-    className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`} 
-/>
-                        </div>
+                   <div className="flex gap-2">
+    <div className="relative flex-1">
+        <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
+        <input 
+            type="text"
+            data-voice-field="بحث الفرسان"
+            aria-label="بحث الفرسان"
+            title="بحث الفرسان"
+            placeholder={t('searchPlaceholder')} 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`} 
+        />
+    </div>
 
-                        <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
-                            <div className={`inline-flex items-center p-1 rounded-xl border backdrop-blur-md transition-all bg-bgSoft border-borderColor h-full`}>
-                               <button
-    data-voice-command="عرض كل الفرسان عرض كل الفصول في الفرسان"
-    aria-label="عرض كل الفرسان"
-    title="عرض كل الفرسان"
-    onClick={() => setSelectedClass('all')} 
-    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
->
-    {t('all')}
-</button>
-                                </button>
-                                {safeClasses.map(c => (
-                                    <React.Fragment key={c}>
-                                        <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
-                                        <button
-    data-voice-command={`عرض فصل ${c} في الفرسان فرسان فصل ${c}`}
-    aria-label={`عرض فصل ${c} في الفرسان`}
-    title={`عرض فصل ${c}`}
-    onClick={() => setSelectedClass(c)} 
-    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
->
-    {c}
-</button>
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+    <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
+        <div className={`inline-flex items-center p-1 rounded-xl border backdrop-blur-md transition-all bg-bgSoft border-borderColor h-full`}>
+            <button 
+                data-voice-command="عرض كل الفرسان عرض كل الفصول في الفرسان"
+                aria-label="عرض كل الفرسان"
+                title="عرض كل الفرسان"
+                onClick={() => setSelectedClass('all')} 
+                className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${
+                    selectedClass === 'all'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'
+                }`}
+            >
+                {t('all')}
+            </button>
+
+            {safeClasses.map(c => (
+                <React.Fragment key={c}>
+                    <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
+                    <button 
+                        data-voice-command={`عرض فصل ${c} في الفرسان فرسان فصل ${c}`}
+                        aria-label={`عرض فصل ${c} في الفرسان`}
+                        title={`عرض فصل ${c}`}
+                        onClick={() => setSelectedClass(c)} 
+                        className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${
+                            selectedClass === c
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard'
+                        }`}
+                    >
+                        {c}
+                    </button>
+                </React.Fragment>
+            ))}
+        </div>
+    </div>
+</div>
                 </div>
             }
         >
