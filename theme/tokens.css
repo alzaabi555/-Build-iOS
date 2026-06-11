@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  theme/tokens.css
+  Rased Professional Light Theme
+  ثيم أبيض احترافي موحد لتطبيق راصد
+*/
+
+@layer base {
+  :root,
+  :root[data-theme="light"],
+  :root[data-theme="dark"],
+  :root[data-theme="glass"],
+  :root[data-theme="ramadan"] {
+    color-scheme: light;
+
+    /*
+      نستخدم قيم RGB حتى تعمل Tailwind opacity مثل:
+      bg-primary/10
+      border-primary/20
+      text-primary
+    */
+
+    /* الخلفيات */
+    --bg: 248 250 252;          /* #F8FAFC */
+    --card: 255 255 255;        /* #FFFFFF */
+    --glass: 241 245 249;       /* #F1F5F9 */
+
+    /* النصوص */
+    --text: 15 23 42;           /* #0F172A */
+    --secondary: 71 85 105;     /* #475569 */
+    --muted: 148 163 184;       /* #94A3B8 */
+
+    /* الحدود */
+    --border: 226 232 240;      /* #E2E8F0 */
+    --border-soft: 238 242 247; /* #EEF2F7 */
+
+    /* اللون الأساسي */
+    --primary: 79 70 229;       /* #4F46E5 */
+    --primary-hover: 67 56 202; /* #4338CA */
+    --primary-soft: 238 242 255;/* #EEF2FF */
+
+    /* الحالات */
+    --success: 22 163 74;       /* #16A34A */
+    --danger: 220 38 38;        /* #DC2626 */
+    --warning: 217 119 6;       /* #D97706 */
+    --info: 2 132 199;          /* #0284C7 */
+
+    /* توهج وظل خفيف */
+    --glow: 79 70 229;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: rgb(var(--bg));
+    color: rgb(var(--text));
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input,
+  textarea,
+  select {
+    background-color: rgb(var(--card));
+    color: rgb(var(--text));
+    border-color: rgb(var(--border));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--muted));
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    outline-color: rgb(var(--primary));
+  }
+}
+
+@layer components {
+  /*
+    البطاقات الموحدة
+    ألغينا الزجاجية الثقيلة والشفافية الزائدة.
+  */
+
+  .glass-card {
+    @apply bg-bgCard border border-borderColor animate-smooth;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.05),
+      0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .glass-panel {
+    @apply bg-bgCard border border-borderColor animate-smooth;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.05),
+      0 10px 30px rgba(15, 23, 42, 0.06);
+  }
+
+  .glass-button {
+    @apply bg-bgCard border border-borderColor text-textPrimary animate-smooth hover:bg-bgSoft active:scale-95;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .app-card {
+    @apply bg-bgCard border border-borderColor rounded-2xl shadow-sm;
+  }
+
+  .app-card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/20;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white rounded-xl font-black active:scale-95 transition-all;
+    box-shadow: 0 10px 24px rgba(79, 70, 229, 0.22);
+  }
+
+  .btn-primary:hover {
+    background: rgb(var(--primary-hover));
+  }
+}
+
+@layer utilities {
+  .animate-smooth {
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .soft-shadow {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .elevated-shadow {
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+  }
+}
