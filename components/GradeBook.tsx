@@ -11,6 +11,7 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import * as XLSX from 'xlsx';
 import { StudentAvatar } from './StudentAvatar';
+import { StudentRow } from './StudentRow';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 import PageLayout from '../components/PageLayout'; 
 
@@ -86,7 +87,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [summonData, setSummonData] = useState<{ student: Student; score: string; category: string } | null>(null);
   const [showMissingGradesOnly, setShowMissingGradesOnly] = useState(false);
 
-  const isRamadan = true;
+  const isRamadan = false;
 
   useEffect(() => {
     if (tools.length > 0 && !activeToolId) {
@@ -563,8 +564,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
         <div className="space-y-2 w-full mt-1">
             {/* ================= 1. كبسولة الفصول والصفوف ================= */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
-                <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
-                    <button 
+<div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-bgCard border-borderColor shadow-sm">                    <button 
                         onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
                         className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
                     >
@@ -599,8 +599,7 @@ const GradeBook: React.FC<GradeBookProps> = ({
 
             {/* ================= 2. كبسولة أدوات التقويم ================= */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
-                <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-primary/5 border-primary/20`}>
-                    {tools.map((tool, index) => (
+<div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-primary/5 border-primary/20 shadow-sm">                    {tools.map((tool, index) => (
                         <React.Fragment key={tool.id}>
                             {index > 0 && <div className={`w-[1px] h-4 mx-1.5 rounded-full shrink-0 bg-primary/20`} />}
                             <button 
@@ -673,65 +672,121 @@ const GradeBook: React.FC<GradeBookProps> = ({
       }
     >
 
-      {/* ⬇️ محتوى الصفحة المباشر (كروت الطلاب للدرجات) ⬇️ */}
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 animate-in fade-in duration-500 pt-2">
-        {displayedStudents.length > 0 ? displayedStudents.map(student => {
-          const currentGrade = getStudentGradeForActiveTool(student);
-          const semGrades = getSemesterGrades(student, currentSemester);
-          const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
-          const symbolColor = getSymbolColor(totalScore);
-          
-          const activeTool = tools.find(t => t.id === activeToolId);
-          const toolNameNormalized = normalizeText(activeTool?.name || '');
-          const isShortQuiz = toolNameNormalized.includes('اختبار') && toolNameNormalized.includes('قصير');
-          
-          const scoreNum = parseFloat(currentGrade);
-          const needsSummon = isShortQuiz && !isNaN(scoreNum) && scoreNum < 10 && currentGrade !== '';
+     {/* ⬇️ محتوى الصفحة المباشر: قائمة الطلاب الاحترافية للدرجات ⬇️ */}
+<div className="animate-in fade-in duration-500 pt-2">
+  {displayedStudents.length > 0 ? (
+    <div className="space-y-2.5 pb-6">
+      {displayedStudents.map((student, index) => {
+        const currentGrade = getStudentGradeForActiveTool(student);
+        const semGrades = getSemesterGrades(student, currentSemester);
+        const totalScore = semGrades.reduce((acc, curr) => acc + (curr.score || 0), 0);
 
-          return (
-            <div key={student.id} className={`glass-panel rounded-2xl p-3 border border-borderColor flex flex-col items-center relative transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
-              
-              {needsSummon && (
-                <button
-                  onClick={() => setSummonData({ student, score: currentGrade, category: activeTool?.name || '' })}
-                  className="absolute -top-2 -left-2 md:-left-3 p-1.5 md:p-2 bg-danger/10 backdrop-blur-md rounded-full border border-danger/30 text-danger hover:bg-danger/20 transition-all animate-pulse z-20 shadow-md active:scale-90"
-                  title="استدعاء ولي الأمر (درجة متدنية)"
-                >
-                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-              )}
+        const activeTool = tools.find(t => t.id === activeToolId);
+        const toolNameNormalized = normalizeText(activeTool?.name || '');
+        const isShortQuiz =
+          toolNameNormalized.includes('اختبار') &&
+          toolNameNormalized.includes('قصير');
 
-              <StudentAvatar gender={student.gender} className={`w-12 h-12 mb-2 border-2 shadow-sm border-borderColor`} />
-              
-              <h3 className={`font-bold text-xs leading-[1.3] text-center break-words mb-3 w-full min-h-[35px] flex items-center justify-center text-textPrimary`}>
-                {student.name}
-              </h3>
-              
-              <div className={`flex items-center justify-center gap-2 mb-3 w-full py-1.5 rounded-lg border bg-bgSoft border-borderColor`}>
-                  <span className={`text-base font-black ${symbolColor.split(' ')[0]}`}>{totalScore}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${symbolColor}`}>{getGradeSymbol(totalScore)}</span>
-              </div>
-              
-              <div className="w-full relative mt-auto">
-                  <input 
-                      type="tel" 
-                      maxLength={3} 
-                      value={currentGrade} 
-                      onChange={e => handleGradeChange(student.id, e.target.value)} 
-                      placeholder="-" 
-                      className={`w-full h-10 rounded-xl text-center font-black text-base outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary ${needsSummon ? 'border-danger/50 text-danger bg-danger/5' : ''}`} 
-                  />
-              </div>
-            </div>
-          );
-        }) : (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-70">
-            <Filter className="w-16 h-16 mb-4 text-textSecondary" />
-            <p className="font-bold text-base text-textSecondary">{showMissingGradesOnly ? 'ممتاز! تم رصد الدرجات لجميع الطلاب في هذه الأداة 🎉' : 'لا يوجد طلاب مطابقين للبحث'}</p>
-          </div>
-        )}
-      </div>
+        const scoreNum = parseFloat(currentGrade);
+        const needsSummon =
+          isShortQuiz &&
+          !isNaN(scoreNum) &&
+          scoreNum < 10 &&
+          currentGrade !== '';
 
+        const studentClass =
+          student.classes && student.classes.length > 0
+            ? student.classes[0]
+            : t('unspecified');
+
+        const gradeSymbol = getGradeSymbol(totalScore);
+
+        const gradeTone =
+          totalScore >= gradingSettings.totalScore * 0.9
+            ? 'success'
+            : totalScore >= gradingSettings.totalScore * 0.8
+              ? 'primary'
+              : totalScore >= gradingSettings.totalScore * 0.65
+                ? 'warning'
+                : totalScore >= gradingSettings.totalScore * 0.5
+                  ? 'warning'
+                  : 'danger';
+
+        return (
+          <StudentRow
+            key={student.id}
+            student={student}
+            dir={dir}
+            subtitle={studentClass}
+            indexLabel={index + 1}
+            badge={`${totalScore} / ${gradingSettings.totalScore}`}
+            badgeTone={gradeTone as any}
+            statusText={`${t('excelGrade') || 'التقدير'}: ${gradeSymbol}`}
+            statusTone={gradeTone as any}
+            className={
+              needsSummon
+                ? 'border-danger/30 bg-danger/5'
+                : currentGrade === ''
+                  ? 'border-warning/20 bg-warning/5'
+                  : ''
+            }
+            trailingContent={
+              <input
+                type="tel"
+                maxLength={3}
+                value={currentGrade}
+                onChange={e => handleGradeChange(student.id, e.target.value)}
+                placeholder="-"
+                data-voice-field={`درجة ${student.name}`}
+                aria-label={`درجة ${student.name}`}
+                title={`درجة ${student.name}`}
+                className={`w-16 md:w-20 h-10 rounded-xl text-center font-black text-base outline-none border-2 transition-all bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary ${
+                  needsSummon
+                    ? 'border-danger/50 text-danger bg-danger/5'
+                    : currentGrade === ''
+                      ? 'border-warning/40 bg-warning/5'
+                      : ''
+                }`}
+              />
+            }
+            actions={
+              needsSummon
+                ? [
+                    {
+                      key: 'summon',
+                      label: 'استدعاء',
+                      icon: AlertTriangle,
+                      tone: 'danger',
+                      showOnMobile: true,
+                      danger: true,
+                      voiceCommand: `استدعاء ولي أمر ${student.name} إرسال استدعاء ${student.name}`,
+                      ariaLabel: `استدعاء ولي أمر ${student.name}`,
+                      title: 'استدعاء ولي الأمر (درجة متدنية)',
+                      onClick: () =>
+                        setSummonData({
+                          student,
+                          score: currentGrade,
+                          category: activeTool?.name || ''
+                        })
+                    }
+                  ]
+                : []
+            }
+          />
+        );
+      })}
+    </div>
+  ) : (
+    <div className="py-20 flex flex-col items-center justify-center opacity-70">
+      <Filter className="w-16 h-16 mb-4 text-textSecondary" />
+      <p className="font-bold text-base text-textSecondary text-center">
+        {showMissingGradesOnly
+          ? 'ممتاز! تم رصد الدرجات لجميع الطلاب في هذه الأداة 🎉'
+          : 'لا يوجد طلاب مطابقين للبحث'}
+      </p>
+    </div>
+  )}
+</div>
       {/* ================= النوافذ المنزلقة (توضع كما هي بأمان) ================= */}
 
       {/* 🌟 1. اللوحة المنزلقة: إدارة أدوات التقويم */}
