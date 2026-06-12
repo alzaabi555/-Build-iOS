@@ -11,7 +11,7 @@ import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 import PageLayout from '../components/PageLayout'; 
-
+import { StudentRow } from './StudentRow';
 import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
@@ -76,7 +76,7 @@ const StudentList: React.FC<StudentListProps> = ({
     const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
     const [selectedClass, setSelectedClass] = useState<string>(() => sessionStorage.getItem('rased_class') || 'all');
 
-    const isRamadan = true;
+    const isRamadan = false;
 
     useEffect(() => {
         sessionStorage.setItem('rased_grade', selectedGrade);
@@ -554,108 +554,163 @@ const StudentList: React.FC<StudentListProps> = ({
             subtitle={`${safeStudents.length} ${t('registeredStudents')}`}
             icon={<Users size={24} />}
             
-            rightActions={
-                <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <button 
-                        onClick={() => { setIsMessagesModalOpen(true); fetchParentMessages(); }} 
-                        className={`relative p-2.5 rounded-xl border active:scale-95 transition-all flex items-center gap-2 ${isRamadan ? 'bg-purple-600/80 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-purple-600 border-purple-500 text-white shadow-lg hover:bg-purple-700'}`}
-                        title={t('parentsInboxTitle')}
+          rightActions={
+    <div
+        className="flex items-center gap-2 flex-nowrap shrink-0 overflow-visible"
+        style={{ WebkitAppRegion: 'no-drag' } as any}
+    >
+        <button 
+            data-voice-command="فتح صندوق الوارد رسائل أولياء الأمور الوارد"
+            aria-label="فتح صندوق الوارد"
+            onClick={() => { setIsMessagesModalOpen(true); fetchParentMessages(); }} 
+            className="relative w-10 h-10 shrink-0 rounded-xl border border-borderColor bg-bgCard text-textPrimary hover:bg-bgSoft active:scale-95 transition-all flex items-center justify-center shadow-sm"
+            title={t('parentsInboxTitle')}
+        >
+            <Mail className="w-5 h-5 text-primary" />
+
+            {messages.length > readMessagesCount && (
+                <span className="absolute -top-2 -right-2 bg-danger text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md border border-white">
+                    {messages.length - readMessagesCount}
+                </span>
+            )}
+        </button>
+
+        <div className="relative shrink-0">
+            <button 
+                data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
+                aria-label="فتح المؤقت"
+                onClick={() => setShowTimerModal(true)} 
+                className={`w-10 h-10 shrink-0 rounded-xl border active:scale-95 transition-all flex items-center justify-center shadow-sm ${
+                    timerSeconds > 0
+                        ? 'bg-warning text-white border-warning animate-pulse'
+                        : 'bg-bgCard border-borderColor text-textPrimary hover:bg-bgSoft'
+                }`}
+                title={t('timerTitle')}
+            >
+                <Timer className="w-5 h-5" />
+            </button>
+
+            {timerSeconds > 0 && (
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-black bg-warning text-white px-1.5 py-0.5 rounded-full shadow">
+                    {formatTime(timerSeconds)}
+                </span>
+            )}
+        </div>
+
+        <button 
+            data-voice-command="اختيار طالب عشوائي القرعة قرعة عشوائية اختر طالب"
+            aria-label="اختيار طالب عشوائي"
+            onClick={handleRandomPick} 
+            className="w-10 h-10 shrink-0 rounded-xl border border-borderColor bg-bgCard text-textPrimary hover:bg-bgSoft active:scale-95 transition-all flex items-center justify-center shadow-sm"
+            title={t('randomDraw')}
+        >
+            <Dices className="w-5 h-5 text-primary" />
+        </button>
+
+        <div className="relative z-[9999] shrink-0">
+            <button
+                data-voice-command="فتح قائمة الطلاب المزيد خيارات الطلاب"
+                aria-label="فتح قائمة الطلاب"
+                onClick={() => setShowMenu(!showMenu)}
+                className={`w-10 h-10 shrink-0 rounded-xl border active:scale-95 transition-all flex items-center justify-center shadow-sm ${
+                    showMenu
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-bgCard border-borderColor text-textPrimary hover:bg-bgSoft'
+                }`}
+            >
+                <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showMenu && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+
+                    <div
+                        className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-60 rounded-2xl shadow-elevated border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}
                     >
-                        <Mail className="w-5 h-5" />
-                        <span className="hidden md:inline text-xs font-black">{t('inboxInbox')}</span>
-                        {messages.length > readMessagesCount && (
-                            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce border border-white">
-                                {messages.length - readMessagesCount}
-                            </span>
-                        )}
-                    </button>
+                        <div className="p-1.5">
+                            <button
+                                data-voice-command="طباعة بطاقات الربط السرية بطاقات الربط"
+                                onClick={() => { setShowCardsModal(true); setShowMenu(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <Printer className="w-4 h-4 text-primary" />
+                                طباعة بطاقات الربط السرية
+                            </button>
 
-      <div className="relative shrink-0">
-  <button
-    data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
-    aria-label="فتح المؤقت"
-    onClick={() => setShowTimerModal(true)}
-    className={`w-10 h-10 shrink-0 p-2.5 rounded-xl border active:scale-95 transition-all flex items-center justify-center ${
-      timerSeconds > 0
-        ? isRamadan
-          ? 'bg-amber-500/80 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse'
-          : 'bg-amber-500 border-amber-400 text-white shadow-lg animate-pulse'
-        : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'
-    }`}
-  >
-    <Timer className="w-5 h-5 shrink-0" />
-  </button>
+                            <div className="my-1 border-t border-borderColor" />
 
-  {timerSeconds > 0 && (
-    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full shadow">
-      {formatTime(timerSeconds)}
-    </span>
-  )}
-</div>
+                            <button
+                                data-voice-command="هدوء وانضباط مكافأة الانضباط تعزيز الجميع"
+                                onClick={handleQuietAndDiscipline}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <Sparkles className="w-4 h-4 text-warning" />
+                                {t('rewardDiscipline')}
+                            </button>
 
-                    <button
-    data-voice-command="اختيار طالب عشوائي القرعة قرعة عشوائية اختر طالب"
-    aria-label="اختيار طالب عشوائي"
-    title="اختيار طالب عشوائي"
-    onClick={handleRandomPick} 
-    className={`p-2.5 rounded-xl border active:scale-95 transition-all bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard`}
->
-    <Dices className="w-5 h-5" />
-</button>
+                            <button
+                                data-voice-command="إضافة طالب يدوي إضافة طالب جديد"
+                                onClick={() => { setShowManualAddModal(true); setShowMenu(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <UserPlus className="w-4 h-4 text-primary" />
+                                {t('addStudentManually')}
+                            </button>
 
-                    <div className="relative z-[9999]">
-                        <button onClick={() => setShowMenu(!showMenu)} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${showMenu ? 'bg-bgCard border-borderColor text-textPrimary' : 'bg-bgSoft border-borderColor text-textPrimary hover:bg-bgCard'}`}>
-                            <MoreVertical className="w-5 h-5" />
-                        </button>
-                        {showMenu && (
-                        <>
-                            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
-                            <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-56 rounded-2xl shadow-2xl border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
-                                <div className="p-1">
-                                        <button onClick={() => { setShowCardsModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
-                                            <Printer className={`w-4 h-4 text-indigo-500`} /> طباعة بطاقات الربط السرية
-                                        </button>
-                                        <div className={`my-1 border-t border-borderColor`}></div>
+                            <button
+                                data-voice-command="استيراد الطلاب من إكسل استيراد إكسل"
+                                onClick={() => { setShowImportModal(true); setShowMenu(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <FileSpreadsheet className="w-4 h-4 text-success" />
+                                {t('importFromExcelMenu')}
+                            </button>
 
-                                        <button onClick={handleQuietAndDiscipline} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold border-b hover:bg-bgSoft border-borderColor text-textPrimary`}>
-                                            <Sparkles className={`w-4 h-4 text-purple-500`} /> {t('rewardDiscipline')}
-                                        </button>
-                                        <button onClick={() => { setShowManualAddModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
-                                            <UserPlus className={`w-4 h-4 text-primary`} /> {t('addStudentManually')}
-                                        </button>
-                                        <button onClick={() => { setShowImportModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
-                                            <FileSpreadsheet className={`w-4 h-4 text-success`} /> {t('importFromExcelMenu')}
-                                        </button>
-                                        <div className={`my-1 border-t border-borderColor`}></div>
-                                        <button onClick={() => { setShowAddClassModal(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
-                                            <LayoutGrid className={`w-4 h-4 text-warning`} /> {t('addNewClassMenu')}
-                                        </button>
-                                        <button onClick={() => { setShowManageClasses(true); setShowMenu(false); }} className={`flex items-center gap-3 px-4 py-3 transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}>
-                                            <Settings className={`w-4 h-4 text-textSecondary`} /> {t('manageClassesMenu')}
-                                        </button>
-                                </div>
-                            </div>
-                        </>
-                        )}
+                            <div className="my-1 border-t border-borderColor" />
+
+                            <button
+                                data-voice-command="إضافة فصل جديد فصل جديد"
+                                onClick={() => { setShowAddClassModal(true); setShowMenu(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <LayoutGrid className="w-4 h-4 text-warning" />
+                                {t('addNewClassMenu')}
+                            </button>
+
+                            <button
+                                data-voice-command="إدارة الفصول إعدادات الفصول"
+                                onClick={() => { setShowManageClasses(true); setShowMenu(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                            >
+                                <Settings className="w-4 h-4 text-textSecondary" />
+                                {t('manageClassesMenu')}
+                            </button>
+                        </div>
                     </div>
-                </div>
-            }
+                </>
+            )}
+        </div>
+    </div>
+}
 
             leftActions={
                 <div className="space-y-3 relative z-10 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
                     <div className="relative w-full">
                         <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
-                        <input 
-                            type="text" 
-                            placeholder={t('searchStudent')} 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
-                        />
+                        <input
+    type="text"
+    data-voice-field="بحث الطلاب"
+    aria-label="بحث الطلاب"
+    placeholder={t('searchStudent')} 
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40`}
+/>
                     </div>
                     
                     <div className="w-full overflow-x-auto no-scrollbar pb-2 mt-2">
-                        <div className={`inline-flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all bg-bgSoft border-borderColor`}>
+                        <div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-bgCard border-borderColor shadow-sm">
                             
                             <button 
                                 onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
@@ -692,78 +747,112 @@ const StudentList: React.FC<StudentListProps> = ({
                 </div> 
             }
         >
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in duration-500 pt-2">
-                {filteredStudents.length > 0 ? filteredStudents.map(student => {
-                    const totalPoints = calculateTotalPoints(student);
-                    return (
-                    <div key={student.id} className={`glass-panel border-borderColor rounded-[1.5rem] flex flex-col items-center overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1`}>
-                        <div className="p-4 flex flex-col items-center w-full relative">
-                            
-                            <div className="relative mb-3">
-                                <StudentAvatar 
-                                    gender={student.gender}
-                                    className={`w-16 h-16 ${isRamadan ? 'opacity-90' : ''}`}
-                                />
-                                {totalPoints !== 0 && (
-                                   <div className={`absolute -top-3 ${dir === 'rtl' ? '-right-5' : '-left-5'} z-10 flex items-center justify-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm border-2 ${isRamadan ? 'border-amber-500/30 bg-amber-500/20 text-amber-300' : 'border-white bg-amber-100 text-amber-600'}`}>
-                                        <Star size={10} className={isRamadan ? "fill-amber-400 text-amber-400" : "fill-amber-500 text-amber-500"} />
-                                        {totalPoints}
-                                    </div>
-                                )}
-                            </div>
+           <div className="animate-in fade-in duration-500 pt-2">
+    {filteredStudents.length > 0 ? (
+        <div className="space-y-2.5 pb-6">
+            {filteredStudents.map((student, index) => {
+                const totalPoints = calculateTotalPoints(student);
 
-                            <h3 className={`font-black text-sm text-center line-clamp-1 w-full text-textPrimary`}>{student.name}</h3>
-                            <div className="flex gap-1 mt-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold bg-bgSoft text-textSecondary`}>{student.classes && student.classes.length > 0 ? student.classes[0] : t('unspecified')}</span>
-                            </div>
-                        </div>
+                const studentClass =
+                    student.classes && student.classes.length > 0
+                        ? student.classes[0]
+                        : t('unspecified');
 
-                        <div className={`w-full h-px bg-borderColor`}></div>
+                return (
+                    <StudentRow
+                        key={student.id}
+                        student={student}
+                        dir={dir}
+                        subtitle={studentClass}
+                        badge={totalPoints !== 0 ? `${totalPoints}` : undefined}
+                        badgeTone={totalPoints >= 0 ? 'warning' : 'danger'}
+                        statusText={
+                            totalPoints !== 0
+                                ? `${totalPoints} نقطة هذا الشهر`
+                                : undefined
+                        }
+                        statusTone={totalPoints >= 0 ? 'warning' : 'danger'}
+                        indexLabel={index + 1}
+                        actions={[
+                            {
+                                key: 'positive',
+                                label: 'تعزيز',
+                                icon: ThumbsUp,
+                                tone: 'success',
+                                showOnMobile: true,
+                                voiceCommand: `تعزيز إيجابي ${student.name} افتح تعزيز ${student.name} نقاط تعزيز ${student.name}`,
+                                ariaLabel: `تعزيز إيجابي ${student.name}`,
+                                title: `تعزيز إيجابي ${student.name}`,
+                                onClick: () => handleBehavior(student, 'positive')
+                            },
+                            {
+                                key: 'negative',
+                                label: 'تنبيه',
+                                icon: ThumbsDown,
+                                tone: 'danger',
+                                showOnMobile: true,
+                                voiceCommand: `سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`,
+                                ariaLabel: `تنبيه سلوكي ${student.name}`,
+                                title: `تنبيه سلوكي ${student.name}`,
+                                danger: true,
+                                onClick: () => handleBehavior(student, 'negative')
+                            },
+                            {
+                                key: 'smart-report',
+                                label: 'تميز',
+                                icon: MessageCircle,
+                                tone: 'info',
+                                showOnMobile: false,
+                                voiceCommand: `تقرير تميز ${student.name} تقرير درجات ${student.name} واتساب ${student.name}`,
+                                ariaLabel: `تقرير الدرجات والتميز ${student.name}`,
+                                title: 'تقرير الدرجات والتميز (واتساب)',
+                                onClick: () => handleSendSmartReport(student)
+                            },
+                            {
+                                key: 'negative-report',
+                                label: 'إنذار',
+                                icon: Send,
+                                tone: 'warning',
+                                showOnMobile: false,
+                                voiceCommand: `تقرير سلوكي ${student.name} إنذار ${student.name} إرسال إنذار ${student.name}`,
+                                ariaLabel: `تقرير سلوكي إنذار ${student.name}`,
+                                title: 'تقرير سلوكي إنذار (واتساب)',
+                                onClick: () => handleSendNegativeReport(student)
+                            },
+                            {
+                                key: 'edit',
+                                label: 'تعديل',
+                                icon: Edit2,
+                                tone: 'neutral',
+                                showOnMobile: false,
+                                voiceCommand: `تعديل بيانات ${student.name} تعديل الطالب ${student.name}`,
+                                ariaLabel: `تعديل بيانات ${student.name}`,
+                                title: t('editStudentData'),
+                                onClick: () => setEditingStudent(student)
+                            }
+                        ]}
+                    />
+                );
+            })}
+        </div>
+    ) : (
+        <div className="flex flex-col items-center justify-center py-20 text-center opacity-70">
+            <UserPlus className="w-16 h-16 mb-4 text-textSecondary/50" />
+            <p className="text-sm font-bold text-textSecondary">
+                {t('noMatchingStudents')}
+            </p>
 
-                        <div className={`flex w-full divide-x ${dir === 'rtl' ? 'divide-x-reverse' : ''} divide-borderColor`}>
-                            
-                            <button
-    data-voice-command={`تعزيز إيجابي ${student.name} افتح تعزيز ${student.name} نقاط تعزيز ${student.name}`}
-    aria-label={`تعزيز إيجابي ${student.name}`}
-    title={`تعزيز إيجابي ${student.name}`}
-    onClick={() => handleBehavior(student, 'positive')}
-    className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-emerald-500/10 active:bg-emerald-500/20`}
->
-    <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform text-emerald-500`} />
-</button>
-                            
-                           <button
-    data-voice-command={`سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`}
-    aria-label={`تنبيه سلوكي ${student.name}`}
-    title={`تنبيه سلوكي ${student.name}`}
-    onClick={() => handleBehavior(student, 'negative')}
-    className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-rose-500/10 active:bg-rose-500/20`}
->
-    <ThumbsDown className={`w-4 h-4 group-hover:scale-110 transition-transform text-rose-500`} />
-</button>
-
-                            <button onClick={() => handleSendSmartReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-blue-500/10 active:bg-blue-500/20`} title="تقرير الدرجات والتميز (واتساب)">
-                                <MessageCircle className={`w-4 h-4 group-hover:scale-110 transition-transform text-blue-500`} />
-                            </button>
-
-                            <button onClick={() => handleSendNegativeReport(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-amber-500/10 active:bg-amber-500/20`} title="تقرير سلوكي إنذار (واتساب)">
-                                <Send className={`w-4 h-4 group-hover:scale-110 transition-transform text-amber-500`} />
-                            </button>
-                            
-                            <button onClick={() => setEditingStudent(student)} className={`flex-1 py-3 flex flex-col items-center justify-center transition-colors group hover:bg-bgSoft active:bg-bgSoft/80`} title={t('editStudentData')}>
-                                <Edit2 className={`w-4 h-4 transition-colors text-textSecondary group-hover:text-primary`} />
-                            </button>
-                            
-                        </div>
-                    </div>
-                )}) : (
-                    <div className={`flex flex-col items-center justify-center py-20 col-span-full text-center opacity-70`}>
-                        <UserPlus className={`w-16 h-16 mb-4 text-textSecondary/50`} />
-                        <p className={`text-sm font-bold text-textSecondary`}>{t('noMatchingStudents')}</p>
-                        {safeClasses.length === 0 && <p className={`text-xs mt-2 font-bold cursor-pointer text-primary`} onClick={() => setShowAddClassModal(true)}>{t('startByAddingClass')}</p>}
-                    </div>
-                )}
-            </div>
+            {safeClasses.length === 0 && (
+                <p
+                    className="text-xs mt-2 font-bold cursor-pointer text-primary"
+                    onClick={() => setShowAddClassModal(true)}
+                >
+                    {t('startByAddingClass')}
+                </p>
+            )}
+        </div>
+    )}
+</div>
 
         {/* 📥 1. نافذة صندوق الوارد للرسائل (محدثة للرد السحابي) */}
         <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
@@ -1027,50 +1116,38 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
                     <div className="grid grid-cols-2 gap-2 mb-4">
                         {POSITIVE_BEHAVIORS.map(b => (
-    <button 
-        key={b.id}
-        data-voice-command={`${b.original} ${t(b.transKey)} تعزيز ${selectedStudentForBehavior?.name || ''} ${b.points} نقاط`}
-        aria-label={`${b.original} ${selectedStudentForBehavior?.name || ''}`}
-        title={`${b.original} +${b.points}`}
-        onClick={() => confirmPositiveBehavior(b.original, b.points)}
-        className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
-    >
-        <span>{t(b.transKey)}</span>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>
-            +{b.points}
-        </span>
-    </button>
-))}
+                            <button 
+                                key={b.id}
+                                onClick={() => confirmPositiveBehavior(b.original, b.points)}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20`}
+                            >
+                                <span>{t(b.transKey)}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600`}>+{b.points}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p>
                     <div className="flex gap-2">
-                        <input
-    type="text"
-    data-voice-field="سبب التعزيز"
-    aria-label="سبب التعزيز"
-    title="سبب التعزيز"
-    value={customPositiveReason}
-    onChange={(e) => setCustomPositiveReason(e.target.value)}
-    placeholder={t('otherReasonPlaceholder')} 
-    className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
-/>
-                      
-                        <button
-    data-voice-command="إضافة التعزيز المخصص حفظ التعزيز"
-    aria-label="إضافة التعزيز المخصص"
-    title="إضافة التعزيز المخصص"
-    onClick={() => {
-        if(customPositiveReason.trim()) {
-            confirmPositiveBehavior(customPositiveReason, 1);
-        }
-    }}
-    className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600`}
->
-    <Plus size={14} /> {t('addBtnSmall')}
-</button>
+                        <input 
+                            type="text" 
+                            value={customPositiveReason}
+                            onChange={(e) => setCustomPositiveReason(e.target.value)}
+                            placeholder={t('otherReasonPlaceholder')} 
+                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary`}
+                        />
+                        <button 
+                            onClick={() => {
+                                if(customPositiveReason.trim()) {
+                                    confirmPositiveBehavior(customPositiveReason, 1);
+                                }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600`}
+                        >
+                            <Plus size={14} /> {t('addBtnSmall')}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1089,51 +1166,39 @@ const StudentList: React.FC<StudentListProps> = ({
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
                     <div className="grid grid-cols-2 gap-2 mb-4">
-                       {NEGATIVE_BEHAVIORS.map(b => (
-    <button 
-        key={b.id}
-        data-voice-command={`${b.original} ${t(b.transKey)} تنبيه ${selectedStudentForBehavior?.name || ''} خصم ${Math.abs(b.points)} نقاط`}
-        aria-label={`${b.original} ${selectedStudentForBehavior?.name || ''}`}
-        title={`${b.original} ${b.points}`}
-        data-voice-danger={Math.abs(b.points) >= 3 ? 'true' : 'false'}
-        onClick={() => confirmNegativeBehavior(b.original, b.points)}
-        className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20`}
-    >
-        <span>{t(b.transKey)}</span>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
-    </button>
-))}
-                   
+                        {NEGATIVE_BEHAVIORS.map(b => (
+                            <button 
+                                key={b.id}
+                                onClick={() => confirmNegativeBehavior(b.original, b.points)}
+                                className={`p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20`}
+                            >
+                                <span>{t(b.transKey)}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600`}>{b.points}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 <div className={`pt-3 border-t shrink-0 mt-auto border-borderColor`}>
                     <p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomNote')}</p>
                     <div className="flex gap-2">
-                        <input
-    type="text"
-    data-voice-field="سبب التنبيه"
-    aria-label="سبب التنبيه"
-    title="سبب التنبيه"
-    value={customNegativeReason}
-    onChange={(e) => setCustomNegativeReason(e.target.value)}
-    placeholder={t('otherReasonPlaceholder')} 
-    className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary`}
-/>
-                        <button
-    data-voice-command="إضافة التنبيه المخصص حفظ التنبيه"
-    aria-label="إضافة التنبيه المخصص"
-    title="إضافة التنبيه المخصص"
-    data-voice-danger="true"
-    onClick={() => {
-        if(customNegativeReason.trim()) {
-            confirmNegativeBehavior(customNegativeReason, -1);
-        }
-    }}
-    className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600`}
->
-    <Plus size={14} /> {t('addBtnSmall')}
-</button>
+                        <input 
+                            type="text" 
+                            value={customNegativeReason}
+                            onChange={(e) => setCustomNegativeReason(e.target.value)}
+                            placeholder={t('otherReasonPlaceholder')} 
+                            className={`flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary`}
+                        />
+                        <button 
+                            onClick={() => {
+                                if(customNegativeReason.trim()) {
+                                    confirmNegativeBehavior(customNegativeReason, -1);
+                                }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600`}
+                        >
+                            <Plus size={14} /> {t('addBtnSmall')}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1183,18 +1248,9 @@ const StudentList: React.FC<StudentListProps> = ({
                         {randomWinner.classes[0]}
                     </p>
                     <div className="flex gap-3 w-full">
-<button
-    data-voice-command={`تعزيز الفائز تعزيز الطالب ${randomWinner.name} افتح تعزيز ${randomWinner.name}`}
-    aria-label={`تعزيز الفائز ${randomWinner.name}`}
-    title={`تعزيز الفائز ${randomWinner.name}`}
-    onClick={() => { 
-        handleBehavior(randomWinner, 'positive'); 
-        setRandomWinner(null); 
-    }}
-    className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600`}
->
-    {t('reinforceBtn')}
-</button>
+                        <button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className={`flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600`}>
+                            {t('reinforceBtn')}
+                        </button>
                     </div>
                 </div>
             )}
@@ -1210,17 +1266,14 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-3 gap-2 mb-6">
                         {[1, 3, 5, 10, 15, 20].map(min => (
-    <button 
-        key={min}
-        data-voice-command={`تشغيل مؤقت ${min} دقائق مؤقت ${min} دقائق ${min} دقيقة`}
-        aria-label={`تشغيل مؤقت ${min} دقائق`}
-        title={`تشغيل مؤقت ${min} دقائق`}
-        onClick={() => startTimer(min)} 
-        className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 bg-transparent border-borderColor text-textSecondary hover:bg-primary/10 hover:border-primary/30 hover:text-primary`}
-    >
-        {min} {t('minuteAbbrev')}
-    </button>
-))}
+                            <button 
+                                key={min} 
+                                onClick={() => startTimer(min)} 
+                                className={`border rounded-xl py-3 text-xs font-bold transition-all active:scale-95 bg-transparent border-borderColor text-textSecondary hover:bg-primary/10 hover:border-primary/30 hover:text-primary`}
+                            >
+                                {min} {t('minuteAbbrev')}
+                            </button>
+                        ))}
                     </div>
 
                     <div className="flex gap-2 items-center mb-6">
