@@ -44,115 +44,249 @@ import { useSchoolBell } from './hooks/useSchoolBell';
 import { AppLayout } from './components/layout/AppLayout';
 
 // ==================================================================
-// 🛡️ شاشة تسجيل الدخول الأمنية (نظام حماية المعلم)
+// 🛡️ شاشة تسجيل الدخول الأمنية - راصد المعلم
 // ==================================================================
 const TeacherLoginScreen: React.FC<{
   onLogin: () => void;
   teacherInfo: any;
   setTeacherInfo: any;
 }> = ({ onLogin, teacherInfo, setTeacherInfo }) => {
-  // 💉 الحقول دائماً فارغة لحماية الخصوصية من أعين المتطفلين
+  const LOCK_READY_KEY = 'rased_teacher_lock_ready';
+  const CIVIL_ID_KEY = 'rased_teacher_civil_id';
+  const SCHOOL_CODE_KEY = 'rased_admin_school_code';
+
+  const savedCivilId = localStorage.getItem(CIVIL_ID_KEY);
+  const savedSchoolCode = localStorage.getItem(SCHOOL_CODE_KEY);
+  const lockReady = localStorage.getItem(LOCK_READY_KEY) === 'true';
+
+  const hasSavedLock = Boolean(lockReady && savedCivilId && savedSchoolCode);
+  const isFirstTime = !hasSavedLock;
+
   const [civilId, setCivilId] = useState('');
   const [schoolCode, setSchoolCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const savedCivilId = localStorage.getItem('rased_teacher_civil_id');
-  const savedSchoolCode = localStorage.getItem('rased_admin_school_code');
-  const isFirstTime = !savedCivilId || !savedSchoolCode;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!civilId || !schoolCode) return;
+
+    const enteredCivilId = civilId.trim();
+    const enteredSchoolCode = schoolCode.trim();
+
+    if (!enteredCivilId || !enteredSchoolCode) return;
+
     setIsLoading(true);
     setErrorMsg('');
 
     setTimeout(() => {
-      if (isFirstTime) {
-        // 💉 المرة الأولى: تسجيل وحفظ القفل
-        localStorage.setItem('rased_teacher_civil_id', civilId.trim());
-        localStorage.setItem('rased_admin_school_code', schoolCode.trim());
+      /**
+       * الحالة الأولى:
+       * لا يوجد قفل محفوظ نهائيًا.
+       * هنا فقط نعتبرها أول مرة ونحفظ بيانات القفل.
+       */
+      if (!hasSavedLock) {
+        localStorage.setItem(CIVIL_ID_KEY, enteredCivilId);
+        localStorage.setItem(SCHOOL_CODE_KEY, enteredSchoolCode);
+        localStorage.setItem(LOCK_READY_KEY, 'true');
+
         if (setTeacherInfo) {
-          setTeacherInfo((prev: any) => ({ ...prev, civilId: civilId.trim() }));
+          setTeacherInfo((prev: any) => ({
+            ...prev,
+            civilId: enteredCivilId
+          }));
         }
+
         setIsLoading(false);
         onLogin();
-      } else {
-        // 💉 المرات القادمة: المطابقة مع القفل المخزن
-        if (civilId.trim() === savedCivilId && schoolCode.trim() === savedSchoolCode) {
-          setIsLoading(false);
-          onLogin();
-        } else {
-          setIsLoading(false);
-          setErrorMsg('بيانات الدخول غير مطابقة! الرجاء التأكد من رقمك الخاص  وكود المدرسة.');
-        }
+        return;
       }
-    }, 800);
+
+      /**
+       * الحالة الثانية:
+       * يوجد قفل محفوظ.
+       * هنا لا نسمح أبدًا بحفظ مدخلات جديدة إذا كانت خاطئة.
+       */
+      const isCivilIdValid = enteredCivilId === savedCivilId;
+      const isSchoolCodeValid = enteredSchoolCode === savedSchoolCode;
+
+      if (isCivilIdValid && isSchoolCodeValid) {
+        setIsLoading(false);
+        onLogin();
+        return;
+      }
+
+      setIsLoading(false);
+      setErrorMsg('بيانات الدخول غير مطابقة. الرجاء التأكد من الرقم الخاص وكود المدرسة.');
+    }, 600);
   };
 
-  // 💉 ميزة الطوارئ (فك الارتباط دون مسح البيانات)
+  /**
+   * دخول سريع عند وجود قفل محفوظ.
+   * هذا يمنع طلب إدخال البيانات في كل مرة.
+   */
+  const handleQuickLogin = () => {
+    if (!hasSavedLock) return;
+
+    setIsLoading(true);
+    setErrorMsg('');
+
+    setTimeout(() => {
+      setIsLoading(false);
+      onLogin();
+    }, 350);
+  };
+
+  /**
+   * إعادة ضبط القفل فقط، دون مسح بيانات الطلاب أو الدرجات.
+   */
   const handleResetLock = () => {
-    if (window.confirm('هل أنت متأكد من رغبتك في فك قفل التطبيق؟ لن يتم مسح بيانات طلابك ودرجاتك، سيتم فقط السماح لك بتسجيل بيانات دخول جديدة.')) {
-      localStorage.removeItem('rased_teacher_civil_id');
-      localStorage.removeItem('rased_admin_school_code');
-      setCivilId('');
-      setSchoolCode('');
-      setErrorMsg('');
-      alert('تم إعادة ضبط قفل التطبيق بنجاح. يمكنك الآن تسجيل بيانات جديدة.');
-      window.location.reload();
-    }
+    const confirmed = window.confirm(
+      'هل أنت متأكد من رغبتك في فك قفل التطبيق؟ لن يتم مسح بيانات الطلاب أو الدرجات، سيتم فقط السماح بتسجيل بيانات دخول جديدة.'
+    );
+
+    if (!confirmed) return;
+
+    localStorage.removeItem(CIVIL_ID_KEY);
+    localStorage.removeItem(SCHOOL_CODE_KEY);
+    localStorage.removeItem(LOCK_READY_KEY);
+
+    setCivilId('');
+    setSchoolCode('');
+    setErrorMsg('');
+
+    alert('تم إعادة ضبط قفل التطبيق بنجاح. يمكنك الآن تسجيل بيانات دخول جديدة.');
+    window.location.reload();
   };
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center font-sans overflow-hidden relative px-6" dir="rtl"
-         style={{ backgroundColor: "#0f172a", backgroundImage: `radial-gradient(at 0% 0%, #1e1b4b 0px, transparent 50%), radial-gradient(at 100% 100%, #312e81 0px, transparent 50%)` }}>
+    <div
+      className="min-h-[100dvh] w-full flex flex-col items-center justify-center font-sans overflow-hidden relative px-6 bg-bgMain text-textPrimary"
+      dir="rtl"
+    >
       <main className="w-full max-w-md relative z-10 flex flex-col items-center">
-        <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="inline-flex items-center justify-center p-5 rounded-2xl bg-white/10 backdrop-blur-md mb-6 shadow-2xl border border-white/10">
-            {isFirstTime ? <School className="w-12 h-12 text-indigo-400" /> : <ShieldCheck className="w-12 h-12 text-emerald-400" />}
+        <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center justify-center p-5 rounded-2xl bg-bgCard mb-5 shadow-card border border-borderColor">
+            {isFirstTime ? (
+              <School className="w-12 h-12 text-primary" />
+            ) : (
+              <ShieldCheck className="w-12 h-12 text-success" />
+            )}
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tight mb-2">راصد المعلم</h1>
-          <p className="text-indigo-200 font-bold tracking-wide text-sm">
+
+          <h1 className="text-4xl md:text-5xl font-black text-textPrimary tracking-tight mb-2">
+            راصد المعلم
+          </h1>
+
+          <p className="text-textSecondary font-bold tracking-wide text-sm">
             {isFirstTime ? 'إعداد قفل التطبيق لأول مرة' : 'بوابة الدخول الآمن'}
           </p>
         </div>
 
-        <div className="w-full bg-white/10 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/20">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
+        <div className="w-full bg-bgCard rounded-[2rem] p-7 md:p-9 shadow-card border border-borderColor">
+          {hasSavedLock && (
+            <div className="mb-6 rounded-2xl border border-success/20 bg-success/10 p-4 text-center">
+              <p className="text-sm font-black text-success mb-1">
+                تم حفظ بيانات الدخول لهذا الجهاز
+              </p>
+              <p className="text-xs font-bold text-textSecondary">
+                يمكنك الدخول مباشرة، أو إدخال البيانات يدويًا للتحقق.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleQuickLogin}
+                disabled={isLoading}
+                className="w-full mt-4 bg-success text-white py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all disabled:opacity-70"
+              >
+                {isLoading ? (
+                  <Loader2 className="animate-spin w-5 h-5" />
+                ) : (
+                  <>
+                    <span>دخول سريع</span>
+                    <ArrowLeft className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white/90 px-1 text-right">الدخول برقمك الخاص </label>
+              <label className="block text-xs font-bold text-textSecondary px-1 text-right">
+                الرقم الخاص للمعلم
+              </label>
+
               <div className="relative group">
-                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-indigo-300"><Fingerprint className="w-6 h-6" /></div>
-                <input type="number" value={civilId} onChange={(e) => setCivilId(e.target.value)} className="block w-full pr-14 pl-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-4 focus:ring-indigo-500/30 text-white font-black text-lg outline-none text-left placeholder:text-indigo-200/50" placeholder="أدخل الرقم" required />
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-primary">
+                  <Fingerprint className="w-6 h-6" />
+                </div>
+
+                <input
+                  type="number"
+                  value={civilId}
+                  onChange={(e) => setCivilId(e.target.value)}
+                  className="block w-full pr-14 pl-4 py-4 bg-bgCard border border-borderColor rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary text-textPrimary font-black text-lg outline-none text-left placeholder:text-textSecondary"
+                  placeholder="أدخل الرقم"
+                  required
+                />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white/90 px-1 text-right">كود المدرسة</label>
+              <label className="block text-xs font-bold text-textSecondary px-1 text-right">
+                كود المدرسة
+              </label>
+
               <div className="relative group">
-                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-amber-300"><School className="w-6 h-6" /></div>
-                <input type="text" value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)} className="block w-full pr-14 pl-4 py-4 bg-white/10 border border-white/20 rounded-2xl focus:ring-4 focus:ring-amber-500/30 text-white font-black text-lg outline-none text-left placeholder:text-amber-200/50 uppercase" placeholder="مثال: 1234" required />
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-warning">
+                  <School className="w-6 h-6" />
+                </div>
+
+                <input
+                  type="text"
+                  value={schoolCode}
+                  onChange={(e) => setSchoolCode(e.target.value)}
+                  className="block w-full pr-14 pl-4 py-4 bg-bgCard border border-borderColor rounded-2xl focus:ring-4 focus:ring-warning/10 focus:border-warning text-textPrimary font-black text-lg outline-none text-left placeholder:text-textSecondary uppercase"
+                  placeholder="مثال: 1234"
+                  required
+                />
               </div>
             </div>
 
             {errorMsg && (
-              <div className="flex items-start gap-2 bg-rose-500/10 border border-rose-500/50 p-3 rounded-xl text-rose-300 text-xs font-bold animate-in fade-in">
+              <div className="flex items-start gap-2 bg-danger/10 border border-danger/30 p-3 rounded-xl text-danger text-xs font-bold animate-in fade-in">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <p>{errorMsg}</p>
               </div>
             )}
 
-            <button type="submit" disabled={isLoading || !civilId || !schoolCode} className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-70">
-              {isLoading ? <Loader2 className="animate-spin" /> : <><span>{isFirstTime ? 'تأكيد وحفظ القفل' : 'دخول آمن'}</span><ArrowLeft className="w-5 h-5" /></>}
+            <button
+              type="submit"
+              disabled={isLoading || !civilId || !schoolCode}
+              className="w-full mt-4 bg-primary hover:bg-primaryHover text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-card active:scale-95 transition-all disabled:opacity-60"
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <span>
+                    {isFirstTime ? 'تأكيد وحفظ القفل' : 'تحقق من البيانات'}
+                  </span>
+                  <ArrowLeft className="w-5 h-5" />
+                </>
+              )}
             </button>
           </form>
 
-          {/* 💉 ميزة استعادة الطوارئ تظهر فقط إذا كان التطبيق مقفلاً */}
-          {!isFirstTime && (
-            <div className="mt-8 text-center border-t border-white/10 pt-6">
-              <button onClick={handleResetLock} className="text-[11px] font-bold text-indigo-300 hover:text-white flex items-center justify-center gap-1.5 mx-auto transition-colors">
-                <Unlock className="w-3.5 h-3.5" /> هل نسيت بيانات القفل؟ اضغط هنا
+          {hasSavedLock && (
+            <div className="mt-8 text-center border-t border-borderColor pt-6">
+              <button
+                type="button"
+                onClick={handleResetLock}
+                className="text-[11px] font-bold text-textSecondary hover:text-danger flex items-center justify-center gap-1.5 mx-auto transition-colors"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                هل نسيت بيانات القفل؟ اضغط هنا
               </button>
             </div>
           )}
@@ -179,8 +313,14 @@ const AppContent: React.FC = () => {
   const [appVersion, setAppVersion] = useState('4.4.1');
   
   // 💉 حالة تسجيل الدخول أصبحت false دائماً لتجبر المعلم على المطابقة عند كل فتح للتطبيق
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+// ✅ إذا كان قفل المعلم محفوظًا مسبقًا، يدخل التطبيق مباشرة دون طلب الإدخال كل مرة
+const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+  const lockReady = localStorage.getItem('rased_teacher_lock_ready') === 'true';
+  const civilId = localStorage.getItem('rased_teacher_civil_id');
+  const schoolCode = localStorage.getItem('rased_admin_school_code');
 
+  return Boolean(lockReady && civilId && schoolCode);
+});
   const [showWelcome, setShowWelcome] = useState<boolean>(() => !localStorage.getItem('rased_welcome_seen'));
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => localStorage.getItem('bell_enabled') === 'true');
 
