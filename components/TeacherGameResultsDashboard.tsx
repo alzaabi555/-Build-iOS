@@ -419,99 +419,103 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         </div>
       </section>
 
-      <section className="mb-4">
-+        {/* عرض مضغوط للجوالات حتى لا تأخذ الإحصائيات مساحة كبيرة */}
-+        <div className="grid grid-cols-2 gap-2 md:hidden">
-+          <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-+            <div className="flex items-center gap-2 min-w-0">
-+              <span className="w-7 h-7 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
-+                <Gamepad2 className="w-4 h-4" />
-+              </span>
-+              <span className="text-[9px] font-black text-textSecondary truncate">المحاولات</span>
-+            </div>
-+            <span className="text-base font-black text-textPrimary shrink-0">{summary.totalAttempts}</span>
-+          </div>
-+
-+          <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-+            <div className="flex items-center gap-2 min-w-0">
-+              <span className="w-7 h-7 rounded-xl bg-info/10 text-info border border-info/20 flex items-center justify-center shrink-0">
-+                <Users className="w-4 h-4" />
-+              </span>
-+              <span className="text-[9px] font-black text-textSecondary truncate">الطلاب</span>
-+            </div>
-+            <span className="text-base font-black text-textPrimary shrink-0">{summary.uniqueStudents}</span>
-+          </div>
-+
-+          <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-+            <div className="flex items-center gap-2 min-w-0">
-+              <span className="w-7 h-7 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center shrink-0">
-+                <CheckCircle2 className="w-4 h-4" />
-+              </span>
-+              <span className="text-[9px] font-black text-textSecondary truncate">مكتملة</span>
-+            </div>
-+            <span className="text-base font-black text-success shrink-0">{summary.completedAttempts}</span>
-+          </div>
-+
-+          <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-+            <div className="flex items-center gap-2 min-w-0">
-+              <span className="w-7 h-7 rounded-xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center shrink-0">
-+                <Trophy className="w-4 h-4" />
-+              </span>
-+              <span className="text-[9px] font-black text-textSecondary truncate">متوسط الطالب</span>
-+            </div>
-+            <span className="text-base font-black text-warning shrink-0">{summary.averageScore}</span>
-+          </div>
-+
-+          <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2 col-span-2">
-+            <div className="flex items-center gap-2 min-w-0">
-+              <span className="w-7 h-7 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center shrink-0">
-+                <AlertTriangle className="w-4 h-4" />
-+              </span>
-+              <span className="text-[9px] font-black text-textSecondary truncate">أسئلة ضعيفة</span>
-+            </div>
-+            <span className="text-base font-black text-danger shrink-0">{summary.totalWeakQuestions}</span>
-+          </div>
-+        </div>
-+
-+        {/* العرض الحالي يبقى للأجهزة المتوسطة والكبيرة */}
-+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-3">
-+          <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-+            <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
-+              <Gamepad2 className="w-5 h-5" />
-+            </div>
-+            <p className="text-[9px] font-black text-textSecondary mb-1">المحاولات</p>
-+            <p className="text-xl font-black text-textPrimary">{summary.totalAttempts}</p>
-+          </div>
-+          <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-+            <div className="w-9 h-9 rounded-2xl bg-info/10 text-info border border-info/20 flex items-center justify-center mb-2">
-+              <Users className="w-5 h-5" />
-+            </div>
-+            <p className="text-[9px] font-black text-textSecondary mb-1">الطلاب</p>
-+            <p className="text-xl font-black text-textPrimary">{summary.uniqueStudents}</p>
-+          </div>
-+          <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-+            <div className="w-9 h-9 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center mb-2">
-+              <CheckCircle2 className="w-5 h-5" />
-+            </div>
-+            <p className="text-[9px] font-black text-textSecondary mb-1">مكتملة</p>
-+            <p className="text-xl font-black text-success">{summary.completedAttempts}</p>
-+          </div>
-+          <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-+            <div className="w-9 h-9 rounded-2xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center mb-2">
-+              <Trophy className="w-5 h-5" />
-+            </div>
-+            <p className="text-[9px] font-black text-textSecondary mb-1">متوسط نقاط الطالب</p>
-+            <p className="text-xl font-black text-warning">{summary.averageScore}</p>
-+          </div>
-+          <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm col-span-2 lg:col-span-1">
-+            <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
-+              <AlertTriangle className="w-5 h-5" />
-+            </div>
-+            <p className="text-[9px] font-black text-textSecondary mb-1">أسئلة ضعيفة</p>
-+            <p className="text-xl font-black text-danger">{summary.totalWeakQuestions}</p>
-+          </div>
-+        </div>
-+      </section>
+     <section className="mb-4">
+  {/* عرض مضغوط للجوالات حتى لا تأخذ الإحصائيات مساحة كبيرة */}
+  <div className="grid grid-cols-2 gap-2 md:hidden">
+    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-7 h-7 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
+          <Gamepad2 className="w-4 h-4" />
+        </span>
+        <span className="text-[9px] font-black text-textSecondary truncate">المحاولات</span>
+      </div>
+      <span className="text-base font-black text-textPrimary shrink-0">{summary.totalAttempts}</span>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-7 h-7 rounded-xl bg-info/10 text-info border border-info/20 flex items-center justify-center shrink-0">
+          <Users className="w-4 h-4" />
+        </span>
+        <span className="text-[9px] font-black text-textSecondary truncate">الطلاب</span>
+      </div>
+      <span className="text-base font-black text-textPrimary shrink-0">{summary.uniqueStudents}</span>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-7 h-7 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center shrink-0">
+          <CheckCircle2 className="w-4 h-4" />
+        </span>
+        <span className="text-[9px] font-black text-textSecondary truncate">مكتملة</span>
+      </div>
+      <span className="text-base font-black text-success shrink-0">{summary.completedAttempts}</span>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-7 h-7 rounded-xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center shrink-0">
+          <Trophy className="w-4 h-4" />
+        </span>
+        <span className="text-[9px] font-black text-textSecondary truncate">متوسط الطالب</span>
+      </div>
+      <span className="text-base font-black text-warning shrink-0">{summary.averageScore}</span>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2 col-span-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-7 h-7 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center shrink-0">
+          <AlertTriangle className="w-4 h-4" />
+        </span>
+        <span className="text-[9px] font-black text-textSecondary truncate">أسئلة ضعيفة</span>
+      </div>
+      <span className="text-base font-black text-danger shrink-0">{summary.totalWeakQuestions}</span>
+    </div>
+  </div>
+
+  {/* العرض الحالي يبقى للأجهزة المتوسطة والكبيرة */}
+  <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-3">
+    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+      <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
+        <Gamepad2 className="w-5 h-5" />
+      </div>
+      <p className="text-[9px] font-black text-textSecondary mb-1">المحاولات</p>
+      <p className="text-xl font-black text-textPrimary">{summary.totalAttempts}</p>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+      <div className="w-9 h-9 rounded-2xl bg-info/10 text-info border border-info/20 flex items-center justify-center mb-2">
+        <Users className="w-5 h-5" />
+      </div>
+      <p className="text-[9px] font-black text-textSecondary mb-1">الطلاب</p>
+      <p className="text-xl font-black text-textPrimary">{summary.uniqueStudents}</p>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+      <div className="w-9 h-9 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center mb-2">
+        <CheckCircle2 className="w-5 h-5" />
+      </div>
+      <p className="text-[9px] font-black text-textSecondary mb-1">مكتملة</p>
+      <p className="text-xl font-black text-success">{summary.completedAttempts}</p>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+      <div className="w-9 h-9 rounded-2xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center mb-2">
+        <Trophy className="w-5 h-5" />
+      </div>
+      <p className="text-[9px] font-black text-textSecondary mb-1">متوسط نقاط الطالب</p>
+      <p className="text-xl font-black text-warning">{summary.averageScore}</p>
+    </div>
+
+    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm col-span-2 lg:col-span-1">
+      <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
+        <AlertTriangle className="w-5 h-5" />
+      </div>
+      <p className="text-[9px] font-black text-textSecondary mb-1">أسئلة ضعيفة</p>
+      <p className="text-xl font-black text-danger">{summary.totalWeakQuestions}</p>
+    </div>
+  </div>
+</section>
 
       <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm mb-4">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_170px_170px_150px_170px] gap-3">
