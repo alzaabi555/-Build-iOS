@@ -1291,54 +1291,6 @@ const EmptyActionCard = ({
         {/* العمود الجانبي */}
         <div className="xl:col-span-4 space-y-4 md:space-y-6">
 
-            {/* اختصارات سريعة */}
-            <div className="rounded-3xl p-4 md:p-5 shadow-sm border glass-panel border-borderColor">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-sm md:text-base font-black text-textPrimary">اختصارات سريعة</h2>
-                        <p className="text-[10px] md:text-xs font-bold text-textSecondary mt-1">
-                            نفّذ أهم الإجراءات مباشرة
-                        </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                        <PlayCircle size={20} />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        onClick={() => handleStartAttendance(smartNextPeriod?.subject)}
-                        className="p-3 rounded-2xl bg-primary text-white text-xs font-black flex flex-col items-center gap-2 active:scale-95 transition-all shadow-sm"
-                    >
-                        <CheckCircle2 size={18} />
-                        تسجيل حضور
-                    </button>
-
-                    <button
-                        onClick={() => setShowScheduleModal(true)}
-                        className="p-3 rounded-2xl bg-bgSoft text-textPrimary border border-borderColor text-xs font-black flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-bgCard"
-                    >
-                        <Clock size={18} />
-                        تعديل الجدول
-                    </button>
-
-                    <button
-                        onClick={() => setShowTermPlanModal(true)}
-                        className="p-3 rounded-2xl bg-bgSoft text-textPrimary border border-borderColor text-xs font-black flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-bgCard"
-                    >
-                        <BookOpen size={18} />
-                        الخطة الفصلية
-                    </button>
-
-                    <button
-                        onClick={() => setShowPlanSettingsModal(true)}
-                        className="p-3 rounded-2xl bg-bgSoft text-textPrimary border border-borderColor text-xs font-black flex flex-col items-center gap-2 active:scale-95 transition-all hover:bg-bgCard"
-                    >
-                        <CalendarDays size={18} />
-                        التقويم
-                    </button>
-                </div>
-            </div>
 {/* 📖 الخطة الفصلية */}
 <div className="relative z-10">
     <div className="rounded-3xl p-4 md:p-5 shadow-sm border glass-panel border-borderColor">
