@@ -247,7 +247,10 @@ const PrintPreviewModal: React.FC<{
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: landscape ? 1123 : 794 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: landscape ? 'landscape' : 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+     pagebreak: {
+  mode: ['css', 'legacy'],
+  avoid: ['.avoid-break']
+}
     };
 
     try {
@@ -329,162 +332,432 @@ const PrintPreviewModal: React.FC<{
 // =================================================================================
 
 // 💉 قالب طباعة الإحصائيات (محدث بالتفصيل للفصول)
-const AnalyticsTemplate = ({ data, teacherInfo, targetClass }: any) => {
-    const { t, dir, language } = useApp();
-    const date = new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+const AnalyticsTemplate = ({
+  data,
+  teacherInfo,
+  targetClass,
+  reportScope
+}: any) => {
+  const { t, dir, language } = useApp();
 
-    // 💉 تصحيح اسم الدالة لتطابق استخدامها في القالب
-    const renderBar = (count: number, total: number, color: string, label: string) => {
-        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-        return (
-            <div className="mb-2 text-[10px]">
-                <div className="flex justify-between font-bold mb-1">
-                    <span>{label}</span>
-                    <span>{count} طالب ({pct}%)</span>
-                </div>
-                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                    <div className={`h-full ${color}`} style={{ width: `${pct}%` }}></div>
-                </div>
-            </div>
-        );
-    };
+  const date = new Date().toLocaleDateString(
+    language === 'ar' ? 'ar-EG' : 'en-US'
+  );
 
-    const reportSections = [
-        { id: 'sem1', title: 'تفصيل نتائج الفصل الدراسي الأول', dataObj: data.sem1, isFinal: false },
-        { id: 'sem2', title: 'تفصيل نتائج الفصل الدراسي الثاني', dataObj: data.sem2, isFinal: false },
-        { id: 'final', title: 'تفصيل النتيجة العامة النهائية', dataObj: data.final, isFinal: true },
-    ];
+  const scopeTitle =
+    reportScope === 'sem1'
+      ? 'تقرير نتائج الفصل الدراسي الأول'
+      : reportScope === 'sem2'
+        ? 'تقرير نتائج الفصل الدراسي الثاني'
+        : 'تقرير النتيجة النهائية للعام الدراسي';
+
+  const scoreLabel =
+    reportScope === 'sem1'
+      ? 'درجة الفصل الأول'
+      : reportScope === 'sem2'
+        ? 'درجة الفصل الثاني'
+        : 'المعدل النهائي';
+
+  const selectedData = data[reportScope];
+
+  const completedCount =
+    reportScope === 'final'
+      ? selectedData.completedCount || 0
+      : data.totalStudents;
+
+  const average =
+    reportScope === 'final'
+      ? completedCount > 0
+        ? Math.round(selectedData.totalScore / completedCount)
+        : 0
+      : data.totalStudents > 0
+        ? Math.round(selectedData.totalScore / data.totalStudents)
+        : 0;
+
+  const getStudentScore = (student: any) => {
+    if (reportScope === 'final') return student.final;
+    return student.score;
+  };
+
+  const getAllStudentsInScope = () => {
+    return GRADE_CATEGORIES.flatMap(cat => {
+      const list = selectedData[cat.key] || [];
+      return list.map((s: any) => ({
+        ...s,
+        categoryLabel: cat.label
+      }));
+    });
+  };
+
+  const topStudent = [...getAllStudentsInScope()].sort(
+    (a, b) => Number(getStudentScore(b) || 0) - Number(getStudentScore(a) || 0)
+  )[0];
+
+  const renderBar = (
+    count: number,
+    total: number,
+    color: string,
+    label: string
+  ) => {
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
     return (
-        <div className="w-full text-black bg-white p-8" dir={dir}>
-            {/* Header */}
-            <div className="text-center mb-6 border-b-2 border-black pb-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className={`text-${dir === 'rtl' ? 'right' : 'left'} text-sm font-bold leading-relaxed`}>
-                  <p>{t('sultanateOfOman')}</p>
-                  <p>{t('ministryOfEducation')}</p>
-                  <p>{t('schoolWord')} {teacherInfo?.school}</p>
-                </div>
-                <div className="text-center">
-                    {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-14 object-contain mx-auto mb-2" />}
-                    <h1 className="text-xl font-black underline text-black">التقرير الإحصائي الشامل للنتائج</h1>
-                </div>
-                <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-sm font-bold leading-relaxed`}>
-                  <p>المادة: {teacherInfo?.subject || '........'}</p>
-                  <p>الصف: {targetClass === 'all' ? 'جميع الصفوف المحددة' : targetClass}</p>
-                  <p>التاريخ: {date}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="flex justify-between gap-4 mb-6 text-center">
-                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
-                    <p className="text-[10px] font-bold">إجمالي الطلاب</p>
-                    <p className="font-black text-lg">{data.totalStudents}</p>
-                </div>
-                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
-                    <p className="text-[10px] font-bold">متوسط ف1</p>
-                    <p className="font-black text-lg">{Math.round(data.sem1.totalScore / data.totalStudents) || 0}</p>
-                </div>
-                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-gray-50">
-                    <p className="text-[10px] font-bold">متوسط ف2</p>
-                    <p className="font-black text-lg">{Math.round(data.sem2.totalScore / data.totalStudents) || 0}</p>
-                </div>
-                <div className="flex-1 border-2 border-black p-2 rounded-lg bg-amber-50">
-                    <p className="text-[10px] font-bold text-amber-800">الأول على الصف</p>
-                    <p className="font-black text-sm text-amber-900 truncate">{data.topStudent.name}</p>
-                </div>
-            </div>
-
-            {/* Visual Chart Row */}
-            <div className="flex gap-4 mb-8 border-b-2 border-black pb-8">
-                <div className="flex-1 border border-black p-3 rounded-xl">
-                    <h4 className="font-bold text-[10px] text-center mb-3">نسب نتائج الفصل الأول</h4>
-                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.sem1[c.key as keyof typeof data.sem1].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
-                <div className="flex-1 border border-black p-3 rounded-xl">
-                    <h4 className="font-bold text-[10px] text-center mb-3">نسب نتائج الفصل الثاني</h4>
-                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.sem2[c.key as keyof typeof data.sem2].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
-                <div className="flex-1 border-2 border-black p-3 rounded-xl bg-indigo-50/30">
-                    <h4 className="font-black text-xs text-center mb-3">النتيجة العامة النهائية</h4>
-                    {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderBar(data.final[c.key as keyof typeof data.final].length, data.totalStudents, c.bar, c.label)}</React.Fragment>)}                </div>
-            </div>
-
-            {/* Detailed Tables (Iterating over semesters and final) */}
-            {reportSections.map((section, secIdx) => (
-                <div key={section.id} className={`${secIdx > 0 ? 'mt-8' : ''}`}>
-                    <h3 className="font-black text-sm mb-4 border-b border-black inline-block pb-1">{section.title}:</h3>
-                    
-                    {GRADE_CATEGORIES.map(cat => {
-                        const studentsList = section.dataObj[cat.key as keyof typeof section.dataObj] as any[];
-                        if (!studentsList || studentsList.length === 0) return null;
-                        
-                        return (
-                            <div key={cat.key} className="mb-4 html2pdf__page-break-avoid" style={{ pageBreakInside: 'avoid' }}>
-                                <div className={`border border-black border-b-0 p-2 font-bold text-[11px] ${cat.color} flex justify-between`}>
-                                    <span>الطلاب الحاصلون على تقدير: {cat.label}</span>
-                                    <span>العدد: {studentsList.length} طلاب</span>
-                                </div>
-                                <table className="w-full border-collapse border border-black text-[10px]">
-                                    <thead>
-                                        <tr className="bg-gray-100">
-                                            <th className="border border-black p-1.5 w-8 text-center">م</th>
-                                            <th className={`border border-black p-1.5 text-${dir === 'rtl' ? 'right' : 'left'}`}>اسم الطالب</th>
-                                            {section.isFinal ? (
-                                                <>
-                                                    <th className="border border-black p-1.5 w-16 text-center">مجموع ف1</th>
-                                                    <th className="border border-black p-1.5 w-16 text-center">مجموع ف2</th>
-                                                    <th className="border border-black p-1.5 w-20 text-center font-bold">المعدل النهائي</th>
-                                                </>
-                                            ) : (
-                                                <th className="border border-black p-1.5 w-24 text-center font-bold">درجة الفصل</th>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {[...studentsList].sort((a, b) => section.isFinal ? b.final - a.final : b.score - a.score).map((s, idx) => (
-                                            <tr key={idx}>
-                                                <td className="border border-black p-1.5 text-center">{idx + 1}</td>
-                                                <td className={`border border-black p-1.5 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{s.name}</td>
-                                                {section.isFinal ? (
-                                                    <>
-                                                        <td className="border border-black p-1.5 text-center">{s.sem1}</td>
-                                                        <td className="border border-black p-1.5 text-center">{s.sem2}</td>
-                                                        <td className="border border-black p-1.5 text-center font-black">{s.final}</td>
-                                                    </>
-                                                ) : (
-                                                    <td className="border border-black p-1.5 text-center font-black">{s.score}</td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        );
-                    })}
-                </div>
-            ))}
-
-            {/* Signatures */}
-            <div className="flex justify-between items-end pt-8 mt-8 border-t-2 border-black relative html2pdf__page-break-avoid" style={{ pageBreakInside: 'avoid' }}>
-                <div className="text-center w-1/3">
-                    <p className="font-bold text-xs mb-6">معلم المادة</p>
-                    <p className="font-black text-sm">{teacherInfo?.name || '....................'}</p>
-                </div>
-                {teacherInfo?.stamp && (
-                    <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 w-24 opacity-80 mix-blend-multiply">
-                        <img src={teacherInfo.stamp} className="w-full object-contain" alt="Stamp" />
-                    </div>
-                )}
-                <div className="text-center w-1/3">
-                    <p className="font-bold text-xs mb-6">مدير المدرسة</p>
-                    <p className="font-black text-sm">....................</p>
-                </div>
-            </div>
+      <div className="mb-3 text-[11px]">
+        <div className="flex justify-between font-bold mb-1">
+          <span>{label}</span>
+          <span>
+            {count} طالب ({pct}%)
+          </span>
         </div>
-    );
-};
 
+        <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+          <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderHeader = () => (
+    <div className="print-header">
+      <div className="flex justify-between items-start gap-4 mb-5">
+        <div
+          className={`text-${dir === 'rtl' ? 'right' : 'left'} text-[12px] font-bold leading-7 w-1/3`}
+        >
+          <p>{t('sultanateOfOman')}</p>
+          <p>{t('ministryOfEducation')}</p>
+          <p>
+            {t('schoolWord')} {teacherInfo?.school || '........'}
+          </p>
+        </div>
+
+        <div className="text-center w-1/3">
+          {teacherInfo?.ministryLogo && (
+            <img
+              src={teacherInfo.ministryLogo}
+              className="h-14 object-contain mx-auto mb-2"
+            />
+          )}
+
+          <h1 className="text-[19px] font-black text-black">
+            {scopeTitle}
+          </h1>
+        </div>
+
+        <div
+          className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[12px] font-bold leading-7 w-1/3`}
+        >
+          <p>المادة: {teacherInfo?.subject || '........'}</p>
+          <p>
+            الصف:{' '}
+            {targetClass === 'all' ? 'جميع الفصول المحددة' : targetClass}
+          </p>
+          <p>التاريخ: {date}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full text-black bg-white official-report" dir={dir}>
+      <style>
+        {`
+          .official-report {
+            font-family: Tajawal, Arial, sans-serif;
+            background: #ffffff;
+            color: #000000;
+          }
+
+          .print-page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 16mm 14mm 18mm 14mm;
+            box-sizing: border-box;
+            background: #ffffff;
+            page-break-after: always;
+            overflow: hidden;
+          }
+
+          .print-page:last-child {
+            page-break-after: auto;
+          }
+
+          .print-header {
+            border-bottom: 2px solid #111827;
+            padding-bottom: 8mm;
+            margin-bottom: 9mm;
+          }
+
+          .report-card {
+            border: 1.5px solid #111827;
+            border-radius: 10px;
+            padding: 8px;
+            background: #f8fafc;
+          }
+
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 6mm;
+          }
+
+          .report-table th {
+            border: 1px solid #111827;
+            background: #f1f5f9;
+            color: #111827;
+            padding: 7px;
+            font-weight: 900;
+          }
+
+          .report-table td {
+            border: 1px solid #111827;
+            padding: 6px;
+            vertical-align: middle;
+          }
+
+          .section-title {
+            font-size: 15px;
+            font-weight: 900;
+            border-bottom: 2px solid #111827;
+            display: inline-block;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+          }
+
+          .avoid-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+
+            .print-page {
+              page-break-after: always;
+            }
+
+            .print-page:last-child {
+              page-break-after: auto;
+            }
+          }
+        `}
+      </style>
+
+      {/* صفحة الملخص */}
+      <section className="print-page">
+        {renderHeader()}
+
+        <div className="grid grid-cols-4 gap-3 text-center mb-8">
+          <div className="report-card">
+            <p className="text-[10px] font-bold">إجمالي الطلاب</p>
+            <p className="font-black text-xl">{data.totalStudents}</p>
+          </div>
+
+          <div className="report-card">
+            <p className="text-[10px] font-bold">متوسط التقرير</p>
+            <p className="font-black text-xl">{average}</p>
+          </div>
+
+          <div className="report-card">
+            <p className="text-[10px] font-bold">عدد النتائج المكتملة</p>
+            <p className="font-black text-xl">
+              {reportScope === 'final' ? completedCount : data.totalStudents}
+            </p>
+          </div>
+
+          <div className="report-card bg-amber-50">
+            <p className="text-[10px] font-bold text-amber-800">
+              الأول في التقرير
+            </p>
+            <p className="font-black text-[12px] text-amber-900 truncate">
+              {topStudent?.name || '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="border border-black rounded-xl p-5 avoid-break">
+          <h2 className="text-center font-black text-base mb-5">
+            نسب النتائج حسب التقدير
+          </h2>
+
+          {GRADE_CATEGORIES.map(cat => (
+            <React.Fragment key={cat.key}>
+              {renderBar(
+                (selectedData[cat.key] || []).length,
+                reportScope === 'final'
+                  ? completedCount || data.totalStudents
+                  : data.totalStudents,
+                cat.bar,
+                cat.label
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {reportScope === 'final' && selectedData.incomplete?.length > 0 && (
+          <div className="mt-8 border border-orange-400 bg-orange-50 rounded-xl p-4 avoid-break">
+            <h3 className="font-black text-orange-800 text-sm mb-2">
+              ملاحظة مهمة
+            </h3>
+            <p className="text-xs font-bold leading-6">
+              يوجد {selectedData.incomplete.length} طالب لم تكتمل لهم بيانات
+              الفصلين، لذلك لم يتم احتسابهم ضمن النتيجة النهائية حتى لا تظهر
+              نتيجة غير دقيقة.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* صفحات التفاصيل حسب التقدير */}
+      {GRADE_CATEGORIES.map(cat => {
+        const studentsList = selectedData[cat.key] || [];
+        if (!studentsList || studentsList.length === 0) return null;
+
+        return (
+          <section key={cat.key} className="print-page">
+            {renderHeader()}
+
+            <h2 className="section-title">
+              الطلاب الحاصلون على تقدير: {cat.label}
+            </h2>
+
+            <div className="flex justify-between text-xs font-bold mb-2">
+              <span>العدد: {studentsList.length} طلاب</span>
+              <span>{scoreLabel}</span>
+            </div>
+
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th className="w-10 text-center">م</th>
+                  <th className={`text-${dir === 'rtl' ? 'right' : 'left'}`}>
+                    اسم الطالب
+                  </th>
+
+                  {reportScope === 'final' ? (
+                    <>
+                      <th className="w-20 text-center">مجموع ف1</th>
+                      <th className="w-20 text-center">مجموع ف2</th>
+                      <th className="w-24 text-center">المعدل النهائي</th>
+                    </>
+                  ) : (
+                    <th className="w-28 text-center">{scoreLabel}</th>
+                  )}
+                </tr>
+              </thead>
+
+              <tbody>
+                {[...studentsList]
+                  .sort((a, b) =>
+                    Number(getStudentScore(b) || 0) -
+                    Number(getStudentScore(a) || 0)
+                  )
+                  .map((s, idx) => (
+                    <tr key={idx}>
+                      <td className="text-center">{idx + 1}</td>
+                      <td
+                        className={`font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}
+                      >
+                        {s.name}
+                      </td>
+
+                      {reportScope === 'final' ? (
+                        <>
+                          <td className="text-center">{s.sem1}</td>
+                          <td className="text-center">{s.sem2}</td>
+                          <td className="text-center font-black">{s.final}</td>
+                        </>
+                      ) : (
+                        <td className="text-center font-black">{s.score}</td>
+                      )}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </section>
+        );
+      })}
+
+      {/* صفحة غير مكتمل للنتيجة النهائية */}
+      {reportScope === 'final' && selectedData.incomplete?.length > 0 && (
+        <section className="print-page">
+          {renderHeader()}
+
+          <h2 className="section-title">طلاب لم تكتمل بياناتهم النهائية</h2>
+
+          <p className="text-xs font-bold mb-4 leading-6">
+            لم يتم احتساب المعدل النهائي لهؤلاء الطلاب لعدم اكتمال بيانات
+            الفصلين.
+          </p>
+
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th className="w-10 text-center">م</th>
+                <th className={`text-${dir === 'rtl' ? 'right' : 'left'}`}>
+                  اسم الطالب
+                </th>
+                <th className="w-24 text-center">مجموع ف1</th>
+                <th className="w-24 text-center">مجموع ف2</th>
+                <th className="w-28 text-center">الحالة</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {selectedData.incomplete.map((s: any, idx: number) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td className={`font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>
+                    {s.name}
+                  </td>
+                  <td className="text-center">{s.sem1 ?? '-'}</td>
+                  <td className="text-center">{s.sem2 ?? '-'}</td>
+                  <td className="text-center font-black text-orange-700">
+                    غير مكتمل
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {/* صفحة التوقيعات */}
+      <section className="print-page">
+        {renderHeader()}
+
+        <div className="h-[185mm] flex flex-col justify-end">
+          <div className="flex justify-between items-end border-t-2 border-black pt-10 relative">
+            <div className="text-center w-1/3">
+              <p className="font-bold text-sm mb-10">معلم المادة</p>
+              <p className="font-black text-base">
+                {teacherInfo?.name || '....................'}
+              </p>
+            </div>
+
+            {teacherInfo?.stamp && (
+              <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 w-28 opacity-80 mix-blend-multiply">
+                <img
+                  src={teacherInfo.stamp}
+                  className="w-full object-contain"
+                  alt="Stamp"
+                />
+              </div>
+            )}
+
+            <div className="text-center w-1/3">
+              <p className="font-bold text-sm mb-10">مدير المدرسة</p>
+              <p className="font-black text-base">....................</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
 // ... القوالب القديمة باقية كما هي دون أي تغيير ...
 
 const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: any) => {
@@ -492,7 +765,19 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
   const safeStudents = Array.isArray(students) ? students : [];
 
   const settings = getGradingSettings() || { totalScore: 100, finalExamWeight: 40, finalExamName: '' };
-  
+  const toGradeNumber = (value: any) => {
+  if (value === null || value === undefined || value === '') return 0;
+
+  const num = Number(String(value).replace(',', '.'));
+
+  return Number.isNaN(num) ? 0 : num;
+};
+
+const roundGrade = (value: any) => {
+  const num = toGradeNumber(value);
+  return Math.round(num);
+};
+``
   const savedFinalExamName = settings.finalExamName?.trim() || '';
   const isDefaultExamName = savedFinalExamName === 'الامتحان النهائي' || savedFinalExamName === 'Final Exam' || savedFinalExamName === '';
   const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : savedFinalExamName;
@@ -557,7 +842,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
 
                   const contCells = continuousTools.map((tool: any) => {
                     const g = semGrades.find((r: any) => r.category.trim() === tool.name.trim());
-                    const val = g ? Number(g.score) : 0;
+                   const val = g ? toGradeNumber(g.score) : 0;
                     contSum += val;
                     return (
                       <td key={tool.id} className="border border-black p-1 text-center font-medium text-black">
@@ -571,7 +856,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
 
                   if (finalWeight > 0) {
                     const finalG = semGrades.find((r: any) => r.category.trim() === finalExamName);
-                    finalVal = finalG ? Number(finalG.score) : 0;
+                    finalVal = finalG ? toGradeNumber(finalG.score) : 0;
                     finalCell = (
                       <td className="border border-black p-1 text-center font-bold bg-pink-50 text-black">
                         {finalG ? finalG.score : '-'}
@@ -605,14 +890,15 @@ const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: 
                   
                   tools.forEach((t: any) => {
                       const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
-                      if (g1) sem1Total += (Number(g1.score) || 0);
-                      
+                      if (g1) sem1Total += toGradeNumber(g1.score);
+
                       const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
-                      if (g2) sem2Total += (Number(g2.score) || 0);
+                      if (g2) sem2Total += toGradeNumber(g2.score);
                   });
 
-                  const finalAverage = (sem1Total + sem2Total) / 2;
-                  const finalYearSymbol = getSymbol(finalAverage);
+                 const finalAverageRaw = (sem1Total + sem2Total) / 2;
+                  const finalAverage = roundGrade(finalAverageRaw);
+                   const finalYearSymbol = getSymbol(finalAverage);
 
                   return (
                     <tr key={s.id || i}>
@@ -1170,7 +1456,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const [analyticsGrade, setAnalyticsGrade] = useState<string>('all');
   const [analyticsClass, setAnalyticsClass] = useState<string>('all');
   const [analyticsDetailTab, setAnalyticsDetailTab] = useState<'sem1' | 'sem2' | 'final'>('final');
-
+const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' | 'final'>('sem2');
   const [previewData, setPreviewData] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; landscape?: boolean }>({
     isOpen: false, title: '', content: null
   });
@@ -1300,15 +1586,32 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   };
 
   // 💉 فتح نافذة الطباعة الخاصة بالإحصائيات
-  const openAnalyticsPreview = () => {
-      if (analyticsData.totalStudents === 0) return alert('لا يوجد طلاب مطابقين لعرض وطباعة الإحصائيات');
-      setPreviewData({
-          isOpen: true,
-          title: 'التقرير الإحصائي الشامل للنتائج',
-          landscape: false,
-          content: <AnalyticsTemplate data={analyticsData} teacherInfo={teacherInfo} targetClass={analyticsClass} />
-      });
-  };
+ const openAnalyticsPreview = () => {
+  if (analyticsData.totalStudents === 0) {
+    return alert('لا يوجد طلاب مطابقين لعرض وطباعة الإحصائيات');
+  }
+
+  const title =
+    analyticsPrintScope === 'sem1'
+      ? 'تقرير نتائج الفصل الدراسي الأول'
+      : analyticsPrintScope === 'sem2'
+        ? 'تقرير نتائج الفصل الدراسي الثاني'
+        : 'تقرير النتيجة النهائية للعام الدراسي';
+
+  setPreviewData({
+    isOpen: true,
+    title,
+    landscape: false,
+    content: (
+      <AnalyticsTemplate
+        data={analyticsData}
+        teacherInfo={teacherInfo}
+        targetClass={analyticsClass}
+        reportScope={analyticsPrintScope}
+      />
+    )
+  });
+};
 
   const selectAllCertStudents = () => {
     if (selectedCertStudents.length === filteredStudentsForCert.length) {
@@ -1326,13 +1629,22 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const analyticsData = useMemo(() => {
       const targetStudents = safeStudents.filter(s => analyticsClass === 'all' || (Array.isArray(s?.classes) && s.classes.includes(analyticsClass)));
       
-      const stats = {
-          totalStudents: targetStudents.length,
-          sem1: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
-          sem2: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
-          final: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
-          topStudent: { name: '-', score: 0 }
-      };
+     const stats: any = {
+  totalStudents: targetStudents.length,
+  sem1: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
+  sem2: { A: [], B: [], C: [], D: [], F: [], totalScore: 0 },
+  final: {
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+    F: [],
+    incomplete: [],
+    totalScore: 0,
+    completedCount: 0
+  },
+  topStudent: { name: '-', score: 0 }
+};
 
       if (targetStudents.length === 0) return stats;
 
@@ -1363,28 +1675,55 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               if (g2) s2Total += (Number(g2.score) || 0);
           });
 
-          const fAvg = (s1Total + s2Total) / 2;
+       const hasSem1Grades = sem1Grades.length > 0;
+const hasSem2Grades = sem2Grades.length > 0;
 
-          stats.sem1[getCat(s1Total) as keyof typeof stats.sem1].push({ name: student.name, score: s1Total } as never);
-          stats.sem1.totalScore += s1Total;
+stats.sem1[getCat(s1Total)].push({
+  name: student.name,
+  score: s1Total
+});
+stats.sem1.totalScore += s1Total;
 
-          stats.sem2[getCat(s2Total) as keyof typeof stats.sem2].push({ name: student.name, score: s2Total } as never);
-          stats.sem2.totalScore += s2Total;
+stats.sem2[getCat(s2Total)].push({
+  name: student.name,
+  score: s2Total
+});
+stats.sem2.totalScore += s2Total;
 
-          stats.final[getCat(fAvg) as keyof typeof stats.final].push({
-              name: student.name,
-              sem1: s1Total,
-              sem2: s2Total,
-              final: fAvg
-          } as never);
-          stats.final.totalScore += fAvg;
+/**
+ * النتيجة النهائية لا تُحسب إلا عند وجود الفصلين.
+ * حتى لا يظهر الطالب ضعيفًا بسبب فصل غير مرصود.
+ */
+if (hasSem1Grades && hasSem2Grades) {
+  const fAvg = Math.min(
+    totalPossibleScore,
+    Math.round((s1Total + s2Total) / 2)
+  );
 
-          if (fAvg > stats.topStudent.score) {
-              stats.topStudent = { name: student.name, score: fAvg };
-          }
-      });
+  stats.final[getCat(fAvg)].push({
+    name: student.name,
+    sem1: s1Total,
+    sem2: s2Total,
+    final: fAvg
+  });
 
-      return stats;
+  stats.final.totalScore += fAvg;
+  stats.final.completedCount += 1;
+
+  if (fAvg > stats.topStudent.score) {
+    stats.topStudent = { name: student.name, score: fAvg };
+  }
+} else {
+  stats.final.incomplete.push({
+    name: student.name,
+    sem1: hasSem1Grades ? s1Total : null,
+    sem2: hasSem2Grades ? s2Total : null,
+    final: null
+  }); 
+}
+}); // ⬅️ أضفنا هذا السطر لإغلاق حلقة forEach المفقودة
+                
+     return stats;
   }, [safeStudents, analyticsClass, assessmentTools]);
 
   const renderProgressBar = (count: number, total: number, colorClass: string, label: string) => {
@@ -1836,13 +2175,37 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
                               )
                           })}
                       </div>
+<div className="mt-6 border-t border-borderColor pt-5">
+  <label className="block text-xs font-black text-textSecondary mb-2">
+    نوع التقرير المراد طباعته
+  </label>
 
+  <select
+    value={analyticsPrintScope}
+    onChange={(e) =>
+      setAnalyticsPrintScope(e.target.value as 'sem1' | 'sem2' | 'final')
+    }
+    className="w-full p-4 border rounded-2xl font-black outline-none transition-colors text-sm bg-bgCard border-borderColor text-textPrimary focus:border-indigo-600"
+  >
+    <option value="sem1">الفصل الدراسي الأول فقط</option>
+    <option value="sem2">الفصل الدراسي الثاني فقط</option>
+    <option value="final">النتيجة النهائية للعام الدراسي</option>
+  </select>
+</div>
                       {/* زر الطباعة */}
-                      <div className="flex justify-end pt-4 mt-6 border-t border-borderColor">
-                          <button onClick={openAnalyticsPreview} className="w-full text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all bg-indigo-600 hover:bg-indigo-700">
-                              <Icon3DPrint className="w-5 h-5" /> طباعة التقرير الإحصائي التفصيلي (لجميع الفصول)
-                          </button>
-                      </div>
+                     <div className="flex justify-end pt-4 mt-6 border-t border-borderColor">
+  <button
+    onClick={openAnalyticsPreview}
+    className="w-full text-white px-6 py-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all bg-indigo-600 hover:bg-indigo-700"
+  >
+    <Icon3DPrint className="w-5 h-5" />
+    {analyticsPrintScope === 'sem1'
+      ? 'طباعة تقرير الفصل الدراسي الأول'
+      : analyticsPrintScope === 'sem2'
+        ? 'طباعة تقرير الفصل الدراسي الثاني'
+        : 'طباعة تقرير النتيجة النهائية'}
+  </button>
+</div>
                   </>
               ) : (
                   <div className="flex flex-col items-center justify-center py-20 opacity-60">
@@ -1864,7 +2227,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
               <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className="w-full p-3 border rounded-xl font-bold outline-none transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateTitlePlaceholder')} />
               <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className="w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateBodyPlaceholder')} />
               <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className="w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all bg-primary hover:bg-primary/80 text-white">{t('saveBtn')}</button>
-            </div>
+           </div>
           </div>
         </DrawerSheet>
 

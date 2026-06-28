@@ -301,16 +301,19 @@ const GradeBook: React.FC<GradeBookProps> = ({
            if (g2) sem2Total += Number(g2.score);
         });
 
-        // حساب النتيجة النهائية (المتوسط)
-        const finalAverage = (sem1Total + sem2Total) / 2;
-        
-        // إدراج البيانات كأعمدة جديدة في نهاية التقرير
-        row['مجموع الفصل الأول'] = sem1Total;
-        row['مجموع الفصل الثاني'] = sem2Total;
-        row['النتيجة النهائية (المعدل)'] = finalAverage;
-        row['التقدير العام'] = getGradeSymbol(finalAverage); // نستخدم نفس دالة الرمز المعتمدة لديك
-        // ========================================================
+       // حساب النتيجة النهائية للعام الدراسي مع جبر 0.5 إلى درجة كاملة
+const finalAverageRaw = (sem1Total + sem2Total) / 2;
 
+// 80.5 تصبح 81
+// 80.4 تصبح 80
+const finalAverage = Math.round(finalAverageRaw);
+
+// إدراج البيانات كأعمدة جديدة في نهاية التقرير
+row['مجموع الفصل الأول'] = sem1Total;
+row['مجموع الفصل الثاني'] = sem2Total;
+row['النتيجة النهائية (المعدل)'] = finalAverage;
+row['التقدير العام'] = getGradeSymbol(finalAverage);
+        
         return row;
       });
 
@@ -562,41 +565,74 @@ const GradeBook: React.FC<GradeBookProps> = ({
 
       leftActions={
         <div className="space-y-2 w-full mt-1">
-            {/* ================= 1. كبسولة الفصول والصفوف ================= */}
-            <div className="w-full overflow-x-auto no-scrollbar pb-1">
-<div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-bgCard border-borderColor shadow-sm">                    <button 
-                        onClick={() => { setSelectedGrade('all'); setSelectedClass('all'); }} 
-                        className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === 'all' && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                    >
-                        {t('allGradesList')}
-                    </button>
+           {/* ================= 1. فلتر الصف والفصل ================= */}
+<div className="w-full flex flex-col md:flex-row gap-2 md:items-center">
+  {/* الصفوف كأزرار */}
+  <div className="overflow-x-auto no-scrollbar flex-1">
+    <div className="inline-flex items-center p-1.5 rounded-2xl border transition-all bg-bgCard border-borderColor shadow-sm">
+      <button
+        type="button"
+        data-voice-command="عرض كل الطلاب في الدرجات كل الدرجات"
+        aria-label="عرض كل الطلاب في الدرجات"
+        onClick={() => {
+          setSelectedGrade('all');
+          setSelectedClass('all');
+        }}
+        className={`relative px-5 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-200 active:scale-95 ${
+          selectedGrade === 'all' && selectedClass === 'all'
+            ? 'bg-primary text-white shadow-sm'
+            : 'text-textSecondary hover:text-textPrimary hover:bg-bgSoft'
+        }`}
+      >
+        {t('allGradesList')}
+      </button>
 
-                    {availableGrades.map(g => (
-                        <React.Fragment key={`grade-${g}`}>
-                            <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
-                            <button 
-                                onClick={() => { setSelectedGrade(g); setSelectedClass('all'); }} 
-                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedGrade === g && selectedClass === 'all' ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                            >
-                                {t('gradePrefix')} {g}
-                            </button>
-                        </React.Fragment>
-                    ))}
+      {availableGrades.map(g => (
+        <React.Fragment key={`grade-${g}`}>
+          <div className="w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor" />
 
-                    {visibleClasses.map(c => (
-                        <React.Fragment key={`class-${c}`}>
-                            <div className={`w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor`} />
-                            <button 
-                                onClick={() => setSelectedClass(c)} 
-                                className={`relative px-5 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-bgCard text-primary shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-bgCard/50'}`}
-                            >
-                                {c}
-                            </button>
-                        </React.Fragment>
-                    ))}
-                </div>
-            </div>
+          <button
+            type="button"
+            data-voice-command={`عرض الصف ${g} في الدرجات`}
+            aria-label={`عرض الصف ${g} في الدرجات`}
+            onClick={() => {
+              setSelectedGrade(g);
+              setSelectedClass('all');
+            }}
+            className={`relative px-5 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all duration-200 active:scale-95 ${
+              selectedGrade === g && selectedClass === 'all'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-textSecondary hover:text-textPrimary hover:bg-bgSoft'
+            }`}
+          >
+            {t('gradePrefix')} {g}
+          </button>
+        </React.Fragment>
+      ))}
+    </div>
+  </div>
 
+  {/* قائمة الفصول */}
+  <div className="relative w-full md:w-60 shrink-0">
+    <select
+      data-voice-field="فصل الدرجات"
+      aria-label="اختيار فصل الدرجات"
+      value={selectedClass}
+      onChange={(e) => setSelectedClass(e.target.value)}
+      className="w-full h-11 rounded-2xl border border-borderColor bg-bgCard px-4 text-sm font-black text-textPrimary outline-none shadow-sm transition-all focus:border-primary/40 focus:bg-bgSoft"
+    >
+      <option value="all">
+        كل الفصول
+      </option>
+
+      {visibleClasses.map(c => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
             {/* ================= 2. كبسولة أدوات التقويم ================= */}
             <div className="w-full overflow-x-auto no-scrollbar pb-1">
 <div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-primary/5 border-primary/20 shadow-sm">                    {tools.map((tool, index) => (

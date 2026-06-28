@@ -338,46 +338,40 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
+<div className="flex flex-col md:flex-row gap-2">
                         <div className="relative flex-1">
-                            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} />
-                            <input
-                                type="text"
-                                data-voice-field="بحث الفرسان"
-                                aria-label="بحث الفرسان"
-                                placeholder={t('searchPlaceholder')} 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className={`w-full border rounded-xl py-2 ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40`} 
-                            />
-                        </div>
+  <Search
+    className={`absolute ${
+      dir === 'rtl' ? 'right-3' : 'left-3'
+    } top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`}
+  />
 
-                        <div className="overflow-x-auto no-scrollbar flex-1 max-w-[50%]">
-                            <div className="inline-flex items-center p-1 rounded-xl border transition-all bg-bgCard border-borderColor h-full shadow-sm">
-                                <button
-                                    data-voice-command="عرض كل الفرسان عرض كل الفصول في الفرسان"
-                                    aria-label="عرض كل الفرسان"
-                                    title="عرض كل الفرسان"
-                                    onClick={() => setSelectedClass('all')} 
-                                    className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === 'all' ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgSoft'}`}
-                                >
-                                    {t('all')}
-                                </button>
+  <input
+    type="text"
+    placeholder={t('searchPlaceholder')}
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className={`w-full border rounded-xl py-2 ${
+      dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'
+    } text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft`}
+  />
+</div>
+
+                       <div className="relative w-full md:w-60 shrink-0">
+                            <select
+                                data-voice-field="فصل الفرسان"
+                                aria-label="اختيار فصل الفرسان"
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="w-full h-10 rounded-xl border border-borderColor bg-bgCard px-4 text-xs font-black text-textPrimary outline-none shadow-sm transition-all focus:border-primary/40 focus:bg-bgSoft"
+                            >
+                                <option value="all">كل الفصول</option>
                                 {safeClasses.map(c => (
-                                    <React.Fragment key={c}>
-                                        <div className="w-[1px] h-4 mx-1 rounded-full shrink-0 bg-borderColor" />
-                                        <button
-                                            data-voice-command={`عرض فصل ${c} في الفرسان فرسان فصل ${c}`}
-                                            aria-label={`عرض فصل ${c} في الفرسان`}
-                                            title={`عرض فصل ${c}`}
-                                            onClick={() => setSelectedClass(c)} 
-                                            className={`relative px-4 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all duration-300 ${selectedClass === c ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-textPrimary hover:bg-bgSoft'}`}
-                                        >
-                                            {c}
-                                        </button>
-                                    </React.Fragment>
+                                    <option key={c} value={c}>
+                                        {c}
+                                    </option>
                                 ))}
-                            </div>
+                            </select>
                         </div>
                     </div>
                 </div>

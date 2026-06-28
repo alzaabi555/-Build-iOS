@@ -229,28 +229,42 @@ export const StudentRow: React.FC<StudentRowProps> = ({
                 >
                   <MoreVertical size={17} />
                 </button>
+{moreOpen && (
+  <>
+    {/* طبقة إغلاق شفافة */}
+    <button
+      type="button"
+      aria-label="إغلاق القائمة"
+      onClick={() => setMoreOpen(false)}
+      className="fixed inset-0 z-[99998] bg-transparent"
+    />
 
-                {moreOpen && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="إغلاق القائمة"
-                      onClick={() => setMoreOpen(false)}
-                      className="fixed inset-0 z-[99998] bg-transparent"
-                    />
+    {/* قائمة المزيد للجوال - تظهر فوق شريط التنقل السفلي */}
+    <div
+      className={cn(
+        'fixed z-[99999] left-4 right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)]',
+        'rounded-3xl border border-borderColor bg-bgCard shadow-elevated p-3',
+        'animate-in fade-in slide-in-from-bottom-2 duration-200'
+      )}
+      dir={dir}
+    >
+      <div className="mb-2 px-1">
+        <p className="text-[11px] font-black text-textPrimary">
+          إجراءات الطالب
+        </p>
+        <p className="text-[10px] font-bold text-textSecondary truncate">
+          {student.name}
+        </p>
+      </div>
 
-                    <div
-                      className={cn(
-                        'absolute top-full mt-2 z-[99999] w-44 rounded-2xl border border-borderColor bg-bgCard shadow-elevated p-2 space-y-1',
-                        dir === 'rtl' ? 'left-0' : 'right-0'
-                      )}
-                    >
-                      {[...visibleMobileActions.slice(2), ...hiddenMobileActions].map(action =>
-                        renderActionButton(action, { inMenu: true })
-                      )}
-                    </div>
-                  </>
-                )}
+      <div className="space-y-1.5">
+        {[...visibleMobileActions.slice(2), ...hiddenMobileActions].map(action =>
+          renderActionButton(action, { inMenu: true })
+        )}
+      </div>
+    </div>
+  </>
+)}
               </div>
             )}
           </div>
