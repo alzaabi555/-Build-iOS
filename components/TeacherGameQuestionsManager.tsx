@@ -117,7 +117,13 @@ const DIFFICULTY_OPTIONS: { id: GameDifficulty; label: string }[] = [
 const createId = () => `gq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
-const getInitialQuestion = (schoolCode: string, teacherId: string, defaultSubject = '', defaultGrade = '', classOptions: string[] = []): TeacherGameQuestion => {
+const getInitialQuestion = (
+  schoolCode: string,
+  teacherId: string,
+  defaultSubject = '',
+  defaultGrade = '',
+  classOptions: string[] = []
+): TeacherGameQuestion => {
   const now = new Date().toISOString();
   return {
     id: createId(),
@@ -148,64 +154,198 @@ const getInitialQuestion = (schoolCode: string, teacherId: string, defaultSubjec
   };
 };
 
+/**
+ * دوال حماية وتطبيع مهمة جدًا للأرشيف:
+ * بعض بيانات السحابة أو التخزين المحلي قد تصل كسلاسل نصية بدل مصفوفات.
+ * هذه الدوال تمنع الشاشة البيضاء عند النسخ أو الاستعادة من الأرشيف.
+ */
+const asStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return [];
+
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed.map(item => String(item || '').trim()).filter(Boolean);
+    } catch {
+      // ليس JSON، نستخدم الفواصل.
+    }
+
+    return text.split(',').map(item => item.trim()).filter(Boolean);
+  }
+
+  return [];
+};
+
+const asPairs = (value: unknown): { left: string; right: string }[] => {
+  let list: unknown = value;
+
+  if (typeof value === 'string') {
+    try {
+      list = JSON.parse(value || '[]');
+    } catch {
+      list = [];
+    }
+  }
+
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .map((item: any) => ({
+      left: String(item?.left ?? item?.term ?? '').trim(),
+      right: String(item?.right ?? item?.definition ?? '').trim()
+    }))
+    .filter(pair => pair.left || pair.right);
+};
+
+const safeReadQuestions = (key: string): TeacherGameQuestion[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const normalizeTeacherGameQuestion = (
+  raw: Partial<TeacherGameQuestion> | any,
+  schoolCode: string,
+  teacherId: string,
+  fallbackSubject = '',
+  fallbackGrade = '',
+  fallbackClasses: string[] = []
+): TeacherGameQuestion => {
+  const now = new Date().toISOString();
+  const allowedQuestionTypes: GameQuestionType[] = ['multiple_choice', 'true_false', 'matching', 'sequence'];
+  const questionType = allowedQuestionTypes.includes(raw?.questionType)
+    ? raw.questionType as GameQuestionType
+    : 'multiple_choice';
+
+  const classes = asStringArray(raw?.classes || raw?.className);
+  const options = questionType === 'true_false' ? ['صح', 'خطأ'] : asStringArray(raw?.options);
+
+  const parsedCorrectIndex =
+    typeof raw?.correctAnswerIndex === 'number' && Number.isFinite(raw.correctAnswerIndex)
+      ? raw.correctAnswerIndex
+      : raw?.correctAnswerIndex !== undefined && raw?.correctAnswerIndex !== '' && !Number.isNaN(Number(raw.correctAnswerIndex))
+        ? Number(raw.correctAnswerIndex)
+        : 0;
+
+  const normalizedOptions = questionType === 'multiple_choice'
+    ? (options.length > 0 ? options : ['', '', '', ''])
+    : options;
+
+  return {
+    id: String(raw?.id || createId()),
+    schoolCode: String(raw?.schoolCode || schoolCode || ''),
+    teacherId: String(raw?.teacherId || teacherId || ''),
+    subject: String(raw?.subject || fallbackSubject || ''),
+    grade: String(raw?.grade || fallbackGrade || ''),
+    classes: classes.length > 0 ? classes : fallbackClasses,
+    semester: raw?.semester === '2' ? '2' : '1',
+    unit: String(raw?.unit || ''),
+    lesson: String(raw?.lesson || ''),
+    gameTypes: asStringArray(raw?.gameTypes) as EducationalGameType[],
+    questionType,
+    question: String(raw?.question || ''),
+    options: normalizedOptions,
+    correctAnswerIndex: questionType === 'true_false'
+      ? (parsedCorrectIndex === 1 ? 1 : 0)
+      : parsedCorrectIndex,
+    correctAnswerText: String(raw?.correctAnswerText || ''),
+    pairs: asPairs(raw?.pairs),
+    sequence: asStringArray(raw?.sequence),
+    explanation: String(raw?.explanation || ''),
+    difficulty: (raw?.difficulty === 'medium' || raw?.difficulty === 'hard' ? raw.difficulty : 'easy') as GameDifficulty,
+    skill: String(raw?.skill || 'فهم'),
+    active: raw?.active === false ? false : true,
+    visibleFrom: String(raw?.visibleFrom || todayIsoDate()),
+    createdAt: String(raw?.createdAt || now),
+    updatedAt: String(raw?.updatedAt || now),
+    status: raw?.status,
+    publishBatchId: raw?.publishBatchId,
+    archivedAt: raw?.archivedAt
+  };
+};
+
 const validateQuestion = (question: TeacherGameQuestion): QuestionValidation => {
-  if (!question.subject.trim()) return { ok: false, message: 'اختر المادة.' };
-  if (question.classes.length === 0) return { ok: false, message: 'اختر فصلًا واحدًا على الأقل.' };
-  if (!question.unit.trim()) return { ok: false, message: 'أدخل الوحدة.' };
-  if (!question.lesson.trim()) return { ok: false, message: 'أدخل الدرس.' };
-  if (!question.question.trim()) return { ok: false, message: 'أدخل نص السؤال.' };
-  if (question.gameTypes.length === 0) return { ok: false, message: 'اختر لعبة واحدة على الأقل.' };
+  const classes = Array.isArray(question.classes) ? question.classes : [];
+  const gameTypes = Array.isArray(question.gameTypes) ? question.gameTypes : [];
+  const options = Array.isArray(question.options) ? question.options : [];
+  const pairs = Array.isArray(question.pairs) ? question.pairs : [];
+  const sequence = Array.isArray(question.sequence) ? question.sequence : [];
+
+  if (!String(question.subject || '').trim()) return { ok: false, message: 'اختر المادة.' };
+  if (classes.length === 0) return { ok: false, message: 'اختر فصلًا واحدًا على الأقل.' };
+  if (!String(question.unit || '').trim()) return { ok: false, message: 'أدخل الوحدة.' };
+  if (!String(question.lesson || '').trim()) return { ok: false, message: 'أدخل الدرس.' };
+  if (!String(question.question || '').trim()) return { ok: false, message: 'أدخل نص السؤال.' };
+  if (gameTypes.length === 0) return { ok: false, message: 'اختر لعبة واحدة على الأقل.' };
+
   if (question.questionType === 'multiple_choice') {
-    const filledOptions = question.options.filter(option => option.trim());
+    const filledOptions = options.filter(option => String(option || '').trim());
     if (filledOptions.length < 2) return { ok: false, message: 'أدخل اختيارين على الأقل.' };
     if (typeof question.correctAnswerIndex !== 'number') return { ok: false, message: 'حدد الإجابة الصحيحة.' };
-    if (!question.options[question.correctAnswerIndex]?.trim()) return { ok: false, message: 'الإجابة الصحيحة لا يمكن أن تكون فارغة.' };
+    if (!String(options[question.correctAnswerIndex] || '').trim()) return { ok: false, message: 'الإجابة الصحيحة لا يمكن أن تكون فارغة.' };
   }
+
   if (question.questionType === 'true_false' && question.correctAnswerIndex !== 0 && question.correctAnswerIndex !== 1) {
     return { ok: false, message: 'حدد صح أو خطأ.' };
   }
+
   if (question.questionType === 'matching') {
-    const validPairs = (question.pairs || []).filter(pair => pair.left.trim() && pair.right.trim());
+    const validPairs = pairs.filter(pair => String(pair.left || '').trim() && String(pair.right || '').trim());
     if (validPairs.length < 2) return { ok: false, message: 'أدخل زوجين على الأقل للمطابقة.' };
   }
+
   if (question.questionType === 'sequence') {
-    const validSequence = (question.sequence || []).filter(item => item.trim());
+    const validSequence = sequence.filter(item => String(item || '').trim());
     if (validSequence.length < 3) return { ok: false, message: 'أدخل 3 عناصر على الأقل للترتيب.' };
   }
-  if (!question.explanation.trim()) return { ok: false, message: 'أدخل تفسير الإجابة ليستفيد الطالب بعد اللعب.' };
+
+  if (!String(question.explanation || '').trim()) return { ok: false, message: 'أدخل تفسير الإجابة ليستفيد الطالب بعد اللعب.' };
   return { ok: true };
 };
 
-const sanitizeForStudent = (question: TeacherGameQuestion) => ({
-  id: question.id,
-  schoolCode: question.schoolCode,
-  teacherId: question.teacherId,
-  subject: question.subject,
-  grade: question.grade,
-  className: question.classes[0] || '',
-  classes: question.classes,
-  semester: question.semester || '1',
-  unit: question.unit,
-  lesson: question.lesson,
-  gameTypes: question.gameTypes,
-  questionType: question.questionType,
-  question: question.question,
-  options: question.questionType === 'true_false' ? ['صح', 'خطأ'] : question.options.filter(option => option.trim()),
-  correctAnswerIndex: question.correctAnswerIndex,
-  correctAnswerText: question.correctAnswerText,
-  pairs: question.pairs?.filter(pair => pair.left.trim() && pair.right.trim()),
-  sequence: question.sequence?.filter(item => item.trim()),
-  explanation: question.explanation,
-  difficulty: question.difficulty,
-  skill: question.skill,
-  active: question.active,
-  status: question.status || 'active',
-  publishBatchId: question.publishBatchId,
-  visibleFrom: question.visibleFrom,
-  createdAt: question.createdAt,
-  updatedAt: question.updatedAt,
-  archivedAt: question.archivedAt
-});
+const sanitizeForStudent = (question: TeacherGameQuestion) => {
+  const classes = Array.isArray(question.classes) ? question.classes : [];
+  const options = Array.isArray(question.options) ? question.options : [];
+  const pairs = Array.isArray(question.pairs) ? question.pairs : [];
+  const sequence = Array.isArray(question.sequence) ? question.sequence : [];
+
+  return {
+    id: question.id,
+    schoolCode: question.schoolCode,
+    teacherId: question.teacherId,
+    subject: question.subject,
+    grade: question.grade,
+    className: classes[0] || '',
+    classes,
+    semester: question.semester || '1',
+    unit: question.unit,
+    lesson: question.lesson,
+    gameTypes: Array.isArray(question.gameTypes) ? question.gameTypes : [],
+    questionType: question.questionType,
+    question: question.question,
+    options: question.questionType === 'true_false' ? ['صح', 'خطأ'] : options.filter(option => String(option || '').trim()),
+    correctAnswerIndex: question.correctAnswerIndex,
+    correctAnswerText: question.correctAnswerText,
+    pairs: pairs.filter(pair => String(pair.left || '').trim() && String(pair.right || '').trim()),
+    sequence: sequence.filter(item => String(item || '').trim()),
+    explanation: question.explanation,
+    difficulty: question.difficulty,
+    skill: question.skill,
+    active: question.active,
+    status: question.status || 'active',
+    publishBatchId: question.publishBatchId,
+    visibleFrom: question.visibleFrom,
+    createdAt: question.createdAt,
+    updatedAt: question.updatedAt,
+    archivedAt: question.archivedAt
+  };
+};
 
 const formatDateTime = (value?: string) => {
   if (!value) return 'غير محدد';
@@ -224,6 +364,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   defaultGrade = '',
   classOptions = [],
   subjectOptions = [],
+  gradeOptions: _gradeOptions = [],
   onPublish
 }) => {
   const draftKey = `rased_teacher_game_questions_${schoolCode}_${teacherId}`;
@@ -231,7 +372,9 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const archiveKey = `rased_teacher_game_questions_archive_${schoolCode}_${teacherId}`;
 
   const [questions, setQuestions] = useState<TeacherGameQuestion[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<TeacherGameQuestion>(() => getInitialQuestion(schoolCode, teacherId, defaultSubject, defaultGrade, classOptions));
+  const [currentQuestion, setCurrentQuestion] = useState<TeacherGameQuestion>(() =>
+    getInitialQuestion(schoolCode, teacherId, defaultSubject, defaultGrade, classOptions)
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -243,32 +386,62 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(draftKey) || '[]');
-      if (Array.isArray(saved) && saved.length > 0) {
-        setQuestions(saved.filter((q: TeacherGameQuestion) => q.questionType !== 'hints'));
+      const saved = safeReadQuestions(draftKey);
+      if (saved.length > 0) {
+        setQuestions(
+          saved
+            .filter((q: any) => q?.questionType !== 'hints')
+            .map((q: any) => normalizeTeacherGameQuestion(q, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
+        );
         return;
       }
-      const activePublished = JSON.parse(localStorage.getItem(activePublishedKey) || '[]');
-      setQuestions(Array.isArray(activePublished) ? activePublished.filter((q: TeacherGameQuestion) => q.questionType !== 'hints') : []);
+
+      const activePublished = safeReadQuestions(activePublishedKey);
+      setQuestions(
+        activePublished
+          .filter((q: any) => q?.questionType !== 'hints')
+          .map((q: any) => normalizeTeacherGameQuestion(q, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
+      );
     } catch {
       setQuestions([]);
     }
-  }, [draftKey, activePublishedKey]);
+  }, [draftKey, activePublishedKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
 
   useEffect(() => {
     localStorage.setItem(draftKey, JSON.stringify(questions));
   }, [draftKey, questions]);
 
   useEffect(() => {
-    try {
-      const savedArchive = JSON.parse(localStorage.getItem(archiveKey) || '[]');
-      setLocalArchiveQuestions(Array.isArray(savedArchive) ? savedArchive.filter((q: TeacherGameQuestion) => q.questionType !== 'hints') : []);
-    } catch {
-      setLocalArchiveQuestions([]);
-    }
-  }, [archiveKey]);
+    const archiveFromKey = safeReadQuestions(archiveKey);
+    const activePublished = safeReadQuestions(activePublishedKey);
+    const drafts = safeReadQuestions(draftKey);
 
-  const compatibleGames = useMemo(() => GAME_OPTIONS.filter(game => game.accepts.includes(currentQuestion.questionType)), [currentQuestion.questionType]);
+    const archivedLike = [...activePublished, ...drafts].filter((question: any) => {
+      const status = String(question?.status || '').toLowerCase();
+      return status === 'archived' || status === 'review' || question?.active === false || question?.archivedAt;
+    });
+
+    const map = new Map<string, TeacherGameQuestion>();
+
+    [...archiveFromKey, ...archivedLike]
+      .filter((question: any) => question && question.questionType !== 'hints')
+      .map((question: any) => normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
+      .forEach(question => map.set(question.id, question));
+
+    const nextLocalArchive = Array.from(map.values()).sort(
+      (a, b) => new Date(b.archivedAt || b.updatedAt || b.createdAt || 0).getTime() -
+        new Date(a.archivedAt || a.updatedAt || a.createdAt || 0).getTime()
+    );
+
+    setLocalArchiveQuestions(nextLocalArchive);
+    localStorage.setItem(archiveKey, JSON.stringify(nextLocalArchive));
+  }, [archiveKey, activePublishedKey, draftKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
+
+  const compatibleGames = useMemo(
+    () => GAME_OPTIONS.filter(game => game.accepts.includes(currentQuestion.questionType)),
+    [currentQuestion.questionType]
+  );
+
   const validQuestions = useMemo(() => questions.filter(question => validateQuestion(question).ok), [questions]);
 
   const archiveQuestions = useMemo(() => {
@@ -293,9 +466,10 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
 
   const saveLocalArchive = (items: TeacherGameQuestion[]) => {
     const map = new Map<string, TeacherGameQuestion>();
-    items.forEach(item => {
+    items.forEach((item: any) => {
       if (!item?.id || item.questionType === 'hints') return;
-      map.set(item.id, item);
+      const normalized = normalizeTeacherGameQuestion(item, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+      map.set(normalized.id, normalized);
     });
     const nextArchive = Array.from(map.values()).sort(
       (a, b) => new Date(b.archivedAt || b.updatedAt || b.createdAt || 0).getTime() - new Date(a.archivedAt || a.updatedAt || a.createdAt || 0).getTime()
@@ -306,18 +480,24 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
 
   const archivePreviousActiveQuestionsLocally = (nextActiveQuestions: TeacherGameQuestion[]) => {
     const now = new Date().toISOString();
-    const nextIds = new Set(nextActiveQuestions.map(question => question.id));
-    let previousActive: TeacherGameQuestion[] = [];
-    try {
-      previousActive = JSON.parse(localStorage.getItem(activePublishedKey) || '[]');
-    } catch {
-      previousActive = [];
-    }
+    const normalizedNextActiveQuestions = nextActiveQuestions.map((question: any) =>
+      normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions)
+    );
+    const nextIds = new Set(normalizedNextActiveQuestions.map(question => question.id));
+    const previousActive = safeReadQuestions(activePublishedKey);
+
     const archivedPrevious = previousActive
-      .filter(question => question && question.questionType !== 'hints' && !nextIds.has(question.id))
-      .map(question => ({ ...question, active: false, status: 'archived', archivedAt: now, updatedAt: now }));
+      .filter((question: any) => question && question.questionType !== 'hints' && !nextIds.has(question.id))
+      .map((question: any) => ({
+        ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
+        active: false,
+        status: 'archived',
+        archivedAt: now,
+        updatedAt: now
+      }));
+
     if (archivedPrevious.length > 0) saveLocalArchive([...archivedPrevious, ...localArchiveQuestions]);
-    localStorage.setItem(activePublishedKey, JSON.stringify(nextActiveQuestions));
+    localStorage.setItem(activePublishedKey, JSON.stringify(normalizedNextActiveQuestions));
   };
 
   const fetchCloudArchiveQuestions = async () => {
@@ -329,7 +509,13 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       });
       const result = await response.json();
       const list = Array.isArray(result?.data) ? result.data : [];
-      setCloudArchiveQuestions(list.filter((q: TeacherGameQuestion) => q.questionType !== 'hints'));
+      const normalizedCloudArchive = list
+        .filter((q: any) => q && q.questionType !== 'hints')
+        .map((q: any) => normalizeTeacherGameQuestion(q, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
+        .map(q => ({ ...q, active: false, status: q.status || 'archived' }));
+
+      setCloudArchiveQuestions(normalizedCloudArchive);
+      saveLocalArchive([...normalizedCloudArchive, ...localArchiveQuestions]);
     } catch (error) {
       console.error('Failed to fetch archived game questions', error);
       setCloudArchiveQuestions([]);
@@ -364,14 +550,22 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const toggleClass = (className: string) => {
     setCurrentQuestion(prev => {
       const exists = prev.classes.includes(className);
-      return { ...prev, classes: exists ? prev.classes.filter(item => item !== className) : [...prev.classes, className], updatedAt: new Date().toISOString() };
+      return {
+        ...prev,
+        classes: exists ? prev.classes.filter(item => item !== className) : [...prev.classes, className],
+        updatedAt: new Date().toISOString()
+      };
     });
   };
 
   const toggleGame = (gameId: EducationalGameType) => {
     setCurrentQuestion(prev => {
       const exists = prev.gameTypes.includes(gameId);
-      return { ...prev, gameTypes: exists ? prev.gameTypes.filter(item => item !== gameId) : [...prev.gameTypes, gameId], updatedAt: new Date().toISOString() };
+      return {
+        ...prev,
+        gameTypes: exists ? prev.gameTypes.filter(item => item !== gameId) : [...prev.gameTypes, gameId],
+        updatedAt: new Date().toISOString()
+      };
     });
   };
 
@@ -400,12 +594,13 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   };
 
   const addQuestion = () => {
-    const validation = validateQuestion(currentQuestion);
+    const normalizedCurrent = normalizeTeacherGameQuestion(currentQuestion, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+    const validation = validateQuestion(normalizedCurrent);
     if (!validation.ok) {
       showToast('warning', validation.message || 'راجع بيانات السؤال.');
       return;
     }
-    const cleanQuestion = { ...currentQuestion, status: 'active', active: currentQuestion.active !== false };
+    const cleanQuestion: TeacherGameQuestion = { ...normalizedCurrent, status: 'active', active: normalizedCurrent.active !== false };
     if (editingId) {
       setQuestions(prev => prev.map(question => question.id === editingId ? { ...cleanQuestion, updatedAt: new Date().toISOString() } : question));
       showToast('success', 'تم تحديث السؤال.');
@@ -417,21 +612,45 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   };
 
   const editQuestion = (question: TeacherGameQuestion) => {
-    setEditingId(question.id);
-    setCurrentQuestion({ ...question, status: 'active', active: question.active !== false });
+    const normalized = normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+    setEditingId(normalized.id);
+    setCurrentQuestion({ ...normalized, status: 'active', active: normalized.active !== false });
     setQuestionsView('editor');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const duplicateQuestion = (question: TeacherGameQuestion) => {
     const now = new Date().toISOString();
-    setQuestions(prev => [...prev, { ...question, id: createId(), question: `${question.question} - نسخة`, active: true, status: 'active', archivedAt: undefined, createdAt: now, updatedAt: now }]);
+    const normalized = normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+    setQuestions(prev => [
+      ...prev,
+      {
+        ...normalized,
+        id: createId(),
+        question: `${normalized.question || 'سؤال'} - نسخة`,
+        active: true,
+        status: 'active',
+        archivedAt: undefined,
+        createdAt: now,
+        updatedAt: now
+      }
+    ]);
+    setQuestionsView('editor');
     showToast('success', 'تم نسخ السؤال.');
   };
 
   const restoreFromArchive = (question: TeacherGameQuestion) => {
     const now = new Date().toISOString();
-    const restored = { ...question, id: createId(), active: true, status: 'active', archivedAt: undefined, createdAt: now, updatedAt: now };
+    const normalized = normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+    const restored: TeacherGameQuestion = {
+      ...normalized,
+      id: createId(),
+      active: true,
+      status: 'active',
+      archivedAt: undefined,
+      createdAt: now,
+      updatedAt: now
+    };
     setQuestions(prev => [restored, ...prev]);
     setQuestionsView('editor');
     showToast('success', 'تمت إعادة السؤال من الأرشيف كنسخة نشطة.');
@@ -455,8 +674,12 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       teacherId,
       subject: firstQuestion?.subject || defaultSubject || '',
       grade: firstQuestion?.grade || defaultGrade || '',
-      classes: Array.from(new Set(validQuestions.flatMap(question => question.classes))),
-      questions: validQuestions.map(question => ({ ...question, status: 'active', active: question.active !== false })),
+      classes: Array.from(new Set(validQuestions.flatMap(question => Array.isArray(question.classes) ? question.classes : []))),
+      questions: validQuestions.map(question => ({
+        ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
+        status: 'active',
+        active: question.active !== false
+      })),
       publishedAt: new Date().toISOString()
     };
   };
@@ -501,11 +724,20 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
         showToast('warning', 'الملف لا يحتوي على أسئلة صالحة.');
         return;
       }
+      const now = new Date().toISOString();
       setQuestions(prev => [
         ...prev,
         ...importedQuestions
-          .filter((question: TeacherGameQuestion) => question.questionType !== 'hints')
-          .map((question: TeacherGameQuestion) => ({ ...question, id: question.id || createId(), schoolCode, teacherId, active: question.active !== false, status: 'active', updatedAt: new Date().toISOString() }))
+          .filter((question: any) => question?.questionType !== 'hints')
+          .map((question: any) => ({
+            ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
+            id: question.id || createId(),
+            schoolCode,
+            teacherId,
+            active: question.active !== false,
+            status: 'active',
+            updatedAt: now
+          }))
       ]);
       showToast('success', 'تم استيراد الأسئلة.');
     } catch {
@@ -777,7 +1009,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                         <p className="text-sm font-black text-textPrimary line-clamp-2">{question.question || 'سؤال بدون نص'}</p>
                         <div className="flex flex-wrap gap-2 mt-2 text-[9px] font-bold text-textSecondary">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />تاريخ الأرشفة: {formatDateTime(question.archivedAt)}</span>
-                          <span>الفصول: {(question.classes || []).join('، ') || 'غير محدد'}</span>
+                          <span>الفصول: {asStringArray(question.classes).join('، ') || 'غير محدد'}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
