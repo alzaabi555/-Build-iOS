@@ -155,27 +155,47 @@ const StudentList: React.FC<StudentListProps> = ({
         if (!replyText.trim()) return;
         setIsSendingReply(true);
         try {
-            const student = students.find(s => String(s.parentCode || '').trim() === String(msg.civilID || '').trim() || s.rasedId === msg.rasedId);
-            const targetId = student?.rasedId || msg.rasedId || msg.civilID || student?.parentCode;
+            const messageCode = String(msg.rasedId || msg.civilID || msg.parentCode || '').trim().toUpperCase();
+            const student = students.find(s =>
+                String(s.rasedId || '').trim().toUpperCase() === messageCode ||
+                String(s.parentCode || '').trim().toUpperCase() === messageCode
+            );
+            const rasedId = String(student?.rasedId || msg.rasedId || msg.civilID || msg.parentCode || '').trim().toUpperCase();
+            const schoolName = msg.schoolName || teacherInfo?.school || '';
+            const subjectName = msg.subject || teacherInfo?.subject || '';
 
-            const url = `${GOOGLE_WEB_APP_URL}`;
-            await fetch(url, {
+            const payload = {
+                action: 'sendTeacherReply',
+                rowNumber: String(msg.rowNumber || msg.messageRow || ''),
+                rasedId,
+                civilID: rasedId,
+                parentCode: rasedId,
+                schoolName,
+                subject: subjectName,
+                replyText: replyText.trim(),
+                teacherName: teacherInfo?.name || 'المعلم'
+            };
+
+            const response = await fetch(GOOGLE_WEB_APP_URL, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    action: 'sendTeacherReply',
-                    targetId: targetId,
-                    teacherName: teacherInfo?.name || '',
-                    subject: teacherInfo?.subject || '',
-                    message: replyText,
-                    originalMsgId: msg.id || ''
-                })
+                body: JSON.stringify(payload)
             });
+
+            let result: any = null;
+            try {
+                result = await response.json();
+            } catch {
+                result = { status: 'success' };
+            }
+
+            if (result?.status && result.status !== 'success') {
+                throw new Error(result.message || 'تعذر إرسال الرد للسحابة');
+            }
 
             alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
             setReplyingToMsg(null);
             setReplyText('');
+            await fetchParentMessages();
         } catch (error) {
             console.error("Error sending reply:", error);
             alert('حدث خطأ أثناء إرسال الرد');
@@ -183,7 +203,6 @@ const StudentList: React.FC<StudentListProps> = ({
             setIsSendingReply(false);
         }
     };
-
     useEffect(() => {
         fetchParentMessages();
     }, [teacherInfo?.school, teacherInfo?.subject]);
@@ -696,20 +715,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
             leftActions={
                 <div className="space-y-3 relative z-10 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <div className="relative w-full">
-                        <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
-                        <input
-    type="text"
-    data-voice-field="بحث الطلاب"
-    aria-label="بحث الطلاب"
-    placeholder={t('searchStudent')} 
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-    className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40`}
-/>
-                    </div>
-                    
-           <div className="w-full flex flex-col md:flex-row gap-2 md:items-center mt-2">
+           <div className="w-full flex flex-col md:flex-row gap-2 md:items-center">
   {/* الصفوف كأزرار قصيرة */}
   <div className="overflow-x-auto no-scrollbar flex-1">
     <div className="inline-flex items-center p-1 rounded-2xl border transition-all bg-bgCard border-borderColor shadow-sm">
@@ -782,6 +788,18 @@ const StudentList: React.FC<StudentListProps> = ({
             }
         >
            <div className="animate-in fade-in duration-500 pt-2">
+    <div className="relative w-full mb-3" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <Search className={`absolute ${dir === 'rtl' ? 'right-4' : 'left-4'} top-3.5 w-5 h-5 text-textSecondary`} />
+        <input
+            type="text"
+            data-voice-field="بحث الطلاب"
+            aria-label="بحث الطلاب"
+            placeholder={t('searchStudent')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full border rounded-2xl py-3 ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40`}
+        />
+    </div>
     {filteredStudents.length > 0 ? (
         <div className="space-y-2.5 pb-6">
             {filteredStudents.map((student, index) => {
@@ -921,16 +939,34 @@ const StudentList: React.FC<StudentListProps> = ({
                                         <h4 className="font-black text-textPrimary text-lg">{msg.studentName}</h4>
                                         <p className="text-[10px] font-bold text-textSecondary font-mono mt-0.5">{t('civilIdPrefix')} {msg.rasedId || msg.civilID}</p>
                                     </div>
-                                    <span className="text-[10px] font-bold bg-bgCard text-textSecondary px-2 py-1 rounded-lg border border-borderColor shadow-sm">
-                                        {new Date(msg.date).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className="text-[10px] font-bold bg-bgCard text-textSecondary px-2 py-1 rounded-lg border border-borderColor shadow-sm">
+                                            {new Date(msg.date).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </span>
+                                        {msg.status === 'replied' && (
+                                            <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                                تم الرد
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className={`glass-panel p-4 rounded-xl border border-borderColor text-sm font-bold text-textPrimary leading-relaxed shadow-sm ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                                     {msg.message}
                                 </div>
                                 
+                                {msg.teacherReply && (
+                                    <div className="mt-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-sm font-bold text-emerald-700 leading-relaxed w-full">
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <span className="text-[10px] font-black text-emerald-700">رد المعلم</span>
+                                            {msg.replyDate && <span className="text-[9px] font-bold opacity-70">{new Date(msg.replyDate).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}</span>}
+                                        </div>
+                                        {msg.teacherReply}
+                                    </div>
+                                )}
                                 <div className="mt-4 flex flex-col items-end w-full border-t border-borderColor/50 pt-3">
-                                    {replyingToMsg === msg ? (
+                                    {msg.status === 'replied' ? (
+                                        <span className="text-xs font-black text-emerald-600 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">تم الرد على هذه الرسالة</span>
+                                    ) : replyingToMsg === msg ? (
                                         <div className="flex flex-col gap-3 w-full animate-in fade-in zoom-in-95 duration-200">
                                             <textarea
                                                 value={replyText}
