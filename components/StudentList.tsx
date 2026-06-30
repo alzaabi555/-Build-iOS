@@ -151,58 +151,67 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     // 💉 دالة الرد الداخلي السحابي
-    const handleSendReplyInternal = async (msg: any) => {
-        if (!replyText.trim()) return;
-        setIsSendingReply(true);
-        try {
-            const messageCode = String(msg.rasedId || msg.civilID || msg.parentCode || '').trim().toUpperCase();
-            const student = students.find(s =>
-                String(s.rasedId || '').trim().toUpperCase() === messageCode ||
-                String(s.parentCode || '').trim().toUpperCase() === messageCode
-            );
-            const rasedId = String(student?.rasedId || msg.rasedId || msg.civilID || msg.parentCode || '').trim().toUpperCase();
-            const schoolName = msg.schoolName || teacherInfo?.school || '';
-            const subjectName = msg.subject || teacherInfo?.subject || '';
+   const handleSendReplyInternal = async (msg: any) => {
+    if (!replyText.trim()) return;
+    setIsSendingReply(true);
 
-            const payload = {
-                action: 'sendTeacherReply',
-                rowNumber: String(msg.rowNumber || msg.messageRow || ''),
-                rasedId,
-                civilID: rasedId,
-                parentCode: rasedId,
-                schoolName,
-                subject: subjectName,
-                replyText: replyText.trim(),
-                teacherName: teacherInfo?.name || 'المعلم'
-            };
+    try {
+        const messageCode = String(
+            msg.rasedId || msg.civilID || msg.parentCode || ''
+        ).trim().toUpperCase();
 
-            const response = await fetch(GOOGLE_WEB_APP_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+        const student = students.find(s =>
+            String(s.rasedId || '').trim().toUpperCase() === messageCode ||
+            String(s.parentCode || '').trim().toUpperCase() === messageCode
+        );
 
-            let result: any = null;
-            try {
-                result = await response.json();
-            } catch {
-                result = { status: 'success' };
-            }
+        const rasedId = String(
+            student?.rasedId ||
+            msg.rasedId ||
+            msg.civilID ||
+            msg.parentCode ||
+            ''
+        ).trim().toUpperCase();
 
-            if (result?.status && result.status !== 'success') {
-                throw new Error(result.message || 'تعذر إرسال الرد للسحابة');
-            }
+        const schoolName = String(msg.schoolName || teacherInfo?.school || '').trim();
+        const subjectName = String(msg.subject || teacherInfo?.subject || '').trim();
 
-            alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
-            setReplyingToMsg(null);
-            setReplyText('');
-            await fetchParentMessages();
-        } catch (error) {
-            console.error("Error sending reply:", error);
-            alert('حدث خطأ أثناء إرسال الرد');
-        } finally {
-            setIsSendingReply(false);
-        }
-    };
+        const payload = new URLSearchParams({
+            action: 'sendTeacherReply',
+            rowNumber: String(msg.rowNumber || msg.messageRow || msg.row || ''),
+            rasedId,
+            civilID: rasedId,
+            parentCode: rasedId,
+            schoolName,
+            subject: subjectName,
+            replyText: replyText.trim(),
+            teacherName: teacherInfo?.name || 'المعلم'
+        });
+
+        await fetch(GOOGLE_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            },
+            body: payload
+        });
+
+        alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
+        setReplyingToMsg(null);
+        setReplyText('');
+
+        setTimeout(() => {
+            fetchParentMessages();
+        }, 1200);
+
+    } catch (error) {
+        console.error("Error sending reply:", error);
+        alert('حدث خطأ أثناء إرسال الرد');
+    } finally {
+        setIsSendingReply(false);
+    }
+};
     useEffect(() => {
         fetchParentMessages();
     }, [teacherInfo?.school, teacherInfo?.subject]);
