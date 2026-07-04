@@ -671,7 +671,8 @@ const AppContent: React.FC = () => {
       })}
     </div>
   );
-// =========================================================================
+
+  // =========================================================================
   // 🔐 أدوات توليد وتثبيت كود RSD للطلاب ومنع التكرار
   // =========================================================================
 
@@ -894,16 +895,21 @@ const AppContent: React.FC = () => {
     const mergedStudent = {
       ...existingStudent,
       ...incomingStudent,
+
       rasedId: existingCode || incomingCode || incomingStudent.rasedId,
       parentCode: existingCode || incomingCode || incomingStudent.parentCode,
+
       id: existingStudent.id || incomingStudent.id,
+
       parentPhone: incomingStudent.parentPhone || existingStudent.parentPhone,
       gender: incomingStudent.gender || existingStudent.gender,
       avatar: incomingStudent.avatar || existingStudent.avatar,
+
       classes:
         existingStudent.classes?.length
           ? existingStudent.classes
           : incomingStudent.classes,
+
       behaviors: mergeListsWithoutDuplicates(existingStudent.behaviors, incomingStudent.behaviors),
       grades: mergeListsWithoutDuplicates(existingStudent.grades, incomingStudent.grades),
       attendance: mergeListsWithoutDuplicates(existingStudent.attendance, incomingStudent.attendance)
@@ -970,7 +976,7 @@ const AppContent: React.FC = () => {
       ? incomingCode
       : generateStableRasedId(schoolIdentity, cleanName, cleanClass);
 
-    const newStudent = {
+    const newStudent: any = {
       id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name: cleanName,
       classes: [cleanClass],
@@ -983,14 +989,14 @@ const AppContent: React.FC = () => {
       gender: gender || 'male',
       rasedId,
       parentCode: rasedId
-    } as Student;
+    };
 
     setStudents(prev =>
-      upsertStudentByIdentity(prev, newStudent, schoolIdentity) as Student[]
+      upsertStudentByIdentity(prev, newStudent, schoolIdentity)
     );
   };
 
-  const handleBatchAddStudentsSafely = (newStudents: Student[]) => {
+  const handleBatchAddStudentsSafely = (newStudents: any[]) => {
     const schoolIdentity = getSchoolIdentityForRased();
 
     setStudents(prev => {
@@ -1029,11 +1035,10 @@ const AppContent: React.FC = () => {
         );
       });
 
-      return nextStudents as Student[];
+      return nextStudents;
     });
   };
 
-    
   const renderStudentManagementContent = () => {
     if (studentManagementView === 'attendance') {
       return (
@@ -1053,22 +1058,18 @@ const AppContent: React.FC = () => {
       <StudentList
         students={students}
         classes={classes}
-        onAddClass={(n) => setClasses(p => [...p, n])}
-       <StudentList
-  students={students}
-  classes={classes}
-  onAddClass={(n) => setClasses(p => p.includes(n) ? p : [...p, n])}
- onAddStudentManually={(n, c, p, a, g, cid) =>
-  handleAddStudentManuallySafely(n, c, p, a, g, cid)
-}
-onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
-  onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
-  onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
-  onViewReport={() => {}}
-  currentSemester={currentSemester}
-  onSemesterChange={setCurrentSemester}
-  onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
-/>
+        onAddClass={(n) => setClasses(p => p.includes(n) ? p : [...p, n])}
+        onAddStudentManually={(n, c, p, a, g, cid) =>
+          handleAddStudentManuallySafely(n, c, p, a, g, cid)
+        }
+        onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
+        onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
+        onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
+        onViewReport={() => {}}
+        currentSemester={currentSemester}
+        onSemesterChange={setCurrentSemester}
+        onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
+      />
     );
   };
 
