@@ -62,27 +62,212 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const DBFILENAME = 'teacher_raseddatabasev2.json';
 
-// 💉 1. دالة تنظيف وتوحيد الأسماء العربية
+// =========================================================================
+// 🔐 أدوات هوية الطالب ومنع تكرار أكواد راصد
+// =========================================================================
+
 const normalizeArabicName = (name: string) => {
-  if (!name) return '';
-  return name.replace(/[أإآءؤئ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/عبد /g, 'عبد').replace(/\s+/g, '').trim();
+  return String(name || '')
+    .trim()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/[ؤئء]/g, '')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 };
 
-// 💉 2. التشفير البصمي السري
-const generateRasedId = (name: string, className: string) => {
-  if (!name || !className) {
-     return `RSD-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+const normalizeArabicDigits = (value: string) => {
+  const arabicDigits: Record<string, string> = {
+    '٠': '0',
+    '١': '1',
+    '٢': '2',
+    '٣': '3',
+    '٤': '4',
+    '٥': '5',
+    '٦': '6',
+    '٧': '7',
+    '٨': '8',
+    '٩': '9',
+    '۰': '0',
+    '۱': '1',
+    '۲': '2',
+    '۳': '3',
+    '۴': '4',
+    '۵': '5',
+    '۶': '6',
+    '۷': '7',
+    '۸': '8',
+    '۹': '9'
+  };
+
+  return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit] || digit);
+};
+
+const normalizeClassName = (className: string) => {
+  return normalizeArabicDigits(className)
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/الصف/g, '')
+    .replace(/صف/g, '')
+    .replace(/الفصل/g, '')
+    .replace(/الشعبة/g, '')
+    .replace(/شعبة/g, '')
+    .replace(/\\/g, '/')
+    .replace(/-/g, '/')
+    .replace(/الأول|اول/g, '1')
+    .replace(/الثاني|ثاني/g, '2')
+    .replace(/الثالث|ثالث/g, '3')
+    .replace(/الرابع|رابع/g, '4')
+    .replace(/الخامس|خامس/g, '5')
+    .replace(/السادس|سادس/g, '6')
+    .replace(/السابع|سابع/g, '7')
+    .replace(/الثامن|ثامن/g, '8')
+    .replace(/التاسع|تاسع/g, '9')
+    .replace(/العاشر|عاشر/g, '10')
+    .replace(/الحاديعشر|حاديعشر/g, '11')
+    .replace(/الثانيعشر|ثانيعشر/g, '12')
+    .toLowerCase();
+};
+
+const getStudentClassValue = (student: any) => {
+  return String(
+    student?.classes?.[0] ||
+    student?.className ||
+    student?.class ||
+    ''
+  ).trim();
+};
+
+const getExistingRasedCodeFromStudent = (student: any) => {
+  const possibleCode = String(
+    student?.rasedId ||
+    student?.rasedID ||
+    student?.secretCode ||
+    student?.parentCode ||
+    student?.civilID ||
+    student?.civilId ||
+    ''
+  ).trim().toUpperCase();
+
+  return possibleCode.startsWith('RSD-') ? possibleCode : '';
+};
+
+const makeStudentIdentityKey = (schoolName: string, name: string, className: string) => {
+  const normalizedSchool = String(schoolName || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase();
+
+  const normalizedName = normalizeArabicName(name).replace(/\s+/g, '');
+  const normalizedClass = normalizeClassName(className);
+
+  return `${normalizedSchool}_${normalizedName}_${normalizedClass}`;
+};
+
+const hashToRasedCode = (value: string) => {
+  let hash = 5381;
+
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 33) ^ value.charCodeAt(i);
   }
 
-  const normalizedString = `${normalizeArabicName(name)}-${className}`;
-  
-  let hash = 5381;
-  for (let i = 0; i < normalizedString.length; i++) {
-    hash = (hash * 33) ^ normalizedString.charCodeAt(i);
-  }
-  
-  const code = Math.abs(hash).toString(36).toUpperCase().padStart(5, '0').substring(0, 5);
+  const code = Math.abs(hash)
+    .toString(36)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .padStart(6, '0')
+    .substring(0, 6);
+
   return `RSD-${code}`;
+};
+
+const generateRasedId = (name: string, className: string, schoolName = '') => {
+  if (!name || !className) {
+    return `RSD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
+
+  const identityKey = makeStudentIdentityKey(schoolName, name, className);
+  return hashToRasedCode(identityKey);
+};
+
+const mergeStudentArrays = (oldList: any[] = [], newList: any[] = []) => {
+  const map = new Map<string, any>();
+
+  [...oldList, ...newList].forEach(item => {
+    if (!item) return;
+    const id = String(item.id || item.date || JSON.stringify(item));
+    if (!map.has(id)) map.set(id, item);
+  });
+
+  return Array.from(map.values());
+};
+
+const migrateAndDedupeStudents = (rawStudents: any[], schoolName: string) => {
+  const identityMap = new Map<string, any>();
+
+  rawStudents.forEach(rawStudent => {
+    if (!rawStudent) return;
+
+    const studentClass = getStudentClassValue(rawStudent) || 'غير محدد';
+    const identityKey = makeStudentIdentityKey(schoolName, rawStudent.name || '', studentClass);
+
+    const existingCode = getExistingRasedCodeFromStudent(rawStudent);
+    const rasedId = existingCode || generateRasedId(rawStudent.name || '', studentClass, schoolName);
+
+    const {
+      civilID,
+      civilId,
+      parentCode,
+      secretCode,
+      rasedID,
+      ...cleanStudent
+    } = rawStudent;
+
+    const normalizedStudent = {
+      ...cleanStudent,
+      id: cleanStudent.id || rawStudent.id || rasedId,
+      rasedId,
+      name: rawStudent.name || '',
+      classes: Array.isArray(rawStudent.classes) && rawStudent.classes.length > 0
+        ? rawStudent.classes
+        : [studentClass],
+      grade: rawStudent.grade,
+      parentPhone: rawStudent.parentPhone || '',
+      gender: rawStudent.gender || 'male',
+      avatar: rawStudent.avatar,
+      behaviors: Array.isArray(rawStudent.behaviors) ? rawStudent.behaviors : [],
+      grades: Array.isArray(rawStudent.grades) ? rawStudent.grades : [],
+      attendance: Array.isArray(rawStudent.attendance) ? rawStudent.attendance : []
+    };
+
+    const existing = identityMap.get(identityKey);
+
+    if (!existing) {
+      identityMap.set(identityKey, normalizedStudent);
+      return;
+    }
+
+    identityMap.set(identityKey, {
+      ...existing,
+      ...normalizedStudent,
+
+      // الأهم: لا نغير كود راصد القديم
+      rasedId: existing.rasedId || normalizedStudent.rasedId,
+
+      // نحافظ على بيانات الطالب الأقدم إذا كانت موجودة
+      parentPhone: normalizedStudent.parentPhone || existing.parentPhone,
+      gender: normalizedStudent.gender || existing.gender,
+      avatar: normalizedStudent.avatar || existing.avatar,
+
+      behaviors: mergeStudentArrays(existing.behaviors, normalizedStudent.behaviors),
+      grades: mergeStudentArrays(existing.grades, normalizedStudent.grades),
+      attendance: mergeStudentArrays(existing.attendance, normalizedStudent.attendance)
+    });
+  });
+
+  return Array.from(identityMap.values());
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -207,21 +392,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         if (data) {
-          // المهاجر السري: حقن أكواد RSD
-          if (data.students && data.students.length > 0) {
-            const migratedStudents = data.students.map((student: any) => {
-              const { civilID, parentCode, ...cleanStudent } = student; 
-              if (!cleanStudent.rasedId) {
-                const studentClass = cleanStudent.classes && cleanStudent.classes.length > 0 ? cleanStudent.classes[0] : 'عادي';
-                const newId = generateRasedId(cleanStudent.name, studentClass);
-                return { ...cleanStudent, rasedId: newId };
-              }
-              return cleanStudent;
-            });
-            setStudents(migratedStudents);
-          } else {
-            setStudents([]);
-          }
+         // 🔐 مهاجر أكواد RSD المحسن:
+// - يحافظ على الأكواد القديمة.
+// - يمنع تكرار نفس الطالب داخل نفس المدرسة ونفس الفصل.
+// - يوحّد الطلاب الذين تم إدخالهم أكثر من مرة من معلمين أو استيرادات متعددة.
+if (data.students && data.students.length > 0) {
+  const loadedTeacherInfo = data.teacherInfo || {};
+  const activeSchoolName =
+    loadedTeacherInfo.school ||
+    localStorage.getItem('teacher_schoolName') ||
+    '';
+
+  const migratedStudents = migrateAndDedupeStudents(data.students, activeSchoolName);
+  setStudents(migratedStudents);
+} else {
+  setStudents([]);
+}
 
           if (data.classes) setClasses(data.classes);
           if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
