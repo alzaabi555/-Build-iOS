@@ -7,11 +7,9 @@ import {
   Search,
   Filter,
   RotateCcw,
-  Clock,
   Users,
   AlertTriangle,
   Gamepad2,
-  BookOpen,
   Download,
   WifiOff,
   CalendarDays
@@ -21,10 +19,9 @@ import {
 // TeacherGameResultsDashboard
 // -------------------------------------------------------------------------
 // لوحة نتائج ألعاب الطلاب للمعلم.
-// - مصممة لتكون مكوّنًا مستقلًا يمكن وضعه بجانب TeacherGameQuestionsManager.
-// - تستقبل النتائج من props إذا كانت متاحة من السحابة أو AppContext.
-// - وتستطيع مؤقتًا قراءة نتائج localStorage للتجربة داخل نفس المتصفح.
-// - لا تغيّر أو تنشئ الأسئلة؛ فقط تعرض نتائج الطلاب.
+// - تعرض نتائج الطلاب حسب الفلاتر.
+// - تضيف إحصائية الطلاب غير المشاركين حسب الصف/الشعبة/الفصل الدراسي/اللعبة.
+// - تعتمد على قائمة الطلاب الكاملة من props للمقارنة مع نتائج الألعاب.
 // =========================================================================
 
 export type TeacherGameType =
@@ -42,6 +39,7 @@ export interface TeacherGameResultLogEntry {
   studentName?: string;
   className?: string;
   grade?: string;
+  semester?: string;
   gameType: TeacherGameType;
   score: number;
   correct: number;
@@ -62,9 +60,12 @@ export interface TeacherGameResultsStudent {
   name?: string;
   civilId?: string;
   rasedId?: string;
+  secretCode?: string;
+  parentCode?: string;
   grade?: string;
   classes?: string[];
   className?: string;
+  semester?: string;
 }
 
 interface TeacherGameResultsDashboardProps {
@@ -95,6 +96,15 @@ interface GroupedStudentResult {
   games: TeacherGameResultLogEntry[];
 }
 
+interface NonParticipantStudent {
+  studentId: string;
+  studentName: string;
+  className: string;
+  grade?: string;
+  semester?: string;
+  rawStudent: TeacherGameResultsStudent;
+}
+
 const GAME_LABELS: Record<string, string> = {
   snake_ladder: 'السلم والثعبان',
   knowledge_race: 'سباق المعرفة',
@@ -112,6 +122,25 @@ const SYNC_LABELS: Record<string, string> = {
 
 const getGameLabel = (gameType?: string) => GAME_LABELS[gameType || ''] || gameType || 'غير محدد';
 
+const normalizeCode = (value?: unknown) => String(value || '').trim().toUpperCase();
+const normalizeText = (value?: unknown) => String(value || '').trim().replace(/[أإآ]/g, 'ا').replace(/\s+/g, ' ').toLowerCase();
+
+const normalizeClassName = (value?: unknown) => {
+  const arabicDigits: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+  };
+
+  return String(value || '')
+    .trim()
+    .replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit] || digit)
+    .replace(/\s+/g, '')
+    .replace(/الصف|صف|الفصل|الشعبة|شعبة/g, '')
+    .replace(/\\/g, '/')
+    .replace(/-/g, '/')
+    .toLowerCase();
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) return 'غير محدد';
   const date = new Date(value);
@@ -126,45 +155,77 @@ const safeNumber = (value: unknown, fallback = 0) => {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 };
 
+const getRawObject = (value: unknown) => {
+  if (!value || typeof value !== 'object') return {} as Record<string, unknown>;
+  return value as Record<string, unknown>;
+};
+
+const getStudentCanonicalId = (student: TeacherGameResultsStudent) => {
+  return normalizeCode(student.rasedId || student.secretCode || student.parentCode || student.civilId || student.id);
+};
+
+const getStudentPrimaryClass = (student: TeacherGameResultsStudent) => {
+  return student.className || student.classes?.[0] || 'غير محدد';
+};
+
+const getStudentDisplayNameFromStudent = (student: TeacherGameResultsStudent) => {
+  return student.name || getStudentCanonicalId(student) || 'طالب غير محدد';
+};
+
 const getStudentDisplayName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(result.studentId);
+  const student = studentsMap.get(normalizeCode(result.studentId));
   return result.studentName || student?.name || result.studentId || 'طالب غير محدد';
 };
 
 const getStudentClassName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(result.studentId);
+  const student = studentsMap.get(normalizeCode(result.studentId));
   return result.className || student?.className || student?.classes?.[0] || 'غير محدد';
+};
+
+const getResultSemester = (raw: Record<string, unknown>) => {
+  const rawResult = getRawObject(raw.rawResult);
+  return String(raw.semester || rawResult.semester || rawResult.currentSemester || '').trim();
 };
 
 const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Record<string, unknown>;
 
+  const rawResult = getRawObject(raw.rawResult);
   const id = typeof raw.id === 'string' ? raw.id : `result_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const studentId = typeof raw.studentId === 'string' ? raw.studentId : 'default';
-  const gameType = typeof raw.gameType === 'string' ? raw.gameType : 'unknown_game';
+  const studentId = normalizeCode(raw.studentId || raw.rasedId || raw.parentCode || raw.civilID || raw.civilId || rawResult.studentId || rawResult.rasedId || 'default');
+  const gameType = typeof raw.gameType === 'string' ? raw.gameType : typeof rawResult.gameType === 'string' ? rawResult.gameType : 'unknown_game';
   const weakQuestionIds = Array.isArray(raw.weakQuestionIds)
     ? raw.weakQuestionIds.filter((item): item is string => typeof item === 'string')
-    : [];
+    : Array.isArray(rawResult.weakQuestionIds)
+      ? rawResult.weakQuestionIds.filter((item): item is string => typeof item === 'string')
+      : [];
 
   return {
     id,
     studentId,
-    studentName: typeof raw.studentName === 'string' ? raw.studentName : undefined,
-    className: typeof raw.className === 'string' ? raw.className : undefined,
-    grade: typeof raw.grade === 'string' ? raw.grade : undefined,
+    studentName: typeof raw.studentName === 'string' ? raw.studentName : typeof rawResult.studentName === 'string' ? rawResult.studentName : undefined,
+    className: typeof raw.className === 'string' ? raw.className : typeof rawResult.className === 'string' ? rawResult.className : undefined,
+    grade: typeof raw.grade === 'string' ? raw.grade : typeof rawResult.grade === 'string' ? rawResult.grade : undefined,
+    semester: getResultSemester(raw),
     gameType,
-    score: safeNumber(raw.score),
-    correct: safeNumber(raw.correct, safeNumber(raw.matched)),
-    wrong: safeNumber(raw.wrong),
-    completed: Boolean(raw.completed),
+    score: safeNumber(raw.score, safeNumber(rawResult.score)),
+    correct: safeNumber(raw.correct, safeNumber(rawResult.correct, safeNumber(raw.matched, safeNumber(rawResult.matched)))),
+    wrong: safeNumber(raw.wrong, safeNumber(rawResult.wrong)),
+    completed: Boolean(raw.completed ?? rawResult.completed),
     weakQuestionIds,
-    playedAt: typeof raw.playedAt === 'string' ? raw.playedAt : typeof raw.savedAt === 'string' ? raw.savedAt : new Date().toISOString(),
-    savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : undefined,
+    playedAt: typeof raw.playedAt === 'string'
+      ? raw.playedAt
+      : typeof rawResult.playedAt === 'string'
+        ? rawResult.playedAt
+        : typeof raw.savedAt === 'string'
+          ? raw.savedAt
+          : new Date().toISOString(),
+    savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : typeof rawResult.savedAt === 'string' ? rawResult.savedAt : undefined,
     syncStatus: raw.syncStatus === 'synced' || raw.syncStatus === 'pending_sync' || raw.syncStatus === 'local_only' ? raw.syncStatus : 'local_only',
-    subject: typeof raw.subject === 'string' ? raw.subject : undefined,
-    unit: typeof raw.unit === 'string' ? raw.unit : undefined,
-    lesson: typeof raw.lesson === 'string' ? raw.lesson : undefined,
+    subject: typeof raw.subject === 'string' ? raw.subject : typeof rawResult.subject === 'string' ? rawResult.subject : undefined,
+    unit: typeof raw.unit === 'string' ? raw.unit : typeof rawResult.unit === 'string' ? rawResult.unit : undefined,
+    lesson: typeof raw.lesson === 'string' ? raw.lesson : typeof rawResult.lesson === 'string' ? rawResult.lesson : undefined,
     rawResult: raw.rawResult || raw
   };
 };
@@ -204,10 +265,26 @@ const readLocalResults = (): TeacherGameResultLogEntry[] => {
   return collected.sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
 };
 
+const escapeCsvCell = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
+
+const downloadCsv = (fileName: string, headers: string[], rows: string[][]) => {
+  const csv = [headers, ...rows].map(row => row.map(escapeCsvCell).join(',')).join('\n');
+  const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 const exportResultsAsCsv = (results: TeacherGameResultLogEntry[], studentsMap: Map<string, TeacherGameResultsStudent>) => {
   const headers = [
     'اسم الطالب',
     'الصف',
+    'الفصل الدراسي',
     'اللعبة',
     'النقاط',
     'الصحيح',
@@ -221,6 +298,7 @@ const exportResultsAsCsv = (results: TeacherGameResultLogEntry[], studentsMap: M
   const rows = results.map(result => [
     getStudentDisplayName(result, studentsMap),
     getStudentClassName(result, studentsMap),
+    result.semester || 'غير محدد',
     getGameLabel(result.gameType),
     String(result.score),
     String(result.correct),
@@ -231,17 +309,20 @@ const exportResultsAsCsv = (results: TeacherGameResultLogEntry[], studentsMap: M
     SYNC_LABELS[result.syncStatus || 'local_only'] || 'غير محدد'
   ]);
 
-  const escapeCell = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
-  const csv = [headers, ...rows].map(row => row.map(escapeCell).join(',')).join('\n');
-  const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `teacher_game_results_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadCsv(`teacher_game_results_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+};
+
+const exportNonParticipantsAsCsv = (students: NonParticipantStudent[]) => {
+  const headers = ['اسم الطالب', 'كود راصد', 'الصف / الشعبة', 'المرحلة', 'الفصل الدراسي'];
+  const rows = students.map(student => [
+    student.studentName,
+    student.studentId,
+    student.className,
+    student.grade || '',
+    student.semester || ''
+  ]);
+
+  downloadCsv(`teacher_game_non_participants_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
 const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = ({
@@ -255,19 +336,41 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const [query, setQuery] = useState('');
   const [gameFilter, setGameFilter] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
+  const [semesterFilter, setSemesterFilter] = useState<string>('all');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
   const [syncFilter, setSyncFilter] = useState<string>('all');
   const [refreshToken, setRefreshToken] = useState(0);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [showNonParticipants, setShowNonParticipants] = useState(true);
 
   const studentsMap = useMemo(() => {
     const map = new Map<string, TeacherGameResultsStudent>();
     students.forEach(student => {
-      if (student.id) map.set(student.id, student);
-      if (student.rasedId) map.set(student.rasedId, student);
-      if (student.civilId) map.set(student.civilId, student);
+      const ids = [student.id, student.rasedId, student.civilId, student.secretCode, student.parentCode].map(normalizeCode).filter(Boolean);
+      ids.forEach(id => map.set(id, student));
     });
     return map;
+  }, [students]);
+
+  const normalizedStudents = useMemo<NonParticipantStudent[]>(() => {
+    const seen = new Set<string>();
+
+    return students
+      .map(student => {
+        const studentId = getStudentCanonicalId(student);
+        if (!studentId || seen.has(studentId)) return null;
+        seen.add(studentId);
+
+        return {
+          studentId,
+          studentName: getStudentDisplayNameFromStudent(student),
+          className: getStudentPrimaryClass(student),
+          grade: student.grade,
+          semester: student.semester,
+          rawStudent: student
+        };
+      })
+      .filter((item): item is NonParticipantStudent => Boolean(item));
   }, [students]);
 
   const allResults = useMemo(() => {
@@ -284,41 +387,91 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   }, [allResults]);
 
   const classOptions = useMemo(() => {
-    return Array.from(new Set(allResults.map(result => getStudentClassName(result, studentsMap)).filter(Boolean))).sort();
-  }, [allResults, studentsMap]);
+    const fromResults = allResults.map(result => getStudentClassName(result, studentsMap));
+    const fromStudents = normalizedStudents.map(student => student.className);
+    return Array.from(new Set([...fromResults, ...fromStudents].filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar'));
+  }, [allResults, studentsMap, normalizedStudents]);
 
-  const filteredResults = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  const semesterOptions = useMemo(() => {
+    const fromResults = allResults.map(result => result.semester).filter(Boolean) as string[];
+    const fromStudents = normalizedStudents.map(student => student.semester).filter(Boolean) as string[];
+    return Array.from(new Set([...fromResults, ...fromStudents])).sort();
+  }, [allResults, normalizedStudents]);
 
+  const filteredResultsWithoutQuery = useMemo(() => {
     return allResults.filter(result => {
-      const studentName = getStudentDisplayName(result, studentsMap).toLowerCase();
       const studentClassName = getStudentClassName(result, studentsMap);
-      const normalizedStudentClassName = studentClassName.toLowerCase();
-      const gameLabel = getGameLabel(result.gameType).toLowerCase();
-      const matchesQuery =
-        !normalizedQuery ||
-        studentName.includes(normalizedQuery) ||
-        normalizedStudentClassName.includes(normalizedQuery) ||
-        gameLabel.includes(normalizedQuery) ||
-        result.studentId.toLowerCase().includes(normalizedQuery);
-
       const matchesGame = gameFilter === 'all' || result.gameType === gameFilter;
-      const matchesClass = classFilter === 'all' || studentClassName === classFilter;
+      const matchesClass = classFilter === 'all' || normalizeClassName(studentClassName) === normalizeClassName(classFilter);
+      const matchesSemester = semesterFilter === 'all' || String(result.semester || '') === semesterFilter;
       const matchesCompletion =
         completionFilter === 'all' ||
         (completionFilter === 'completed' && result.completed) ||
         (completionFilter === 'not_completed' && !result.completed);
       const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') === syncFilter;
 
-      return matchesQuery && matchesGame && matchesClass && matchesCompletion && matchesSync;
+      return matchesGame && matchesClass && matchesSemester && matchesCompletion && matchesSync;
     });
-  }, [allResults, studentsMap, query, gameFilter, classFilter, completionFilter, syncFilter]);
+  }, [allResults, studentsMap, gameFilter, classFilter, semesterFilter, completionFilter, syncFilter]);
+
+  const filteredResults = useMemo(() => {
+    const normalizedQuery = normalizeText(query);
+
+    return filteredResultsWithoutQuery.filter(result => {
+      const studentName = normalizeText(getStudentDisplayName(result, studentsMap));
+      const studentClassName = normalizeText(getStudentClassName(result, studentsMap));
+      const gameLabel = normalizeText(getGameLabel(result.gameType));
+      const studentId = normalizeText(result.studentId);
+      const lesson = normalizeText(result.lesson);
+      const subject = normalizeText(result.subject);
+
+      return (
+        !normalizedQuery ||
+        studentName.includes(normalizedQuery) ||
+        studentClassName.includes(normalizedQuery) ||
+        gameLabel.includes(normalizedQuery) ||
+        studentId.includes(normalizedQuery) ||
+        lesson.includes(normalizedQuery) ||
+        subject.includes(normalizedQuery)
+      );
+    });
+  }, [filteredResultsWithoutQuery, studentsMap, query]);
+
+  const eligibleStudents = useMemo(() => {
+    return normalizedStudents.filter(student => {
+      const matchesClass = classFilter === 'all' || normalizeClassName(student.className) === normalizeClassName(classFilter);
+      const matchesSemester = semesterFilter === 'all' || !student.semester || student.semester === semesterFilter;
+      return matchesClass && matchesSemester;
+    });
+  }, [normalizedStudents, classFilter, semesterFilter]);
+
+  const nonParticipatingStudents = useMemo(() => {
+    const participatingIds = new Set(
+      filteredResultsWithoutQuery
+        .map(result => normalizeCode(result.studentId))
+        .filter(Boolean)
+    );
+
+    const normalizedQuery = normalizeText(query);
+
+    return eligibleStudents
+      .filter(student => !participatingIds.has(student.studentId))
+      .filter(student => {
+        if (!normalizedQuery) return true;
+        return (
+          normalizeText(student.studentName).includes(normalizedQuery) ||
+          normalizeText(student.studentId).includes(normalizedQuery) ||
+          normalizeText(student.className).includes(normalizedQuery)
+        );
+      })
+      .sort((a, b) => a.studentName.localeCompare(b.studentName, 'ar'));
+  }, [eligibleStudents, filteredResultsWithoutQuery, query]);
 
   const groupedResults = useMemo<GroupedStudentResult[]>(() => {
     const map = new Map<string, GroupedStudentResult>();
 
     filteredResults.forEach(result => {
-      const key = result.studentId || result.id;
+      const key = normalizeCode(result.studentId || result.id);
       const studentName = getStudentDisplayName(result, studentsMap);
       const studentClassName = getStudentClassName(result, studentsMap);
       const existing = map.get(key);
@@ -360,6 +513,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const summary = useMemo(() => {
     const totalAttempts = filteredResults.length;
     const uniqueStudents = groupedResults.length;
+    const expectedStudents = eligibleStudents.length;
+    const nonParticipants = nonParticipatingStudents.length;
+    const participationRate = expectedStudents > 0 ? Math.round((uniqueStudents / expectedStudents) * 100) : 0;
     const totalScore = filteredResults.reduce((sum, result) => sum + result.score, 0);
     const completedAttempts = filteredResults.filter(result => result.completed).length;
     const totalWeakQuestions = filteredResults.reduce((sum, result) => sum + result.weakQuestionIds.length, 0);
@@ -368,11 +524,14 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
     return {
       totalAttempts,
       uniqueStudents,
+      expectedStudents,
+      nonParticipants,
+      participationRate,
       completedAttempts,
       totalWeakQuestions,
       averageScore
     };
-  }, [filteredResults, groupedResults]);
+  }, [filteredResults, groupedResults, eligibleStudents, nonParticipatingStudents]);
 
   return (
     <div className={`rased-teacher-light bg-bgMain text-textPrimary rounded-3xl ${className}`} dir="rtl">
@@ -386,7 +545,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             <div>
               <h2 className="text-lg font-black text-textPrimary mb-1">نتائج ألعاب الطلاب</h2>
               <p className="text-[11px] font-bold text-textSecondary leading-6">
-                متابعة محاولات الطلاب، النقاط، الأسئلة الضعيفة، وحالة المزامنة. يمكن ربط هذه البيانات لاحقًا بالسحابة.
+                متابعة محاولات الطلاب، النقاط، الأسئلة الضعيفة، وحالة المشاركة. تعرض اللوحة أيضًا الطلاب الذين لم تظهر لهم أي نتيجة حسب الصف/الشعبة والفصل الدراسي.
               </p>
             </div>
           </div>
@@ -419,112 +578,59 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         </div>
       </section>
 
-     <section className="mb-4">
-  {/* عرض مضغوط للجوالات حتى لا تأخذ الإحصائيات مساحة كبيرة */}
-  <div className="grid grid-cols-2 gap-2 md:hidden">
-    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-7 h-7 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
-          <Gamepad2 className="w-4 h-4" />
-        </span>
-        <span className="text-[9px] font-black text-textSecondary truncate">المحاولات</span>
-      </div>
-      <span className="text-base font-black text-textPrimary shrink-0">{summary.totalAttempts}</span>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-7 h-7 rounded-xl bg-info/10 text-info border border-info/20 flex items-center justify-center shrink-0">
-          <Users className="w-4 h-4" />
-        </span>
-        <span className="text-[9px] font-black text-textSecondary truncate">الطلاب</span>
-      </div>
-      <span className="text-base font-black text-textPrimary shrink-0">{summary.uniqueStudents}</span>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-7 h-7 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-4 h-4" />
-        </span>
-        <span className="text-[9px] font-black text-textSecondary truncate">مكتملة</span>
-      </div>
-      <span className="text-base font-black text-success shrink-0">{summary.completedAttempts}</span>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-7 h-7 rounded-xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center shrink-0">
-          <Trophy className="w-4 h-4" />
-        </span>
-        <span className="text-[9px] font-black text-textSecondary truncate">متوسط الطالب</span>
-      </div>
-      <span className="text-base font-black text-warning shrink-0">{summary.averageScore}</span>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-2xl px-3 py-2 shadow-sm flex items-center justify-between gap-2 col-span-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-7 h-7 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-4 h-4" />
-        </span>
-        <span className="text-[9px] font-black text-textSecondary truncate">أسئلة ضعيفة</span>
-      </div>
-      <span className="text-base font-black text-danger shrink-0">{summary.totalWeakQuestions}</span>
-    </div>
-  </div>
-
-  {/* العرض الحالي يبقى للأجهزة المتوسطة والكبيرة */}
-  <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-3">
-    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-      <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
-        <Gamepad2 className="w-5 h-5" />
-      </div>
-      <p className="text-[9px] font-black text-textSecondary mb-1">المحاولات</p>
-      <p className="text-xl font-black text-textPrimary">{summary.totalAttempts}</p>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-      <div className="w-9 h-9 rounded-2xl bg-info/10 text-info border border-info/20 flex items-center justify-center mb-2">
-        <Users className="w-5 h-5" />
-      </div>
-      <p className="text-[9px] font-black text-textSecondary mb-1">الطلاب</p>
-      <p className="text-xl font-black text-textPrimary">{summary.uniqueStudents}</p>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-      <div className="w-9 h-9 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center mb-2">
-        <CheckCircle2 className="w-5 h-5" />
-      </div>
-      <p className="text-[9px] font-black text-textSecondary mb-1">مكتملة</p>
-      <p className="text-xl font-black text-success">{summary.completedAttempts}</p>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
-      <div className="w-9 h-9 rounded-2xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center mb-2">
-        <Trophy className="w-5 h-5" />
-      </div>
-      <p className="text-[9px] font-black text-textSecondary mb-1">متوسط نقاط الطالب</p>
-      <p className="text-xl font-black text-warning">{summary.averageScore}</p>
-    </div>
-
-    <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm col-span-2 lg:col-span-1">
-      <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
-        <AlertTriangle className="w-5 h-5" />
-      </div>
-      <p className="text-[9px] font-black text-textSecondary mb-1">أسئلة ضعيفة</p>
-      <p className="text-xl font-black text-danger">{summary.totalWeakQuestions}</p>
-    </div>
-  </div>
-</section>
+      <section className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
+            <Gamepad2 className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">المحاولات</p>
+          <p className="text-xl font-black text-textPrimary">{summary.totalAttempts}</p>
+        </div>
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-info/10 text-info border border-info/20 flex items-center justify-center mb-2">
+            <Users className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">شاركوا</p>
+          <p className="text-xl font-black text-textPrimary">{summary.uniqueStudents}</p>
+        </div>
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">لم يشاركوا</p>
+          <p className="text-xl font-black text-danger">{summary.nonParticipants}</p>
+        </div>
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center mb-2">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">نسبة المشاركة</p>
+          <p className="text-xl font-black text-success">{summary.participationRate}%</p>
+        </div>
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center mb-2">
+            <Trophy className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">متوسط نقاط الطالب</p>
+          <p className="text-xl font-black text-warning">{summary.averageScore}</p>
+        </div>
+        <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <p className="text-[9px] font-black text-textSecondary mb-1">أسئلة ضعيفة</p>
+          <p className="text-xl font-black text-danger">{summary.totalWeakQuestions}</p>
+        </div>
+      </section>
 
       <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_170px_170px_150px_170px] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_165px_165px_145px_150px_165px] gap-3">
           <label className="relative block">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" />
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="ابحث باسم الطالب أو اللعبة أو الصف..."
+              placeholder="ابحث باسم الطالب أو اللعبة أو الصف أو الدرس..."
               className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40"
             />
           </label>
@@ -555,6 +661,17 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
           </select>
 
           <select
+            value={semesterFilter}
+            onChange={event => setSemesterFilter(event.target.value)}
+            className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
+          >
+            <option value="all">كل الفصول الدراسية</option>
+            {semesterOptions.map(option => (
+              <option key={option} value={option}>الفصل {option}</option>
+            ))}
+          </select>
+
+          <select
             value={completionFilter}
             onChange={event => setCompletionFilter(event.target.value as CompletionFilter)}
             className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
@@ -577,13 +694,98 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         </div>
       </section>
 
+      <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-textPrimary mb-1">الطلاب غير المشاركين</h3>
+              <p className="text-[11px] font-bold text-textSecondary leading-6">
+                تعرض هذه القائمة الطلاب الموجودين في قائمة الفصل ولم تظهر لهم أي نتيجة ألعاب حسب الفلاتر المحددة. تساعد المعلم على متابعة أسباب عدم الدخول أو عدم حل الأسئلة.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNonParticipants(prev => !prev)}
+              className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs active:scale-95"
+            >
+              {showNonParticipants ? 'إخفاء القائمة' : 'عرض القائمة'}
+            </button>
+            <button
+              type="button"
+              onClick={() => exportNonParticipantsAsCsv(nonParticipatingStudents)}
+              disabled={nonParticipatingStudents.length === 0}
+              className="h-10 px-3 rounded-2xl bg-danger text-white font-black text-xs flex items-center gap-2 active:scale-95 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              تصدير غير المشاركين
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-center">
+            <p className="text-[9px] font-black text-textSecondary mb-1">طلاب الفلتر</p>
+            <p className="text-lg font-black text-textPrimary">{summary.expectedStudents}</p>
+          </div>
+          <div className="rounded-2xl bg-success/5 border border-success/15 p-3 text-center">
+            <p className="text-[9px] font-black text-textSecondary mb-1">شاركوا</p>
+            <p className="text-lg font-black text-success">{summary.uniqueStudents}</p>
+          </div>
+          <div className="rounded-2xl bg-danger/5 border border-danger/15 p-3 text-center">
+            <p className="text-[9px] font-black text-textSecondary mb-1">لم يشاركوا</p>
+            <p className="text-lg font-black text-danger">{summary.nonParticipants}</p>
+          </div>
+        </div>
+
+        {showNonParticipants && (
+          <div>
+            {normalizedStudents.length === 0 ? (
+              <div className="rounded-2xl bg-warning/10 border border-warning/20 p-4 text-center">
+                <p className="text-sm font-black text-textPrimary mb-1">لا توجد قائمة طلاب كاملة للمقارنة</p>
+                <p className="text-[11px] font-bold text-textSecondary leading-6">
+                  لا يمكن معرفة غير المشاركين بدقة إلا إذا وصل هذا المكوّن بقائمة طلاب الفصل كاملة عبر خاصية students.
+                </p>
+              </div>
+            ) : nonParticipatingStudents.length === 0 ? (
+              <div className="rounded-2xl bg-success/10 border border-success/20 p-4 text-center text-success font-black">
+                جميع طلاب الفلتر لديهم مشاركة أو نتيجة ظاهرة حسب الفلاتر الحالية.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                {nonParticipatingStudents.map(student => (
+                  <div key={student.studentId} className="rounded-2xl bg-bgSoft border border-borderColor p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-textPrimary truncate">{student.studentName}</p>
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{student.className}</span>
+                        {student.grade && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{student.grade}</span>}
+                        {student.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">فصل {student.semester}</span>}
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono font-black text-danger bg-danger/10 border border-danger/20 px-2 py-1 rounded-xl shrink-0" dir="ltr">
+                      {student.studentId}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className="space-y-3">
         {groupedResults.length === 0 ? (
           <div className="bg-bgCard border border-borderColor rounded-3xl p-6 text-center shadow-sm">
             <WifiOff className="w-12 h-12 mx-auto text-textMuted mb-3" />
             <h3 className="text-base font-black text-textPrimary mb-1">لا توجد نتائج بعد</h3>
             <p className="text-[11px] font-bold text-textSecondary leading-6">
-              ستظهر هنا نتائج الطلاب بعد إكمال الألعاب. في النسخة الحالية يمكن قراءة النتائج المحلية إذا كانت موجودة في نفس المتصفح.
+              ستظهر هنا نتائج الطلاب بعد إكمال الألعاب. إذا كانت قائمة الطلاب متوفرة فستظل قائمة غير المشاركين مفيدة لمعرفة من لم تظهر له نتائج.
             </p>
           </div>
         ) : (
@@ -655,6 +857,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs font-black text-primary">{getGameLabel(game.gameType)}</span>
+                              {game.subject && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{game.subject}</span>}
+                              {game.lesson && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{game.lesson}</span>}
+                              {game.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">فصل {game.semester}</span>}
                               <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">
                                 {formatDateTime(game.playedAt)}
                               </span>
