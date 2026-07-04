@@ -373,7 +373,7 @@ const AppContent: React.FC = () => {
     dir
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+   const [activeTab, setActiveTab] = useState('dashboard');
   const [studentManagementView, setStudentManagementView] = useState<'students' | 'attendance' | 'groups'>('students');
   const [learningView, setLearningView] = useState<'grades' | 'tasks' | 'library'>('grades');
   const [gamesView, setGamesView] = useState<'questions' | 'results'>('questions');
@@ -382,7 +382,7 @@ const AppContent: React.FC = () => {
   const [helpView, setHelpView] = useState<'settings' | 'guide' | 'about'>('guide');
   const [gameResults, setGameResults] = useState<TeacherGameResultLogEntry[]>([]);
   const [isLoadingGameResults, setIsLoadingGameResults] = useState(false);
-  const [appVersion, setAppVersion] = useState('1.0.9');
+  const [appVersion, setAppVersion] = useState('4.4.1');
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const lockReady = localStorage.getItem('rased_teacher_lock_ready') === 'true';
@@ -671,7 +671,375 @@ const AppContent: React.FC = () => {
       })}
     </div>
   );
+// =========================================================================
+  // 🔐 أدوات توليد وتثبيت كود RSD للطلاب ومنع التكرار
+  // =========================================================================
 
+  const normalizeArabicNameForRased = (value: string) => {
+    return String(value || '')
+      .trim()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/[ؤئء]/g, '')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[ًٌٍَُِّْـ]/g, '')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+  };
+
+  const normalizeArabicDigitsForRased = (value: string) => {
+    const arabicDigits: Record<string, string> = {
+      '٠': '0',
+      '١': '1',
+      '٢': '2',
+      '٣': '3',
+      '٤': '4',
+      '٥': '5',
+      '٦': '6',
+      '٧': '7',
+      '٨': '8',
+      '٩': '9',
+      '۰': '0',
+      '۱': '1',
+      '۲': '2',
+      '۳': '3',
+      '۴': '4',
+      '۵': '5',
+      '۶': '6',
+      '۷': '7',
+      '۸': '8',
+      '۹': '9'
+    };
+
+    return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit] || digit);
+  };
+
+  const normalizeClassForRased = (value: string) => {
+    return normalizeArabicDigitsForRased(value)
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/الصف/g, '')
+      .replace(/صف/g, '')
+      .replace(/الفصل/g, '')
+      .replace(/الشعبة/g, '')
+      .replace(/شعبة/g, '')
+      .replace(/\\/g, '/')
+      .replace(/-/g, '/')
+      .replace(/الاول|اوالأول|/g, '1')
+      .replace(/الثاني|ثاني/g, '2')
+      .replace(/الثالث|ثالث/g, '3')
+      .replace(/الرابع|رابع/g, '4')
+      .replace(/الخامس|خامس/g, '5')
+      .replace(/السادس|سادس/g, '6')
+      .replace(/السابع|سابع/g, '7')
+      .replace(/الثامن|ثامن/g, '8')
+      .replace(/التاسع|تاسع/g, '9')
+      .replace(/العاشر|عاشر/g, '10')
+      .replace(/الحادي عشر|حادي عشر/g, '11')
+      .replace(/الثاني عشر|ثاني عشر/g, '12')
+      .toLowerCase();
+  };
+
+  const getStudentClassForRased = (student: any) => {
+    return String(
+      student?.classes?.[0] ||
+      student?.className ||
+      student?.class ||
+      ''
+    ).trim();
+  };
+
+  const getExistingRasedCode = (student: any) => {
+    const code = String(
+      student?.rasedId ||
+      student?.rasedID ||
+      student?.parentCode ||
+      student?.secretCode ||
+      student?.civilID ||
+      student?.civilId ||
+      ''
+    ).trim().toUpperCase();
+
+    return code.startsWith('RSD-') ? code : '';
+  };
+
+  const getSchoolIdentityForRased = () => {
+    return String(
+      localStorage.getItem('rased_admin_school_code') ||
+      (teacherInfo as any)?.schoolCode ||
+      teacherInfo?.school ||
+      ''
+    ).trim();
+  };
+
+  const makeStudentIdentityKeyForRased = (
+    schoolIdentity: string,
+    studentName: string,
+    className: string
+  ) => {
+    const normalizedSchool = String(schoolIdentity || '')
+      .trim()
+      .replace(/\s+/g, '')
+      .toLowerCase();
+
+    const normalizedName = normalizeArabicNameForRased(studentName).replace(/\s+/g, '');
+    const normalizedClass = normalizeClassForRased(className);
+
+    return `${normalizedSchool}_${normalizedName}_${normalizedClass}`;
+  };
+
+  const hashToRasedCode = (value: string) => {
+    let hash = 5381;
+
+    for (let i = 0; i < value.length; i++) {
+      hash = (hash * 33) ^ value.charCodeAt(i);
+    }
+
+    const code = Math.abs(hash)
+      .toString(36)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .padStart(6, '0')
+      .substring(0, 6);
+
+    return `RSD-${code}`;
+  };
+
+  const generateStableRasedId = (
+    schoolIdentity: string,
+    studentName: string,
+    className: string
+  ) => {
+    if (!studentName || !className) {
+      return `RSD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    }
+
+    const identityKey = makeStudentIdentityKeyForRased(
+      schoolIdentity,
+      studentName,
+      className
+    );
+
+    return hashToRasedCode(identityKey);
+  };
+
+  const findExistingStudentByIdentity = (
+    studentsList: any[],
+    schoolIdentity: string,
+    studentName: string,
+    className: string
+  ) => {
+    const targetKey = makeStudentIdentityKeyForRased(
+      schoolIdentity,
+      studentName,
+      className
+    );
+
+    return studentsList.find(student => {
+      const currentKey = makeStudentIdentityKeyForRased(
+        schoolIdentity,
+        student?.name || '',
+        getStudentClassForRased(student)
+      );
+
+      return currentKey === targetKey;
+    });
+  };
+
+  const mergeListsWithoutDuplicates = (
+    oldList: any[] = [],
+    newList: any[] = []
+  ) => {
+    const map = new Map<string, any>();
+
+    [...oldList, ...newList].forEach(item => {
+      if (!item) return;
+      const key = String(item.id || item.date || JSON.stringify(item));
+      if (!map.has(key)) map.set(key, item);
+    });
+
+    return Array.from(map.values());
+  };
+
+  const upsertStudentByIdentity = (
+    previousStudents: any[],
+    incomingStudent: any,
+    schoolIdentity: string
+  ) => {
+    const incomingClass = getStudentClassForRased(incomingStudent);
+    const incomingKey = makeStudentIdentityKeyForRased(
+      schoolIdentity,
+      incomingStudent?.name || '',
+      incomingClass
+    );
+
+    const existingIndex = previousStudents.findIndex(student => {
+      const existingKey = makeStudentIdentityKeyForRased(
+        schoolIdentity,
+        student?.name || '',
+        getStudentClassForRased(student)
+      );
+
+      return existingKey === incomingKey;
+    });
+
+    if (existingIndex === -1) {
+      return [...previousStudents, incomingStudent];
+    }
+
+    const existingStudent = previousStudents[existingIndex];
+    const existingCode = getExistingRasedCode(existingStudent);
+    const incomingCode = getExistingRasedCode(incomingStudent);
+
+    const mergedStudent = {
+      ...existingStudent,
+      ...incomingStudent,
+
+      // الأهم: الحفاظ على كود الطالب القديم وعدم توليد كود جديد
+      rasedId: existingCode || incomingCode || incomingStudent.rasedId,
+      parentCode: existingCode || incomingCode || incomingStudent.parentCode,
+
+      // الحفاظ على id الداخلي القديم حتى لا تتعطل الواجهة
+      id: existingStudent.id || incomingStudent.id,
+
+      parentPhone: incomingStudent.parentPhone || existingStudent.parentPhone,
+      gender: incomingStudent.gender || existingStudent.gender,
+      avatar: incomingStudent.avatar || existingStudent.avatar,
+
+      classes:
+        existingStudent.classes?.length
+          ? existingStudent.classes
+          : incomingStudent.classes,
+
+      behaviors: mergeListsWithoutDuplicates(existingStudent.behaviors, incomingStudent.behaviors),
+      grades: mergeListsWithoutDuplicates(existingStudent.grades, incomingStudent.grades),
+      attendance: mergeListsWithoutDuplicates(existingStudent.attendance, incomingStudent.attendance)
+    };
+
+    const nextStudents = [...previousStudents];
+    nextStudents[existingIndex] = mergedStudent;
+
+    return nextStudents;
+  };
+
+  const handleAddStudentManuallySafely = (
+    name: string,
+    className: string,
+    parentPhone?: string,
+    avatar?: string,
+    gender?: 'male' | 'female',
+    existingCode?: string
+  ) => {
+    const cleanName = String(name || '').trim();
+    const cleanClass = String(className || '').trim();
+    const schoolIdentity = getSchoolIdentityForRased();
+
+    if (!cleanName || !cleanClass) return;
+
+    const existingStudent = findExistingStudentByIdentity(
+      students,
+      schoolIdentity,
+      cleanName,
+      cleanClass
+    );
+
+    if (existingStudent) {
+      const oldCode = getExistingRasedCode(existingStudent);
+
+      setStudents(prev =>
+        prev.map(student => {
+          if (student.id !== existingStudent.id) return student;
+
+          return {
+            ...student,
+            parentPhone: parentPhone || student.parentPhone,
+            gender: gender || student.gender,
+            avatar: avatar || student.avatar,
+            rasedId: oldCode || student.rasedId,
+            parentCode: oldCode || (student as any).parentCode
+          };
+        })
+      );
+
+      alert(
+        `تم العثور على الطالب مسبقًا في نفس الفصل.\n\n` +
+        `الطالب: ${existingStudent.name}\n` +
+        `الفصل: ${getStudentClassForRased(existingStudent)}\n` +
+        `كود راصد: ${oldCode || 'غير محدد'}\n\n` +
+        `تم استخدام نفس الكود ولم يتم إنشاء كود جديد.`
+      );
+
+      return;
+    }
+
+    const incomingCode = String(existingCode || '').trim().toUpperCase();
+    const rasedId = incomingCode.startsWith('RSD-')
+      ? incomingCode
+      : generateStableRasedId(schoolIdentity, cleanName, cleanClass);
+
+    const newStudent = {
+      id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name: cleanName,
+      classes: [cleanClass],
+      attendance: [],
+      behaviors: [],
+      grades: [],
+      grade: '',
+      parentPhone,
+      avatar,
+      gender: gender || 'male',
+      rasedId,
+      parentCode: rasedId
+    } as Student;
+
+    setStudents(prev =>
+      upsertStudentByIdentity(prev, newStudent, schoolIdentity) as Student[]
+    );
+  };
+
+  const handleBatchAddStudentsSafely = (newStudents: Student[]) => {
+    const schoolIdentity = getSchoolIdentityForRased();
+
+    setStudents(prev => {
+      let nextStudents: any[] = [...prev];
+
+      newStudents.forEach((student: any) => {
+        const studentName = String(student?.name || '').trim();
+        const studentClass = getStudentClassForRased(student);
+
+        if (!studentName || !studentClass) return;
+
+        const existingCode = getExistingRasedCode(student);
+        const stableCode =
+          existingCode ||
+          generateStableRasedId(schoolIdentity, studentName, studentClass);
+
+        const normalizedStudent = {
+          ...student,
+          id: student.id || `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: studentName,
+          classes:
+            Array.isArray(student.classes) && student.classes.length > 0
+              ? student.classes
+              : [studentClass],
+          attendance: Array.isArray(student.attendance) ? student.attendance : [],
+          behaviors: Array.isArray(student.behaviors) ? student.behaviors : [],
+          grades: Array.isArray(student.grades) ? student.grades : [],
+          rasedId: stableCode,
+          parentCode: stableCode
+        };
+
+        nextStudents = upsertStudentByIdentity(
+          nextStudents,
+          normalizedStudent,
+          schoolIdentity
+        );
+      });
+
+      return nextStudents as Student[];
+    });
+  };
+    
   const renderStudentManagementContent = () => {
     if (studentManagementView === 'attendance') {
       return (
@@ -692,32 +1060,21 @@ const AppContent: React.FC = () => {
         students={students}
         classes={classes}
         onAddClass={(n) => setClasses(p => [...p, n])}
-        onAddStudentManually={(n, c, p, a, g, cid) =>
-          setStudents(prev => [
-            ...prev,
-            {
-              id: Math.random().toString(36).substr(2, 9),
-              name: n,
-              classes: [c],
-              attendance: [],
-              behaviors: [],
-              grades: [],
-              grade: '',
-              parentPhone: p,
-              avatar: a,
-              gender: g || 'male',
-              parentCode: cid
-            }
-          ])
-        }
-        onBatchAddStudents={(newS) => setStudents(prev => [...prev, ...newS])}
-        onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
-        onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
-        onViewReport={() => {}}
-        currentSemester={currentSemester}
-        onSemesterChange={setCurrentSemester}
-        onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
-      />
+       <StudentList
+  students={students}
+  classes={classes}
+  onAddClass={(n) => setClasses(p => p.includes(n) ? p : [...p, n])}
+  onAddStudentManually={(n, c, p, a, g, cid) =>
+    handleAddStudentManuallySafely(n, c, p, a, g, cid)
+  }
+  onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
+  onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
+  onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
+  onViewReport={() => {}}
+  currentSemester={currentSemester}
+  onSemesterChange={setCurrentSemester}
+  onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
+/>
     );
   };
 
