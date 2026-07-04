@@ -79,7 +79,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "راصد",
+      "shortcutName": "راصد المعلم",
       "language": "1025",
       "displayLanguageSelector": false,
       "installerSidebar":"assets/sidebar.bmp",
