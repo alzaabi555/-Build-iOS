@@ -725,7 +725,7 @@ const AppContent: React.FC = () => {
       .replace(/شعبة/g, '')
       .replace(/\\/g, '/')
       .replace(/-/g, '/')
-      .replace(/الاول|اوالأول|/g, '1')
+      .replace(/الأول|اول/g, '1')
       .replace(/الثاني|ثاني/g, '2')
       .replace(/الثالث|ثالث/g, '3')
       .replace(/الرابع|رابع/g, '4')
@@ -735,8 +735,8 @@ const AppContent: React.FC = () => {
       .replace(/الثامن|ثامن/g, '8')
       .replace(/التاسع|تاسع/g, '9')
       .replace(/العاشر|عاشر/g, '10')
-      .replace(/الحادي عشر|حادي عشر/g, '11')
-      .replace(/الثاني عشر|ثاني عشر/g, '12')
+      .replace(/الحاديعشر|حاديعشر/g, '11')
+      .replace(/الثانيعشر|ثانيعشر/g, '12')
       .toLowerCase();
   };
 
@@ -894,23 +894,16 @@ const AppContent: React.FC = () => {
     const mergedStudent = {
       ...existingStudent,
       ...incomingStudent,
-
-      // الأهم: الحفاظ على كود الطالب القديم وعدم توليد كود جديد
       rasedId: existingCode || incomingCode || incomingStudent.rasedId,
       parentCode: existingCode || incomingCode || incomingStudent.parentCode,
-
-      // الحفاظ على id الداخلي القديم حتى لا تتعطل الواجهة
       id: existingStudent.id || incomingStudent.id,
-
       parentPhone: incomingStudent.parentPhone || existingStudent.parentPhone,
       gender: incomingStudent.gender || existingStudent.gender,
       avatar: incomingStudent.avatar || existingStudent.avatar,
-
       classes:
         existingStudent.classes?.length
           ? existingStudent.classes
           : incomingStudent.classes,
-
       behaviors: mergeListsWithoutDuplicates(existingStudent.behaviors, incomingStudent.behaviors),
       grades: mergeListsWithoutDuplicates(existingStudent.grades, incomingStudent.grades),
       attendance: mergeListsWithoutDuplicates(existingStudent.attendance, incomingStudent.attendance)
@@ -1039,6 +1032,7 @@ const AppContent: React.FC = () => {
       return nextStudents as Student[];
     });
   };
+
     
   const renderStudentManagementContent = () => {
     if (studentManagementView === 'attendance') {
@@ -1064,10 +1058,10 @@ const AppContent: React.FC = () => {
   students={students}
   classes={classes}
   onAddClass={(n) => setClasses(p => p.includes(n) ? p : [...p, n])}
-  onAddStudentManually={(n, c, p, a, g, cid) =>
-    handleAddStudentManuallySafely(n, c, p, a, g, cid)
-  }
-  onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
+ onAddStudentManually={(n, c, p, a, g, cid) =>
+  handleAddStudentManuallySafely(n, c, p, a, g, cid)
+}
+onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
   onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
   onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
   onViewReport={() => {}}
