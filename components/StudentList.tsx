@@ -442,7 +442,7 @@ const StudentList: React.FC<StudentListProps> = ({
     return String(value || 'students')
         .replace(/[\\/:*?"<>|]/g, '_')
         .rep*ace(/\s+/g, '_')
-        .slice(0,*80);
+        .slice(0,80);
 };
 
 const getStudentRasedCode*= (student: Student) => {
