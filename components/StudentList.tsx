@@ -4,7 +4,7 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus,
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle,
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles, Send, Loader2, Mail, RefreshCw, Printer, Reply
+    Sparkles, Send, Printer
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
@@ -60,7 +60,6 @@ const POSITIVE_BEHAVIORS = [
     { id: 'p6', original: 'إبداع وتميز', transKey: 'behPos6', points: 3 },
 ];
 
-const GOOGLE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec';
 
 // =========================================================================
 // 🔐 أدوات منع تكرار الطالب داخل StudentList
@@ -227,9 +226,6 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showMenu, setShowMenu] = useState(false);
 
     const [showCardsModal, setShowCardsModal] = useState(false);
-    const [replyingToMsg, setReplyingToMsg] = useState<any>(null);
-    const [replyText, setReplyText] = useState('');
-    const [isSendingReply, setIsSendingReply] = useState(false);
 
     const [newClassInput, setNewClassInput] = useState('');
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -253,103 +249,6 @@ const StudentList: React.FC<StudentListProps> = ({
     const [timerSeconds, setTimerSeconds] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [timerInput, setTimerInput] = useState('5');
-
-    const [messages, setMessages] = useState<any[]>([]);
-    const [isMessagesModalOpen, setIsMessagesModalOpen] = useState(false);
-    const [isFetchingMsgs, setIsFetchingMsgs] = useState(false);
-
-    const [readMessagesCount, setReadMessagesCount] = useState<number>(() => {
-        return parseInt(localStorage.getItem('rased_read_messages_count') || '0', 10);
-    });
-
-    useEffect(() => {
-        if (isMessagesModalOpen && messages.length > 0) {
-            setReadMessagesCount(messages.length);
-            localStorage.setItem('rased_read_messages_count', messages.length.toString());
-        }
-    }, [isMessagesModalOpen, messages.length]);
-
-    const fetchParentMessages = async () => {
-        if (!teacherInfo?.school || !teacherInfo?.subject) return;
-        setIsFetchingMsgs(true);
-        try {
-            const url = `${GOOGLE_WEB_APP_URL}?action=getMessages&school=${encodeURIComponent(teacherInfo.school)}&subject=${encodeURIComponent(teacherInfo.subject)}`;
-            const response = await fetch(url);
-            const result = await response.json();
-            if (result.status === 'success') {
-                setMessages(result.messages || []);
-            }
-        } catch (error) {
-            console.error('Error fetching messages:', error);
-        } finally {
-            setIsFetchingMsgs(false);
-        }
-    };
-
-    const handleSendReplyInternal = async (msg: any) => {
-        if (!replyText.trim()) return;
-        setIsSendingReply(true);
-
-        try {
-            const messageCode = String(
-                msg.rasedId || msg.civilID || msg.parentCode || ''
-            ).trim().toUpperCase();
-
-            const student = students.find(s =>
-                String((s as any).rasedId || '').trim().toUpperCase() === messageCode ||
-                String((s as any).parentCode || '').trim().toUpperCase() === messageCode
-            );
-
-            const rasedId = String(
-                (student as any)?.rasedId ||
-                msg.rasedId ||
-                msg.civilID ||
-                msg.parentCode ||
-                ''
-            ).trim().toUpperCase();
-
-            const schoolName = String(msg.schoolName || teacherInfo?.school || '').trim();
-            const subjectName = String(msg.subject || teacherInfo?.subject || '').trim();
-
-            const payload = new URLSearchParams({
-                action: 'sendTeacherReply',
-                rowNumber: String(msg.rowNumber || msg.messageRow || msg.row || ''),
-                rasedId,
-                civilID: rasedId,
-                parentCode: rasedId,
-                schoolName,
-                subject: subjectName,
-                replyText: replyText.trim(),
-                teacherName: teacherInfo?.name || 'المعلم'
-            });
-
-            await fetch(GOOGLE_WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                },
-                body: payload
-            });
-
-            alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
-            setReplyingToMsg(null);
-            setReplyText('');
-
-            setTimeout(() => {
-                fetchParentMessages();
-            }, 1200);
-        } catch (error) {
-            console.error('Error sending reply:', error);
-            alert('حدث خطأ أثناء إرسال الرد');
-        } finally {
-            setIsSendingReply(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchParentMessages();
-    }, [teacherInfo?.school, teacherInfo?.subject]);
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval> | undefined;
@@ -849,21 +748,6 @@ const StudentList: React.FC<StudentListProps> = ({
             icon={<Users size={24} />}
             rightActions={
                 <div className="flex items-center gap-2 flex-nowrap shrink-0 overflow-visible" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <button
-                        data-voice-command="فتح صندوق الوارد رسائل أولياء الأمور الوارد"
-                        aria-label="فتح صندوق الوارد"
-                        onClick={() => { setIsMessagesModalOpen(true); fetchParentMessages(); }}
-                        className="relative w-10 h-10 shrink-0 rounded-xl border border-borderColor bg-bgCard text-textPrimary hover:bg-bgSoft active:scale-95 transition-all flex items-center justify-center shadow-sm"
-                        title={t('parentsInboxTitle')}
-                    >
-                        <Mail className="w-5 h-5 text-primary" />
-                        {messages.length > readMessagesCount && (
-                            <span className="absolute -top-2 -right-2 bg-danger text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md border border-white">
-                                {messages.length - readMessagesCount}
-                            </span>
-                        )}
-                    </button>
-
                     <div className="relative shrink-0">
                         <button
                             data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
@@ -1100,44 +984,6 @@ const StudentList: React.FC<StudentListProps> = ({
                     </div>
                 )}
             </div>
-
-            <DrawerSheet isOpen={isMessagesModalOpen} onClose={() => setIsMessagesModalOpen(false)} isRamadan={isRamadan} dir={dir}>
-                <div className="flex flex-col h-full w-full">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4 shrink-0 border-borderColor">
-                        <h3 className="font-black text-xl flex items-center gap-2 text-primary"><Mail className="w-6 h-6" />{t('parentsInboxTitle')}</h3>
-                        <button onClick={fetchParentMessages} className="p-2 bg-bgSoft text-textSecondary rounded-full hover:bg-bgCard transition-colors" title={t('refreshMessages')}>
-                            <RefreshCw className={`w-5 h-5 ${isFetchingMsgs ? 'animate-spin text-primary' : ''}`} />
-                        </button>
-                    </div>
-                    <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
-                        {isFetchingMsgs && messages.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-10 h-full"><Loader2 className="w-10 h-10 animate-spin text-primary mb-2" /><p className="bg-transparent font-bold text-textSecondary">{t('fetchingMessages')}</p></div>
-                        ) : messages.length === 0 ? (
-                            <div className="text-center py-10 h-full flex flex-col justify-center"><Mail className="w-16 h-16 text-textSecondary/30 mx-auto mb-4" /><p className="bg-transparent font-bold text-textSecondary">{t('noNewMessages')}</p></div>
-                        ) : (
-                            messages.map((msg, index) => (
-                                <div key={index} className="p-5 border border-borderColor rounded-2xl bg-transparent relative overflow-hidden group">
-                                    <div className={`absolute top-0 ${dir === 'rtl' ? 'right-0' : 'left-0'} w-2 h-full bg-primary`} />
-                                    <div className={`flex justify-between items-start mb-3 ${dir === 'rtl' ? 'pl-2' : 'pr-2'}`}>
-                                        <div><h4 className="font-black text-textPrimary text-lg">{msg.studentName}</h4><p className="text-[10px] font-bold text-textSecondary font-mono mt-0.5">{t('civilIdPrefix')} {msg.rasedId || msg.civilID}</p></div>
-                                        <div className="flex flex-col items-end gap-1"><span className="text-[10px] font-bold bg-bgCard text-textSecondary px-2 py-1 rounded-lg border border-borderColor shadow-sm">{new Date(msg.date).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}</span>{msg.status === 'replied' && <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-lg border border-emerald-500/20">تم الرد</span>}</div>
-                                    </div>
-                                    <div className={`glass-panel p-4 rounded-xl border border-borderColor text-sm font-bold text-textPrimary leading-relaxed shadow-sm ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{msg.message}</div>
-                                    {msg.teacherReply && <div className="mt-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-sm font-bold text-emerald-700 leading-relaxed w-full"><div className="flex items-center justify-between gap-2 mb-2"><span className="text-[10px] font-black text-emerald-700">رد المعلم</span>{msg.replyDate && <span className="text-[9px] font-bold opacity-70">{new Date(msg.replyDate).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}</span>}</div>{msg.teacherReply}</div>}
-                                    <div className="mt-4 flex flex-col items-end w-full border-t border-borderColor/50 pt-3">
-                                        {msg.status === 'replied' ? <span className="text-xs font-black text-emerald-600 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">تم الرد على هذه الرسالة</span> : replyingToMsg === msg ? (
-                                            <div className="flex flex-col gap-3 w-full animate-in fade-in zoom-in-95 duration-200">
-                                                <textarea value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={t('writeYourReplyHere') || 'اكتب ردك لولي الأمر هنا...'} className="w-full border rounded-xl p-3 text-sm font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" rows={3} />
-                                                <div className="flex justify-end gap-2"><button onClick={() => { setReplyingToMsg(null); setReplyText(''); }} className="px-4 py-2 text-xs font-bold text-textSecondary bg-bgSoft hover:bg-bgCard rounded-lg active:scale-95 transition-all">إلغاء</button><button onClick={() => handleSendReplyInternal(msg)} disabled={isSendingReply} className="px-5 py-2 text-xs font-bold text-white bg-emerald-500 rounded-lg active:scale-95 flex items-center gap-2 disabled:opacity-50 transition-all shadow-md hover:bg-emerald-600">{isSendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}إرسال الرد</button></div>
-                                            </div>
-                                        ) : <button onClick={() => setReplyingToMsg(msg)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black shadow-sm active:scale-95 transition-all bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20"><Reply size={16} />الرد عبر المنظومة</button>}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </DrawerSheet>
 
             <DrawerSheet isOpen={showCardsModal} onClose={() => setShowCardsModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
                 <div className="flex flex-col h-full w-full bg-bgSoft">
