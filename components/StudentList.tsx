@@ -16,6 +16,9 @@ import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
 import alarmSound from '../assets/alarm.mp3';
+import * as XLSX from 'xlsx';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface StudentListProps {
     students: Student[];
@@ -435,6 +438,120 @@ const StudentList: React.FC<StudentListProps> = ({
                 const firstClass = studentClasses[0] || '';
                 matchesGrade = (student as any).grade === selectedGrade || normalizeArabicDigitsForIdentity(firstClass).startsWith(selectedGrade);
             }
+            const sanitizeFileName = (value: string) => {
+    return String(value || 'students')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .rep*ace(/\s+/g, '_')
+        .slice(0,*80);
+};
+
+const getStudentRasedCode*= (student: Student) => {
+    retu*n String(
+        student.rasedId *|
+        (student as any).parentC*de ||
+        (student as any).sec*etCode ||
+        student.id ||
+  *     ''
+    ).trim().toUpperCase()*
+};
+
+const studentsForCodesExport * useMemo(() => {
+    return safeSt*dents.filter(student => {
+        *f (!student) return false;
+
+      * const studentClasses = student.cl*sses || [];
+        const matchesC*ass =
+            selectedClass ==* 'all' ||
+            studentClass*s.includes(selectedClass);
+
+      * let matchesGrade = true;
+
+       *if (selectedGrade !== 'all') {
+   *        const firstClass = student*lasses[0] || '';
+            match*sGrade =
+                student.g*ade === selectedGrade ||
+         *      firstClass.startsWith(select*dGrade);
+        }
+
+        return*matchesClass && matchesGrade;
+    *);
+}, [safeStudents, selectedClass, selectedGrade]);
+
+const handleExp*rtStudentCodesExcel = async () => *
+    if (studentsForCodesExport.le*gth === 0) {
+        alert('لا توج* أسماء طلاب للتصدير حسب الصف أو ال*صل المحدد.');
+        return;
+    *
+
+    const exportRows = studentsF*rCodesExport.map((student, index) *> {
+        const className =
+    *       student.classes && student.*lasses.length > 0
+                * student.classes[0]
+              * : 'غير محدد';
+
+        return {
+ *          'م': index + 1,
+        *   'اسم الطالب': student.name || '*,
+            'الصف / الفصل': className,
+            'كود راصد السري': getStudentRasedCode(student),
+            'رقم ولي الأمر': student.parentPhone || '',
+            'النوع': student.gender === 'female' ? 'طالبة' : 'طالب'
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+
+    worksheet['!cols'] = [
+        { wch: 6 },
+        { wch: 32 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 12 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'أكواد الطلاب');
+
+    const datePart = new Date().toLocaleDateString('en-CA');
+
+    const filterPart =
+        selectedClass !== 'all'
+            ? selectedClass
+            : selectedGrade !== 'all'
+                ? `الصف_${selectedGrade}`
+                : 'كل_الطلاب';
+
+    const fileName = `Rased_Student_Codes_${sanitizeFileName(filterPart)}_${datePart}.xlsx`;
+
+    try {
+        if (Capacitor.isNativePlatform()) {
+            const base64Data = XLSX.write(workbook, {
+                bookType: 'xlsx',
+                type: 'base64'
+            });
+
+            await Filesystem.writeFile({
+                path: fileName,
+                data: base64Data,
+                directory: Directory.Documents
+            });
+
+            alert(
+                `تم حفظ ملف أكواد الطلاب بنجاح على الجهاز.\n\n` +
+                `اسم الملف:\n${fileName}\n\n` +
+                `الموقع: مستندات التطبيق / Documents`
+            );
+
+            return;
+        }
+
+        XLSX.writeFile(workbook, fileName);
+    } catch (error) {
+        console.error('Export student codes failed:', error);
+        alert('تعذر إنشاء ملف Excel. حاول مرة أخرى.');
+    }
+};
             return nameMatch && matchesClass && matchesGrade;
         });
     }, [safeStudents, searchTerm, selectedClass, selectedGrade]);
@@ -830,13 +947,16 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <div className={`absolute ${dir === 'rtl' ? 'left-0' : 'right-0'} top-full mt-2 w-60 rounded-2xl shadow-elevated border overflow-hidden z-50 animate-in zoom-in-95 origin-top-left bg-bgCard border-borderColor text-textPrimary`}>
                                     <div className="p-1.5">
                                         <button
-                                            data-voice-command="طباعة بطاقات الربط السرية بطاقات الربط"
-                                            onClick={() => { setShowCardsModal(true); setShowMenu(false); }}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
-                                        >
-                                            <Printer className="w-4 h-4 text-primary" />
-                                            طباعة بطاقات الربط السرية
-                                        </button>
+    data-voice-command="تحميل أكواد الطلاب Excel تصدير أكواد الطلاب أسماء الطلاب"
+    onClick={() => {
+        handleExportStudentCodesExcel();
+        setShowMenu(false);
+    }}
+    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+>
+    <FileSpreadsheet className="w-4 h-4 text-success" />
+    تحميل أسماء وأكواد الطلاب Excel
+</button>
 
                                         <div className="my-1 border-t border-borderColor" />
 
