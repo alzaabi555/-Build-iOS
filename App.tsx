@@ -60,9 +60,7 @@ import TeacherMailbox from './components/TeacherMailbox';
 import TeacherGameQuestionsManager from './components/TeacherGameQuestionsManager';
 import TeacherGameResultsDashboard from './components/TeacherGameResultsDashboard';
 import type { TeacherGameResultLogEntry } from './components/TeacherGameResultsDashboard';
-import type {
-  PublishGameQuestionsPayload
-} from './components/TeacherGameQuestionsManager';
+import type { PublishGameQuestionsPayload } from './components/TeacherGameQuestionsManager';
 
 import { useSchoolBell } from './hooks/useSchoolBell';
 
@@ -325,9 +323,7 @@ const TeacherLoginScreen: React.FC<{
                 <Loader2 className="animate-spin" />
               ) : (
                 <>
-                  <span>
-                    {isFirstTime ? 'تأكيد وحفظ القفل' : 'تحقق من البيانات'}
-                  </span>
+                  <span>{isFirstTime ? 'تأكيد وحفظ القفل' : 'تحقق من البيانات'}</span>
                   <ArrowLeft className="w-5 h-5" />
                 </>
               )}
@@ -375,7 +371,7 @@ const AppContent: React.FC = () => {
     dir
   } = useApp();
 
-   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [studentManagementView, setStudentManagementView] = useState<'students' | 'attendance' | 'groups'>('students');
   const [learningView, setLearningView] = useState<'grades' | 'tasks' | 'library'>('grades');
   const [gamesView, setGamesView] = useState<'questions' | 'results'>('questions');
@@ -400,8 +396,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        if (window.electron && window.electron.getAppVersion) {
-          const ver = await window.electron.getAppVersion();
+        if ((window as any).electron && (window as any).electron.getAppVersion) {
+          const ver = await (window as any).electron.getAppVersion();
           setAppVersion(ver);
         } else if (Capacitor.isNativePlatform()) {
           const info = await CapacitorApp.getInfo();
@@ -433,9 +429,7 @@ const AppContent: React.FC = () => {
   // =========================================================================
   // 🎮 نشر أسئلة الألعاب التعليمية إلى سحابة راصد الطالب
   // =========================================================================
-  const handlePublishGameQuestions = async (
-    payload: PublishGameQuestionsPayload
-  ) => {
+  const handlePublishGameQuestions = async (payload: PublishGameQuestionsPayload) => {
     if (!payload.questions || payload.questions.length === 0) {
       alert('لا توجد أسئلة ألعاب صالحة للنشر.');
       return;
@@ -443,14 +437,9 @@ const AppContent: React.FC = () => {
 
     const studentGameQuestions = sanitizeGameQuestionsForStudent(payload.questions);
 
-    localStorage.setItem(
-      'rased_teacher_published_game_questions',
-      JSON.stringify(studentGameQuestions)
-    );
+    localStorage.setItem('rased_teacher_published_game_questions', JSON.stringify(studentGameQuestions));
 
-    const savedTasks = JSON.parse(
-      localStorage.getItem('rased_teacher_tasks') || '[]'
-    );
+    const savedTasks = JSON.parse(localStorage.getItem('rased_teacher_tasks') || '[]');
 
     const gamesPayload = {
       action: 'gameQuestions',
@@ -473,7 +462,6 @@ const AppContent: React.FC = () => {
 
     try {
       const result = await response.json();
-
       if (result && result.success === false) {
         throw new Error(result.error || 'فشل نشر أسئلة الألعاب.');
       }
@@ -484,7 +472,6 @@ const AppContent: React.FC = () => {
 
   const fetchGameResults = async () => {
     setIsLoadingGameResults(true);
-
     try {
       const response = await fetch(STUDENT_APP_URL, {
         method: 'POST',
@@ -503,7 +490,6 @@ const AppContent: React.FC = () => {
       });
 
       const result = await response.json();
-
       const results = Array.isArray(result?.data)
         ? result.data
         : Array.isArray(result?.results)
@@ -590,6 +576,11 @@ const AppContent: React.FC = () => {
       return;
     }
 
+    if (tab === 'mailbox') {
+      setActiveTab('mailbox');
+      return;
+    }
+
     if (tab === 'grades') {
       setLearningView('grades');
       setActiveTab('learning_evaluation');
@@ -656,7 +647,6 @@ const AppContent: React.FC = () => {
       {items.map(item => {
         const Icon = item.icon;
         const active = value === item.id;
-
         return (
           <button
             key={item.id}
@@ -795,18 +785,15 @@ const AppContent: React.FC = () => {
 
   const hashToRasedCode = (value: string) => {
     let hash = 5381;
-
     for (let i = 0; i < value.length; i++) {
       hash = (hash * 33) ^ value.charCodeAt(i);
     }
-
     const code = Math.abs(hash)
       .toString(36)
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
       .padStart(6, '0')
       .substring(0, 6);
-
     return `RSD-${code}`;
   };
 
@@ -815,16 +802,8 @@ const AppContent: React.FC = () => {
     studentName: string,
     className: string
   ) => {
-    if (!studentName || !className) {
-      return `RSD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    }
-
-    const identityKey = makeStudentIdentityKeyForRased(
-      schoolIdentity,
-      studentName,
-      className
-    );
-
+    if (!studentName || !className) return `RSD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const identityKey = makeStudentIdentityKeyForRased(schoolIdentity, studentName, className);
     return hashToRasedCode(identityKey);
   };
 
@@ -834,63 +813,37 @@ const AppContent: React.FC = () => {
     studentName: string,
     className: string
   ) => {
-    const targetKey = makeStudentIdentityKeyForRased(
-      schoolIdentity,
-      studentName,
-      className
-    );
-
+    const targetKey = makeStudentIdentityKeyForRased(schoolIdentity, studentName, className);
     return studentsList.find(student => {
       const currentKey = makeStudentIdentityKeyForRased(
         schoolIdentity,
         student?.name || '',
         getStudentClassForRased(student)
       );
-
       return currentKey === targetKey;
     });
   };
 
-  const mergeListsWithoutDuplicates = (
-    oldList: any[] = [],
-    newList: any[] = []
-  ) => {
+  const mergeListsWithoutDuplicates = (oldList: any[] = [], newList: any[] = []) => {
     const map = new Map<string, any>();
-
     [...oldList, ...newList].forEach(item => {
       if (!item) return;
       const key = String(item.id || item.date || JSON.stringify(item));
       if (!map.has(key)) map.set(key, item);
     });
-
     return Array.from(map.values());
   };
 
-  const upsertStudentByIdentity = (
-    previousStudents: any[],
-    incomingStudent: any,
-    schoolIdentity: string
-  ) => {
+  const upsertStudentByIdentity = (previousStudents: any[], incomingStudent: any, schoolIdentity: string) => {
     const incomingClass = getStudentClassForRased(incomingStudent);
-    const incomingKey = makeStudentIdentityKeyForRased(
-      schoolIdentity,
-      incomingStudent?.name || '',
-      incomingClass
-    );
+    const incomingKey = makeStudentIdentityKeyForRased(schoolIdentity, incomingStudent?.name || '', incomingClass);
 
     const existingIndex = previousStudents.findIndex(student => {
-      const existingKey = makeStudentIdentityKeyForRased(
-        schoolIdentity,
-        student?.name || '',
-        getStudentClassForRased(student)
-      );
-
+      const existingKey = makeStudentIdentityKeyForRased(schoolIdentity, student?.name || '', getStudentClassForRased(student));
       return existingKey === incomingKey;
     });
 
-    if (existingIndex === -1) {
-      return [...previousStudents, incomingStudent];
-    }
+    if (existingIndex === -1) return [...previousStudents, incomingStudent];
 
     const existingStudent = previousStudents[existingIndex];
     const existingCode = getExistingRasedCode(existingStudent);
@@ -899,21 +852,13 @@ const AppContent: React.FC = () => {
     const mergedStudent = {
       ...existingStudent,
       ...incomingStudent,
-
       rasedId: existingCode || incomingCode || incomingStudent.rasedId,
       parentCode: existingCode || incomingCode || incomingStudent.parentCode,
-
       id: existingStudent.id || incomingStudent.id,
-
       parentPhone: incomingStudent.parentPhone || existingStudent.parentPhone,
       gender: incomingStudent.gender || existingStudent.gender,
       avatar: incomingStudent.avatar || existingStudent.avatar,
-
-      classes:
-        existingStudent.classes?.length
-          ? existingStudent.classes
-          : incomingStudent.classes,
-
+      classes: existingStudent.classes?.length ? existingStudent.classes : incomingStudent.classes,
       behaviors: mergeListsWithoutDuplicates(existingStudent.behaviors, incomingStudent.behaviors),
       grades: mergeListsWithoutDuplicates(existingStudent.grades, incomingStudent.grades),
       attendance: mergeListsWithoutDuplicates(existingStudent.attendance, incomingStudent.attendance)
@@ -921,7 +866,6 @@ const AppContent: React.FC = () => {
 
     const nextStudents = [...previousStudents];
     nextStudents[existingIndex] = mergedStudent;
-
     return nextStudents;
   };
 
@@ -939,20 +883,12 @@ const AppContent: React.FC = () => {
 
     if (!cleanName || !cleanClass) return;
 
-    const existingStudent = findExistingStudentByIdentity(
-      students,
-      schoolIdentity,
-      cleanName,
-      cleanClass
-    );
-
+    const existingStudent = findExistingStudentByIdentity(students, schoolIdentity, cleanName, cleanClass);
     if (existingStudent) {
       const oldCode = getExistingRasedCode(existingStudent);
-
       setStudents(prev =>
         prev.map(student => {
           if (student.id !== existingStudent.id) return student;
-
           return {
             ...student,
             parentPhone: parentPhone || student.parentPhone,
@@ -963,7 +899,6 @@ const AppContent: React.FC = () => {
           };
         })
       );
-
       alert(
         `تم العثور على الطالب مسبقًا في نفس الفصل.\n\n` +
         `الطالب: ${existingStudent.name}\n` +
@@ -971,14 +906,11 @@ const AppContent: React.FC = () => {
         `كود راصد: ${oldCode || 'غير محدد'}\n\n` +
         `تم استخدام نفس الكود ولم يتم إنشاء كود جديد.`
       );
-
       return;
     }
 
     const incomingCode = String(existingCode || '').trim().toUpperCase();
-    const rasedId = incomingCode.startsWith('RSD-')
-      ? incomingCode
-      : generateStableRasedId(schoolIdentity, cleanName, cleanClass);
+    const rasedId = incomingCode.startsWith('RSD-') ? incomingCode : generateStableRasedId(schoolIdentity, cleanName, cleanClass);
 
     const newStudent: any = {
       id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -995,77 +927,47 @@ const AppContent: React.FC = () => {
       parentCode: rasedId
     };
 
-    setStudents(prev =>
-      upsertStudentByIdentity(prev, newStudent, schoolIdentity)
-    );
+    setStudents(prev => upsertStudentByIdentity(prev, newStudent, schoolIdentity));
   };
 
   const handleBatchAddStudentsSafely = (newStudents: any[]) => {
     const schoolIdentity = getSchoolIdentityForRased();
-
     setStudents(prev => {
       let nextStudents: any[] = [...prev];
-
       newStudents.forEach((student: any) => {
         const studentName = String(student?.name || '').trim();
         const studentClass = getStudentClassForRased(student);
-
         if (!studentName || !studentClass) return;
-
         const existingCode = getExistingRasedCode(student);
-        const stableCode =
-          existingCode ||
-          generateStableRasedId(schoolIdentity, studentName, studentClass);
-
+        const stableCode = existingCode || generateStableRasedId(schoolIdentity, studentName, studentClass);
         const normalizedStudent = {
           ...student,
           id: student.id || `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           name: studentName,
-          classes:
-            Array.isArray(student.classes) && student.classes.length > 0
-              ? student.classes
-              : [studentClass],
+          classes: Array.isArray(student.classes) && student.classes.length > 0 ? student.classes : [studentClass],
           attendance: Array.isArray(student.attendance) ? student.attendance : [],
           behaviors: Array.isArray(student.behaviors) ? student.behaviors : [],
           grades: Array.isArray(student.grades) ? student.grades : [],
           rasedId: stableCode,
           parentCode: stableCode
         };
-
-        nextStudents = upsertStudentByIdentity(
-          nextStudents,
-          normalizedStudent,
-          schoolIdentity
-        );
+        nextStudents = upsertStudentByIdentity(nextStudents, normalizedStudent, schoolIdentity);
       });
-
       return nextStudents;
     });
   };
 
   const renderStudentManagementContent = () => {
     if (studentManagementView === 'attendance') {
-      return (
-        <AttendanceTracker
-          students={students}
-          classes={classes}
-          setStudents={setStudents}
-        />
-      );
+      return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
     }
-
-    if (studentManagementView === 'groups') {
-      return <StudentGroups />;
-    }
-
+    if (studentManagementView === 'groups') return <StudentGroups />;
     return (
       <StudentList
         students={students}
         classes={classes}
         onAddClass={(n) => setClasses(p => p.includes(n) ? p : [...p, n])}
-        onAddStudentManually={(n, c, p, a, g, cid) =>
-          handleAddStudentManuallySafely(n, c, p, a, g, cid)
-        }
+        onAddStudentManually={(n, c, p, a, g, cid) => handleAddStudentManuallySafely(n, c, p, a, g, cid)}
         onBatchAddStudents={(newS) => handleBatchAddStudentsSafely(newS)}
         onUpdateStudent={(u) => setStudents(p => p.map(s => s.id === u.id ? u : s))}
         onDeleteStudent={(id) => setStudents(p => p.filter(s => s.id !== id))}
@@ -1079,18 +981,9 @@ const AppContent: React.FC = () => {
 
   const renderLearningContent = () => {
     if (learningView === 'tasks') {
-      return (
-        <TeacherTasks
-          students={students}
-          teacherSubject={teacherInfo?.subject || 'عام'}
-        />
-      );
+      return <TeacherTasks students={students} teacherSubject={teacherInfo?.subject || 'عام'} />;
     }
-
-    if (learningView === 'library') {
-      return <TeacherLibrary />;
-    }
-
+    if (learningView === 'library') return <TeacherLibrary />;
     return (
       <GradeBook
         students={students}
@@ -1131,6 +1024,17 @@ const AppContent: React.FC = () => {
 
       case 'senior_dashboard':
         return <SeniorDashboard />;
+
+      case 'mailbox':
+        return (
+          <div className="h-full min-h-0 overflow-y-auto overscroll-contain custom-scrollbar space-y-4 pb-24 pr-1">
+            <TeacherMailbox
+              students={students}
+              teacherInfo={teacherInfo}
+              currentSemester={currentSemester}
+            />
+          </div>
+        );
 
       case 'student_management':
         return (
@@ -1179,7 +1083,6 @@ const AppContent: React.FC = () => {
               >
                 الأسئلة
               </button>
-
               <button
                 type="button"
                 onClick={() => {
@@ -1195,39 +1098,16 @@ const AppContent: React.FC = () => {
                 النتائج
               </button>
             </div>
-
             {gamesView === 'questions' ? (
               <TeacherGameQuestionsManager
-                schoolCode={
-                  localStorage.getItem('rased_admin_school_code') ||
-                  (teacherInfo as any)?.schoolCode ||
-                  teacherInfo?.school ||
-                  'default_school'
-                }
+                schoolCode={localStorage.getItem('rased_admin_school_code') || (teacherInfo as any)?.schoolCode || teacherInfo?.school || 'default_school'}
                 teacherId={teacherInfo?.civilId || localStorage.getItem('rased_teacher_civil_id') || 'default_teacher'}
                 teacherName={teacherInfo?.name || ''}
                 defaultSubject={teacherInfo?.subject || ''}
                 defaultGrade=""
                 classOptions={classes || []}
-                subjectOptions={
-                  teacherInfo?.subject
-                    ? [teacherInfo.subject]
-                    : [
-                        'الدراسات الاجتماعية',
-                        'العلوم',
-                        'الرياضيات',
-                        'اللغة العربية',
-                        'اللغة الإنجليزية'
-                      ]
-                }
-                gradeOptions={[
-                  'الخامس',
-                  'السادس',
-                  'السابع',
-                  'الثامن',
-                  'التاسع',
-                  'العاشر'
-                ]}
+                subjectOptions={teacherInfo?.subject ? [teacherInfo.subject] : ['الدراسات الاجتماعية', 'العلوم', 'الرياضيات', 'اللغة العربية', 'اللغة الإنجليزية']}
+                gradeOptions={['الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر']}
                 onPublish={handlePublishGameQuestions}
               />
             ) : (
@@ -1238,12 +1118,7 @@ const AppContent: React.FC = () => {
                 onRefresh={fetchGameResults}
                 readLocalStorageFallback={false}
                 teacherId={teacherInfo?.civilId || localStorage.getItem('rased_teacher_civil_id') || 'default_teacher'}
-                schoolCode={
-                  localStorage.getItem('rased_admin_school_code') ||
-                  (teacherInfo as any)?.schoolCode ||
-                  teacherInfo?.school ||
-                  'default_school'
-                }
+                schoolCode={localStorage.getItem('rased_admin_school_code') || (teacherInfo as any)?.schoolCode || teacherInfo?.school || 'default_school'}
               />
             )}
           </div>
@@ -1277,9 +1152,7 @@ const AppContent: React.FC = () => {
         return (
           <div className="h-full min-h-0 overflow-y-auto overscroll-contain custom-scrollbar space-y-4 pb-24 pr-1">
             {renderHubTabs(
-              [
-                { id: 'sync', label: 'مزامنة السحابة', icon: CloudSync }
-              ],
+              [{ id: 'sync', label: 'مزامنة السحابة', icon: CloudSync }],
               adminView,
               setAdminView
             )}
@@ -1299,13 +1172,7 @@ const AppContent: React.FC = () => {
               helpView,
               setHelpView
             )}
-            {helpView === 'settings' ? (
-              <Settings />
-            ) : helpView === 'about' ? (
-              <About />
-            ) : (
-              <UserGuide />
-            )}
+            {helpView === 'settings' ? <Settings /> : helpView === 'about' ? <About /> : <UserGuide />}
           </div>
         );
 
@@ -1326,7 +1193,6 @@ const AppContent: React.FC = () => {
       appSubtitle={t('appSubtitleMain') || 'النسخة المتقدمة'}
     >
       {renderContent()}
-
       <VoiceAssistant onNavigate={handleNavigate} />
     </AppLayout>
   );
