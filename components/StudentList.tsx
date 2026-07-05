@@ -16,7 +16,7 @@ import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
 import alarmSound from '../assets/alarm.mp3';
-import * as XLSX from 'xlsx';
+import  as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
@@ -386,7 +386,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const startTimer = (minutes: number) => {
         if (!Number.isFinite(minutes) || minutes <= 0) return;
-        setTimerSeconds(minutes * 60);
+        setTimerSeconds(minutes  60);
         setIsTimerRunning(true);
         setShowTimerModal(false);
     };
@@ -438,60 +438,60 @@ const StudentList: React.FC<StudentListProps> = ({
                 const firstClass = studentClasses[0] || '';
                 matchesGrade = (student as any).grade === selectedGrade || normalizeArabicDigitsForIdentity(firstClass).startsWith(selectedGrade);
             }
-            const sanitizeFileName = (value: string) => {
+           const sanitizeFileName = (value: string) => {
     return String(value || 'students')
         .replace(/[\\/:*?"<>|]/g, '_')
-        .rep*ace(/\s+/g, '_')
-        .slice(0,80);
+        .replace(/\s+/g, '_')
+        .slice(0, 80);
 };
 
-const getStudentRasedCode*= (student: Student) => {
-    retu*n String(
-        student.rasedId *|
-        (student as any).parentC*de ||
-        (student as any).sec*etCode ||
+const getStudentRasedCode = (student: Student) => {
+    return String(
+        student.rasedId ||
+        (student as any).parentCode ||
+        (student as any).secretCode ||
         student.id ||
-  *     ''
-    ).trim().toUpperCase()*
+        ''
+    ).trim().toUpperCase();
 };
 
-const studentsForCodesExport * useMemo(() => {
-    return safeSt*dents.filter(student => {
-        *f (!student) return false;
+const studentsForCodesExport = useMemo(() => {
+    return safeStudents.filter(student => {
+        if (!student) return false;
 
-      * const studentClasses = student.cl*sses || [];
-        const matchesC*ass =
-            selectedClass ==* 'all' ||
-            studentClass*s.includes(selectedClass);
+        const studentClasses = student.classes || [];
+        const matchesClass =
+            selectedClass === 'all' ||
+            studentClasses.includes(selectedClass);
 
-      * let matchesGrade = true;
+        let matchesGrade = true;
 
-       *if (selectedGrade !== 'all') {
-   *        const firstClass = student*lasses[0] || '';
-            match*sGrade =
-                student.g*ade === selectedGrade ||
-         *      firstClass.startsWith(select*dGrade);
+        if (selectedGrade !== 'all') {
+            const firstClass = studentClasses[0] || '';
+            matchesGrade =
+                student.grade === selectedGrade ||
+                firstClass.startsWith(selectedGrade);
         }
 
-        return*matchesClass && matchesGrade;
-    *);
+        return matchesClass && matchesGrade;
+    });
 }, [safeStudents, selectedClass, selectedGrade]);
 
-const handleExp*rtStudentCodesExcel = async () => *
-    if (studentsForCodesExport.le*gth === 0) {
-        alert('لا توج* أسماء طلاب للتصدير حسب الصف أو ال*صل المحدد.');
+const handleExportStudentCodesExcel = async () => {
+    if (studentsForCodesExport.length === 0) {
+        alert('لا توجد أسماء طلاب للتصدير حسب الصف أو الفصل المحدد.');
         return;
-    *
+    }
 
-    const exportRows = studentsF*rCodesExport.map((student, index) *> {
+    const exportRows = studentsForCodesExport.map((student, index) => {
         const className =
-    *       student.classes && student.*lasses.length > 0
-                * student.classes[0]
-              * : 'غير محدد';
+            student.classes && student.classes.length > 0
+                ? student.classes[0]
+                : 'غير محدد';
 
         return {
- *          'م': index + 1,
-        *   'اسم الطالب': student.name || '*,
+            'م': index + 1,
+            'اسم الطالب': student.name || '',
             'الصف / الفصل': className,
             'كود راصد السري': getStudentRasedCode(student),
             'رقم ولي الأمر': student.parentPhone || '',
