@@ -16,7 +16,7 @@ import positiveSound from '../assets/positive.mp3';
 import negativeSound from '../assets/negative.mp3';
 import tadaSound from '../assets/tada.mp3';
 import alarmSound from '../assets/alarm.mp3';
-import  as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
