@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Unlock,
-  Gamepad2
+  Gamepad2,
+  Mail
 } from 'lucide-react';
 
 import { App as CapacitorApp } from '@capacitor/app';
@@ -53,6 +54,7 @@ import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager';
 import SeniorDashboard from './components/SeniorDashboard';
 import VoiceAssistant from './components/VoiceAssistant';
+import TeacherMailbox from './components/TeacherMailbox';
 
 // 🎮 بنك أسئلة الألعاب التعليمية
 import TeacherGameQuestionsManager from './components/TeacherGameQuestionsManager';
@@ -527,6 +529,7 @@ const AppContent: React.FC = () => {
     { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), IconComponent: LayoutDashboard },
     ...(teacherInfo?.role === 'senior' ? [{ id: 'senior_dashboard', label: dir === 'rtl' ? 'القيادة' : 'Leader', IconComponent: ShieldCheck }] : []),
     { id: 'student_management', label: dir === 'rtl' ? 'الطلاب' : 'Students', IconComponent: Users },
+    { id: 'mailbox', label: dir === 'rtl' ? 'البريد' : 'Mail', IconComponent: Mail },
     { id: 'learning_evaluation', label: dir === 'rtl' ? 'التعليم' : 'Learning', IconComponent: BookOpen },
     { id: 'games', label: dir === 'rtl' ? 'الألعاب' : 'Games', IconComponent: Gamepad2 },
     { id: 'reports_analysis', label: dir === 'rtl' ? 'التقارير' : 'Reports', IconComponent: BarChart3 },
@@ -537,6 +540,7 @@ const AppContent: React.FC = () => {
     { id: 'dashboard', label: t('navDashboard') || (dir === 'rtl' ? 'الرئيسية' : 'Dashboard'), icon: LayoutDashboard },
     ...(teacherInfo?.role === 'senior' ? [{ id: 'senior_dashboard', label: dir === 'rtl' ? 'إدارة القسم' : 'Dept. Admin', icon: ShieldCheck }] : []),
     { id: 'student_management', label: dir === 'rtl' ? 'إدارة الطلاب' : 'Student Management', icon: Users },
+    { id: 'mailbox', label: dir === 'rtl' ? 'المراسلات' : 'Mailbox', icon: Mail },
     { id: 'learning_evaluation', label: dir === 'rtl' ? 'التعليم والتقييم' : 'Learning & Evaluation', icon: BookOpen },
     { id: 'games', label: dir === 'rtl' ? 'الألعاب التعليمية' : 'Educational Games', icon: Gamepad2 },
     { id: 'reports_analysis', label: dir === 'rtl' ? 'التقارير والتحليل' : 'Reports & Analytics', icon: BarChart3 },
