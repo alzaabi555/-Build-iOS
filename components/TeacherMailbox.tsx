@@ -15,7 +15,8 @@ import {
   FileText,
   Sparkles,
   Clock,
-  Archive
+  Archive,
+  Trash2
 } from 'lucide-react';
 import { Student } from '../types';
 import { useApp } from '../context/AppContext';
@@ -35,6 +36,7 @@ interface MailMessage {
   rowNumber?: number;
   row?: number;
   messageRow?: number;
+  localId?: string;
   date?: string;
   rasedId?: string;
   civilID?: string;
@@ -52,6 +54,9 @@ interface MailMessage {
   direction?: string;
   readByParent?: string;
   readByTeacher?: string;
+  semester?: string;
+  className?: string;
+  grade?: string;
 }
 
 const MESSAGE_TYPES: Array<{ id: TeacherMessageType; label: string; icon: React.ElementType; tone: string }> = [
@@ -64,6 +69,31 @@ const MESSAGE_TYPES: Array<{ id: TeacherMessageType; label: string; icon: React.
 ];
 
 const normalizeCode = (value: unknown) => String(value || '').trim().toUpperCase();
+
+const normalizeArabicDigits = (value: string) => {
+  const arabicDigits: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+  };
+  return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit] || digit);
+};
+
+const getGradeFromClassName = (className: string) => {
+  const normalized = normalizeArabicDigits(className || '').trim();
+  const digitMatch = normalized.match(/(12|11|10|[1-9])/);
+  if (digitMatch) return digitMatch[1];
+  if (/الخامس|خامس/.test(normalized)) return '5';
+  if (/السادس|سادس/.test(normalized)) return '6';
+  if (/السابع|سابع/.test(normalized)) return '7';
+  if (/الثامن|ثامن/.test(normalized)) return '8';
+  if (/التاسع|تاسع/.test(normalized)) return '9';
+  if (/العاشر|عاشر/.test(normalized)) return '10';
+  if (/الحادي عشر|حادي عشر|الحاديعشر|حاديعشر/.test(normalized)) return '11';
+  if (/الثاني عشر|ثاني عشر|الثانيعشر|ثانيعشر/.test(normalized)) return '12';
+  return 'غير محدد';
+};
 
 const getStudentCode = (student: Student) => normalizeCode(
   (student as any).rasedId ||
@@ -133,6 +163,8 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const [isFetching, setIsFetching] = useState(false);
   const [query, setQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
+  const [selectedGradeForSend, setSelectedGradeForSend] = useState('all');
+  const [selectedClassForSend, setSelectedClassForSend] = useState('all');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [messageType, setMessageType] = useState<TeacherMessageType>('general');
   const [teacherMessage, setTeacherMessage] = useState('');
@@ -143,34 +175,67 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const hasTeacherContext = Boolean(teacherInfo?.school && teacherInfo?.subject);
   const hasStudents = Array.isArray(students) && students.length > 0;
 
+  const classOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(student => {
+      const className = getStudentClassName(student);
+      if (className) set.add(className);
+    });
+    return Array.from(set).sort();
+  }, [students]);
+
+  const gradeOptions = useMemo(() => {
+    const set = new Set<string>();
+    classOptions.forEach(className => set.add(getGradeFromClassName(className)));
+    return Array.from(set).filter(Boolean).sort((a, b) => Number(a) - Number(b));
+  }, [classOptions]);
+
+  const filteredClassOptions = useMemo(() => {
+    return classOptions.filter(className => selectedGradeForSend === 'all' || getGradeFromClassName(className) === selectedGradeForSend);
+  }, [classOptions, selectedGradeForSend]);
+
   useEffect(() => {
     localStorage.setItem('rased_teacher_sent_messages_local', JSON.stringify(localSentMessages.slice(0, 100)));
   }, [localSentMessages]);
+
+  useEffect(() => {
+    setSelectedClassForSend('all');
+    setSelectedStudentId('');
+  }, [selectedGradeForSend]);
+
+  useEffect(() => {
+    setSelectedStudentId('');
+  }, [selectedClassForSend]);
 
   const selectedStudent = useMemo(() => {
     if (!selectedStudentId) return undefined;
     return students.find(student => getStudentCode(student) === selectedStudentId || student.id === selectedStudentId);
   }, [students, selectedStudentId]);
 
-  const filteredStudents = useMemo(() => {
+  const studentsForSend = useMemo(() => {
     const q = studentQuery.trim().toLowerCase();
     return students
       .filter(Boolean)
       .filter(student => {
-        if (!q) return true;
-        return (
+        const className = getStudentClassName(student);
+        const grade = getGradeFromClassName(className);
+        const gradeOk = selectedGradeForSend === 'all' || grade === selectedGradeForSend;
+        const classOk = selectedClassForSend === 'all' || className === selectedClassForSend;
+        const queryOk = !q ||
           String(student.name || '').toLowerCase().includes(q) ||
           getStudentCode(student).toLowerCase().includes(q) ||
-          getStudentClassName(student).toLowerCase().includes(q)
-        );
+          className.toLowerCase().includes(q);
+        return gradeOk && classOk && queryOk;
       })
       .slice(0, 100);
-  }, [students, studentQuery]);
+  }, [students, studentQuery, selectedGradeForSend, selectedClassForSend]);
 
   const inboxMessages = useMemo(() => messages.filter(msg => !isTeacherSentMessage(msg)), [messages]);
   const sentMessages = useMemo(() => {
     const cloudSent = messages.filter(msg => isTeacherSentMessage(msg));
-    return [...localSentMessages, ...cloudSent];
+    const cloudKeys = new Set(cloudSent.map(msg => `${msg.message || ''}_${msg.rasedId || msg.civilID || ''}_${msg.date || ''}`));
+    const localOnly = localSentMessages.filter(msg => !cloudKeys.has(`${msg.message || ''}_${msg.rasedId || msg.civilID || ''}_${msg.date || ''}`));
+    return [...localOnly, ...cloudSent];
   }, [messages, localSentMessages]);
 
   const visibleMessages = useMemo(() => {
@@ -195,6 +260,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       const params = new URLSearchParams({ action: 'getMessages' });
       if (school) params.set('school', school);
       if (subject) params.set('subject', subject);
+      params.set('semester', currentSemester);
       const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`);
       const result = await response.json();
       if (result.status === 'success') setMessages(Array.isArray(result.messages) ? result.messages : []);
@@ -209,7 +275,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
 
   useEffect(() => {
     fetchParentMessages();
-  }, [teacherInfo?.school, teacherInfo?.subject]);
+  }, [teacherInfo?.school, teacherInfo?.subject, currentSemester]);
 
   const sendUrlEncoded = async (payload: Record<string, string>) => {
     const body = new URLSearchParams(payload);
@@ -219,6 +285,36 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body
     });
+  };
+
+  const handleDeleteMessage = async (msg: MailMessage) => {
+    const confirmed = window.confirm('هل تريد حذف هذه الرسالة من صفحة المراسلات؟ لن تظهر مرة أخرى بعد التحديث.');
+    if (!confirmed) return;
+
+    const rowNumber = String(msg.rowNumber || msg.messageRow || msg.row || '');
+    if (!rowNumber) {
+      setLocalSentMessages(prev => prev.filter(item => item !== msg));
+      setMessages(prev => prev.filter(item => item !== msg));
+      return;
+    }
+
+    try {
+      await fetch(GOOGLE_WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'deleteMessage',
+          rowNumber,
+          deletedBy: 'teacher',
+          schoolName: msg.schoolName || teacherInfo?.school || '',
+          subject: msg.subject || teacherInfo?.subject || ''
+        })
+      });
+      setMessages(prev => prev.filter(item => item !== msg));
+      setLocalSentMessages(prev => prev.filter(item => item !== msg));
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('تعذر حذف الرسالة الآن. حاول مرة أخرى.');
+    }
   };
 
   const handleSendReply = async (msg: MailMessage) => {
@@ -235,7 +331,8 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         schoolName: String(msg.schoolName || teacherInfo?.school || ''),
         subject: String(msg.subject || teacherInfo?.subject || ''),
         replyText: replyText.trim(),
-        teacherName: teacherInfo?.name || 'المعلم'
+        teacherName: teacherInfo?.name || 'المعلم',
+        semester: currentSemester
       });
       setMessages(prev => prev.map(item => item === msg ? { ...item, status: 'replied', teacherReply: replyText.trim(), replyDate: new Date().toISOString(), teacherName: teacherInfo?.name || 'المعلم' } : item));
       setReplyText('');
@@ -275,6 +372,8 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       alert('لا يوجد كود راصد لهذا الطالب.');
       return;
     }
+    const className = getStudentClassName(selectedStudent);
+    const grade = getGradeFromClassName(className);
     setIsSending(true);
     try {
       await sendUrlEncoded({
@@ -290,9 +389,12 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         message: teacherMessage.trim(),
         sender: 'teacher',
         direction: 'teacher_to_parent',
-        semester: currentSemester
+        semester: currentSemester,
+        className,
+        grade
       });
       const localRecord: MailMessage = {
+        localId: `local_sent_${Date.now()}`,
         date: new Date().toISOString(),
         rasedId,
         civilID: rasedId,
@@ -305,7 +407,10 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         teacherName: teacherInfo?.name || 'المعلم',
         sender: 'teacher',
         messageType,
-        direction: 'teacher_to_parent'
+        direction: 'teacher_to_parent',
+        semester: currentSemester,
+        className,
+        grade
       };
       setLocalSentMessages(prev => [localRecord, ...prev].slice(0, 100));
       setTeacherMessage('');
@@ -327,7 +432,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     const typeInfo = getTypeInfo(msg.messageType);
     const Icon = teacherSent ? typeInfo.icon : Inbox;
     return (
-      <article key={`${msg.rowNumber || msg.date || index}_${index}`} className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
+      <article key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-3">
           <div className="flex items-start gap-3 min-w-0">
             <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center shrink-0 ${teacherSent ? typeInfo.tone : 'bg-primary/10 text-primary border-primary/20'}`}>
@@ -339,10 +444,16 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
                 <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full" dir="ltr">{msg.rasedId || msg.civilID || msg.parentCode || 'RSD'}</span>
                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${teacherSent ? typeInfo.tone : 'bg-bgSoft border-borderColor text-textSecondary'}`}>{teacherSent ? typeInfo.label : 'وارد من ولي الأمر'}</span>
                 <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />{formatDateTime(msg.date)}</span>
+                {msg.className && <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{msg.className}</span>}
               </div>
             </div>
           </div>
-          {msg.status === 'replied' && <span className="text-[9px] font-black bg-success/10 text-success border border-success/20 px-2 py-1 rounded-xl">تم الرد</span>}
+          <div className="flex items-center gap-2 self-start">
+            {msg.status === 'replied' && <span className="text-[9px] font-black bg-success/10 text-success border border-success/20 px-2 py-1 rounded-xl">تم الرد</span>}
+            <button type="button" onClick={() => handleDeleteMessage(msg)} className="h-8 px-2 rounded-xl bg-danger/10 border border-danger/20 text-danger text-[10px] font-black flex items-center gap-1 active:scale-95">
+              <Trash2 className="w-3.5 h-3.5" /> حذف
+            </button>
+          </div>
         </div>
         <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary leading-7">{msg.message || 'لا يوجد نص'}</div>
         {msg.teacherReply && (
@@ -404,15 +515,25 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       {activeTab === 'inbox' || activeTab === 'sent' ? (
         <section className="space-y-3">
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><label className="relative block"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث باسم الطالب أو الكود أو نص الرسالة..." className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40" /></label></div>
-          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title="جاري جلب الرسائل" text="يتم الآن تحميل رسائل أولياء الأمور من السحابة." /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? 'لا توجد رسائل واردة' : 'لا توجد رسائل مرسلة'} text={activeTab === 'inbox' ? 'الرسائل الواردة من ولي الأمر ستظهر هنا.' : 'الرسائل التي يرسلها المعلم لولي الأمر ستظهر هنا.'} /> : visibleMessages.map((msg, index) => <MailMessageCard key={`${msg.rowNumber || msg.date || index}_${index}`} msg={msg} index={index} />)}
+          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title="جاري جلب الرسائل" text="يتم الآن تحميل رسائل أولياء الأمور من السحابة." /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? 'لا توجد رسائل واردة' : 'لا توجد رسائل مرسلة'} text={activeTab === 'inbox' ? 'الرسائل الواردة من ولي الأمر ستظهر هنا.' : 'الرسائل التي يرسلها المعلم لولي الأمر ستظهر هنا.'} /> : visibleMessages.map((msg, index) => <MailMessageCard key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} msg={msg} index={index} />)}
         </section>
       ) : (
         <section className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
             <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><User className="w-4 h-4 text-primary" />اختيار الطالب</h3>
-            <label className="relative block mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder="ابحث بالاسم أو الكود أو الفصل..." className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40" /></label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+              <select value={selectedGradeForSend} onChange={(e) => setSelectedGradeForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
+                <option value="all">كل الصفوف</option>
+                {gradeOptions.map(grade => <option key={grade} value={grade}>الصف {grade}</option>)}
+              </select>
+              <select value={selectedClassForSend} onChange={(e) => setSelectedClassForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
+                <option value="all">كل الفصول</option>
+                {filteredClassOptions.map(className => <option key={className} value={className}>{className}</option>)}
+              </select>
+            </div>
+            <label className="relative block mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder="ابحث داخل الطلاب المعروضين..." className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40" /></label>
             <div className="space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
-              {filteredStudents.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">لا توجد نتائج طلاب.</div> : filteredStudents.map(student => {
+              {studentsForSend.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">لا توجد نتائج طلاب حسب الصف أو الفصل المحدد.</div> : studentsForSend.map(student => {
                 const code = getStudentCode(student);
                 const active = selectedStudentId === code || selectedStudentId === student.id;
                 return <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className={`w-full rounded-2xl border p-3 text-start transition-all active:scale-[0.99] ${active ? 'bg-primary/10 border-primary/30' : 'bg-bgSoft border-borderColor hover:border-primary/20'}`}><p className="text-xs font-black text-textPrimary truncate">{student.name}</p><div className="flex flex-wrap items-center gap-1 mt-1"><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(student)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{code || 'RSD'}</span></div></button>;
