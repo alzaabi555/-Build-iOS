@@ -41,110 +41,120 @@ const minutesFromTime = (value?: string): number | null => {
 const getDayIndexForRasedSchedule = () => {
   const todayRaw = new Date().getDay();
 
-  /**
-   * نفس منطق Dashboard:
-   * الأحد = 0
-   * الإثنين = 1
-   * الثلاثاء = 2
-   * الأربعاء = 3
-   * الخميس = 4
-   * الجمعة/السبت يعرض الأحد كجدول قادم.
-   */
-  const dayIndex = todayRaw ==* 5 || todayRaw === 6 ? 0 : todayRa*;
-  const isToday = todayRaw === d*yIndex;
+  /*
+    نفس منطق Dashboard:
+    الأحد = 0
+    الإثنين = 1
+    الثلاثاء = 2
+    الأربعاء = 3
+    الخميس = 4
 
-  return { dayIndex, isTo*ay };
+    الجمعة والسبت يعرضان جدول الأحد كجدول قادم.
+  */
+  const dayIndex = todayRaw === 5 || todayRaw === 6 ? 0 : todayRaw;
+  const isToday = todayRaw === dayIndex;
+
+  return { dayIndex, isToday };
 };
 
-const getPeriodStatus = *
+const getPeriodStatus = (
   startTime: string,
-  endTime: s*ring,
+  endTime: string,
   isToday: boolean
-): Widget*eriod['status'] => {
-  if (!startT*me || !endTime) return 'unknown';
-*  if (!isToday) return 'upcoming';*
+): WidgetPeriod['status'] => {
+  if (!startTime || !endTime) return 'unknown';
+
+  if (!isToday) return 'upcoming';
+
   const now = new Date();
-  const*nowMinutes = now.getHours() * 60 +*now.getMinutes();
-  const startMin*tes = minutesFromTime(startTime);
-* const endMinutes = minutesFromTim*(endTime);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  if (startMinutes ===*null || endMinutes === null) retur* 'unknown';
+  const startMinutes = minutesFromTime(startTime);
+  const endMinutes = minutesFromTime(endTime);
 
-  if (nowMinutes >= s*artMinutes && nowMinutes < endMinu*es) return 'active';
-  if (nowMinu*es < startMinutes) return 'upcomin*';
+  if (startMinutes === null || endMinutes === null) return 'unknown';
+
+  if (nowMinutes >= startMinutes && nowMinutes < endMinutes) return 'active';
+  if (nowMinutes < startMinutes) return 'upcoming';
 
   return 'completed';
 };
 
-cons* getWidgetScheduleData = (
-  sched*le: ScheduleDay[],
-  periodTimes: *eriodTime[],
-  teacherInfo: Teache*Info
+const formatTimeRange = (period: WidgetPeriod | null) => {
+  if (!period) return '';
+  if (!period.startTime && !period.endTime) return '';
+
+  return `${period.startTime || '--:--'} - ${period.endTime || '--:--'}`;
+};
+
+const getWidgetScheduleData = (
+  schedule: ScheduleDay[],
+  periodTimes: PeriodTime[],
+  teacherInfo: TeacherInfo
 ) => {
-  const { dayIndex, is*oday } = getDayIndexForRasedSchedu*e();
+  const { dayIndex, isToday } = getDayIndexForRasedSchedule();
 
   const todaySchedule =
-    *rray.isArray(schedule) && schedule*length > dayIndex
-      ? schedule*dayIndex]
+    Array.isArray(schedule) && schedule.length > dayIndex
+      ? schedule[dayIndex]
       : null;
 
-  const t*dayName = todaySchedule?.dayName |* 'جدول اليوم';
-  const subjectName*= teacherInfo?.subject || 'المادة'*
+  const todayName = todaySchedule?.dayName || 'جدول اليوم';
+  const subjectName = teacherInfo?.subject || 'المادة';
 
-  const periods = Array.isArray(*odaySchedule?.periods)
-    ? today*chedule!.periods
+  const periods = Array.isArray(todaySchedule?.periods)
+    ? todaySchedule!.periods
     : [];
 
-  cons* validPeriods: WidgetPeriod[] = pe*iods
-    .map((className, index) =* {
-      const cleanClassName = St*ing(className || '').trim();
+  const validPeriods: WidgetPeriod[] = periods
+    .map((className, index) => {
+      const cleanClassName = String(className || '').trim();
 
-    * if (!cleanClassName) return null;*
+      if (!cleanClassName) return null;
+
       const time = periodTimes[index] || {
         startTime: '',
-  *     endTime: ''
+        endTime: ''
       };
 
-      c*nst startTime = String(time.startT*me || '').trim();
-      const endT*me = String(time.endTime || '').tr*m();
+      const startTime = String(time.startTime || '').trim();
+      const endTime = String(time.endTime || '').trim();
 
       return {
-        index*
-        className: cleanClassName*
+        index,
+        className: cleanClassName,
         subject: subjectName,
-   *    startTime,
+        startTime,
         endTime,
-  *     status: getPeriodStatus(start*ime, endTime, isToday)
-      } as *idgetPeriod;
+        status: getPeriodStatus(startTime, endTime, isToday)
+      } as WidgetPeriod;
     })
-    .filter((i*em): item is WidgetPeriod => Boole*n(item));
+    .filter((item): item is WidgetPeriod => Boolean(item));
 
-  const currentPeriod =*    validPeriods.find(period => pe*iod.status === 'active') || null;
-*  const nextPeriod =
-    validPeri*ds.find(period => period.status ==* 'upcoming') || null;
+  const currentPeriod =
+    validPeriods.find(period => period.status === 'active') || null;
 
-  const for*atTimeRange = (period: WidgetPerio* | null) => {
-    if (!period) ret*rn '';
-    if (!period.startTime &* !period.endTime) return '';
-    r*turn `${period.startTime || '--:--*} - ${period.endTime || '--:--'}`;*  };
+  const nextPeriod =
+    validPeriods.find(period => period.status === 'upcoming') || null;
 
   const now = new Date();
 
- *return {
+  return {
     todayName,
 
-    curre*tTitle: currentPeriod ? 'الحصة الآ*' : 'لا توجد حصة حاليًا',
-    curr*ntClass: currentPeriod?.className *| '',
-    currentSubject: currentP*riod?.subject || subjectName,
-    *urrentTime: formatTimeRange(curren*Period),
+    currentTitle: currentPeriod ? 'الحصة الآن' : 'لا توجد حصة حاليًا',
+    currentClass: currentPeriod?.className || '',
+    currentSubject: currentPeriod?.subject || subjectName,
+    currentTime: formatTimeRange(currentPeriod),
 
-    nextTitle: nextPerio* ? 'القادمة' : 'لا توجد حصة قادمة'*
+    nextTitle: nextPeriod ? 'القادمة' : 'لا توجد حصة قادمة',
     nextClass: nextPeriod?.className || '',
     nextSubject: nextPeriod?.subject || subjectName,
     nextTime: formatTimeRange(nextPeriod),
 
     school: teacherInfo?.school || '',
     teacherName: teacherInfo?.name || '',
+
     updatedAt: now.toLocaleTimeString('ar-OM', {
       hour: '2-digit',
       minute: '2-digit'
@@ -190,10 +200,6 @@ export const useAndroidScheduleWidgetSync = ({
 
     syncWidget();
 
-    /**
-     * تحديث الويدجيت كل دقيقة أثناء فتح التطبيق،
-     * حتى تتغير الحصة الحالية/القادمة تلقائيًا عند تغير الوقت.
-     */
     const interval = window.setInterval(syncWidget, 60 * 1000);
 
     return () => {
