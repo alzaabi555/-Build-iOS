@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { RasedScheduleWidget } from '../services/RasedScheduleWidget';
 
+
 type ScheduleDay = {
   dayName: string;
   periods: string[];
@@ -30,6 +31,8 @@ export const useAndroidScheduleWidgetSync = ({
 }) => {
   useEffect(() => {
     const syncWidget = async () => {
+   console.log('Rased widget sync payload', widgetData);
+
       if (!Capacitor.isNativePlatform()) return;
       if (!Array.isArray(schedule) || !Array.isArray(periodTimes)) return;
 
@@ -61,3 +64,12 @@ export const useAndroidScheduleWidgetSync = ({
     syncWidget();
   }, [schedule, periodTimes, teacherInfo?.subject, teacherInfo?.school, teacherInfo?.name]);
 };
+RasedScheduleWidget.update({
+  data: JSON.stringify(widgetData)
+})
+  .then(result => {
+    console.log('Rased widget updated', result);
+  })
+  .catch(error => {
+    console.error('Rased widget update failed', error);
+  });
