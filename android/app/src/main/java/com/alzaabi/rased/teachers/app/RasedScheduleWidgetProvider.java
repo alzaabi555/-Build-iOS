@@ -65,7 +65,7 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
         try {
             SharedPreferences prefs = context.getSharedPreferences(RasedScheduleWidgetPlugin.PREFS_NAME, Context.MODE_PRIVATE);
-            String payload = prefs.getString(RasedScheduleWidgetPlugin.KEY_PAYLOAD, "");
+            String payload = prefs.getString(RasedScheduleWidgetPlugin.KEY_WIDGET_DATA, "");
             if (payload == null || payload.trim().isEmpty()) return fallback;
 
             JSONObject root = new JSONObject(payload);
