@@ -29,7 +29,7 @@ public class RasedScheduleWidgetPlugin extends Plugin {
                 .putString(KEY_WIDGET_DATA, data)
                 .putLong("last_update", System.currentTimeMillis())
                 .apply();
-
+                 RasedScheduleWidgetProvider.updateAllWidgets(context);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         ComponentName componentName = new ComponentName(context, RasedScheduleWidgetProvider.class);
         int[] widgetIds = appWidgetManager.getAppWidgetIds(componentName);
