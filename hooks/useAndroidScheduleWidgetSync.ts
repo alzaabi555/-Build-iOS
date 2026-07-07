@@ -52,114 +52,118 @@ const getDayIndexForRasedSchedule = () => {
 
     الجمعة والسبت يعرضان جدول الأحد كجدول قادم.
   */
-  const dayIndex = todayRaw ==* 5 || todayRaw === 6 ? 0 : todayRa*;
-  const isToday = todayRaw === d*yIndex;
+  const dayIndex = todayRaw === 5 || todayRaw === 6 ? 0 : todayRaw;
+  const isToday = todayRaw === dayIndex;
 
-  return { dayIndex, isTo*ay };
+  return { dayIndex, isToday };
 };
 
-const getPeriodStatus = *
+const getPeriodStatus = (
   startTime: string,
-  endTime: s*ring,
+  endTime: string,
   isToday: boolean
-): Widget*eriod['status'] => {
-  if (!startT*me || !endTime) return 'unknown';
-*  if (!isToday) return 'upcoming';*
+): WidgetPeriod['status'] => {
+  if (!startTime || !endTime) return 'unknown';
+
+  if (!isToday) return 'upcoming';
+
   const now = new Date();
-  const*nowMinutes = now.getHours() * 60 +*now.getMinutes();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const startMi*utes = minutesFromTime(startTime);*  const endMinutes = minutesFromTi*e(endTime);
+  const startMinutes = minutesFromTime(startTime);
+  const endMinutes = minutesFromTime(endTime);
 
-  if (startMinutes ==* null || endMinutes === null) retu*n 'unknown';
+  if (startMinutes === null || endMinutes === null) return 'unknown';
 
-  if (nowMinutes >= *tartMinutes && nowMinutes < endMin*tes) return 'active';
-  if (nowMin*tes < startMinutes) return 'upcomi*g';
+  if (nowMinutes >= startMinutes && nowMinutes < endMinutes) return 'active';
+  if (nowMinutes < startMinutes) return 'upcoming';
 
   return 'completed';
 };
 
-con*t formatTimeRange = (period: Widge*Period | null) => {
-  if (!period)*return '';
-  if (!period.startTime*&& !period.endTime) return '';
+const formatTimeRange = (period: WidgetPeriod | null) => {
+  if (!period) return '';
+  if (!period.startTime && !period.endTime) return '';
 
-  *eturn `${period.startTime || '--:-*'} - ${period.endTime || '--:--'}`*
+  return `${period.startTime || '--:--'} - ${period.endTime || '--:--'}`;
 };
 
 const buildWidgetPayload = (
-* schedule: ScheduleDay[],
-  period*imes: PeriodTime[],
-  teacherInfo:*TeacherInfo
+  schedule: ScheduleDay[],
+  periodTimes: PeriodTime[],
+  teacherInfo: TeacherInfo
 ) => {
-  const { dayIn*ex, isToday } = getDayIndexForRase*Schedule();
+  const { dayIndex, isToday } = getDayIndexForRasedSchedule();
 
-  const todaySchedule*=
-    Array.isArray(schedule) && s*hedule.length > dayIndex
-      ? s*hedule[dayIndex]
+  const todaySchedule =
+    Array.isArray(schedule) && schedule.length > dayIndex
+      ? schedule[dayIndex]
       : null;
 
-  *onst todayName = todaySchedule?.da*Name || 'جدول اليوم';
-  const subj*ctName = teacherInfo?.subject || '*لمادة';
+  const todayName = todaySchedule?.dayName || 'جدول اليوم';
+  const subjectName = teacherInfo?.subject || 'المادة';
 
-  const periods = Array.i*Array(todaySchedule?.periods)
-    * todaySchedule!.periods
+  const periods = Array.isArray(todaySchedule?.periods)
+    ? todaySchedule!.periods
     : [];
-*  const validPeriods: WidgetPeriod*] = periods
-    .map((className, i*dex) => {
-      const cleanClassNa*e = String(className || '').trim()*
 
-      if (!cleanClassName) retur* null;
+  const validPeriods: WidgetPeriod[] = periods
+    .map((className, index) => {
+      const cleanClassName = String(className || '').trim();
 
-      const time = periodT*mes[index] || {
-        startTime:*'',
+      if (!cleanClassName) return null;
+
+      const time = periodTimes[index] || {
+        startTime: '',
         endTime: ''
       };
 
-*     const startTime = String(time*startTime || '').trim();
-      con*t endTime = String(time.endTime ||*'').trim();
+      const startTime = String(time.startTime || '').trim();
+      const endTime = String(time.endTime || '').trim();
 
       return {
-      * index,
-        className: cleanCl*ssName,
-        subject: subjectNa*e,
+        index,
+        className: cleanClassName,
+        subject: subjectName,
         startTime,
-        endT*me,
-        status: getPeriodStatu*(startTime, endTime, isToday)
-    * } as WidgetPeriod;
+        endTime,
+        status: getPeriodStatus(startTime, endTime, isToday)
+      } as WidgetPeriod;
     })
-    .fi*ter((item): item is WidgetPeriod =* Boolean(item));
+    .filter((item): item is WidgetPeriod => Boolean(item));
 
-  const currentP*riod =
-    validPeriods.find(perio* => period.status === 'active') ||*null;
+  const currentPeriod =
+    validPeriods.find(period => period.status === 'active') || null;
 
   const nextPeriod =
-    va*idPeriods.find(period => period.st*tus === 'upcoming') || null;
+    validPeriods.find(period => period.status === 'upcoming') || null;
 
-  co*st now = new Date();
+  const now = new Date();
 
   return {
- *  todayName,
+    todayName,
 
-    currentTitle: cu*rentPeriod ? 'الحصة الآن' : 'لا تو*د حصة حاليًا',
-    currentClass: c*rrentPeriod?.className || '',
-    *urrentSubject: currentPeriod?.subj*ct || subjectName,
-    currentTime* formatTimeRange(currentPeriod),
+    currentTitle: currentPeriod ? 'الحصة الآن' : 'لا توجد حصة حاليًا',
+    currentClass: currentPeriod?.className || '',
+    currentSubject: currentPeriod?.subject || subjectName,
+    currentTime: formatTimeRange(currentPeriod),
 
-*   nextTitle: nextPeriod ? 'القادم*' : 'لا توجد حصة قادمة',
-    nextC*ass: nextPeriod?.className || '',
-*   nextSubject: nextPeriod?.subjec* || subjectName,
-    nextTime: for*atTimeRange(nextPeriod),
+    nextTitle: nextPeriod ? 'القادمة' : 'لا توجد حصة قادمة',
+    nextClass: nextPeriod?.className || '',
+    nextSubject: nextPeriod?.subject || subjectName,
+    nextTime: formatTimeRange(nextPeriod),
 
-    scho*l: teacherInfo?.school || '',
-    *eacherName: teacherInfo?.name || '*,
+    school: teacherInfo?.school || '',
+    teacherName: teacherInfo?.name || '',
 
-    updatedAt: now.toLocaleTime*tring('ar-OM', {
-      hour: '2-di*it',
+    updatedAt: now.toLocaleTimeString('ar-OM', {
+      hour: '2-digit',
       minute: '2-digit'
-    }*
+    })
   };
 };
 
-export const useAndroidS*heduleWidgetSync = ({
+export const useAndroidScheduleWidgetSync = ({
   schedule,
   periodTimes,
   teacherInfo
@@ -187,7 +191,7 @@ export const useAndroidS*heduleWidgetSync = ({
 
       /*
         لا نكرر الإرسال إذا لم تتغير البيانات،
-        إلا إذا كان sync قادمًا من resume أو delayed sync.
+        إلا إذا كان الإرسال إجباريًا عند فتح التطبيق أو الرجوع من الخلفية.
       */
       if (!force && lastPayloadRef.current === payload) return;
 
@@ -211,19 +215,18 @@ export const useAndroidS*heduleWidgetSync = ({
     syncWidget(true);
 
     /*
-      إرسال مؤجل لضمان أن Capacitor و Native Plugin أصبحا جاهزين بعد فتح التطبيق.
-      هذا مهم جدًا للويدجيت.
+      إرسال مؤجل لضمان جاهزية Capacitor والـ Native Plugin بعد فتح التطبيق.
     */
     timeoutIds.push(window.setTimeout(() => syncWidget(true), 1200));
     timeoutIds.push(window.setTimeout(() => syncWidget(true), 3500));
 
     /*
-      تحديث كل دقيقة أثناء فتح التطبيق حتى تتغير الحصة الحالية والقادمة تلقائيًا.
+      تحديث كل دقيقة أثناء فتح التطبيق لتغيير الحصة الحالية والقادمة حسب الوقت.
     */
     intervalId = window.setInterval(() => syncWidget(false), 60 * 1000);
 
     /*
-      عند رجوع التطبيق من الخلفية، نحدث الويدجيت مباشرة.
+      عند رجوع التطبيق من الخلفية.
     */
     const appStatePromise = CapacitorApp.addListener('appStateChange', state => {
       if (state.isActive) {
@@ -232,7 +235,7 @@ export const useAndroidS*heduleWidgetSync = ({
     });
 
     /*
-      عند رجوع الصفحة للظهور، نحدث الويدجيت أيضًا.
+      عند رجوع الصفحة للظهور.
     */
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -253,9 +256,11 @@ export const useAndroidS*heduleWidgetSync = ({
 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
 
-      appStatePromise.then(listener => {
-        listener.remove();
-      }).catch(() => {});
+      appStatePromise
+        .then(listener => {
+          listener.remove();
+        })
+        .catch(() => {});
     };
   }, [
     schedule,
