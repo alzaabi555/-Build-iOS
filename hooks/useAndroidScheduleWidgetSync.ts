@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { RasedScheduleWidget } from '../services/RasedScheduleWidget';
 
 type ScheduleDay = {
@@ -51,118 +52,114 @@ const getDayIndexForRasedSchedule = () => {
 
     الجمعة والسبت يعرضان جدول الأحد كجدول قادم.
   */
-  const dayIndex = todayRaw === 5 || todayRaw === 6 ? 0 : todayRaw;
-  const isToday = todayRaw === dayIndex;
+  const dayIndex = todayRaw ==* 5 || todayRaw === 6 ? 0 : todayRa*;
+  const isToday = todayRaw === d*yIndex;
 
-  return { dayIndex, isToday };
+  return { dayIndex, isTo*ay };
 };
 
-const getPeriodStatus = (
+const getPeriodStatus = *
   startTime: string,
-  endTime: string,
+  endTime: s*ring,
   isToday: boolean
-): WidgetPeriod['status'] => {
-  if (!startTime || !endTime) return 'unknown';
-
-  if (!isToday) return 'upcoming';
-
+): Widget*eriod['status'] => {
+  if (!startT*me || !endTime) return 'unknown';
+*  if (!isToday) return 'upcoming';*
   const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const*nowMinutes = now.getHours() * 60 +*now.getMinutes();
 
-  const startMinutes = minutesFromTime(startTime);
-  const endMinutes = minutesFromTime(endTime);
+  const startMi*utes = minutesFromTime(startTime);*  const endMinutes = minutesFromTi*e(endTime);
 
-  if (startMinutes === null || endMinutes === null) return 'unknown';
+  if (startMinutes ==* null || endMinutes === null) retu*n 'unknown';
 
-  if (nowMinutes >= startMinutes && nowMinutes < endMinutes) return 'active';
-  if (nowMinutes < startMinutes) return 'upcoming';
+  if (nowMinutes >= *tartMinutes && nowMinutes < endMin*tes) return 'active';
+  if (nowMin*tes < startMinutes) return 'upcomi*g';
 
   return 'completed';
 };
 
-const formatTimeRange = (period: WidgetPeriod | null) => {
-  if (!period) return '';
-  if (!period.startTime && !period.endTime) return '';
+con*t formatTimeRange = (period: Widge*Period | null) => {
+  if (!period)*return '';
+  if (!period.startTime*&& !period.endTime) return '';
 
-  return `${period.startTime || '--:--'} - ${period.endTime || '--:--'}`;
+  *eturn `${period.startTime || '--:-*'} - ${period.endTime || '--:--'}`*
 };
 
-const getWidgetScheduleData = (
-  schedule: ScheduleDay[],
-  periodTimes: PeriodTime[],
-  teacherInfo: TeacherInfo
+const buildWidgetPayload = (
+* schedule: ScheduleDay[],
+  period*imes: PeriodTime[],
+  teacherInfo:*TeacherInfo
 ) => {
-  const { dayIndex, isToday } = getDayIndexForRasedSchedule();
+  const { dayIn*ex, isToday } = getDayIndexForRase*Schedule();
 
-  const todaySchedule =
-    Array.isArray(schedule) && schedule.length > dayIndex
-      ? schedule[dayIndex]
+  const todaySchedule*=
+    Array.isArray(schedule) && s*hedule.length > dayIndex
+      ? s*hedule[dayIndex]
       : null;
 
-  const todayName = todaySchedule?.dayName || 'جدول اليوم';
-  const subjectName = teacherInfo?.subject || 'المادة';
+  *onst todayName = todaySchedule?.da*Name || 'جدول اليوم';
+  const subj*ctName = teacherInfo?.subject || '*لمادة';
 
-  const periods = Array.isArray(todaySchedule?.periods)
-    ? todaySchedule!.periods
+  const periods = Array.i*Array(todaySchedule?.periods)
+    * todaySchedule!.periods
     : [];
+*  const validPeriods: WidgetPeriod*] = periods
+    .map((className, i*dex) => {
+      const cleanClassNa*e = String(className || '').trim()*
 
-  const validPeriods: WidgetPeriod[] = periods
-    .map((className, index) => {
-      const cleanClassName = String(className || '').trim();
+      if (!cleanClassName) retur* null;
 
-      if (!cleanClassName) return null;
-
-      const time = periodTimes[index] || {
-        startTime: '',
+      const time = periodT*mes[index] || {
+        startTime:*'',
         endTime: ''
       };
 
-      const startTime = String(time.startTime || '').trim();
-      const endTime = String(time.endTime || '').trim();
+*     const startTime = String(time*startTime || '').trim();
+      con*t endTime = String(time.endTime ||*'').trim();
 
       return {
-        index,
-        className: cleanClassName,
-        subject: subjectName,
+      * index,
+        className: cleanCl*ssName,
+        subject: subjectNa*e,
         startTime,
-        endTime,
-        status: getPeriodStatus(startTime, endTime, isToday)
-      } as WidgetPeriod;
+        endT*me,
+        status: getPeriodStatu*(startTime, endTime, isToday)
+    * } as WidgetPeriod;
     })
-    .filter((item): item is WidgetPeriod => Boolean(item));
+    .fi*ter((item): item is WidgetPeriod =* Boolean(item));
 
-  const currentPeriod =
-    validPeriods.find(period => period.status === 'active') || null;
+  const currentP*riod =
+    validPeriods.find(perio* => period.status === 'active') ||*null;
 
   const nextPeriod =
-    validPeriods.find(period => period.status === 'upcoming') || null;
+    va*idPeriods.find(period => period.st*tus === 'upcoming') || null;
 
-  const now = new Date();
+  co*st now = new Date();
 
   return {
-    todayName,
+ *  todayName,
 
-    currentTitle: currentPeriod ? 'الحصة الآن' : 'لا توجد حصة حاليًا',
-    currentClass: currentPeriod?.className || '',
-    currentSubject: currentPeriod?.subject || subjectName,
-    currentTime: formatTimeRange(currentPeriod),
+    currentTitle: cu*rentPeriod ? 'الحصة الآن' : 'لا تو*د حصة حاليًا',
+    currentClass: c*rrentPeriod?.className || '',
+    *urrentSubject: currentPeriod?.subj*ct || subjectName,
+    currentTime* formatTimeRange(currentPeriod),
 
-    nextTitle: nextPeriod ? 'القادمة' : 'لا توجد حصة قادمة',
-    nextClass: nextPeriod?.className || '',
-    nextSubject: nextPeriod?.subject || subjectName,
-    nextTime: formatTimeRange(nextPeriod),
+*   nextTitle: nextPeriod ? 'القادم*' : 'لا توجد حصة قادمة',
+    nextC*ass: nextPeriod?.className || '',
+*   nextSubject: nextPeriod?.subjec* || subjectName,
+    nextTime: for*atTimeRange(nextPeriod),
 
-    school: teacherInfo?.school || '',
-    teacherName: teacherInfo?.name || '',
+    scho*l: teacherInfo?.school || '',
+    *eacherName: teacherInfo?.name || '*,
 
-    updatedAt: now.toLocaleTimeString('ar-OM', {
-      hour: '2-digit',
+    updatedAt: now.toLocaleTime*tring('ar-OM', {
+      hour: '2-di*it',
       minute: '2-digit'
-    })
+    }*
   };
 };
 
-export const useAndroidScheduleWidgetSync = ({
+export const useAndroidS*heduleWidgetSync = ({
   schedule,
   periodTimes,
   teacherInfo
@@ -171,25 +168,35 @@ export const useAndroidScheduleWidgetSync = ({
   periodTimes: PeriodTime[];
   teacherInfo: TeacherInfo;
 }) => {
+  const lastPayloadRef = useRef('');
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    if (!Array.isArray(schedule) || !Array.isArray(periodTimes)) return;
+    if (!Array.isArray(schedule)) return;
+    if (!Array.isArray(periodTimes)) return;
 
     let isMounted = true;
+    let intervalId: number | undefined;
+    const timeoutIds: number[] = [];
 
-    const syncWidget = async () => {
+    const syncWidget = async (force = false) => {
       if (!isMounted) return;
 
-      const widgetData = getWidgetScheduleData(
-        schedule,
-        periodTimes,
-        teacherInfo
-      );
+      const widgetData = buildWidgetPayload(schedule, periodTimes, teacherInfo);
+      const payload = JSON.stringify(widgetData);
+
+      /*
+        لا نكرر الإرسال إذا لم تتغير البيانات،
+        إلا إذا كان sync قادمًا من resume أو delayed sync.
+      */
+      if (!force && lastPayloadRef.current === payload) return;
 
       try {
         const result = await RasedScheduleWidget.update({
-          data: JSON.stringify(widgetData)
+          data: payload
         });
+
+        lastPayloadRef.current = payload;
 
         console.log('Rased widget updated', result);
         console.log('Rased widget sync payload', widgetData);
@@ -198,13 +205,57 @@ export const useAndroidScheduleWidgetSync = ({
       }
     };
 
-    syncWidget();
+    /*
+      إرسال فوري عند تحميل البيانات.
+    */
+    syncWidget(true);
 
-    const interval = window.setInterval(syncWidget, 60 * 1000);
+    /*
+      إرسال مؤجل لضمان أن Capacitor و Native Plugin أصبحا جاهزين بعد فتح التطبيق.
+      هذا مهم جدًا للويدجيت.
+    */
+    timeoutIds.push(window.setTimeout(() => syncWidget(true), 1200));
+    timeoutIds.push(window.setTimeout(() => syncWidget(true), 3500));
+
+    /*
+      تحديث كل دقيقة أثناء فتح التطبيق حتى تتغير الحصة الحالية والقادمة تلقائيًا.
+    */
+    intervalId = window.setInterval(() => syncWidget(false), 60 * 1000);
+
+    /*
+      عند رجوع التطبيق من الخلفية، نحدث الويدجيت مباشرة.
+    */
+    const appStatePromise = CapacitorApp.addListener('appStateChange', state => {
+      if (state.isActive) {
+        syncWidget(true);
+      }
+    });
+
+    /*
+      عند رجوع الصفحة للظهور، نحدث الويدجيت أيضًا.
+    */
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncWidget(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
-      window.clearInterval(interval);
+
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+
+      timeoutIds.forEach(id => window.clearTimeout(id));
+
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      appStatePromise.then(listener => {
+        listener.remove();
+      }).catch(() => {});
     };
   }, [
     schedule,
