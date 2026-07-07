@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { RasedScheduleWidget } from '../native/RasedScheduleWidget';
+import { RasedScheduleWidget } from '../services/RasedScheduleWidget';
 
 type ScheduleDay = {
   dayName: string;
