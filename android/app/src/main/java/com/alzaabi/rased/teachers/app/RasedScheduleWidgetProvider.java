@@ -175,4 +175,3 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
         String updatedText;
     }
 }
-``
