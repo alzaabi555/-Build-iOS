@@ -412,20 +412,22 @@ const AppContent: React.FC = () => {
     fetchVersion();
   }, []);
 
-  useSchoolBell(periodTimes, schedule, notificationsEnabled);
+useSchoolBell(periodTimes, schedule, notificationsEnabled);
 
-  const handleToggleNotifications = () => {
-    setNotificationsEnabled(prev => {
-      const newState = !prev;
-      localStorage.setItem('bell_enabled', String(newState));
-      return newState;
-    });
-  };
+// 📱 مزامنة ويدجيت أندرويد: جدول الحصص الحالي والقادم
 useAndroidScheduleWidgetSync({
   schedule,
   periodTimes,
   teacherInfo
 });
+
+const handleToggleNotifications = () => {
+  setNotificationsEnabled(prev => {
+    const newState = !prev;
+    localStorage.setItem('bell_enabled', String(newState));
+    return newState;
+  });
+};
   const handleFinishWelcome = () => {
     localStorage.setItem('rased_welcome_seen', 'true');
     setShowWelcome(false);
