@@ -143,12 +143,12 @@ const buildWidgetPayload = (
   return {
     todayName,
 
-    currentTitle: currentPeriod ? 'الحصة الآن' : 'لا توجد حصة حاليًا',
+   currentTitle: currentPeriod ? `الحصة الآن • ${currentPeriod.index + 1}` : 'لا توجد حصة حاليًا',
     currentClass: currentPeriod?.className || '',
     currentSubject: currentPeriod?.subject || subjectName,
     currentTime: formatTimeRange(currentPeriod),
 
-    nextTitle: nextPeriod ? 'القادمة' : 'لا توجد حصة قادمة',
+    nextTitle: nextPeriod ? `القادمة • ${nextPeriod.index + 1}` : 'لا توجد حصة قادمة',
     nextClass: nextPeriod?.className || '',
     nextSubject: nextPeriod?.subject || subjectName,
     nextTime: formatTimeRange(nextPeriod),
