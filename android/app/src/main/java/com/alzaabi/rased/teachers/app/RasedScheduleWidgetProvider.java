@@ -15,23 +15,56 @@ import org.json.JSONObject;
 public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
+
+        if (intent == null) return;
+
+        String action = intent.getAction();
+
+        if (
+                AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(action) ||
+                RasedScheduleWidgetPlugin.ACTION_RASED_WIDGET_REFRESH.equals(action)
+        ) {
+            updateAllWidgets(context);
+        }
+    }
+
+    @Override
+    public void onUpdate(
+            Context context,
+            AppWidgetManager appWidgetManager,
+            int[] appWidgetIds
+    ) {
         for (int appWidgetId : appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId);
         }
     }
 
     public static void updateAllWidgets(Context context) {
+        if (context == null) return;
+
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-        ComponentName componentName = new ComponentName(context, RasedScheduleWidgetProvider.class);
+
+        ComponentName componentName = new ComponentName(
+                context,
+                RasedScheduleWidgetProvider.class
+        );
+
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(componentName);
+
+        if (appWidgetIds == null || appWidgetIds.length == 0) return;
 
         for (int appWidgetId : appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId);
         }
     }
 
-    private static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+    private static void updateWidget(
+            Context context,
+            AppWidgetManager appWidgetManager,
+            int appWidgetId
+    ) {
         RemoteViews views = new RemoteViews(
                 context.getPackageName(),
                 R.layout.rased_schedule_widget
@@ -52,7 +85,9 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_updated, state.updatedText);
 
-        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        Intent launchIntent = context
+                .getPackageManager()
+                .getLaunchIntentForPackage(context.getPackageName());
 
         if (launchIntent != null) {
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
