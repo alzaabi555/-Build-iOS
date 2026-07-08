@@ -53,6 +53,7 @@
                 android:textColor="#C7D2FE"
                 android:textSize="10sp"
                 android:maxLines="1" />
+
         </LinearLayout>
 
         <TextView
@@ -133,3 +134,70 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="9dp"
+            android:background="@drawable/rased_schedule_next_period_bg"
+            android:layout_marginEnd="4dp">
+
+            <TextView
+                android:id="@+id/widget_next_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="القادمة"
+                android:textColor="#DBEAFE"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_next_class"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:layout_marginTop="1dp" />
+
+            <TextView
+                android:id="@+id/widget_next_subject"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="المادة"
+                android:textColor="#BFDBFE"
+                android:textSize="9sp"
+                android:maxLines="1"
+                android:layout_marginTop="1dp" />
+
+            <TextView
+                android:id="@+id/widget_next_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--:--"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="آخر تحديث من راصد"
+        android:textColor="#C7D2FE"
+        android:textSize="9sp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:layout_marginTop="6dp" />
+
+</LinearLayout>
