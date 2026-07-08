@@ -45,14 +45,12 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
         if (context == null) return;
 
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-
         ComponentName componentName = new ComponentName(
                 context,
                 RasedScheduleWidgetProvider.class
         );
 
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(componentName);
-
         if (appWidgetIds == null || appWidgetIds.length == 0) return;
 
         for (int appWidgetId : appWidgetIds) {
@@ -72,15 +70,18 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
         WidgetState state = readWidgetState(context);
 
-        views.setTextViewText(R.id.widget_title, "راصد - جدول الحصص");
+        views.setTextViewText(R.id.widget_title, "راصد");
+        views.setTextViewText(R.id.widget_subtitle, "جدول الحصص");
         views.setTextViewText(R.id.widget_today, state.todayName);
 
         views.setTextViewText(R.id.widget_current_label, state.currentLabel);
         views.setTextViewText(R.id.widget_current_class, state.currentClass);
+        views.setTextViewText(R.id.widget_current_subject, state.currentSubject);
         views.setTextViewText(R.id.widget_current_time, state.currentTime);
 
         views.setTextViewText(R.id.widget_next_label, state.nextLabel);
         views.setTextViewText(R.id.widget_next_class, state.nextClass);
+        views.setTextViewText(R.id.widget_next_subject, state.nextSubject);
         views.setTextViewText(R.id.widget_next_time, state.nextTime);
 
         views.setTextViewText(R.id.widget_updated, state.updatedText);
@@ -114,12 +115,14 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
         fallback.todayName = "جدول اليوم";
         fallback.currentLabel = "الحصة الآن";
-        fallback.currentClass = "افتح راصد لتحديث الجدول";
+        fallback.currentClass = "افتح راصد";
+        fallback.currentSubject = "لتحديث الجدول";
         fallback.currentTime = "--:--";
         fallback.nextLabel = "القادمة";
         fallback.nextClass = "غير محدد";
+        fallback.nextSubject = "";
         fallback.nextTime = "--:--";
-        fallback.updatedText = "لم يتم تحديث الويدجيت بعد";
+        fallback.updatedText = "لم يتم التحديث بعد";
 
         try {
             SharedPreferences prefs = context.getSharedPreferences(
@@ -155,6 +158,11 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
                     "-"
             );
 
+            state.currentSubject = safeText(
+                    data.optString("currentSubject", ""),
+                    safeText(data.optString("school", ""), "")
+            );
+
             state.currentTime = safeText(
                     data.optString("currentTime", ""),
                     "--:--"
@@ -170,13 +178,17 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
                     "-"
             );
 
+            state.nextSubject = safeText(
+                    data.optString("nextSubject", ""),
+                    safeText(data.optString("school", ""), "")
+            );
+
             state.nextTime = safeText(
                     data.optString("nextTime", ""),
                     "--:--"
             );
 
             String updatedAt = data.optString("updatedAt", "");
-
             if (updatedAt != null && !updatedAt.trim().isEmpty()) {
                 state.updatedText = "آخر تحديث: " + updatedAt.trim();
             } else {
@@ -191,11 +203,8 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
     private static String safeText(String value, String fallback) {
         if (value == null) return fallback;
-
         String clean = value.trim();
-
         if (clean.isEmpty()) return fallback;
-
         return clean;
     }
 
@@ -203,9 +212,11 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
         String todayName;
         String currentLabel;
         String currentClass;
+        String currentSubject;
         String currentTime;
         String nextLabel;
         String nextClass;
+        String nextSubject;
         String nextTime;
         String updatedText;
     }
