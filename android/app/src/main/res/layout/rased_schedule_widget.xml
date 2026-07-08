@@ -27,7 +27,7 @@
             android:textStyle="bold"
             android:textSize="15sp"
             android:background="@drawable/rased_schedule_day_chip_bg"
-            android:layout_marginStart="8dp" />
+            android:layout_marginEnd="12dp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -75,18 +75,20 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:baselineAligned="false"
         android:layoutDirection="rtl">
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:padding="9dp"
+            android:paddingStart="9dp"
+            android:paddingEnd="9dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:background="@drawable/rased_schedule_current_period_bg"
             android:layout_marginStart="4dp">
 
@@ -130,16 +132,20 @@
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:maxLines="1"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="3dp"
+                android:layout_marginBottom="1dp" />
 
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:padding="9dp"
+            android:paddingStart="9dp"
+            android:paddingEnd="9dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:background="@drawable/rased_schedule_next_period_bg"
             android:layout_marginEnd="4dp">
 
@@ -183,7 +189,8 @@
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:maxLines="1"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="3dp"
+                android:layout_marginBottom="1dp" />
 
         </LinearLayout>
 
@@ -198,6 +205,6 @@
         android:textSize="9sp"
         android:gravity="center"
         android:maxLines="1"
-        android:layout_marginTop="6dp" />
+        android:layout_marginTop="5dp" />
 
 </LinearLayout>
