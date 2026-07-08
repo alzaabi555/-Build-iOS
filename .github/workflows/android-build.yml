@@ -43,29 +43,35 @@ jobs:
           fi
 
       # 👈 الحقنة الجديدة: زرع التوافق مع أندرويد 15 (Edge-to-Edge)
-      - name: 🛡️ Enforce MainActivity & Edge-To-Edge
+      - name: 🛡️ Enforce MainActivity, Widget Plugin & Edge-To-Edge
         run: |
-          echo "💉 Injecting MainActivity with Android 15 compatibility..."
+          echo "💉 Injecting MainActivity with Android 15 compatibility and Rased widget plugin..."
+
           APP_ID=$(grep 'applicationId' android/app/build.gradle | awk -F '"' '{print $2}')
           DIR="android/app/src/main/java/$(echo $APP_ID | tr '.' '/')"
-          mkdir -p $DIR
-          cat <<EOF > $DIR/MainActivity.java
+
+          mkdir -p "$DIR"
+
+          cat <<EOF > "$DIR/MainActivity.java"
           package $APP_ID;
-          
+
           import android.os.Bundle;
           import androidx.activity.EdgeToEdge;
           import com.getcapacitor.BridgeActivity;
-          
+
           public class MainActivity extends BridgeActivity {
               @Override
               public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(RasedScheduleWidgetPlugin.class);
                   super.onCreate(savedInstanceState);
+
                   // تفعيل العرض حتى حافة الشاشة لتوافق Android 15
                   EdgeToEdge.enable(this);
               }
           }
           EOF
-          echo "✅ MainActivity Patched!"
+
+          echo "✅ MainActivity patched with RasedScheduleWidgetPlugin!"
 
       # 👈 التعديل الجراحي: بناء النسختين بشكل منفصل لمنع تداخل الملفات (مشكلة الشاشة البيضاء)
       - name: Build Android Release (Safely Separated)
