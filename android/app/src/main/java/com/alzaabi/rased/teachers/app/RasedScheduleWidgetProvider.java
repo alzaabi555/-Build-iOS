@@ -45,12 +45,14 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
         if (context == null) return;
 
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+
         ComponentName componentName = new ComponentName(
                 context,
                 RasedScheduleWidgetProvider.class
         );
 
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(componentName);
+
         if (appWidgetIds == null || appWidgetIds.length == 0) return;
 
         for (int appWidgetId : appWidgetIds) {
@@ -160,7 +162,7 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
             state.currentSubject = safeText(
                     data.optString("currentSubject", ""),
-                    safeText(data.optString("school", ""), "")
+                    data.optString("subject", "المادة")
             );
 
             state.currentTime = safeText(
@@ -180,7 +182,7 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
             state.nextSubject = safeText(
                     data.optString("nextSubject", ""),
-                    safeText(data.optString("school", ""), "")
+                    data.optString("subject", "المادة")
             );
 
             state.nextTime = safeText(
@@ -189,6 +191,7 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
             );
 
             String updatedAt = data.optString("updatedAt", "");
+
             if (updatedAt != null && !updatedAt.trim().isEmpty()) {
                 state.updatedText = "آخر تحديث: " + updatedAt.trim();
             } else {
@@ -203,8 +206,11 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
 
     private static String safeText(String value, String fallback) {
         if (value == null) return fallback;
+
         String clean = value.trim();
+
         if (clean.isEmpty()) return fallback;
+
         return clean;
     }
 
