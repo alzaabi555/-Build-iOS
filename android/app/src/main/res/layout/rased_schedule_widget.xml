@@ -5,17 +5,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@drawable/rased_schedule_widget_bg">
+    android:padding="11dp"
+    android:background="@drawable/rased_schedule_widget_bg"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="7dp"
+        android:layoutDirection="rtl">
 
-        @mipmap/ic_launcher
+        <TextView
+            android:id="@+id/widget_logo_text"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:gravity="center"
+            android:text="ر"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:background="@drawable/rased_schedule_day_chip_bg"
+            android:layout_marginStart="8dp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -29,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:text="راصد"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 android:maxLines="1" />
 
@@ -65,7 +77,8 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:baselineAligned="false">
+        android:baselineAligned="false"
+        android:layoutDirection="rtl">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -74,7 +87,7 @@
             android:orientation="vertical"
             android:padding="9dp"
             android:background="@drawable/rased_schedule_current_period_bg"
-            android:layout_marginEnd="5dp">
+            android:layout_marginStart="4dp">
 
             <TextView
                 android:id="@+id/widget_current_label"
@@ -92,10 +105,10 @@
                 android:layout_height="wrap_content"
                 android:text="-"
                 android:textColor="#FFFFFF"
-                android:textSize="17sp"
+                android:textSize="19sp"
                 android:textStyle="bold"
                 android:maxLines="1"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="1dp" />
 
             <TextView
                 android:id="@+id/widget_current_subject"
@@ -113,77 +126,10 @@
                 android:layout_height="wrap_content"
                 android:text="--:--"
                 android:textColor="#FFFFFF"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:layout_marginTop="4dp" />
 
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:padding="9dp"
-            android:background="@drawable/rased_schedule_next_period_bg"
-            android:layout_marginStart="5dp">
-
-            <TextView
-                android:id="@+id/widget_next_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="القادمة"
-                android:textColor="#DBEAFE"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1" />
-
-            <TextView
-                android:id="@+id/widget_next_class"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="-"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="2dp" />
-
-            <TextView
-                android:id="@+id/widget_next_subject"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="المادة"
-                android:textColor="#BFDBFE"
-                android:textSize="9sp"
-                android:maxLines="1"
-                android:layout_marginTop="1dp" />
-
-            <TextView
-                android:id="@+id/widget_next_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--:--"
-                android:textColor="#FFFFFF"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="4dp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/widget_updated"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="آخر تحديث من راصد"
-        android:textColor="#C7D2FE"
-        android:textSize="9sp"
-        android:gravity="center"
-        android:maxLines="1"
-        android:layout_marginTop="7dp" />
-
-</LinearLayout>
