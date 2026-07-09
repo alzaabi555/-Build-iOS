@@ -5,9 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:gravity="center_vertical"
     android:paddingStart="10dp"
     android:paddingEnd="10dp"
-    android:paddingTop="9dp"
+    android:paddingTop="8dp"
     android:paddingBottom="8dp"
     android:background="@drawable/rased_schedule_widget_bg"
     android:layoutDirection="rtl">
@@ -15,209 +16,217 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="6dp"
+        android:orientation="vertical"
         android:layoutDirection="rtl">
 
-        <TextView
-            android:id="@+id/widget_logo_text"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:gravity="center"
-            android:text="ر"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:textSize="15sp"
-            android:background="@drawable/rased_schedule_day_chip_bg"
-            android:layout_marginEnd="12dp" />
-
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="7dp"
+            android:layoutDirection="rtl">
 
             <TextView
-                android:id="@+id/widget_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="راصد"
+                android:id="@+id/widget_logo_text"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:gravity="center"
+                android:text="ر"
                 android:textColor="#FFFFFF"
+                android:textStyle="bold"
                 android:textSize="15sp"
+                android:background="@drawable/rased_schedule_day_chip_bg"
+                android:layout_marginEnd="12dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="راصد"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/widget_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="جدول الحصص"
+                    android:textColor="#CBD5E1"
+                    android:textSize="10sp"
+                    android:maxLines="1"
+                    android:layout_marginTop="-1dp" />
+
+                <TextView
+                    android:id="@+id/widget_updated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="آخر تحديث من راصد"
+                    android:textColor="#94A3B8"
+                    android:textSize="8sp"
+                    android:maxLines="1"
+                    android:layout_marginTop="-1dp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/widget_today"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="اليوم"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
                 android:textStyle="bold"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/rased_schedule_day_chip_bg"
                 android:maxLines="1" />
 
-            <TextView
-                android:id="@+id/widget_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="جدول الحصص"
-                android:textColor="#CBD5E1"
-                android:textSize="10sp"
-                android:maxLines="1"
-                android:layout_marginTop="-1dp" />
+        </LinearLayout>
 
-            <TextView
-                android:id="@+id/widget_updated"
-                android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            android:layoutDirection="rtl">
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="آخر تحديث من راصد"
-                android:textColor="#94A3B8"
-                android:textSize="8sp"
-                android:maxLines="1"
-                android:layout_marginTop="-1dp" />
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:background="@drawable/rased_schedule_current_period_bg"
+                android:layout_marginStart="4dp">
+
+                <TextView
+                    android:id="@+id/widget_current_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="الحصة الآن"
+                    android:textColor="#E0F2FE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/widget_current_class"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:layout_marginTop="0dp" />
+
+                <TextView
+                    android:id="@+id/widget_current_subject"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="المادة"
+                    android:textColor="#BFDBFE"
+                    android:textSize="9sp"
+                    android:maxLines="1"
+                    android:layout_marginTop="0dp" />
+
+                <TextView
+                    android:id="@+id/widget_current_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--:--"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:layout_marginTop="3dp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:background="@drawable/rased_schedule_next_period_bg"
+                android:layout_marginEnd="4dp">
+
+                <TextView
+                    android:id="@+id/widget_next_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="القادمة"
+                    android:textColor="#DBEAFE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/widget_next_class"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:layout_marginTop="0dp" />
+
+                <TextView
+                    android:id="@+id/widget_next_subject"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="المادة"
+                    android:textColor="#BFDBFE"
+                    android:textSize="9sp"
+                    android:maxLines="1"
+                    android:layout_marginTop="0dp" />
+
+                <TextView
+                    android:id="@+id/widget_next_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--:--"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:layout_marginTop="3dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
         <TextView
-            android:id="@+id/widget_today"
-            android:layout_width="wrap_content"
+            android:id="@+id/widget_attendance_tip"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="اليوم"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:background="@drawable/rased_schedule_day_chip_bg"
-            android:maxLines="1" />
+            android:text="تذكير: تسجيل الحضور والغياب مبكرًا يختصر وقت المتابعة."
+            android:textColor="#CBD5E1"
+            android:textSize="9sp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="8dp" />
 
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:baselineAligned="false"
-        android:layoutDirection="rtl">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingStart="9dp"
-            android:paddingEnd="9dp"
-            android:paddingTop="7dp"
-            android:paddingBottom="7dp"
-            android:background="@drawable/rased_schedule_current_period_bg"
-            android:layout_marginStart="4dp">
-
-            <TextView
-                android:id="@+id/widget_current_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="الحصة الآن"
-                android:textColor="#E0F2FE"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1" />
-
-            <TextView
-                android:id="@+id/widget_current_class"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="-"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="0dp" />
-
-            <TextView
-                android:id="@+id/widget_current_subject"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="المادة"
-                android:textColor="#BFDBFE"
-                android:textSize="9sp"
-                android:maxLines="1"
-                android:layout_marginTop="0dp" />
-
-            <TextView
-                android:id="@+id/widget_current_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--:--"
-                android:textColor="#FFFFFF"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="3dp" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingStart="9dp"
-            android:paddingEnd="9dp"
-            android:paddingTop="7dp"
-            android:paddingBottom="7dp"
-            android:background="@drawable/rased_schedule_next_period_bg"
-            android:layout_marginEnd="4dp">
-
-            <TextView
-                android:id="@+id/widget_next_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="القادمة"
-                android:textColor="#DBEAFE"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1" />
-
-            <TextView
-                android:id="@+id/widget_next_class"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="-"
-                android:textColor="#FFFFFF"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="0dp" />
-
-            <TextView
-                android:id="@+id/widget_next_subject"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="المادة"
-                android:textColor="#BFDBFE"
-                android:textSize="9sp"
-                android:maxLines="1"
-                android:layout_marginTop="0dp" />
-
-            <TextView
-                android:id="@+id/widget_next_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--:--"
-                android:textColor="#FFFFFF"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:layout_marginTop="3dp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/widget_attendance_tip"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="تذكير: تسجيل الحضور والغياب مبكرًا يختصر وقت المتابعة."
-        android:textColor="#CBD5E1"
-        android:textSize="9sp"
-        android:gravity="center"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:layout_marginTop="7dp" />
 
 </LinearLayout>
