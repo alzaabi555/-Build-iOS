@@ -1759,7 +1759,7 @@ if (hasSem1Grades && hasSem2Grades) {
     { id: 'certificates', label: t('certificatesTab'), icon: Icon3DCertificate },
     { id: 'parent_cards', label: t('parentCardsTab'), icon: Icon3DParentCard }, 
     { id: 'summon', label: t('summonTab'), icon: Icon3DSummon },
-    { id: 'analytics', label: t('analyticsTab') || 'التحليل الإحصائي', icon: Icon3DAnalytics },
+    { id: 'analytics', label: t('التحليل الإحصائي') || 'analyticstab', icon: Icon3DAnalytics },
   ];
 
   return (
