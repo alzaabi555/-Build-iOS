@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { jsPDF } from 'jspdf';
 import { useApp } from '../context/AppContext';
 import {
   Users,
@@ -130,9 +134,11 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
   const assignedCount = useMemo(() => {
     if (!activeCat) return 0;
+
     const assignedIds = new Set(
       (activeCat.groups || []).flatMap((group: any) => Array.isArray(group.studentIds) ? group.studentIds : [])
     );
+
     return assignedIds.size;
   }, [activeCat]);
 
@@ -193,6 +199,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setCategorizations((prev: any[]) =>
       prev.map((cat: any) => {
         if (cat.id !== id) return cat;
+
         const nextCat = { ...cat };
         delete nextCat.archivedAt;
         return nextCat;
@@ -264,6 +271,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setCategorizations((prev: any[]) =>
       prev.map((cat: any) => {
         if (cat.id !== activeCatId) return cat;
+
         return {
           ...cat,
           groups: generatedGroups
@@ -280,6 +288,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setCategorizations((prev: any[]) =>
       prev.map((cat: any) => {
         if (cat.id !== activeCatId) return cat;
+
         return {
           ...cat,
           groups: (cat.groups || []).filter((group: any) => group.id !== groupId)
@@ -445,37 +454,127 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     return student ? getShortName(student.name) : '';
   };
 
-  const handleExportAsImage = () => {
-    if (!activeCat) return;
+  const sanitizeFileName = (value: string) => {
+    return String(value || 'rased-groups')
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, '_')
+      .slice(0, 80);
+  };
+
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        const result = String(reader.result || '');
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        resolve(base64);
+      };
+
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const downloadBlobOnWeb = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const saveOrShareFile = async (blob: Blob, fileName: string, title: string) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const base64 = await blobToBase64(blob);
+
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache,
+          recursive: true
+        });
+
+        const fileUri = await Filesystem.getUri({
+          path: fileName,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title,
+          text: title,
+          url: fileUri.uri,
+          dialogTitle: title
+        });
+
+        return;
+      } catch (error) {
+        console.error('Native export failed, falling back to web download', error);
+      }
+    }
+
+    downloadBlobOnWeb(blob, fileName);
+  };
+
+  const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
+    if (!activeCat) {
+      throw new Error('لا يوجد تقسيم نشط للتصدير');
+    }
 
     const groups = activeCat.groups || [];
-    const cardWidth = 360;
+    const cardWidth = 380;
     const cardGap = 24;
-    const columns = 2;
+    const columns = groups.length <= 1 ? 1 : 2;
     const rows = Math.max(1, Math.ceil(groups.length / columns));
-    const svgWidth = 820;
-    const svgHeight = 180 + rows * 270;
+
+    const maxStudentsInGroup = Math.max(
+      4,
+      ...groups.map((group: any) => (group.studentIds || []).length)
+    );
+
+    const cardHeight = Math.max(230, 92 + maxStudentsInGroup * 26);
+    const svgWidth = columns === 1 ? 470 : 860;
+    const svgHeight = 160 + rows * (cardHeight + cardGap) + 40;
 
     const groupCards = groups.map((group: any, index: number) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
+
       const x = 40 + col * (cardWidth + cardGap);
-      const y = 140 + row * 270;
+      const y = 135 + row * (cardHeight + cardGap);
+
       const color = getGroupColor(group.color);
       const names = (group.studentIds || [])
         .map((id: string) => getStudentNameById(id))
-        .filter(Boolean)
-        .slice(0, 8);
+        .filter(Boolean);
 
-      const namesSvg = names.map((name, nameIndex) => {
-        return `<text x="${x + cardWidth - 24}" y="${y + 82 + nameIndex * 24}" font-size="18" fill="#334155" text-anchor="end">${escapeXml(name)}</text>`;
+      const namesSvg = names.map((name: string, nameIndex: number) => {
+        return `
+          <text
+            x="${x + cardWidth - 24}"
+            y="${y + 86 + nameIndex * 26}"
+            font-size="17"
+            font-weight="700"
+            fill="#334155"
+            text-anchor="end"
+            direction="rtl"
+            unicode-bidi="plaintext"
+          >${escapeXml(name)}</text>
+        `;
       }).join('');
 
       return `
-        <rect x="${x}" y="${y}" width="${cardWidth}" height="230" rx="26" fill="#ffffff" stroke="${color.solid}" stroke-width="3"/>
-        <rect x="${x}" y="${y}" width="${cardWidth}" height="56" rx="26" fill="${color.solid}" opacity="0.18"/>
-        <text x="${x + cardWidth - 24}" y="${y + 36}" font-size="22" font-weight="700" fill="${color.solid}" text-anchor="end">${escapeXml(group.name)}</text>
-        <text x="${x + 28}" y="${y + 36}" font-size="16" fill="#64748b">${(group.studentIds || []).length} طلاب</text>
+        <rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="26" fill="#ffffff" stroke="${color.solid}" stroke-width="3"/>
+        <rect x="${x}" y="${y}" width="${cardWidth}" height="58" rx="26" fill="${color.solid}" opacity="0.16"/>
+        <text x="${x + cardWidth - 24}" y="${y + 37}" font-size="23" font-weight="800" fill="${color.solid}" text-anchor="end" direction="rtl" unicode-bidi="plaintext">${escapeXml(group.name)}</text>
+        <text x="${x + 30}" y="${y + 37}" font-size="16" font-weight="700" fill="#64748b">${(group.studentIds || []).length} طلاب</text>
         ${namesSvg}
       `;
     }).join('');
@@ -483,153 +582,121 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
         <rect width="100%" height="100%" fill="#f8fafc"/>
-        <text x="${svgWidth - 40}" y="54" font-size="34" font-weight="800" fill="#0f172a" text-anchor="end">راصد - ${escapeXml(activeCat.title)}</text>
-        <text x="${svgWidth - 40}" y="90" font-size="22" fill="#475569" text-anchor="end">الفصل: ${escapeXml(selectedClass)}</text>
+        <rect x="24" y="24" width="${svgWidth - 48}" height="86" rx="28" fill="#0f172a"/>
+        <text x="${svgWidth - 50}" y="60" font-size="30" font-weight="800" fill="#ffffff" text-anchor="end" direction="rtl" unicode-bidi="plaintext">راصد - ${escapeXml(activeCat.title)}</text>
+        <text x="${svgWidth - 50}" y="92" font-size="18" font-weight="700" fill="#cbd5e1" text-anchor="end" direction="rtl" unicode-bidi="plaintext">الفصل: ${escapeXml(selectedClass)} • عدد المجموعات: ${groups.length}</text>
         ${groupCards}
       </svg>
     `;
 
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const image = new Image();
 
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = svgWidth;
-      canvas.height = svgHeight;
+    return new Promise((resolve, reject) => {
+      const image = new Image();
 
-      const ctx = canvas.getContext('2d');
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = svgWidth;
+        canvas.height = svgHeight;
 
-      if (!ctx) {
-        URL.revokeObjectURL(url);
-        return;
-      }
+        const ctx = canvas.getContext('2d');
 
-      ctx.drawImage(image, 0, 0);
-
-      canvas.toBlob((pngBlob) => {
-        if (!pngBlob) {
+        if (!ctx) {
           URL.revokeObjectURL(url);
+          reject(new Error('تعذر إنشاء Canvas'));
           return;
         }
 
-        const pngUrl = URL.createObjectURL(pngBlob);
-        const link = document.createElement('a');
-        link.href = pngUrl;
-        link.download = `rased_groups_${selectedClass}_${activeCat.title}.png`;
-        link.click();
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, svgWidth, svgHeight);
+        ctx.drawImage(image, 0, 0);
 
-        URL.revokeObjectURL(pngUrl);
         URL.revokeObjectURL(url);
-      }, 'image/png');
-    };
+        resolve(canvas);
+      };
 
-    image.src = url;
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('تعذر إنشاء صورة المجموعات'));
+      };
+
+      image.src = url;
+    });
   };
 
-  const handleExportAsPdf = () => {
+  const canvasToBlob = (canvas: HTMLCanvasElement, type = 'image/png', quality = 0.95): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        blob => {
+          if (!blob) {
+            reject(new Error('تعذر تحويل الصورة إلى ملف'));
+            return;
+          }
+
+          resolve(blob);
+        },
+        type,
+        quality
+      );
+    });
+  };
+
+  const handleExportAsImage = async () => {
     if (!activeCat) return;
 
-    const htmlGroups = (activeCat.groups || []).map((group: any) => {
-      const names = (group.studentIds || [])
-        .map((id: string) => getStudentNameById(id))
-        .filter(Boolean);
+    try {
+      const canvas = await createGroupsCanvas();
+      const blob = await canvasToBlob(canvas, 'image/png');
 
-      return `
-        <div class="group-card">
-          <h2>${group.name}</h2>
-          <p class="count">${names.length} طلاب</p>
-          <ul>
-            ${names.map((name: string) => `<li>${name}</li>`).join('')}
-          </ul>
-        </div>
-      `;
-    }).join('');
+      const fileName = `${sanitizeFileName(`rased_groups_${selectedClass}_${activeCat.title}`)}.png`;
 
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-      alert('تعذر فتح نافذة الطباعة. تأكد من السماح بالنوافذ المنبثقة.');
-      return;
+      await saveOrShareFile(
+        blob,
+        fileName,
+        'تصدير مجموعات راصد كصورة'
+      );
+    } catch (error) {
+      console.error(error);
+      alert('تعذر تصدير المجموعات كصورة.');
     }
+  };
 
-    printWindow.document.write(`
-      <!doctype html>
-      <html lang="ar" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <title>راصد - المجموعات</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background: #f8fafc;
-              color: #0f172a;
-              padding: 24px;
-            }
-            .header {
-              margin-bottom: 24px;
-              border-bottom: 2px solid #e2e8f0;
-              padding-bottom: 16px;
-            }
-            h1 {
-              margin: 0;
-              font-size: 28px;
-            }
-            .subtitle {
-              margin-top: 8px;
-              color: #64748b;
-              font-weight: 700;
-            }
-            .grid {
-              display: grid;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-              gap: 16px;
-            }
-            .group-card {
-              background: #ffffff;
-              border: 1px solid #e2e8f0;
-              border-radius: 18px;
-              padding: 16px;
-              page-break-inside: avoid;
-            }
-            .group-card h2 {
-              margin: 0 0 6px;
-              color: #1d4ed8;
-              font-size: 20px;
-            }
-            .count {
-              margin: 0 0 12px;
-              color: #64748b;
-              font-weight: 700;
-            }
-            ul {
-              margin: 0;
-              padding-right: 20px;
-            }
-            li {
-              margin: 6px 0;
-              font-weight: 700;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>راصد - ${activeCat.title}</h1>
-            <div class="subtitle">الفصل: ${selectedClass}</div>
-          </div>
-          <div class="grid">
-            ${htmlGroups}
-          </div>
-          <script>
-            window.onload = function () {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `);
+  const handleExportAsPdf = async () => {
+    if (!activeCat) return;
 
-    printWindow.document.close();
+    try {
+      const canvas = await createGroupsCanvas();
+      const imageData = canvas.toDataURL('image/png', 0.95);
+
+      const pdf = new jsPDF({
+        orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(
+        imageData,
+        'PNG',
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      const pdfBlob = pdf.output('blob');
+
+      const fileName = `${sanitizeFileName(`rased_groups_${selectedClass}_${activeCat.title}`)}.pdf`;
+
+      await saveOrShareFile(
+        pdfBlob,
+        fileName,
+        'تصدير مجموعات راصد PDF'
+      );
+    } catch (error) {
+      console.error(error);
+      alert('تعذر تصدير المجموعات كملف PDF.');
+    }
   };
 
   if (classes.length === 0) {
@@ -679,6 +746,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         <section className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
           {summaryCards.map(card => {
             const Icon = card.icon;
+
             return (
               <div key={card.label} className="bg-bgCard border border-borderColor rounded-2xl p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
