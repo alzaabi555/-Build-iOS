@@ -523,124 +523,309 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     downloadBlobOnWeb(blob, fileName);
   };
 
-  const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
-    if (!activeCat) {
-      throw new Error('لا يوجد تقسيم نشط للتصدير');
+const drawRoundRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) => {
+  const r = Math.min(radius, width / 2, height / 2);
+
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
+
+const fillRoundRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fillStyle: string
+) => {
+  ctx.save();
+  ctx.fillStyle = fillStyle;
+  drawRoundRect(ctx, x, y, width, height, radius);
+  ctx.fill();
+  ctx.restore();
+};
+
+const strokeRoundRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  strokeStyle: string,
+  lineWidth = 2
+) => {
+  ctx.save();
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidth;
+  drawRoundRect(ctx, x, y, width, height, radius);
+  ctx.stroke();
+  ctx.restore();
+};
+
+const fitCanvasText = (
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  maxWidth: number
+) => {
+  const text = String(value || '').trim();
+
+  if (!text) return '';
+
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let result = text;
+
+  while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+
+  return `${result}…`;
+};
+
+const drawRtlText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options?: {
+    font?: string;
+    color?: string;
+    align?: CanvasTextAlign;
+    maxWidth?: number;
+    baseline?: CanvasTextBaseline;
+  }
+) => {
+  ctx.save();
+
+  (ctx as any).direction = 'rtl';
+  ctx.textAlign = options?.align || 'right';
+  ctx.textBaseline = options?.baseline || 'alphabetic';
+  ctx.font = options?.font || '700 18px Arial, sans-serif';
+  ctx.fillStyle = options?.color || '#0f172a';
+
+  const textToDraw = options?.maxWidth
+    ? fitCanvasText(ctx, text, options.maxWidth)
+    : String(text || '');
+
+  ctx.fillText(textToDraw, x, y);
+
+  ctx.restore();
+};
+
+const drawLtrText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options?: {
+    font?: string;
+    color?: string;
+    align?: CanvasTextAlign;
+    maxWidth?: number;
+    baseline?: CanvasTextBaseline;
+  }
+) => {
+  ctx.save();
+
+  (ctx as any).direction = 'ltr';
+  ctx.textAlign = options?.align || 'left';
+  ctx.textBaseline = options?.baseline || 'alphabetic';
+  ctx.font = options?.font || '700 16px Arial, sans-serif';
+  ctx.fillStyle = options?.color || '#64748b';
+
+  const textToDraw = options?.maxWidth
+    ? fitCanvasText(ctx, text, options.maxWidth)
+    : String(text || '');
+
+  ctx.fillText(textToDraw, x, y);
+
+  ctx.restore();
+};
+
+const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
+  if (!activeCat) {
+    throw new Error('لا يوجد تقسيم نشط للتصدير');
+  }
+
+  const groups = activeCat.groups || [];
+
+  const columns = groups.length <= 1 ? 1 : 2;
+  const cardWidth = 380;
+  const cardGap = 24;
+  const outerPadding = 40;
+
+  const rows = Math.max(1, Math.ceil(groups.length / columns));
+
+  const maxStudentsInGroup = Math.max(
+    4,
+    ...groups.map((group: any) => (group.studentIds || []).length)
+  );
+
+  const cardHeight = Math.max(230, 92 + maxStudentsInGroup * 28);
+  const canvasWidth = columns === 1
+    ? cardWidth + outerPadding * 2
+    : cardWidth * 2 + cardGap + outerPadding * 2;
+
+  const headerHeight = 94;
+  const topArea = 135;
+  const canvasHeight = topArea + rows * (cardHeight + cardGap) + 40;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('تعذر إنشاء Canvas');
+  }
+
+  // خلفية عامة
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  // رأس التقرير
+  fillRoundRect(
+    ctx,
+    24,
+    24,
+    canvasWidth - 48,
+    headerHeight,
+    28,
+    '#0f172a'
+  );
+
+  drawRtlText(
+    ctx,
+    `راصد - ${activeCat.title}`,
+    canvasWidth - 52,
+    60,
+    {
+      font: '800 30px Arial, sans-serif',
+      color: '#ffffff',
+      maxWidth: canvasWidth - 120
     }
+  );
 
-    const groups = activeCat.groups || [];
-    const cardWidth = 380;
-    const cardGap = 24;
-    const columns = groups.length <= 1 ? 1 : 2;
-    const rows = Math.max(1, Math.ceil(groups.length / columns));
+  drawRtlText(
+    ctx,
+    `الفصل: ${selectedClass} • عدد المجموعات: ${groups.length}`,
+    canvasWidth - 52,
+    92,
+    {
+      font: '700 18px Arial, sans-serif',
+      color: '#cbd5e1',
+      maxWidth: canvasWidth - 120
+    }
+  );
 
-    const maxStudentsInGroup = Math.max(
-      4,
-      ...groups.map((group: any) => (group.studentIds || []).length)
+  // البطاقات
+  groups.forEach((group: any, index: number) => {
+    const row = Math.floor(index / columns);
+
+    // ترتيب بصري RTL: المجموعة الأولى تظهر يمينًا
+    const col = columns === 1 ? 0 : columns - 1 - (index % columns);
+
+    const x = outerPadding + col * (cardWidth + cardGap);
+    const y = topArea + row * (cardHeight + cardGap);
+
+    const color = getGroupColor(group.color);
+    const names = (group.studentIds || [])
+      .map((id: string) => getStudentNameById(id))
+      .filter(Boolean);
+
+    // جسم البطاقة
+    fillRoundRect(ctx, x, y, cardWidth, cardHeight, 26, '#ffffff');
+    strokeRoundRect(ctx, x, y, cardWidth, cardHeight, 26, color.solid, 3);
+
+    // شريط العنوان
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    fillRoundRect(ctx, x, y, cardWidth, 58, 26, color.solid);
+    ctx.restore();
+
+    // عنوان المجموعة يمين البطاقة
+    drawRtlText(
+      ctx,
+      group.name || `المجموعة ${index + 1}`,
+      x + cardWidth - 24,
+      y + 37,
+      {
+        font: '800 23px Arial, sans-serif',
+        color: color.solid,
+        maxWidth: cardWidth - 130
+      }
     );
 
-    const cardHeight = Math.max(230, 92 + maxStudentsInGroup * 26);
-    const svgWidth = columns === 1 ? 470 : 860;
-    const svgHeight = 160 + rows * (cardHeight + cardGap) + 40;
+    // عدد الطلاب يسار البطاقة
+    drawLtrText(
+      ctx,
+      `${names.length} طلاب`,
+      x + 28,
+      y + 37,
+      {
+        font: '700 16px Arial, sans-serif',
+        color: '#64748b',
+        align: 'left',
+        maxWidth: 90
+      }
+    );
 
-    const groupCards = groups.map((group: any, index: number) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
+    // أسماء الطلاب داخل البطاقة
+    const startY = y + 86;
+    const lineHeight = 26;
+    const maxNameWidth = cardWidth - 55;
+    const maxVisibleNames = Math.floor((cardHeight - 105) / lineHeight);
 
-      const x = 40 + col * (cardWidth + cardGap);
-      const y = 135 + row * (cardHeight + cardGap);
-
-      const color = getGroupColor(group.color);
-      const names = (group.studentIds || [])
-        .map((id: string) => getStudentNameById(id))
-        .filter(Boolean);
-
-      const namesSvg = names.map((name: string, nameIndex: number) => {
-        return `
-          <text
-            x="${x + cardWidth - 24}"
-            y="${y + 86 + nameIndex * 26}"
-            font-size="17"
-            font-weight="700"
-            fill="#334155"
-            text-anchor="end"
-            direction="rtl"
-            unicode-bidi="plaintext"
-          >${escapeXml(name)}</text>
-        `;
-      }).join('');
-
-      return `
-        <rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="26" fill="#ffffff" stroke="${color.solid}" stroke-width="3"/>
-        <rect x="${x}" y="${y}" width="${cardWidth}" height="58" rx="26" fill="${color.solid}" opacity="0.16"/>
-        <text x="${x + cardWidth - 24}" y="${y + 37}" font-size="23" font-weight="800" fill="${color.solid}" text-anchor="end" direction="rtl" unicode-bidi="plaintext">${escapeXml(group.name)}</text>
-        <text x="${x + 30}" y="${y + 37}" font-size="16" font-weight="700" fill="#64748b">${(group.studentIds || []).length} طلاب</text>
-        ${namesSvg}
-      `;
-    }).join('');
-
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">
-        <rect width="100%" height="100%" fill="#f8fafc"/>
-        <rect x="24" y="24" width="${svgWidth - 48}" height="86" rx="28" fill="#0f172a"/>
-        <text x="${svgWidth - 50}" y="60" font-size="30" font-weight="800" fill="#ffffff" text-anchor="end" direction="rtl" unicode-bidi="plaintext">راصد - ${escapeXml(activeCat.title)}</text>
-        <text x="${svgWidth - 50}" y="92" font-size="18" font-weight="700" fill="#cbd5e1" text-anchor="end" direction="rtl" unicode-bidi="plaintext">الفصل: ${escapeXml(selectedClass)} • عدد المجموعات: ${groups.length}</text>
-        ${groupCards}
-      </svg>
-    `;
-
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-
-      image.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = svgWidth;
-        canvas.height = svgHeight;
-
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-          URL.revokeObjectURL(url);
-          reject(new Error('تعذر إنشاء Canvas'));
-          return;
+    names.slice(0, maxVisibleNames).forEach((name: string, nameIndex: number) => {
+      drawRtlText(
+        ctx,
+        name,
+        x + cardWidth - 24,
+        startY + nameIndex * lineHeight,
+        {
+          font: '700 17px Arial, sans-serif',
+          color: '#334155',
+          maxWidth: maxNameWidth
         }
-
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(0, 0, svgWidth, svgHeight);
-        ctx.drawImage(image, 0, 0);
-
-        URL.revokeObjectURL(url);
-        resolve(canvas);
-      };
-
-      image.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('تعذر إنشاء صورة المجموعات'));
-      };
-
-      image.src = url;
-    });
-  };
-
-  const canvasToBlob = (canvas: HTMLCanvasElement, type = 'image/png', quality = 0.95): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        blob => {
-          if (!blob) {
-            reject(new Error('تعذر تحويل الصورة إلى ملف'));
-            return;
-          }
-
-          resolve(blob);
-        },
-        type,
-        quality
       );
     });
-  };
+
+    if (names.length > maxVisibleNames) {
+      drawRtlText(
+        ctx,
+        `+ ${names.length - maxVisibleNames} طالب آخر`,
+        x + cardWidth - 24,
+        y + cardHeight - 22,
+        {
+          font: '700 14px Arial, sans-serif',
+          color: '#64748b',
+          maxWidth: maxNameWidth
+        }
+      );
+    }
+  });
+
+  return canvas;
+};
 
   const handleExportAsImage = async () => {
     if (!activeCat) return;
