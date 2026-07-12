@@ -6,10 +6,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
 
   return {
-    // مسار نسبي مناسب لبناء Android وiOS وWindows.
+    // مسار نسبي مناسب لنسخ Android وiOS وWindows.
     base: './',
 
-    // يضمن نسخ الملفات الموجودة داخل public إلى ناتج البناء.
+    // نسخ جميع الملفات الموجودة في public إلى مجلد البناء.
     publicDir: 'public',
 
     server: {
@@ -30,29 +30,27 @@ export default defineConfig(({ mode }) => {
       }
     },
 
-    /*
-     * pdfjs-dist الإصدار الرابع يستخدم Top-level await.
-     * لذلك يجب أن يكون هدف البناء ES2022 بدل ES2020.
-     */
+    // دعم Top-level await المستخدم في pdfjs-dist.
     esbuild: {
-      target: 'es*022'
+      target: 'es2022'
     },
 
     optimizeDeps: {
- *    esbuildOptions: {
-        targ*t: 'es2022'
+      esbuildOptions: {
+        target: 'es2022'
       }
     },
 
-    bu*ld: {
+    build: {
       target: 'es2022',
 
-   *  // عدم تحويل الصور والملفات إلى *ase64.
-      assetsInlineLimit: 0,*
+      // عدم تحويل الصور والملفات إلى بيانات Base64.
+      assetsInlineLimit: 0,
+
       rollupOptions: {
-        ou*put: {
-          assetFileNames: '*ssets/[name].[hash][extname]'
-    *   }
+        output: {
+          assetFileNames: 'assets/[name].[hash][extname]'
+        }
       }
     }
   };
