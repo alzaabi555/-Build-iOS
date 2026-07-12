@@ -23,9 +23,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-      - name: Prepare PDF.js Worker
+      -- name: Prepare Shared PDF.js Worker
         run: |
-          echo "Preparing PDF.js worker..."
+          echo "Preparing PDF.js worker for Web, Android and iOS..."
+
           mkdir -p public
 
           if [ -f "node_modules/pdfjs-dist/build/pdf.worker.mjs" ]; then
@@ -33,7 +34,7 @@ jobs:
           elif [ -f "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" ]; then
             cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.mjs
           else
-            echo "PDF.js worker file was not found"
+            echo "PDF.js worker was not found."
             find node_modules/pdfjs-dist -maxdepth 3 -type f -name "pdf.worker*" -print
             exit 1
           fi
