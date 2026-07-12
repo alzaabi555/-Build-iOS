@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowRight, Check, Loader2, Award, TrendingUp, Users, FileText } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Award, TrendingUp, Users, FileText, Upload, Trash2, ChevronDown, CreditCard } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import StudentReport from './StudentReport';
@@ -10,7 +10,10 @@ import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
 import PageLayout from '../components/PageLayout'; 
 
-import ParentCardsTemplate from './ParentCardsTemplate';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 // =================================================================================
 // ✅ الثوابت (تصنيفات الدرجات)
@@ -215,6 +218,8 @@ const Icon3DAnalytics = ({ className }: { className?: string }) => (
 interface ReportsProps {
   initialTab?: 'student_report' | 'grades_record' | 'certificates' | 'parent_cards' | 'summon' | 'analytics';
 }
+
+type AcademicReportScope = 'sem1' | 'sem2' | 'final';
 
 const getGradingSettings = () => {
   const saved = localStorage.getItem('rased_grading_settings');
@@ -760,34 +765,58 @@ const AnalyticsTemplate = ({
 };
 // ... القوالب القديمة باقية كما هي دون أي تغيير ...
 
-const GradesTemplate = ({ students, tools, teacherInfo, semester, gradeClass }: any) => {
+const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass }: any) => {
   const { t, dir } = useApp();
   const safeStudents = Array.isArray(students) ? students : [];
-
+  const safeTools = Array.isArray(tools) ? tools : [];
   const settings = getGradingSettings() || { totalScore: 100, finalExamWeight: 40, finalExamName: '' };
+
   const toGradeNumber = (value: any) => {
-  if (value === null || value === undefined || value === '') return 0;
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(String(value).replace(',', '.'));
+    return Number.isNaN(num) ? 0 : num;
+  };
 
-  const num = Number(String(value).replace(',', '.'));
-
-  return Number.isNaN(num) ? 0 : num;
-};
-
-const roundGrade = (value: any) => {
-  const num = toGradeNumber(value);
-  return Math.round(num);
-};
-``
+  const roundGrade = (value: any) => Math.round(toGradeNumber(value));
+  const selectedSemester = reportScope === 'sem2' ? '2' : '1';
   const savedFinalExamName = settings.finalExamName?.trim() || '';
   const isDefaultExamName = savedFinalExamName === 'الامتحان النهائي' || savedFinalExamName === 'Final Exam' || savedFinalExamName === '';
   const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : savedFinalExamName;
-
   const finalWeight = settings.finalExamWeight;
   const continuousWeight = settings.totalScore - finalWeight;
-  const continuousTools = tools.filter((t: any) => t.name.trim() !== finalExamName);
+  const continuousTools = safeTools.filter((tool: any) => tool.name.trim() !== finalExamName);
+  const scopeTitle = reportScope === 'sem1'
+    ? 'سجل درجات الفصل الدراسي الأول'
+    : reportScope === 'sem2'
+      ? 'سجل درجات الفصل الدراسي الثاني'
+      : 'سجل النتيجة النهائية للعام الدراسي';
+
+  const getSymbol = (score: number) => {
+    const percent = (score / settings.totalScore) * 100;
+    if (dir === 'rtl') {
+      if (percent >= 90) return 'أ';
+      if (percent >= 80) return 'ب';
+      if (percent >= 65) return 'ج';
+      if (percent >= 50) return 'د';
+      return 'هـ';
+    }
+    if (percent >= 90) return 'A';
+    if (percent >= 80) return 'B';
+    if (percent >= 65) return 'C';
+    if (percent >= 50) return 'D';
+    return 'F';
+  };
+
+  const getSemesterTotal = (student: any, semesterId: string) => {
+    const semesterGrades = (student.grades || []).filter((grade: any) => (grade.semester || '1') === semesterId);
+    return safeTools.reduce((sum: number, tool: any) => {
+      const grade = semesterGrades.find((record: any) => record.category?.trim() === tool.name?.trim());
+      return sum + (grade ? toGradeNumber(grade.score) : 0);
+    }, 0);
+  };
 
   const ROWS_PER_PAGE = 20;
-  const chunkedStudents = [];
+  const chunkedStudents: any[][] = [];
   for (let i = 0; i < safeStudents.length; i += ROWS_PER_PAGE) {
     chunkedStudents.push(safeStudents.slice(i, i + ROWS_PER_PAGE));
   }
@@ -804,7 +833,7 @@ const roundGrade = (value: any) => {
                   <p>{t('ministryOfEducation')}</p>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black underline text-black">{t('studentGradesRecord')}</h1>
+                  <h1 className="text-2xl font-black underline text-black">{scopeTitle}</h1>
                 </div>
                 <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-sm font-bold leading-relaxed`}>
                   <p>{t('subjectLabel')} {teacherInfo?.subject || '........'}</p>
@@ -818,114 +847,77 @@ const roundGrade = (value: any) => {
                 <tr className="bg-gray-200">
                   <th className="border border-black p-1 w-8 text-center text-black">{t('numLabel')}</th>
                   <th className={`border border-black p-1 text-${dir === 'rtl' ? 'right' : 'left'} w-48 text-black`}>{t('nameLabel')}</th>
-                  {continuousTools.map((t: any) => (
-                    <th key={t.id} className="border border-black p-1 bg-orange-50 text-center text-black">{t.name}</th>
-                  ))}
-                  <th className="border border-black p-1 bg-blue-100 text-center font-bold text-black">{t('totalLabel')} ({continuousWeight})</th>
-                  {finalWeight > 0 && (
-                    <th className="border border-black p-1 bg-pink-100 text-center font-bold text-black">{finalExamName} ({finalWeight})</th>
+                  {reportScope !== 'final' ? (
+                    <>
+                      {continuousTools.map((tool: any) => (
+                        <th key={tool.id} className="border border-black p-1 bg-orange-50 text-center text-black">{tool.name}</th>
+                      ))}
+                      <th className="border border-black p-1 bg-blue-100 text-center font-bold text-black">{t('totalLabel')} ({continuousWeight})</th>
+                      {finalWeight > 0 && <th className="border border-black p-1 bg-pink-100 text-center font-bold text-black">{finalExamName} ({finalWeight})</th>}
+                      <th className="border border-black p-1 bg-gray-300 text-center font-black text-black">{t('overallLabel')} ({settings.totalScore})</th>
+                      <th className="border border-black p-1 text-center text-black">{t('gradeSymbolLabel')}</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع الفصل الأول</th>
+                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع الفصل الثاني</th>
+                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-black">المعدل النهائي</th>
+                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-bold">التقدير العام</th>
+                    </>
                   )}
-                  <th className="border border-black p-1 bg-gray-300 text-center font-black text-black">{t('overallLabel')} ({settings.totalScore})</th>
-                  <th className="border border-black p-1 text-center text-black">{t('gradeSymbolLabel')}</th>
-                  <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع ف1</th>
-                  <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع ف2</th>
-                  <th className="border border-black p-1 bg-emerald-100 text-center text-black font-black">المعدل النهائي</th>
-                  <th className="border border-black p-1 bg-emerald-100 text-center text-black font-bold">التقدير العام</th>
                 </tr>
               </thead>
-
               <tbody>
-                {chunk.map((s: any, i: number) => {
-                  const globalIndex = (pageIndex * ROWS_PER_PAGE) + i + 1;
-                  const semGrades = (s.grades || []).filter((g: any) => (g.semester || '1') === semester);
-                  let contSum = 0;
-
-                  const contCells = continuousTools.map((tool: any) => {
-                    const g = semGrades.find((r: any) => r.category.trim() === tool.name.trim());
-                   const val = g ? toGradeNumber(g.score) : 0;
-                    contSum += val;
-                    return (
-                      <td key={tool.id} className="border border-black p-1 text-center font-medium text-black">
-                        {g ? g.score : '-'}
-                      </td>
-                    );
+                {chunk.map((student: any, index: number) => {
+                  const globalIndex = pageIndex * ROWS_PER_PAGE + index + 1;
+                  const semesterGrades = (student.grades || []).filter((grade: any) => (grade.semester || '1') === selectedSemester);
+                  let continuousSum = 0;
+                  const continuousCells = continuousTools.map((tool: any) => {
+                    const grade = semesterGrades.find((record: any) => record.category?.trim() === tool.name?.trim());
+                    const value = grade ? toGradeNumber(grade.score) : 0;
+                    continuousSum += value;
+                    return <td key={tool.id} className="border border-black p-1 text-center font-medium text-black">{grade ? grade.score : '-'}</td>;
                   });
-
-                  let finalVal = 0;
-                  let finalCell = null;
-
-                  if (finalWeight > 0) {
-                    const finalG = semGrades.find((r: any) => r.category.trim() === finalExamName);
-                    finalVal = finalG ? toGradeNumber(finalG.score) : 0;
-                    finalCell = (
-                      <td className="border border-black p-1 text-center font-bold bg-pink-50 text-black">
-                        {finalG ? finalG.score : '-'}
-                      </td>
-                    );
-                  }
-
-                  const total = contSum + finalVal;
-
-                  const getSymbol = (sc: number) => {
-                    const percent = (sc / settings.totalScore) * 100;
-                    if (dir === 'rtl') {
-                        if (percent >= 90) return 'أ';
-                        if (percent >= 80) return 'ب';
-                        if (percent >= 65) return 'ج';
-                        if (percent >= 50) return 'د';
-                        return 'هـ';
-                    } else {
-                        if (percent >= 90) return 'A';
-                        if (percent >= 80) return 'B';
-                        if (percent >= 65) return 'C';
-                        if (percent >= 50) return 'D';
-                        return 'F';
-                    }
-                  };
-
-                  const sem1Grades = (s.grades || []).filter((g: any) => (g.semester || '1') === '1');
-                  const sem2Grades = (s.grades || []).filter((g: any) => (g.semester || '1') === '2');
-                  let sem1Total = 0;
-                  let sem2Total = 0;
-                  
-                  tools.forEach((t: any) => {
-                      const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
-                      if (g1) sem1Total += toGradeNumber(g1.score);
-
-                      const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
-                      if (g2) sem2Total += toGradeNumber(g2.score);
-                  });
-
-                 const finalAverageRaw = (sem1Total + sem2Total) / 2;
-                  const finalAverage = roundGrade(finalAverageRaw);
-                   const finalYearSymbol = getSymbol(finalAverage);
+                  const finalGrade = semesterGrades.find((record: any) => record.category?.trim() === finalExamName);
+                  const finalValue = finalGrade ? toGradeNumber(finalGrade.score) : 0;
+                  const semesterTotal = continuousSum + finalValue;
+                  const sem1Total = getSemesterTotal(student, '1');
+                  const sem2Total = getSemesterTotal(student, '2');
+                  const hasSem1 = (student.grades || []).some((grade: any) => (grade.semester || '1') === '1');
+                  const hasSem2 = (student.grades || []).some((grade: any) => (grade.semester || '1') === '2');
+                  const finalAverage = hasSem1 && hasSem2 ? roundGrade((sem1Total + sem2Total) / 2) : null;
 
                   return (
-                    <tr key={s.id || i}>
+                    <tr key={student.id || index}>
                       <td className="border border-black p-1 text-center text-black">{globalIndex}</td>
-                      <td className={`border border-black p-1 font-bold whitespace-nowrap text-black text-${dir === 'rtl' ? 'right' : 'left'}`}>{s.name}</td>
-                      {contCells}
-                      <td className="border border-black p-1 text-center font-bold bg-blue-50 text-black">{contSum}</td>
-                      {finalWeight > 0 && finalCell}
-                      <td className="border border-black p-1 text-center font-black bg-gray-100 text-black">{total}</td>
-                      <td className="border border-black p-1 text-center font-bold text-black">{getSymbol(total)}</td>
-                      <td className="border border-black p-1 text-center bg-amber-50 text-black">{sem1Total > 0 ? sem1Total : '-'}</td>
-                      <td className="border border-black p-1 text-center bg-amber-50 text-black">{sem2Total > 0 ? sem2Total : '-'}</td>
-                      <td className="border border-black p-1 text-center font-black bg-emerald-50 text-black">{finalAverage > 0 ? finalAverage : '-'}</td>
-                      <td className="border border-black p-1 text-center font-bold bg-emerald-50 text-emerald-700">{finalAverage > 0 ? finalYearSymbol : '-'}</td>
+                      <td className={`border border-black p-1 font-bold whitespace-nowrap text-black text-${dir === 'rtl' ? 'right' : 'left'}`}>{student.name}</td>
+                      {reportScope !== 'final' ? (
+                        <>
+                          {continuousCells}
+                          <td className="border border-black p-1 text-center font-bold bg-blue-50 text-black">{continuousSum}</td>
+                          {finalWeight > 0 && <td className="border border-black p-1 text-center font-bold bg-pink-50 text-black">{finalGrade ? finalGrade.score : '-'}</td>}
+                          <td className="border border-black p-1 text-center font-black bg-gray-100 text-black">{semesterTotal}</td>
+                          <td className="border border-black p-1 text-center font-bold text-black">{getSymbol(semesterTotal)}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="border border-black p-1 text-center bg-amber-50 text-black">{hasSem1 ? sem1Total : '-'}</td>
+                          <td className="border border-black p-1 text-center bg-amber-50 text-black">{hasSem2 ? sem2Total : '-'}</td>
+                          <td className="border border-black p-1 text-center font-black bg-emerald-50 text-black">{finalAverage ?? '-'}</td>
+                          <td className="border border-black p-1 text-center font-bold bg-emerald-50 text-emerald-700">{finalAverage === null ? '-' : getSymbol(finalAverage)}</td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            
+
             <div className="text-center text-[10px] text-gray-500 mt-4">
-                {t('pageWord')} {pageIndex + 1} {t('ofWord')} {chunkedStudents.length}
+              {t('pageWord')} {pageIndex + 1} {t('ofWord')} {chunkedStudents.length}
             </div>
           </div>
-          {pageIndex !== chunkedStudents.length - 1 && (
-            <div className="html2pdf__page-break" style={{ pageBreakBefore: 'always', height: 0, margin: 0, padding: 0, overflow: 'hidden' }}></div>
-          )}
+          {pageIndex !== chunkedStudents.length - 1 && <div className="html2pdf__page-break" style={{ pageBreakBefore: 'always', height: 0, margin: 0, padding: 0, overflow: 'hidden' }} />}
         </React.Fragment>
       ))}
     </div>
@@ -933,18 +925,16 @@ const roundGrade = (value: any) => {
 };
 
 const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
-  const { t, dir, language } = useApp(); 
+  const { t, dir, language } = useApp();
   const safeStudents = Array.isArray(students) ? students : [];
-
   const safeSettings = settings || {};
   const titleRaw = safeSettings.title;
   const bodyRaw = safeSettings.bodyText;
-
   const isDefaultTitle = !titleRaw || titleRaw === 'شهادة تقدير' || titleRaw === 'شهادة تميز' || titleRaw === 'Certificate of Excellence';
   const isDefaultBody = !bodyRaw || bodyRaw.includes('وذلك لتميزه الدراسي') || bodyRaw.includes('تقديراً لجهوده العظيمة') || bodyRaw.includes('in appreciation of his great efforts');
-
   const title = isDefaultTitle ? t('certificateOfExcellence') : titleRaw;
   const rawBody = isDefaultBody ? t('knightAppreciationText') : bodyRaw;
+  const useCustomBackground = Boolean(safeSettings.useCustomCertificateBackground && safeSettings.customCertificateBackground);
 
   if (safeStudents.length === 0) return <div className="p-10 text-center text-black">{t('noStudentDataToDisplay')}</div>;
 
@@ -952,115 +942,113 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
   const subject = teacherInfo?.subject || t('subjectCol');
   const schoolName = teacherInfo?.school || t('schoolPrefix');
 
-  return (
-    <div className="w-full text-black bg-white" dir={dir}>
-      {safeStudents.map((s: any, index: number) => {
-        const studentClass = Array.isArray(s.classes) ? s.classes[0] : '-';
-        return (
-          <div 
-            key={s.id || index} 
-            className="relative mx-auto font-sans [-webkit-print-color-adjust:exact] print:shadow-none bg-white"
-            style={{
-              width: '297mm',
-              height: '210mm',
-              pageBreakAfter: index === safeStudents.length - 1 ? 'auto' : 'always', 
-              padding: '10mm',
-              boxSizing: 'border-box',
-              overflow: 'hidden',
-              direction: dir
-            }}
-          >
-            <div className="w-full h-full border-[12px] border-double border-amber-400 p-2 relative z-10">
-              <div className="w-full h-full border-4 border-[#1e3a8a] bg-[#faf9f6] p-8 relative flex flex-col justify-between overflow-hidden">
-                
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                  <Award className="w-[600px] h-[600px] text-amber-900" />
-                </div>
-
-                <div className="w-full grid grid-cols-3 items-start relative z-10">
-                  <div className={`text-${dir === 'rtl' ? 'right' : 'left'} space-y-1`}>
-                    <h3 className="font-black text-[18px] text-[#1e3a8a]">{t('sultanateOfOman')}</h3>
-                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">{t('ministryOfEducation')}</h3>
-                    <h3 className="font-bold text-[16px] text-[#1e3a8a]">{teacherInfo?.governorate || t('eduDirectoratePrefix')}</h3>
-                    <h3 className="font-bold text-[16px] text-amber-600">{schoolName}</h3>
-                  </div>
-
-                  <div className="flex justify-center">
-                    {teacherInfo?.ministryLogo ? (
-                      <img src={teacherInfo.ministryLogo} alt="Logo" className="w-24 h-24 object-contain" />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#1e3a8a] flex items-center justify-center text-xs font-bold text-[#1e3a8a] bg-white">Logo</div>
-                    )}
-                  </div>
-
-                  <div className={`text-${dir === 'rtl' ? 'left' : 'right'} space-y-3 ${dir === 'rtl' ? 'border-r-2 pr-4' : 'border-l-2 pl-4'} border-amber-400 justify-self-end w-full`}>
-                    <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
-                      <span className="font-bold text-[16px] text-gray-500">{t('dateLabel')}</span>
-                      <span className="font-black text-[18px] text-[#1e3a8a]" dir="ltr">{date}</span>
-                    </div>
-                    <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
-                      <span className="font-bold text-[16px] text-gray-500">{t('subjectLabel').replace(':', '')}</span>
-                      <span className="font-black text-[18px] text-[#1e3a8a]">{subject}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center justify-center text-center w-full z-10 -mt-2">
-                  <h1 className="text-6xl font-black text-[#1e3a8a] mb-5 tracking-normal">
-                      {title}
-                  </h1>
-                  
-                  <div className="bg-amber-400 text-[#1e3a8a] px-10 py-2 rounded-full font-black text-xl mb-8 shadow-md">
-                    {t('studentMeritMedal')}
-                  </div>
-
-                  <p className="text-xl font-bold text-gray-700 mb-4">
-                    {t('thanksAndAppreciationToStudent')}
-                  </p>
-
-                  <div className="relative w-2/3 py-4 border-y-2 border-amber-300 bg-white/50 backdrop-blur-sm shadow-sm mb-5 rounded-2xl">
-                    <h2 className="text-5xl font-black text-[#1e3a8a] leading-tight">
-                      {s.name}
-                    </h2>
-                  </div>
-
-                  <p className="text-xl font-bold text-gray-700 leading-relaxed max-w-3xl">
-                    {t('enrolledInClass')} <span className="text-amber-600 font-black text-2xl mx-2">({studentClass})</span>
-                    {rawBody}
-                  </p>
-                </div>
-
-                <div className="w-full grid grid-cols-3 items-end relative z-10 pt-2 mt-auto">
-                  <div className={`text-center justify-self-${dir === 'rtl' ? 'start' : 'end'} w-64`}>
-                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('subjectTeacherLabel')}</h4>
-                    <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
-                    <h3 className="font-black text-lg text-gray-700">{teacherInfo?.name || '..........'}</h3>
-                  </div>
-
-                  <div className="flex justify-center translate-y-2">
-                    {teacherInfo?.stamp ? (
-                      <img src={teacherInfo.stamp} alt="Stamp" className="w-32 h-32 object-contain opacity-90 mix-blend-multiply" />
-                    ) : (
-                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-red-500 flex items-center justify-center text-xs font-bold text-red-500 opacity-50 rotate-[-15deg] bg-white">Stamp</div>
-                    )}
-                  </div>
-
-                  <div className={`text-center justify-self-${dir === 'rtl' ? 'end' : 'start'} w-64`}>
-                    <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('schoolPrincipalLabel')}</h4>
-                    <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
-                    <h3 className="font-black text-xl text-gray-400 italic">..........................</h3>
-                  </div>
-                </div>
-
-                <div className="absolute top-2 right-2 w-16 h-16 border-t-4 border-r-4 border-[#1e3a8a]"></div>
-                <div className="absolute top-2 left-2 w-16 h-16 border-t-4 border-l-4 border-[#1e3a8a]"></div>
-                <div className="absolute bottom-2 right-2 w-16 h-16 border-b-4 border-r-4 border-[#1e3a8a]"></div>
-                <div className="absolute bottom-2 left-2 w-16 h-16 border-b-4 border-l-4 border-[#1e3a8a]"></div>
-              </div>
+  const CertificateContent = ({ student, custom = false }: any) => {
+    const studentClass = Array.isArray(student.classes) ? student.classes[0] : '-';
+    if (custom) {
+      return (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-[28mm] pt-[28mm] pb-[22mm]">
+          <div className="mt-[18mm]">
+            <h1 className="text-6xl font-black text-[#1e3a8a] mb-6">{title}</h1>
+            <p className="text-xl font-bold text-gray-700 mb-4">{t('thanksAndAppreciationToStudent')}</p>
+            <div className="mx-auto w-3/4 py-4 px-8 bg-white/70 rounded-2xl border-y-2 border-amber-400 mb-5">
+              <h2 className="text-5xl font-black text-[#1e3a8a]">{student.name}</h2>
+            </div>
+            <p className="text-xl font-bold text-gray-800 leading-relaxed max-w-4xl">
+              {t('enrolledInClass')} <span className="text-amber-600 font-black text-2xl mx-2">({studentClass})</span>{rawBody}
+            </p>
+          </div>
+          <div className="absolute bottom-[18mm] left-[24mm] right-[24mm] grid grid-cols-3 items-end">
+            <div className="text-center">
+              <p className="font-bold text-base text-[#1e3a8a]">{t('subjectTeacherLabel')}</p>
+              <p className="font-black text-lg text-gray-800 mt-5">{teacherInfo?.name || '..........'}</p>
+            </div>
+            <div className="flex justify-center">{teacherInfo?.stamp && <img src={teacherInfo.stamp} alt="Stamp" className="w-28 h-28 object-contain opacity-90" />}</div>
+            <div className="text-center">
+              <p className="font-bold text-base text-[#1e3a8a]">{t('schoolPrincipalLabel')}</p>
+              <p className="font-black text-lg text-gray-500 mt-5">..........................</p>
             </div>
           </div>
-        );
-      })}
+          <div className="absolute top-[12mm] left-[18mm] text-sm font-bold text-gray-700">{date}</div>
+          <div className="absolute top-[12mm] right-[18mm] text-sm font-bold text-gray-700">{subject} • {schoolName}</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full h-full border-[12px] border-double border-amber-400 p-2 relative z-10">
+        <div className="w-full h-full border-4 border-[#1e3a8a] bg-[#faf9f6] p-8 relative flex flex-col justify-between overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none"><Award className="w-[600px] h-[600px] text-amber-900" /></div>
+          <div className="w-full grid grid-cols-3 items-start relative z-10">
+            <div className={`text-${dir === 'rtl' ? 'right' : 'left'} space-y-1`}>
+              <h3 className="font-black text-[18px] text-[#1e3a8a]">{t('sultanateOfOman')}</h3>
+              <h3 className="font-bold text-[16px] text-[#1e3a8a]">{t('ministryOfEducation')}</h3>
+              <h3 className="font-bold text-[16px] text-[#1e3a8a]">{teacherInfo?.governorate || t('eduDirectoratePrefix')}</h3>
+              <h3 className="font-bold text-[16px] text-amber-600">{schoolName}</h3>
+            </div>
+            <div className="flex justify-center">
+              {teacherInfo?.ministryLogo ? <img src={teacherInfo.ministryLogo} alt="Logo" className="w-24 h-24 object-contain" /> : <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#1e3a8a] flex items-center justify-center text-xs font-bold text-[#1e3a8a] bg-white">Logo</div>}
+            </div>
+            <div className={`text-${dir === 'rtl' ? 'left' : 'right'} space-y-3 ${dir === 'rtl' ? 'border-r-2 pr-4' : 'border-l-2 pl-4'} border-amber-400 justify-self-end w-full`}>
+              <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}><span className="font-bold text-[16px] text-gray-500">{t('dateLabel')}</span><span className="font-black text-[18px] text-[#1e3a8a]" dir="ltr">{date}</span></div>
+              <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}><span className="font-bold text-[16px] text-gray-500">{t('subjectLabel').replace(':', '')}</span><span className="font-black text-[18px] text-[#1e3a8a]">{subject}</span></div>
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center text-center w-full z-10 -mt-2">
+            <h1 className="text-6xl font-black text-[#1e3a8a] mb-5 tracking-normal">{title}</h1>
+            <div className="bg-amber-400 text-[#1e3a8a] px-10 py-2 rounded-full font-black text-xl mb-8 shadow-md">{t('studentMeritMedal')}</div>
+            <p className="text-xl font-bold text-gray-700 mb-4">{t('thanksAndAppreciationToStudent')}</p>
+            <div className="relative w-2/3 py-4 border-y-2 border-amber-300 bg-white/50 shadow-sm mb-5 rounded-2xl"><h2 className="text-5xl font-black text-[#1e3a8a] leading-tight">{student.name}</h2></div>
+            <p className="text-xl font-bold text-gray-700 leading-relaxed max-w-3xl">{t('enrolledInClass')} <span className="text-amber-600 font-black text-2xl mx-2">({studentClass})</span>{rawBody}</p>
+          </div>
+          <div className="w-full grid grid-cols-3 items-end relative z-10 pt-2 mt-auto">
+            <div className={`text-center justify-self-${dir === 'rtl' ? 'start' : 'end'} w-64`}><h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('subjectTeacherLabel')}</h4><div className="border-b-2 border-gray-400 mx-8 mb-2" /><h3 className="font-black text-lg text-gray-700">{teacherInfo?.name || '..........'}</h3></div>
+            <div className="flex justify-center translate-y-2">{teacherInfo?.stamp ? <img src={teacherInfo.stamp} alt="Stamp" className="w-32 h-32 object-contain opacity-90 mix-blend-multiply" /> : <div className="w-32 h-32 rounded-full border-2 border-dashed border-red-500 flex items-center justify-center text-xs font-bold text-red-500 opacity-50 rotate-[-15deg] bg-white">Stamp</div>}</div>
+            <div className={`text-center justify-self-${dir === 'rtl' ? 'end' : 'start'} w-64`}><h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('schoolPrincipalLabel')}</h4><div className="border-b-2 border-gray-400 mx-8 mb-2" /><h3 className="font-black text-xl text-gray-400 italic">..........................</h3></div>
+          </div>
+          <div className="absolute top-2 right-2 w-16 h-16 border-t-4 border-r-4 border-[#1e3a8a]" /><div className="absolute top-2 left-2 w-16 h-16 border-t-4 border-l-4 border-[#1e3a8a]" /><div className="absolute bottom-2 right-2 w-16 h-16 border-b-4 border-r-4 border-[#1e3a8a]" /><div className="absolute bottom-2 left-2 w-16 h-16 border-b-4 border-l-4 border-[#1e3a8a]" />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full text-black bg-white" dir={dir}>
+      {safeStudents.map((student: any, index: number) => (
+        <div key={student.id || index} className="relative mx-auto font-sans [-webkit-print-color-adjust:exact] print:shadow-none bg-white" style={{ width: '297mm', height: '210mm', pageBreakAfter: index === safeStudents.length - 1 ? 'auto' : 'always', padding: useCustomBackground ? 0 : '10mm', boxSizing: 'border-box', overflow: 'hidden', direction: dir }}>
+          {useCustomBackground && <img src={safeSettings.customCertificateBackground} alt="Certificate Background" className="absolute inset-0 w-full h-full object-fill" />}
+          <CertificateContent student={student} custom={useCustomBackground} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selectedClass }: any) => {
+  const { dir } = useApp();
+  const safeStudents = (Array.isArray(students) ? students : []).filter((student: any) => selectedClass === 'all' || (Array.isArray(student.classes) && student.classes.includes(selectedClass)));
+  const getCode = (student: any) => student?.rasedId || student?.parentCode || student?.secretCode || student?.civilID || student?.civilId || '-';
+  return (
+    <div className="w-full bg-white text-black p-8" dir={dir}>
+      <div className="grid grid-cols-2 gap-5">
+        {safeStudents.map((student: any, index: number) => (
+          <div key={student.id || index} className="avoid-break rounded-3xl border-2 border-amber-400 overflow-hidden bg-white shadow-sm min-h-[92mm] flex flex-col">
+            <div className="bg-gradient-to-l from-amber-500 to-amber-400 text-white px-5 py-4 flex items-center justify-between">
+              <div><h2 className="text-xl font-black">بطاقة ولي الأمر</h2><p className="text-xs font-bold opacity-90">راصد - متابعة الطالب</p></div>
+              <CreditCard className="w-9 h-9" />
+            </div>
+            <div className="p-6 flex-1 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div><p className="text-xs font-bold text-gray-500">اسم الطالب</p><p className="text-xl font-black text-slate-900 mt-1">{student.name}</p></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3"><p className="text-xs font-bold text-gray-500">الفصل</p><p className="font-black text-slate-900 mt-1">{Array.isArray(student.classes) ? student.classes[0] : '-'}</p></div>
+                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3"><p className="text-xs font-bold text-amber-700">الكود السري</p><p className="font-black text-xl text-amber-900 mt-1 tracking-wider" dir="ltr">{getCode(student)}</p></div>
+                </div>
+              </div>
+              <div className="border-t border-slate-200 pt-4 mt-5 text-xs font-bold text-slate-600 flex justify-between gap-3"><span>{schoolName || 'المدرسة'}</span><span>{teacherName || 'المعلم'}</span></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -1153,7 +1141,7 @@ const SummonTemplate = ({ student, teacherInfo, data }: any) => {
   );
 };
 
-const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools }: any) => {
+const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTools }: any) => {
   const { t, dir, language } = useApp(); 
   const safeStudents = Array.isArray(students) ? students : [];
 
@@ -1161,6 +1149,12 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
   const finalExamNameRaw = settings?.finalExamName?.trim() || '';
   const isDefaultExamName = finalExamNameRaw === 'الامتحان النهائي' || finalExamNameRaw === 'Final Exam' || finalExamNameRaw === '';
   const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : finalExamNameRaw;
+  const selectedSemester = reportScope === 'sem2' ? '2' : '1';
+  const scopeTitle = reportScope === 'sem1'
+    ? 'تقرير الفصل الدراسي الأول'
+    : reportScope === 'sem2'
+      ? 'تقرير الفصل الدراسي الثاني'
+      : 'تقرير النتيجة النهائية للعام الدراسي';
 
   if (safeStudents.length === 0) return <div className="text-black text-center p-10">{t('noStudentDataToDisplay')}</div>;
 
@@ -1209,8 +1203,8 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
     <div className="w-full text-black bg-white" dir={dir}>
       {safeStudents.map((student: any) => {
         const studentClass = Array.isArray(student.classes) ? student.classes[0] : '-';
-        const behaviors = (student.behaviors || []).filter((b: any) => !b.semester || b.semester === (semester || '1'));
-        const grades = (student.grades || []).filter((g: any) => !g.semester || g.semester === (semester || '1'));
+        const behaviors = (student.behaviors || []).filter((b: any) => reportScope === 'final' || !b.semester || b.semester === selectedSemester);
+        const grades = (student.grades || []).filter((g: any) => !g.semester || g.semester === selectedSemester);
 
         const posBehaviors = behaviors.filter((b: any) => b.type === 'positive');
         const negBehaviors = behaviors.filter((b: any) => b.type === 'negative');
@@ -1228,8 +1222,9 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
         }
 
         const totalScore = continuousSum + finalScore;
-        const absenceCount = (student.attendance || []).filter((a: any) => a.status === 'absent').length;
-        const truantCount = (student.attendance || []).filter((a: any) => a.status === 'truant').length;
+        const scopedAttendance = (student.attendance || []).filter((a: any) => reportScope === 'final' || !a.semester || a.semester === selectedSemester);
+        const absenceCount = scopedAttendance.filter((a: any) => a.status === 'absent').length;
+        const truantCount = scopedAttendance.filter((a: any) => a.status === 'truant').length;
         const totalPositive = posBehaviors.reduce((acc: number, b: any) => acc + b.points, 0);
         const totalNegative = negBehaviors.reduce((acc: number, b: any) => acc + Math.abs(b.points), 0);
 
@@ -1245,7 +1240,9 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
             const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
             if (g2) sem2Total += (Number(g2.score) || 0);
         });
-        const finalAverage = (sem1Total + sem2Total) / 2;
+        const hasSem1Grades = sem1Grades.length > 0;
+        const hasSem2Grades = sem2Grades.length > 0;
+        const finalAverage = hasSem1Grades && hasSem2Grades ? Math.round((sem1Total + sem2Total) / 2) : null;
 
         return (
           <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
@@ -1264,7 +1261,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
 
               <div className={`text-${dir === 'rtl' ? 'left' : 'right'} w-1/3 text-sm font-bold`}>
                 <p>{t('yearLabel')} {teacherInfo?.academicYear}</p>
-                <p>{t('semesterLabel')} {semester === '1' ? t('firstSemesterWord') : t('secondSemesterWord')}</p>
+                <p>{scopeTitle}</p>
               </div>
             </div>
 
@@ -1279,6 +1276,8 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
               </div>
             </div>
 
+            {reportScope !== 'final' ? (
+              <>
             <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block text-black">{t('academicAchievement')}</h3>
 
             <table className="w-full border-collapse border border-black text-sm mb-4 text-black">
@@ -1317,6 +1316,15 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
               </tbody>
             </table>
 
+              </>
+            ) : (
+              <div className="mb-5 rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-5 text-center">
+                <h3 className="text-xl font-black text-emerald-900">النتيجة النهائية للعام الدراسي</h3>
+                <p className="mt-2 text-sm font-bold text-emerald-800">تم احتساب المعدل من مجموع الفصل الأول ومجموع الفصل الثاني فقط.</p>
+              </div>
+            )}
+
+            {reportScope === 'final' && (
             <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
                 <div className="bg-amber-200 p-4 border-l-2 border-black flex items-center justify-center font-black text-black">
                     النتيجة النهائية<br/>للعام الدراسي
@@ -1324,22 +1332,23 @@ const ClassReportsTemplate = ({ students, teacherInfo, semester, assessmentTools
                 <div className="flex-1 flex justify-around items-center p-4">
                     <div className="text-center">
                         <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
-                        <p className="font-black text-lg">{sem1Total}</p>
+                        <p className="font-black text-lg">{hasSem1Grades ? sem1Total : '-'}</p>
                     </div>
                     <div className="text-center">
                         <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
-                        <p className="font-black text-lg">{sem2Total}</p>
+                        <p className="font-black text-lg">{hasSem2Grades ? sem2Total : '-'}</p>
                     </div>
                     <div className="text-center">
                         <p className="text-xs font-bold mb-1">المعدل النهائي</p>
-                        <p className="font-black text-xl text-blue-800">{finalAverage}</p>
+                        <p className="font-black text-xl text-blue-800">{finalAverage ?? 'غير مكتمل'}</p>
                     </div>
                     <div className="text-center">
                         <p className="text-xs font-bold mb-1">التقدير العام</p>
-                        <p className="font-black text-2xl text-emerald-700">{getSymbol(finalAverage)}</p>
+                        <p className="font-black text-2xl text-emerald-700">{finalAverage === null ? '-' : getSymbol(finalAverage)}</p>
                     </div>
                 </div>
             </div>
+            )}
 
             <div className="flex gap-6 mb-8">
               <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
@@ -1424,16 +1433,18 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const [stClass, setStClass] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const [studentReportScope, setStudentReportScope] = useState<AcademicReportScope>(currentSemester === '2' ? 'sem2' : 'sem1');
 
   const [gradesGrade, setGradesGrade] = useState<string>('all');
   const [gradesClass, setGradesClass] = useState<string>('all');
+  const [gradesReportScope, setGradesReportScope] = useState<AcademicReportScope>(currentSemester === '2' ? 'sem2' : 'sem1');
 
   const [certGrade, setCertGrade] = useState<string>('all');
   const [certClass, setCertClass] = useState<string>('');
   const [selectedCertStudents, setSelectedCertStudents] = useState<string[]>([]);
   const [showCertSettingsModal, setShowCertSettingsModal] = useState(false);
 
-  const [tempCertSettings, setTempCertSettings] = useState(certificateSettings || { title: '', bodyText: '' });
+  const [tempCertSettings, setTempCertSettings] = useState<any>(certificateSettings || { title: '', bodyText: '', useCustomCertificateBackground: false, customCertificateBackground: '', customCertificateBackgroundType: '' });
 
   const [summonGrade, setSummonGrade] = useState<string>('all');
   const [summonClass, setSummonClass] = useState<string>('');
@@ -1457,6 +1468,7 @@ const Reports: React.FC<ReportsProps> = ({ initialTab }) => {
   const [analyticsClass, setAnalyticsClass] = useState<string>('all');
   const [analyticsDetailTab, setAnalyticsDetailTab] = useState<'sem1' | 'sem2' | 'final'>('final');
 const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' | 'final'>('sem2');
+  const [isProcessingCertificateBackground, setIsProcessingCertificateBackground] = useState(false);
   const [previewData, setPreviewData] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; landscape?: boolean }>({
     isOpen: false, title: '', content: null
   });
@@ -1540,8 +1552,67 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
       isOpen: true,
       title: t('gradesRecordTab'),
       landscape: true,
-      content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} semester={currentSemester} gradeClass={gradesClass === 'all' ? t('allClassesInGrade').split(' ')[0] : gradesClass} />
+      content: <GradesTemplate students={filteredStudentsForGrades} tools={assessmentTools} teacherInfo={teacherInfo} reportScope={gradesReportScope} gradeClass={gradesClass === 'all' ? t('allClassesInGrade').split(' ')[0] : gradesClass} />
     });
+  };
+
+  const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleCertificateBackgroundUpload = async (file?: File) => {
+    if (!file) return;
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isImage && !isPdf) return alert('اختر صورة PNG أو JPG أو WEBP، أو ملف PDF صالح.');
+    if (file.size > 12 * 1024 * 1024) return alert('حجم الملف كبير. الحد الأقصى 12 ميجابايت.');
+
+    setIsProcessingCertificateBackground(true);
+    try {
+      let backgroundDataUrl = '';
+      let backgroundType = 'image';
+      if (isPdf) {
+        const pdfData = new Uint8Array(await file.arrayBuffer());
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('تعذر تجهيز صفحة PDF');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: context, viewport }).promise;
+        backgroundDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        backgroundType = 'pdf';
+      } else {
+        backgroundDataUrl = await readFileAsDataUrl(file);
+      }
+      setTempCertSettings((previous: any) => ({
+        ...previous,
+        useCustomCertificateBackground: true,
+        customCertificateBackground: backgroundDataUrl,
+        customCertificateBackgroundType: backgroundType,
+        customCertificateBackgroundName: file.name
+      }));
+    } catch (error) {
+      console.error('Certificate background error:', error);
+      alert('تعذر قراءة خلفية الشهادة. تأكد من سلامة الملف.');
+    } finally {
+      setIsProcessingCertificateBackground(false);
+    }
+  };
+
+  const removeCertificateBackground = () => {
+    setTempCertSettings((previous: any) => ({
+      ...previous,
+      useCustomCertificateBackground: false,
+      customCertificateBackground: '',
+      customCertificateBackgroundType: '',
+      customCertificateBackgroundName: ''
+    }));
   };
 
   const openCertificatesPreview = () => {
@@ -1572,7 +1643,18 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
       isOpen: true,
       title: `${t('studentLevelReport')} - ${stClass}`,
       landscape: false,
-      content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} semester={currentSemester} assessmentTools={assessmentTools} />
+      content: <ClassReportsTemplate students={filteredStudentsForStudentTab} teacherInfo={teacherInfo} reportScope={studentReportScope} assessmentTools={assessmentTools} />
+    });
+  };
+
+  const openIndividualReportPreview = () => {
+    const student = safeStudents.find(item => item?.id === selectedStudentId);
+    if (!student) return alert(t('selectStudentPlaceholder'));
+    setPreviewData({
+      isOpen: true,
+      title: `${t('studentLevelReport')} - ${student.name}`,
+      landscape: false,
+      content: <ClassReportsTemplate students={[student]} teacherInfo={teacherInfo} reportScope={studentReportScope} assessmentTools={assessmentTools} />
     });
   };
 
@@ -1581,7 +1663,7 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
       isOpen: true,
       title: t('parentLoginCards'),
       landscape: false, 
-      content: <ParentCardsTemplate students={students} schoolName={teacherInfo?.school} teacherName={teacherInfo?.name} selectedClass={cardsClass} />
+      content: <ParentCardsWithoutQrTemplate students={students} schoolName={teacherInfo?.school} teacherName={teacherInfo?.name} selectedClass={cardsClass} />
     });
   };
 
@@ -1778,20 +1860,32 @@ if (hasSem1Grades && hasSem2Grades) {
         icon={<Icon3DReportCenter className="w-full h-full p-1" />}
         
         leftActions={
-          <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2 px-1 w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            {tabs.map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${isActive ? 'bg-primary text-white shadow-md backdrop-blur-md' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
-                >
-                  <tab.icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'text-textSecondary opacity-80'}`} />
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div className="w-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            <div className="md:hidden relative">
+              <select
+                value={activeTab}
+                onChange={(event) => setActiveTab(event.target.value as any)}
+                className="w-full appearance-none rounded-2xl border border-borderColor bg-bgCard px-4 py-3 pl-11 text-sm font-black text-textPrimary outline-none focus:border-primary shadow-sm"
+              >
+                {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
+            </div>
+            <div className="hidden md:flex gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2 px-1 w-full">
+              {tabs.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${isActive ? 'bg-primary text-white shadow-md backdrop-blur-md' : 'bg-bgSoft text-textSecondary hover:text-textPrimary hover:bg-bgCard'}`}
+                  >
+                    <tab.icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'text-textSecondary opacity-80'}`} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         }
       >
@@ -1829,6 +1923,14 @@ if (hasSem1Grades && hasSem2Grades) {
                     {filteredStudentsForStudentTab.map(s => <option key={s.id} value={s.id} className="bg-bgCard text-textPrimary">{s.name}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-black text-textSecondary mb-2">نوع النتيجة في التقرير</label>
+                  <select value={studentReportScope} onChange={(e) => setStudentReportScope(e.target.value as AcademicReportScope)} className="w-full p-4 border rounded-2xl font-black outline-none text-sm bg-bgCard border-borderColor text-textPrimary focus:border-primary">
+                    <option value="sem1">الفصل الدراسي الأول فقط</option>
+                    <option value="sem2">الفصل الدراسي الثاني فقط</option>
+                    <option value="final">النتيجة النهائية للعام الدراسي</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-3 justify-end pt-4 mt-4 flex-wrap">
@@ -1841,12 +1943,7 @@ if (hasSem1Grades && hasSem2Grades) {
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (selectedStudentId) {
-                      const s = safeStudents.find(st => st && st.id === selectedStudentId);
-                      if (s) setViewingStudent(s);
-                    }
-                  }}
+                  onClick={openIndividualReportPreview}
                   disabled={!selectedStudentId}
                   className="disabled:opacity-50 px-6 py-3.5 rounded-xl font-black text-xs shadow-lg flex items-center gap-2 active:scale-95 transition-all flex-1 justify-center bg-primary text-white hover:bg-primary/80"
                 >
@@ -1880,6 +1977,14 @@ if (hasSem1Grades && hasSem2Grades) {
                   <option value="all" className="bg-bgCard text-textPrimary">{t('allClassesInGrade').split(' ')[0]}</option>
                   {getClassesForGrade(gradesGrade).map(c => <option key={c} value={c} className="bg-bgCard text-textPrimary">{c}</option>)}
                 </select>
+                <div>
+                  <label className="block text-xs font-black text-textSecondary mb-2">نوع سجل الدرجات</label>
+                  <select value={gradesReportScope} onChange={(e) => setGradesReportScope(e.target.value as AcademicReportScope)} className="w-full p-4 border rounded-2xl font-black outline-none text-sm bg-bgCard border-borderColor text-textPrimary focus:border-warning">
+                    <option value="sem1">درجات الفصل الدراسي الأول فقط</option>
+                    <option value="sem2">درجات الفصل الدراسي الثاني فقط</option>
+                    <option value="final">النتيجة النهائية للعام الدراسي</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex justify-end pt-4">
@@ -2226,6 +2331,32 @@ if (hasSem1Grades && hasSem2Grades) {
             <div className="space-y-3">
               <input type="text" value={tempCertSettings.title} onChange={(e) => setTempCertSettings({ ...tempCertSettings, title: e.target.value })} className="w-full p-3 border rounded-xl font-bold outline-none transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateTitlePlaceholder')} />
               <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className="w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateBodyPlaceholder')} />
+
+              <div className="rounded-2xl border border-borderColor bg-bgSoft p-4 text-right">
+                <h4 className="font-black text-sm text-textPrimary mb-1">خلفية شهادة مخصصة</h4>
+                <p className="text-[11px] font-bold text-textSecondary mb-4">ارفع صورة شهادة فارغة أو ملف PDF، وسيكتب راصد محتوى الشهادة فوق الصفحة الأولى.</p>
+                <label className="w-full cursor-pointer rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-4 flex items-center justify-center gap-2 text-primary font-black text-sm hover:bg-primary/10">
+                  {isProcessingCertificateBackground ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                  {isProcessingCertificateBackground ? 'جاري تجهيز الخلفية...' : 'اختيار صورة أو PDF'}
+                  <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" disabled={isProcessingCertificateBackground} onChange={(event) => { const file = event.target.files?.[0]; handleCertificateBackgroundUpload(file); event.currentTarget.value = ''; }} />
+                </label>
+                {tempCertSettings.customCertificateBackground && (
+                  <div className="mt-4 space-y-3">
+                    <div className="relative overflow-hidden rounded-xl border border-borderColor bg-white aspect-[297/210]">
+                      <img src={tempCertSettings.customCertificateBackground} alt="معاينة خلفية الشهادة" className="w-full h-full object-fill" />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-xs font-bold text-textSecondary">
+                      <span className="truncate">{tempCertSettings.customCertificateBackgroundName || 'خلفية الشهادة المخصصة'}</span>
+                      <button type="button" onClick={removeCertificateBackground} className="shrink-0 px-3 py-2 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center gap-1"><Trash2 className="w-4 h-4" /> حذف</button>
+                    </div>
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-borderColor bg-bgCard p-3">
+                      <span className="font-black text-sm text-textPrimary">استخدام الخلفية المخصصة</span>
+                      <input type="checkbox" checked={Boolean(tempCertSettings.useCustomCertificateBackground)} onChange={(e) => setTempCertSettings({ ...tempCertSettings, useCustomCertificateBackground: e.target.checked })} className="w-5 h-5" />
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <button onClick={() => { setCertificateSettings(tempCertSettings); setShowCertSettingsModal(false); }} className="w-full py-3 rounded-xl font-black shadow-lg active:scale-95 transition-all bg-primary hover:bg-primary/80 text-white">{t('saveBtn')}</button>
            </div>
           </div>
