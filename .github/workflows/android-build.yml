@@ -26,7 +26,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Build Web Assets
-        run: npm run build
+        run: npx vite build --base=./ --target=es2022
 
       - name: Sync Android Platform
         run: |
