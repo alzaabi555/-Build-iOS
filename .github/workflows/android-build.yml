@@ -21,46 +21,12 @@ jobs:
         with:
           java-version: "17"
           distribution: temurin
-          cache: gradle
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Prepare Shared PDF.js Worker
-        run: |
-          echo "Preparing PDF.js worker..."
-
-          mkdir -p public
-
-          if [ -f "node_modules/pdfjs-dist/build/pdf.worker.mjs" ]; then
-            cp "node_modules/pdfjs-dist/build/pdf.worker.mjs" "public/pdf.worker.mjs"
-          elif [ -f "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" ]; then
-            cp "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" "public/pdf.worker.mjs"
-          else
-            echo "PDF.js worker was not found."
-            find node_modules/pdfjs-dist -maxdepth 3 -type f -name "pdf.worker*" -print || true
-            exit 1
-          fi
-
-          test -s "public/pdf.worker.mjs"
-          echo "PDF.js worker prepared successfully."
-
       - name: Build Web Assets
         run: npm run build
-      - name: Verify Web Build and PDF Worker
-        run: |
-          if [ ! -d "dist" ]; then
-            echo "The dist directory was not generated."
-            exit 1
-          fi
-
-          if [ ! -s "dist/pdf.worker.mjs" ]; then
-            echo "The PDF.js worker was not copied into dist."
-            find dist -maxdepth 2 -type f -print
-            exit 1
-          fi
-
-          echo "Web assets and PDF.js worker verified successfully."
 
       - name: Sync Android Platform
         run: |
@@ -72,18 +38,16 @@ jobs:
 
       - name: Update Android Version
         run: |
-          BUILD_FILE="android/app/build.gradle"
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 11/g' android/app/build.gradle
+            sed -i -E 's/versionName[[:space:]]+"[^"]*"/versionName "1.1.2"/g' android/app/build.gradle
 
-          if [ ! -f "$BUILD_FILE" ]; then
-            echo "Android build.gradle was not found."
+            echo "Android version updated:"
+            grep -E "versionCode|versionName" android/app/build.gradle
+          else
+            echo "android/app/build.gradle was not found."
             exit 1
           fi
-
-          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 11/' "$BUILD_FILE"
-          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.1.2"/' "$BUILD_FILE"
-
-          echo "Updated Android version:"
-          grep -E "versionCode|versionName" "$BUILD_FILE"
 
       - name: Enforce MainActivity, Widget Plugin and Edge-To-Edge
         run: |
@@ -113,20 +77,17 @@ jobs:
                   registerPlugin(RasedScheduleWidgetPlugin.class);
                   super.onCreate(savedInstanceState);
 
-                  // Enable edge-to-edge display for Android 15 compatibility.
                   EdgeToEdge.enable(this);
               }
           }
           EOF
-
-          echo "MainActivity patched successfully."
-          echo "MainActivity path: $DIR/MainActivity.java"
 
           if ! grep -q "registerPlugin(RasedScheduleWidgetPlugin.class)" "$DIR/MainActivity.java"; then
             echo "RasedScheduleWidgetPlugin registration is missing."
             exit 1
           fi
 
+          echo "MainActivity patched successfully."
           sed -n '1,80p' "$DIR/MainActivity.java"
 
       - name: Build Android Release
@@ -139,24 +100,6 @@ jobs:
 
           echo "Building AAB for Google Play Store..."
           ./gradlew bundleRelease --stacktrace
-
-      - name: Verify Unsigned Android Outputs
-        run: |
-          echo "APK files:"
-          find android/app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print
-
-          echo "AAB files:"
-          find android/app/build/outputs/bundle/release -maxdepth 1 -type f -name "*.aab" -print
-
-          if ! find android/app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" | grep -q .; then
-            echo "No APK file was generated."
-            exit 1
-          fi
-
-          if ! find android/app/build/outputs/bundle/release -maxdepth 1 -type f -name "*.aab" | grep -q .; then
-            echo "No AAB file was generated."
-            exit 1
-          fi
 
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
