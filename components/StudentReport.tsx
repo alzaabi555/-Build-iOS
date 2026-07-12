@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Student } from '../types';
 import { Award, AlertCircle, Trash2, Loader2, FileText, LayoutList, ArrowRight, Printer } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import html2pdf from 'html2pdf.js';
 
 interface StudentReportProps {
+  type ReportPeriod = '1' | '2' | 'annual';
   student: Student;
   onUpdateStudent?: (s: Student) => void;
   currentSemester?: '1' | '2';
@@ -19,9 +20,26 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   // 🌍 استدعاء محرك الترجمة والاتجاه
   const { assessmentTools, gradeSettings, t, dir, language } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  
-  const behaviors = (student.behaviors || []).filter(b => !b.semester || b.semester === (currentSemester || '1'));
-  const allGrades = student.grades || [];
+  const [reportPeriod, setReportPeriod] = useState<ReportPeriod>(
+  currentSemester === '2' ? '2' : '1'
+);
+
+useEffect(() => {
+  setReportPeriod(currentSemester === '2' ? '2' : '1');
+}, [currentSemester]);
+
+const selectedSemester: '1' | '2' =
+  reportPeriod === '2' ? '2' : '1';
+
+const isAnnualReport = reportPeriod === 'annual';
+ const allGrades = student.grades || [];
+
+const behaviors = (student.behaviors || []).filter((behavior: any) => {
+  if (isAnnualReport) return true;
+
+  const behaviorSemester = behavior.semester || '1';
+  return behaviorSemester === selectedSemester;
+});
 
   const posBehaviors = behaviors.filter(b => b.type === 'positive');
   const negBehaviors = behaviors.filter(b => b.type === 'negative');
@@ -32,7 +50,10 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   // ✅ الفلتر البصري يبقى كما هو باللغة العربية لارتباطه المباشر بالبيانات المخزنة
   const displayPosBehaviors = posBehaviors.filter(b => b.description !== 'هدوء وانضباط');
 
-  const currentSemesterGrades = allGrades.filter(g => !g.semester || g.semester === (currentSemester || '1'));
+  const currentSemesterGrades = allGrades.filter((grade: any) => {
+  const gradeSemester = grade.semester || '1';
+  return gradeSemester === selectedSemester;
+});
   
   let finalTool = assessmentTools.find(t => t.isFinal === true);
   
@@ -65,20 +86,45 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   // =========================================================================
   // 💉 الجراحة الدقيقة: حساب النتيجة النهائية للعام (ف1 + ف2)
   // =========================================================================
-  const sem1Grades = (student.grades || []).filter(g => (g.semester || '1') === '1');
-  const sem2Grades = (student.grades || []).filter(g => (g.semester || '1') === '2');
-  let sem1Total = 0;
-  let sem2Total = 0;
-  
-  assessmentTools.forEach((t: any) => {
-      const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
-      if (g1) sem1Total += (Number(g1.score) || 0);
-      
-      const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
-      if (g2) sem2Total += (Number(g2.score) || 0);
-  });
-  
-  const finalAverage = (sem1Total + sem2Total) / 2;
+ const sem1Grades = allGrades.filter(
+  (grade: any) => (grade.semester || '1') === '1'
+);
+
+const sem2Grades = allGrades.filter(
+  (grade: any) => (grade.semester || '1') === '2'
+);
+
+const calculateSemesterTotal = (semesterGrades: any[]) => {
+  if (assessmentTools.length > 0) {
+    return assessmentTools.reduce((total: number, tool: any) => {
+      const grade = semesterGrades.find(
+        (record: any) =>
+          String(record.category || '').trim() ===
+          String(tool.name || '').trim()
+      );
+
+      return total + (grade ? Number(grade.score) || 0 : 0);
+    }, 0);
+  }
+
+  return semesterGrades.reduce(
+    (total: number, grade: any) =>
+      total + (Number(grade.score) || 0),
+    0
+  );
+};
+
+const sem1Total = calculateSemesterTotal(sem1Grades);
+const sem2Total = calculateSemesterTotal(sem2Grades);
+
+const hasSemesterOneData = sem1Grades.length > 0;
+const hasSemesterTwoData = sem2Grades.length > 0;
+const hasCompleteAnnualResult =
+  hasSemesterOneData && hasSemesterTwoData;
+
+const finalAverage = hasCompleteAnnualResult
+  ? (sem1Total + sem2Total) / 2
+  : null;
 
   const getSymbol = (sc: number) => {
       const totalPossible = gradeSettings?.totalScore || 100;
@@ -99,9 +145,26 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
   };
   // =========================================================================
 
-  const absenceRecords = (student.attendance || []).filter(a => a.status === 'absent');
-  const truantRecords = (student.attendance || []).filter(a => a.status === 'truant');
+ const filteredAttendance = (student.attendance || []).filter(
+  (attendance: any) => {
+    if (isAnnualReport) return true;
 
+    const attendanceSemester = attendance.semester || '1';
+    return attendanceSemester === selectedSemester;
+  }
+);
+
+const absenceRecords = filteredAttendance.filter(
+  (attendance: any) => attendance.status === 'absent'
+);
+
+const truantRecords = filteredAttendance.filter(
+  (attendance: any) => attendance.status === 'truant'
+);
+
+const presentRecords = filteredAttendance.filter(
+  (attendance: any) => attendance.status === 'present'
+);
   const handleDeleteBehavior = (behaviorId: string) => {
       if (confirm(t('confirmDeleteBehavior'))) {
           const updatedBehaviors = (student.behaviors || []).filter(b => b.id !== behaviorId);
@@ -170,12 +233,32 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                 </button>
                 <div>
                     <h2 className="text-lg font-black text-textPrimary">{student.name}</h2>
-                    <p className="text-xs font-bold text-gray-500">{student.classes[0]} • {t('semesterReportText')} {currentSemester}</p>
+                    <p className="text-xs font-bold text-gray-500">
+  {student.classes[0]} •{' '}
+  {reportPeriod === 'annual'
+    ? 'النتيجة النهائية للعام الدراسي'
+    : reportPeriod === '1'
+      ? 'تقرير الفصل الدراسي الأول'
+      : 'تقرير الفصل الدراسي الثاني'}
+</p>
                 </div>
             </div>
-            <div className="flex gap-2">
-                <button 
-                    onClick={handlePrintReport} 
+           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+    <select
+        value={reportPeriod}
+        onChange={(event) =>
+          setReportPeriod(event.target.value as ReportPeriod)
+        }
+        className="bg-bgCard border border-borderColor text-textPrimary px-3 py-2.5 rounded-xl font-black text-xs outline-none focus:border-primary min-w-[210px]"
+        title="اختيار فترة التقرير"
+    >
+        <option value="1">الفصل الدراسي الأول فقط</option>
+        <option value="2">الفصل الدراسي الثاني فقط</option>
+        <option value="annual">النتيجة النهائية للعام الدراسي</option>
+    </select>
+
+    <button 
+        onClick={handlePrintReport}
                     disabled={isGeneratingPdf}
                     className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-black text-xs shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-2"
                 >
@@ -210,7 +293,15 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                     <div className="text-center w-1/3 flex flex-col items-end">
                         <div className={`${dir === 'rtl' ? 'text-right' : 'text-left'}`}>
                              <p className="font-bold text-sm mb-1 text-black">{t('academicYearPrefix')} {teacherInfo?.academicYear || `${new Date().getFullYear()} / ${new Date().getFullYear() + 1}`}</p>
-                             <p className="font-bold text-sm mb-1 text-black">{t('semesterPrefix')} {currentSemester === '1' ? t('firstSemesterWord') : t('secondSemesterWord')}</p>
+                            <p className="font-bold text-sm mb-1 text-black">
+  {reportPeriod === 'annual'
+    ? 'النتيجة النهائية للعام الدراسي'
+    : `${t('semesterPrefix')} ${
+        reportPeriod === '1'
+          ? t('firstSemesterWord')
+          : t('secondSemesterWord')
+      }`}
+</p>
                              <p className="font-bold text-sm text-black">{t('reportDatePrefix')} {new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</p>
                         </div>
                     </div>
@@ -259,117 +350,122 @@ const StudentReport: React.FC<StudentReportProps> = ({ student, onUpdateStudent,
                             </tr>
                         </thead>
                         <tbody>
-                            {assessmentTools.length > 0 ? (
-                                <>
-                                    {/* 1. Continuous Tools Rows */}
-                                    {continuousTools.map((tool) => {
-                                        const grade = currentSemesterGrades.find(g => g.category.trim() === tool.name.trim());
-                                        return (
-                                            <tr key={tool.id}>
-                                                <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>{teacherInfo?.subject || t('subjectCol')}</td>
-                                                <td className="border border-black p-3 text-sm text-center bg-[#ffedd5] text-black">{tool.name}</td>
-                                                <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">{grade ? grade.score : '-'}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                    
-                                    {/* 2. Continuous Sum Row */}
-                                    <tr className="bg-blue-50 font-bold">
-                                        <td colSpan={2} className="border border-black p-3 text-sm text-center text-black border-t-2 border-black">{t('totalParentheses')} ({maxContinuous})</td>
-                                        <td className="border border-black p-3 text-sm text-center font-mono text-black border-t-2 border-black">{continuousSum}</td>
-                                    </tr>
+  {isAnnualReport ? (
+    <>
+      <tr>
+        <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>
+          {teacherInfo?.subject || t('subjectCol')}
+        </td>
+        <td className="border border-black p-3 text-sm text-center bg-blue-50 text-black">
+          مجموع الفصل الدراسي الأول
+        </td>
+        <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
+          {hasSemesterOneData ? sem1Total : 'غير متوفر'}
+        </td>
+      </tr>
 
-                                    {/* 3. Final Exam Row */}
-                                    {finalToolName && (
-                                        <tr key="final">
-                                            <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>{teacherInfo?.subject || t('subjectCol')}</td>
-                                            <td className="border border-black p-3 text-sm text-center bg-[#fce7f3] text-black">{finalToolName} ({maxFinal})</td>
-                                            <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">{finalScore || '-'}</td>
-                                        </tr>
-                                    )}
-                                </>
-                            ) : (
-                                /* Fallback if no tools defined */
-                                currentSemesterGrades.length > 0 ? currentSemesterGrades.map((g, idx) => (
-                                    <tr key={idx}>
-                                        <td className="border border-black p-3 text-sm font-bold text-black">{g.subject}</td>
-                                        <td className="border border-black p-3 text-sm text-center text-black">{g.category}</td>
-                                        <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">{g.score}</td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={3} className="border border-black p-4 text-center text-sm text-black">{t('noGradesForSemester')}</td>
-                                    </tr>
-                                )
-                            )}
-                        </tbody>
-                        <tfoot>
-                            <tr className="bg-slate-100">
-                                <td colSpan={2} className={`border border-black p-3 text-sm font-black ${dir === 'rtl' ? 'text-right' : 'text-left'} border-t-2 border-black text-black`}>{t('grandTotalParentheses')} ({maxTotal})</td>
-                                <td className="border border-black p-3 text-sm font-black text-center font-mono text-lg border-t-2 border-black text-black">
-                                    {totalScore}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+      <tr>
+        <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>
+          {teacherInfo?.subject || t('subjectCol')}
+        </td>
+        <td className="border border-black p-3 text-sm text-center bg-emerald-50 text-black">
+          مجموع الفصل الدراسي الثاني
+        </td>
+        <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
+          {hasSemesterTwoData ? sem2Total : 'غير متوفر'}
+        </td>
+      </tr>
 
-                {/* 💉 الجراحة الدقيقة: الصندوق الذهبي للنتيجة النهائية للعام */}
-                <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
-                    <div className={`bg-amber-200 p-4 ${dir === 'rtl' ? 'border-l-2' : 'border-r-2'} border-black flex items-center justify-center font-black text-black text-center`}>
-                        النتيجة النهائية<br/>للعام الدراسي
-                    </div>
-                    <div className="flex-1 flex justify-around items-center p-4">
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
-                            <p className="font-black text-lg">{sem1Total}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
-                            <p className="font-black text-lg">{sem2Total}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1">المعدل النهائي</p>
-                            <p className="font-black text-xl text-blue-800">{finalAverage}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-xs font-bold mb-1">التقدير العام</p>
-                            <p className="font-black text-2xl text-emerald-700">{getSymbol(finalAverage)}</p>
-                        </div>
-                    </div>
-                </div>
+      <tr className="bg-amber-50">
+        <td
+          colSpan={2}
+          className="border border-black p-3 text-sm font-black text-center text-black"
+        >
+          المعدل النهائي للعام الدراسي
+        </td>
+        <td className="border border-black p-3 text-lg font-black text-center font-mono text-blue-800">
+          {finalAverage !== null
+            ? finalAverage.toFixed(2)
+            : 'غير مكتمل'}
+        </td>
+      </tr>
+    </>
+  ) : assessmentTools.length > 0 ? (
+    <>
+      {continuousTools.map(tool => {
+        const grade = currentSemesterGrades.find(
+          grade =>
+            String(grade.category || '').trim() ===
+            String(tool.name || '').trim()
+        );
 
-                {/* Attendance Summary and Details */}
-                <div className="mb-8">
-                     <h3 className="font-black text-lg mb-3 border-b-2 border-black inline-block text-black">
-                        {t('attendanceSummaryTitle')}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="p-4 rounded-xl bg-slate-50 border-2 border-black text-center text-black">
-                            <span className="text-xs font-bold text-black block mb-1">{t('absenceDaysCount')}</span>
-                            <span className="text-2xl font-black text-rose-600">{absenceRecords.length}</span>
-                        </div>
-                        <div className="p-4 rounded-xl bg-slate-50 border-2 border-black text-center text-black">
-                            <span className="text-xs font-bold text-black block mb-1">{t('truancyCount')}</span>
-                            <span className="text-2xl font-black text-purple-600">{truantRecords.length}</span>
-                        </div>
-                         <div className="p-4 rounded-xl bg-slate-50 border-2 border-black text-center text-black">
-                            <span className="text-xs font-bold text-black block mb-1">{t('presenceCount')}</span>
-                            <span className="text-2xl font-black text-emerald-600">{student.attendance.filter(a => a.status === 'present').length}</span>
-                        </div>
-                    </div>
+        return (
+          <tr key={tool.id}>
+            <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>
+              {teacherInfo?.subject || t('subjectCol')}
+            </td>
+            <td className="border border-black p-3 text-sm text-center bg-[#ffedd5] text-black">
+              {tool.name}
+            </td>
+            <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
+              {grade ? grade.score : '-'}
+            </td>
+          </tr>
+        );
+      })}
 
-                    {/* Detailed Absence/Truancy Table */}
-                    {(absenceRecords.length > 0 || truantRecords.length > 0) && (
-                        <table className="w-full border-collapse border border-black mt-2">
-                            <thead>
-                                <tr className="bg-slate-100">
-                                    <th className={`border border-black p-2 text-xs font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} w-1/3 text-black`}>{t('dateCol')}</th>
-                                    <th className="border border-black p-2 text-xs font-bold text-center text-black">{t('statusCol')}</th>
-                                    <th className="border border-black p-2 text-xs font-bold text-center text-black">{t('notesCol')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+      <tr className="bg-blue-50 font-bold">
+        <td
+          colSpan={2}
+          className="border border-black p-3 text-sm text-center text-black border-t-2"
+        >
+          {t('totalParentheses')} ({maxContinuous})
+        </td>
+        <td className="border border-black p-3 text-sm text-center font-mono text-black border-t-2">
+          {continuousSum}
+        </td>
+      </tr>
+
+      {finalToolName && (
+        <tr key="final">
+          <td className={`border border-black p-3 text-sm font-bold ${dir === 'rtl' ? 'text-right' : 'text-left'} text-black`}>
+            {teacherInfo?.subject || t('subjectCol')}
+          </td>
+          <td className="border border-black p-3 text-sm text-center bg-[#fce7f3] text-black">
+            {finalToolName} ({maxFinal})
+          </td>
+          <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
+            {finalScore || '-'}
+          </td>
+        </tr>
+      )}
+    </>
+  ) : currentSemesterGrades.length > 0 ? (
+    currentSemesterGrades.map((grade, index) => (
+      <tr key={index}>
+        <td className="border border-black p-3 text-sm font-bold text-black">
+          {grade.subject}
+        </td>
+        <td className="border border-black p-3 text-sm text-center text-black">
+          {grade.category}
+        </td>
+        <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
+          {grade.score}
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td
+        colSpan={3}
+        className="border border-black p-4 text-center text-sm text-black"
+      >
+        {t('noGradesForSemester')}
+      </td>
+    </tr>
+  )}
+</tbody>
+
                                 {[...absenceRecords, ...truantRecords]
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .map((rec, idx) => (
