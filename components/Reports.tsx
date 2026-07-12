@@ -11,8 +11,6 @@ import html2pdf from 'html2pdf.js';
 import PageLayout from '../components/PageLayout'; 
 import * as pdfjsLib from 'pdfjs-dist';
 
-import * as pdfjsLib from 'pdfjs-dist';
-
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   `${import.meta.env.BASE_URL}pdf.worker.mjs`;
 
