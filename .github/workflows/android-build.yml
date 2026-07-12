@@ -15,7 +15,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,33 +28,25 @@ jobs:
 
       - name: Prepare Shared PDF.js Worker
         run: |
-          echo "Preparing PDF.js worker for Web, Android and iOS..."
+          echo "Preparing PDF.js worker..."
 
           mkdir -p public
 
           if [ -f "node_modules/pdfjs-dist/build/pdf.worker.mjs" ]; then
             cp "node_modules/pdfjs-dist/build/pdf.worker.mjs" "public/pdf.worker.mjs"
-            echo "Copied pdf.worker.mjs"
           elif [ -f "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" ]; then
             cp "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" "public/pdf.worker.mjs"
-            echo "Copied pdf.worker.min.mjs as pdf.worker.mjs"
           else
             echo "PDF.js worker was not found."
             find node_modules/pdfjs-dist -maxdepth 3 -type f -name "pdf.worker*" -print || true
             exit 1
           fi
 
-          if [ ! -s "public/pdf.worker.mjs" ]; then
-            echo "The copied PDF.js worker is missing or empty."
-            exit 1
-          fi
-
+          test -s "public/pdf.worker.mjs"
           echo "PDF.js worker prepared successfully."
-          ls -lh "public/pdf.worker.mjs"
 
       - name: Build Web Assets
         run: npm run build
-
       - name: Verify Web Build and PDF Worker
         run: |
           if [ ! -d "dist" ]; then
