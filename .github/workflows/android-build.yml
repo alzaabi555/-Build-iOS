@@ -23,7 +23,23 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+      - name: Prepare PDF.js Worker
+        run: |
+          echo "Preparing PDF.js worker..."
+          mkdir -p public
 
+          if [ -f "node_modules/pdfjs-dist/build/pdf.worker.mjs" ]; then
+            cp node_modules/pdfjs-dist/build/pdf.worker.mjs public/pdf.worker.mjs
+          elif [ -f "node_modules/pdfjs-dist/build/pdf.worker.min.mjs" ]; then
+            cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.mjs
+          else
+            echo "PDF.js worker file was not found"
+            find node_modules/pdfjs-dist -maxdepth 3 -type f -name "pdf.worker*" -print
+            exit 1
+          fi
+
+          test -s public/pdf.worker.mjs
+          echo "PDF.js worker prepared successfully."
       - name: Build Web Assets
         run: npm run build
 
