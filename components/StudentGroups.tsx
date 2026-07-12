@@ -674,19 +674,51 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
 
   const rows = Math.max(1, Math.ceil(groups.length / columns));
 
-  const maxStudentsInGroup = Math.max(
-    4,
-    ...groups.map((group: any) => (group.studentIds || []).length)
+  const getNamesForGroup = (group: any) => {
+    return (group.studentIds || [])
+      .map((id: string) => getStudentNameById(id))
+      .filter(Boolean);
+  };
+
+  const getCardHeightByNames = (namesCount: number) => {
+    return Math.max(230, 96 + namesCount * 28 + 24);
+  };
+
+  const groupNamesList = groups.map((group: any) => getNamesForGroup(group));
+
+  const groupCardHeights = groupNamesList.map((names: string[]) =>
+    getCardHeightByNames(names.length)
   );
 
-  const cardHeight = Math.max(230, 92 + maxStudentsInGroup * 28);
-  const canvasWidth = columns === 1
-    ? cardWidth + outerPadding * 2
-    : cardWidth * 2 + cardGap + outerPadding * 2;
+  const rowHeights = Array.from({ length: rows }).map((_, rowIndex) => {
+    const start = rowIndex * columns;
+    const end = start + columns;
+    const heights = groupCardHeights.slice(start, end);
+
+    return Math.max(...heights, 230);
+  });
+
+  const rowTopPositions: number[] = [];
+  const topArea = 135;
+
+  let currentY = topArea;
+
+  rowHeights.forEach((height, index) => {
+    rowTopPositions[index] = currentY;
+    currentY += height;
+
+    if (index < rowHeights.length - 1) {
+      currentY += cardGap;
+    }
+  });
+
+  const canvasWidth =
+    columns === 1
+      ? cardWidth + outerPadding * 2
+      : cardWidth * 2 + cardGap + outerPadding * 2;
 
   const headerHeight = 94;
-  const topArea = 135;
-  const canvasHeight = topArea + rows * (cardHeight + cardGap) + 40;
+  const canvasHeight = currentY + 40;
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -698,11 +730,9 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     throw new Error('تعذر إنشاء Canvas');
   }
 
-  // خلفية عامة
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // رأس التقرير
   fillRoundRect(
     ctx,
     24,
@@ -737,32 +767,29 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     }
   );
 
-  // البطاقات
   groups.forEach((group: any, index: number) => {
     const row = Math.floor(index / columns);
 
-    // ترتيب بصري RTL: المجموعة الأولى تظهر يمينًا
+    // ترتيب RTL: المجموعة الأولى تظهر في اليمين
     const col = columns === 1 ? 0 : columns - 1 - (index % columns);
 
     const x = outerPadding + col * (cardWidth + cardGap);
-    const y = topArea + row * (cardHeight + cardGap);
+    const y = rowTopPositions[row];
+
+    // توحيد ارتفاع البطاقات داخل نفس الصف حتى يكون التصميم مرتبًا
+    const cardHeight = rowHeights[row];
 
     const color = getGroupColor(group.color);
-    const names = (group.studentIds || [])
-      .map((id: string) => getStudentNameById(id))
-      .filter(Boolean);
+    const names = groupNamesList[index] || [];
 
-    // جسم البطاقة
     fillRoundRect(ctx, x, y, cardWidth, cardHeight, 26, '#ffffff');
     strokeRoundRect(ctx, x, y, cardWidth, cardHeight, 26, color.solid, 3);
 
-    // شريط العنوان
     ctx.save();
     ctx.globalAlpha = 0.16;
     fillRoundRect(ctx, x, y, cardWidth, 58, 26, color.solid);
     ctx.restore();
 
-    // عنوان المجموعة يمين البطاقة
     drawRtlText(
       ctx,
       group.name || `المجموعة ${index + 1}`,
@@ -775,7 +802,6 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
       }
     );
 
-    // عدد الطلاب يسار البطاقة
     drawLtrText(
       ctx,
       `${names.length} طلاب`,
@@ -789,13 +815,27 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
       }
     );
 
-    // أسماء الطلاب داخل البطاقة
-    const startY = y + 86;
-    const lineHeight = 26;
-    const maxNameWidth = cardWidth - 55;
-    const maxVisibleNames = Math.floor((cardHeight - 105) / lineHeight);
+    if (names.length === 0) {
+      drawRtlText(
+        ctx,
+        'لا يوجد طلاب في هذه المجموعة',
+        x + cardWidth - 24,
+        y + 95,
+        {
+          font: '700 16px Arial, sans-serif',
+          color: '#94a3b8',
+          maxWidth: cardWidth - 55
+        }
+      );
 
-    names.slice(0, maxVisibleNames).forEach((name: string, nameIndex: number) => {
+      return;
+    }
+
+    const startY = y + 86;
+    const lineHeight = 28;
+    const maxNameWidth = cardWidth - 55;
+
+    names.forEach((name: string, nameIndex: number) => {
       drawRtlText(
         ctx,
         name,
@@ -808,44 +848,49 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
         }
       );
     });
-
-    if (names.length > maxVisibleNames) {
-      drawRtlText(
-        ctx,
-        `+ ${names.length - maxVisibleNames} طالب آخر`,
-        x + cardWidth - 24,
-        y + cardHeight - 22,
-        {
-          font: '700 14px Arial, sans-serif',
-          color: '#64748b',
-          maxWidth: maxNameWidth
-        }
-      );
-    }
   });
 
   return canvas;
 };
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const parts = dataUrl.split(',');
+  const header = parts[0] || '';
+  const base64 = parts[1] || '';
 
+  const mimeMatch = header.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+
+  const binary = atob(base64);
+  const length = binary.length;
+  const bytes = new Uint8Array(length);
+
+  for (let i = 0; i < length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+};
   const handleExportAsImage = async () => {
-    if (!activeCat) return;
+  if (!activeCat) return;
 
-    try {
-      const canvas = await createGroupsCanvas();
-      const blob = await canvasToBlob(canvas, 'image/png');
+  try {
+    const canvas = await createGroupsCanvas();
 
-      const fileName = `${sanitizeFileName(`rased_groups_${selectedClass}_${activeCat.title}`)}.png`;
+    const imageData = canvas.toDataURL('image/png', 0.95);
+    const blob = dataUrlToBlob(imageData);
 
-      await saveOrShareFile(
-        blob,
-        fileName,
-        'تصدير مجموعات راصد كصورة'
-      );
-    } catch (error) {
-      console.error(error);
-      alert('تعذر تصدير المجموعات كصورة.');
-    }
-  };
+    const fileName = `${sanitizeFileName(`rased_groups_${selectedClass}_${activeCat.title}`)}.png`;
+
+    await saveOrShareFile(
+      blob,
+      fileName,
+      'تصدير مجموعات راصد كصورة'
+    );
+  } catch (error) {
+    console.error(error);
+    alert('تعذر تصدير المجموعات كصورة.');
+  }
+};
 
   const handleExportAsPdf = async () => {
     if (!activeCat) return;
