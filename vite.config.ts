@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     // مسار نسبي مناسب لنسخ Android وiOS وWindows.
     base: './',
 
-    // نسخ جميع الملفات الموجودة في public إلى مجلد البناء.
+    // نسخ جميع الملفات الموجودة داخل public إلى ناتج البناء.
     publicDir: 'public',
 
     server: {
@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => {
 
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(
+        env.GEMINI_API_KEY
+      )
     },
 
     resolve: {
@@ -30,21 +32,20 @@ export default defineConfig(({ mode }) => {
       }
     },
 
-    // دعم Top-level await المستخدم في pdfjs-dist.
     esbuild: {
-      target: 'es2022'
+      target: 'es2020'
     },
 
     optimizeDeps: {
       esbuildOptions: {
-        target: 'es2022'
+        target: 'es2020'
       }
     },
 
     build: {
-      target: 'es2022',
+      target: 'es2020',
 
-      // عدم تحويل الصور والملفات إلى بيانات Base64.
+      // عدم تحويل الصور والملفات إلى Base64.
       assetsInlineLimit: 0,
 
       rollupOptions: {
