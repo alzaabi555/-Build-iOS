@@ -11,7 +11,10 @@ import html2pdf from 'html2pdf.js';
 import PageLayout from '../components/PageLayout'; 
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
+// @ts-ignore - Vite يحول الملف إلى رابط صالح داخل حزمة التطبيق
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 // =================================================================================
 // ✅ الثوابت (تصنيفات الدرجات)
 // =================================================================================
