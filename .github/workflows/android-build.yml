@@ -129,12 +129,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Rased-Teacher-Signed-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/release/*-signed.apk
           if-no-files-found: error
 
       - name: Upload Signed AAB
         uses: actions/upload-artifact@v4
         with:
           name: Rased-Teacher-Signed-AAB
-          path: android/app/build/outputs/bundle/release/*.aab
+          path: android/app/build/outputs/bundle/release/*-signed.aab
           if-no-files-found: error
