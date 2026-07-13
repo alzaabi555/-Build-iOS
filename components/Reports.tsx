@@ -1564,46 +1564,171 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
   });
 
   const handleCertificateBackgroundUpload = async (file?: File) => {
-    if (!file) return;
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isImage && !isPdf) return alert('اختر صورة PNG أو JPG أو WEBP، أو ملف PDF صالح.');
-    if (file.size > 12 * 1024 * 1024) return alert('حجم الملف كبير. الحد الأقصى 12 ميجابايت.');
+  if (!file) return;
 
-    setIsProcessingCertificateBackground(true);
-    try {
-      let backgroundDataUrl = '';
-      let backgroundType = 'image';
-      if (isPdf) {
-        const pdfData = new Uint8Array(await file.arrayBuffer());
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('تعذر تجهيز صفحة PDF');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: context, viewport }).promise;
-        backgroundDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        backgroundType = 'pdf';
-      } else {
-        backgroundDataUrl = await readFileAsDataUrl(file);
+  const fileName = String(file.name || '').toLowerCase();
+  const isImage = file.type.startsWith('image/');
+  const isPdf =
+    file.type === 'application/pdf' ||
+    fileName.endsWith('.pdf');
+
+  if (!isImage && !isPdf) {
+    alert('اختر صورة بصيغة PNG أو JPG أو WEBP، أو ملف PDF صالح.');
+    return;
+  }
+
+  if (file.size > 12 * 1024 * 1024) {
+    alert('حجم الملف كبير. الحد الأقصى المسموح به هو 12 ميجابايت.');
+    return;
+  }
+
+  setIsProcessingCertificateBackground(true);
+
+  try {
+    let backgroundDataUrl = '';
+    let backgroundType: 'image' | 'pdf' = 'image';
+
+    if (isPdf) {
+      const fileBuffer = await file.arrayBuffer();
+      const pdfData = new Uint8Array(fileBuffer);
+
+      if (pdfData.length < 5) {
+        throw new Error('EMPTY_PDF_FILE');
       }
-      setTempCertSettings((previous: any) => ({
-        ...previous,
-        useCustomCertificateBackground: true,
-        customCertificateBackground: backgroundDataUrl,
-        customCertificateBackgroundType: backgroundType,
-        customCertificateBackgroundName: file.name
-      }));
-    } catch (error) {
-      console.error('Certificate background error:', error);
-      alert('تعذر قراءة خلفية الشهادة. تأكد من سلامة الملف.');
-    } finally {
-      setIsProcessingCertificateBackground(false);
+
+      const pdfHeader = String.fromCharCode(
+        pdfData[0],
+        pdfData[1],
+        pdfData[2],
+        pdfData[3],
+        pdfData[4]
+      );
+
+      if (pdfHeader !== '%PDF-') {
+        throw new Error('INVALID_PDF_HEADER');
+      }
+
+      const loadingTask = pdfjsLib.getDocument({
+        data: pdfData,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true
+      });
+
+      const pdfDocument = await loadingTask.promise;
+
+      if (!pdfDocument || pdfDocument.numPages < 1) {
+        throw new Error('PDF_HAS_NO_PAGES');
+      }
+
+      const page = await pdfDocument.getPage(1);
+
+      const originalViewport = page.getViewport({
+        scale: 1
+      });
+
+      const targetWidth = 1600;
+      const renderScale = targetWidth / originalViewport.width;
+
+      const viewport = page.getViewport({
+        scale: Math.max(1, Math.min(renderScale, 3))
+      });
+
+      const canvas = document.createElement('canvas');
+      const canvasContext = canvas.getContext('2d', {
+        alpha: false
+      });
+
+      if (!canvasContext) {
+        throw new Error('CANVAS_CONTEXT_UNAVAILABLE');
+      }
+
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+
+      canvasContext.fillStyle = '#FFFFFF';
+      canvasContext.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      await page.render({
+        canvasContext,
+        viewport,
+        background: '#FFFFFF'
+      }).promise;
+
+      backgroundDataUrl = canvas.toDataURL(
+        'image/jpeg',
+        0.92
+      );
+
+      if (
+        !backgroundDataUrl ||
+        !backgroundDataUrl.startsWith('data:image/')
+      ) {
+        throw new Error('PDF_CONVERSION_FAILED');
+      }
+
+      backgroundType = 'pdf';
+
+      page.cleanup();
+      await pdfDocument.destroy();
+    } else {
+      backgroundDataUrl = await readFileAsDataUrl(file);
+
+      if (
+        !backgroundDataUrl ||
+        !backgroundDataUrl.startsWith('data:image/')
+      ) {
+        throw new Error('INVALID_IMAGE_FILE');
+      }
     }
-  };
+
+    setTempCertSettings((previous: any) => ({
+      ...previous,
+      useCustomCertificateBackground: true,
+      customCertificateBackground: backgroundDataUrl,
+      customCertificateBackgroundType: backgroundType,
+      customCertificateBackgroundName: file.name
+    }));
+  } catch (error: any) {
+    console.error(
+      'Certificate background error:',
+      error
+    );
+
+    const errorMessage = String(
+      error?.message || error || ''
+    );
+
+    if (errorMessage.includes('PasswordException')) {
+      alert('ملف PDF محمي بكلمة مرور، ولا يمكن استخدامه خلفية للشهادة.');
+    } else if (
+      errorMessage.includes('InvalidPDFException') ||
+      errorMessage.includes('INVALID_PDF_HEADER')
+    ) {
+      alert('ملف PDF غير صالح أو تالف. جرّب حفظه من جديد ثم رفعه.');
+    } else if (errorMessage.includes('MissingPDFException')) {
+      alert('تعذر الوصول إلى ملف PDF المحدد.');
+    } else if (errorMessage.includes('PDF_HAS_NO_PAGES')) {
+      alert('ملف PDF لا يحتوي على صفحات صالحة.');
+    } else if (
+      errorMessage.includes('worker') ||
+      errorMessage.includes('Worker')
+    ) {
+      alert('تعذر تشغيل محرك قراءة PDF داخل التطبيق.');
+    } else {
+      alert(
+        'تعذر قراءة خلفية الشهادة. جرّب ملف PDF آخر أو حوّل الشهادة إلى صورة PNG.'
+      );
+    }
+  } finally {
+    setIsProcessingCertificateBackground(false);
+  }
+};
 
   const removeCertificateBackground = () => {
     setTempCertSettings((previous: any) => ({
