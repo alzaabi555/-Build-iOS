@@ -9,15 +9,9 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
 import PageLayout from '../components/PageLayout'; 
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
 
-const pdfWorkerPath = new URL(
-  'pdf.worker.mjs',
-  window.location.href
-).toString();
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerPath;
-
+pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
 // =================================================================================
 // ✅ الثوابت (تصنيفات الدرجات)
 // =================================================================================
