@@ -351,17 +351,17 @@ const AnalyticsTemplate = ({
 
   const scopeTitle =
     reportScope === 'sem1'
-      ? 'تقرير نتائج الفصل الدراسي الأول'
+      ? t('firstSemesterResultsReport')
       : reportScope === 'sem2'
-        ? 'تقرير نتائج الفصل الدراسي الثاني'
-        : 'تقرير النتيجة النهائية للعام الدراسي';
+        ? t('secondSemesterResultsReport')
+        : t('annualResultsReport');
 
   const scoreLabel =
     reportScope === 'sem1'
-      ? 'درجة الفصل الأول'
+      ? t('firstSemesterScore')
       : reportScope === 'sem2'
-        ? 'درجة الفصل الثاني'
-        : 'المعدل النهائي';
+        ? t('secondSemesterScore')
+        : t('finalAverageLabel');
 
   const selectedData = data[reportScope];
 
@@ -389,7 +389,7 @@ const AnalyticsTemplate = ({
       const list = selectedData[cat.key] || [];
       return list.map((s: any) => ({
         ...s,
-        categoryLabel: cat.label
+        categoryLabel: getGradeCategoryLabel(cat.key, t)
       }));
     });
   };
@@ -411,7 +411,7 @@ const AnalyticsTemplate = ({
         <div className="flex justify-between font-bold mb-1">
           <span>{label}</span>
           <span>
-            {count} طالب ({pct}%)
+            {count} {t('studentsCountWord')} ({pct}%)
           </span>
         </div>
 
@@ -451,12 +451,12 @@ const AnalyticsTemplate = ({
         <div
           className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[12px] font-bold leading-7 w-1/3`}
         >
-          <p>المادة: {teacherInfo?.subject || '........'}</p>
+          <p>{t('subjectLabel')} {teacherInfo?.subject || '........'}</p>
           <p>
-            الصف:{' '}
-            {targetClass === 'all' ? 'جميع الفصول المحددة' : targetClass}
+            {t('classLabelTemplate')}{' '}
+            {targetClass === 'all' ? t('allSelectedClasses') : targetClass}
           </p>
-          <p>التاريخ: {date}</p>
+          <p>{t('dateLabel')} {date}</p>
         </div>
       </div>
     </div>
@@ -557,17 +557,17 @@ const AnalyticsTemplate = ({
 
         <div className="grid grid-cols-4 gap-3 text-center mb-8">
           <div className="report-card">
-            <p className="text-[10px] font-bold">إجمالي الطلاب</p>
+            <p className="text-[10px] font-bold">{t('analyticsTotalStudents')}</p>
             <p className="font-black text-xl">{data.totalStudents}</p>
           </div>
 
           <div className="report-card">
-            <p className="text-[10px] font-bold">متوسط التقرير</p>
+            <p className="text-[10px] font-bold">{t('analyticsReportAverage')}</p>
             <p className="font-black text-xl">{average}</p>
           </div>
 
           <div className="report-card">
-            <p className="text-[10px] font-bold">عدد النتائج المكتملة</p>
+            <p className="text-[10px] font-bold">{t('analyticsCompletedResults')}</p>
             <p className="font-black text-xl">
               {reportScope === 'final' ? completedCount : data.totalStudents}
             </p>
@@ -575,7 +575,7 @@ const AnalyticsTemplate = ({
 
           <div className="report-card bg-amber-50">
             <p className="text-[10px] font-bold text-amber-800">
-              الأول في التقرير
+              {t('analyticsTopStudent')}
             </p>
             <p className="font-black text-[12px] text-amber-900 truncate">
               {topStudent?.name || '-'}
@@ -585,7 +585,7 @@ const AnalyticsTemplate = ({
 
         <div className="border border-black rounded-xl p-5 avoid-break">
           <h2 className="text-center font-black text-base mb-5">
-            نسب النتائج حسب التقدير
+            {t('analyticsDistributionByGrade')}
           </h2>
 
           {GRADE_CATEGORIES.map(cat => (
@@ -596,7 +596,7 @@ const AnalyticsTemplate = ({
                   ? completedCount || data.totalStudents
                   : data.totalStudents,
                 cat.bar,
-                cat.label
+                getGradeCategoryLabel(cat.key, t)
               )}
             </React.Fragment>
           ))}
@@ -605,12 +605,11 @@ const AnalyticsTemplate = ({
         {reportScope === 'final' && selectedData.incomplete?.length > 0 && (
           <div className="mt-8 border border-orange-400 bg-orange-50 rounded-xl p-4 avoid-break">
             <h3 className="font-black text-orange-800 text-sm mb-2">
-              ملاحظة مهمة
+              {t('importantNote')}
             </h3>
             <p className="text-xs font-bold leading-6">
-              يوجد {selectedData.incomplete.length} طالب لم تكتمل لهم بيانات
-              الفصلين، لذلك لم يتم احتسابهم ضمن النتيجة النهائية حتى لا تظهر
-              نتيجة غير دقيقة.
+              {t('analyticsIncompleteNoticePrefix')} {selectedData.incomplete.length}{' '}
+              {t('analyticsIncompleteNoticeSuffix')}
             </p>
           </div>
         )}
@@ -626,27 +625,27 @@ const AnalyticsTemplate = ({
             {renderHeader()}
 
             <h2 className="section-title">
-              الطلاب الحاصلون على تقدير: {cat.label}
+              {t('studentsWithGrade')} {getGradeCategoryLabel(cat.key, t)}
             </h2>
 
             <div className="flex justify-between text-xs font-bold mb-2">
-              <span>العدد: {studentsList.length} طلاب</span>
+              <span>{t('countLabel')} {studentsList.length} {t('studentsCountWord')}</span>
               <span>{scoreLabel}</span>
             </div>
 
             <table className="report-table">
               <thead>
                 <tr>
-                  <th className="w-10 text-center">م</th>
+                  <th className="w-10 text-center">{t('numLabel')}</th>
                   <th className={`text-${dir === 'rtl' ? 'right' : 'left'}`}>
-                    اسم الطالب
+                    {t('studentNameLabel')}
                   </th>
 
                   {reportScope === 'final' ? (
                     <>
-                      <th className="w-20 text-center">مجموع ف1</th>
-                      <th className="w-20 text-center">مجموع ف2</th>
-                      <th className="w-24 text-center">المعدل النهائي</th>
+                      <th className="w-20 text-center">{t('semester1TotalShort')}</th>
+                      <th className="w-20 text-center">{t('semester2TotalShort')}</th>
+                      <th className="w-24 text-center">{t('finalAverageLabel')}</th>
                     </>
                   ) : (
                     <th className="w-28 text-center">{scoreLabel}</th>
@@ -691,23 +690,22 @@ const AnalyticsTemplate = ({
         <section className="print-page">
           {renderHeader()}
 
-          <h2 className="section-title">طلاب لم تكتمل بياناتهم النهائية</h2>
+          <h2 className="section-title">{t('studentsWithIncompleteResults')}</h2>
 
           <p className="text-xs font-bold mb-4 leading-6">
-            لم يتم احتساب المعدل النهائي لهؤلاء الطلاب لعدم اكتمال بيانات
-            الفصلين.
+            {t('incompleteResultsExplanation')}
           </p>
 
           <table className="report-table">
             <thead>
               <tr>
-                <th className="w-10 text-center">م</th>
+                <th className="w-10 text-center">{t('numLabel')}</th>
                 <th className={`text-${dir === 'rtl' ? 'right' : 'left'}`}>
-                  اسم الطالب
+                  {t('studentNameLabel')}
                 </th>
-                <th className="w-24 text-center">مجموع ف1</th>
-                <th className="w-24 text-center">مجموع ف2</th>
-                <th className="w-28 text-center">الحالة</th>
+                <th className="w-24 text-center">{t('semester1TotalShort')}</th>
+                <th className="w-24 text-center">{t('semester2TotalShort')}</th>
+                <th className="w-28 text-center">{t('statusLabel')}</th>
               </tr>
             </thead>
 
@@ -721,7 +719,7 @@ const AnalyticsTemplate = ({
                   <td className="text-center">{s.sem1 ?? '-'}</td>
                   <td className="text-center">{s.sem2 ?? '-'}</td>
                   <td className="text-center font-black text-orange-700">
-                    غير مكتمل
+                    {t('incompleteStatus')}
                   </td>
                 </tr>
               ))}
@@ -737,7 +735,7 @@ const AnalyticsTemplate = ({
         <div className="h-[185mm] flex flex-col justify-end">
           <div className="flex justify-between items-end border-t-2 border-black pt-10 relative">
             <div className="text-center w-1/3">
-              <p className="font-bold text-sm mb-10">معلم المادة</p>
+              <p className="font-bold text-sm mb-10">{t('subjectTeacherLabel')}</p>
               <p className="font-black text-base">
                 {teacherInfo?.name || '....................'}
               </p>
@@ -754,7 +752,7 @@ const AnalyticsTemplate = ({
             )}
 
             <div className="text-center w-1/3">
-              <p className="font-bold text-sm mb-10">مدير المدرسة</p>
+              <p className="font-bold text-sm mb-10">{t('schoolPrincipalMale')}</p>
               <p className="font-black text-base">....................</p>
             </div>
           </div>
@@ -786,10 +784,10 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
   const continuousWeight = settings.totalScore - finalWeight;
   const continuousTools = safeTools.filter((tool: any) => tool.name.trim() !== finalExamName);
   const scopeTitle = reportScope === 'sem1'
-    ? 'سجل درجات الفصل الدراسي الأول'
+    ? t('firstSemesterGradesRecord')
     : reportScope === 'sem2'
-      ? 'سجل درجات الفصل الدراسي الثاني'
-      : 'سجل النتيجة النهائية للعام الدراسي';
+      ? t('secondSemesterGradesRecord')
+      : t('annualGradesRecord');
 
   const getSymbol = (score: number) => {
     const percent = (score / settings.totalScore) * 100;
@@ -859,10 +857,10 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
                     </>
                   ) : (
                     <>
-                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع الفصل الأول</th>
-                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">مجموع الفصل الثاني</th>
-                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-black">المعدل النهائي</th>
-                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-bold">التقدير العام</th>
+                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">{t('firstSemesterTotal')}</th>
+                      <th className="border border-black p-1 bg-amber-100 text-center text-black font-bold">{t('secondSemesterTotal')}</th>
+                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-black">{t('finalAverageLabel')}</th>
+                      <th className="border border-black p-1 bg-emerald-100 text-center text-black font-bold">{t('overallGradeLabel')}</th>
                     </>
                   )}
                 </tr>
@@ -1024,7 +1022,7 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
 };
 
 const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selectedClass }: any) => {
-  const { dir } = useApp();
+  const { t, dir } = useApp();
   const safeStudents = (Array.isArray(students) ? students : []).filter((student: any) => selectedClass === 'all' || (Array.isArray(student.classes) && student.classes.includes(selectedClass)));
   const getCode = (student: any) => student?.rasedId || student?.parentCode || student?.secretCode || student?.civilID || student?.civilId || '-';
   return (
@@ -1033,18 +1031,18 @@ const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selec
         {safeStudents.map((student: any, index: number) => (
           <div key={student.id || index} className="avoid-break rounded-3xl border-2 border-amber-400 overflow-hidden bg-white shadow-sm min-h-[92mm] flex flex-col">
             <div className="bg-gradient-to-l from-amber-500 to-amber-400 text-white px-5 py-4 flex items-center justify-between">
-              <div><h2 className="text-xl font-black">بطاقة ولي الأمر</h2><p className="text-xs font-bold opacity-90">راصد - متابعة الطالب</p></div>
+              <div><h2 className="text-xl font-black">{t('parentCardTitle')}</h2><p className="text-xs font-bold opacity-90">{t('parentCardSubtitle')}</p></div>
               <CreditCard className="w-9 h-9" />
             </div>
             <div className="p-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
-                <div><p className="text-xs font-bold text-gray-500">اسم الطالب</p><p className="text-xl font-black text-slate-900 mt-1">{student.name}</p></div>
+                <div><p className="text-xs font-bold text-gray-500">{t('studentNameLabel')}</p><p className="text-xl font-black text-slate-900 mt-1">{student.name}</p></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3"><p className="text-xs font-bold text-gray-500">الفصل</p><p className="font-black text-slate-900 mt-1">{Array.isArray(student.classes) ? student.classes[0] : '-'}</p></div>
-                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3"><p className="text-xs font-bold text-amber-700">الكود السري</p><p className="font-black text-xl text-amber-900 mt-1 tracking-wider" dir="ltr">{getCode(student)}</p></div>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3"><p className="text-xs font-bold text-gray-500">{t('classLabelShort')}</p><p className="font-black text-slate-900 mt-1">{Array.isArray(student.classes) ? student.classes[0] : '-'}</p></div>
+                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3"><p className="text-xs font-bold text-amber-700">{t('secretCodeLabel')}</p><p className="font-black text-xl text-amber-900 mt-1 tracking-wider" dir="ltr">{getCode(student)}</p></div>
                 </div>
               </div>
-              <div className="border-t border-slate-200 pt-4 mt-5 text-xs font-bold text-slate-600 flex justify-between gap-3"><span>{schoolName || 'المدرسة'}</span><span>{teacherName || 'المعلم'}</span></div>
+              <div className="border-t border-slate-200 pt-4 mt-5 text-xs font-bold text-slate-600 flex justify-between gap-3"><span>{schoolName || t('schoolFallback')}</span><span>{teacherName || t('mailboxDefaultTeacher')}</span></div>
             </div>
           </div>
         ))}
@@ -1151,10 +1149,10 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
   const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : finalExamNameRaw;
   const selectedSemester = reportScope === 'sem2' ? '2' : '1';
   const scopeTitle = reportScope === 'sem1'
-    ? 'تقرير الفصل الدراسي الأول'
+    ? t('firstSemesterReport')
     : reportScope === 'sem2'
-      ? 'تقرير الفصل الدراسي الثاني'
-      : 'تقرير النتيجة النهائية للعام الدراسي';
+      ? t('secondSemesterReport')
+      : t('annualResultsReport');
 
   if (safeStudents.length === 0) return <div className="text-black text-center p-10">{t('noStudentDataToDisplay')}</div>;
 
@@ -1319,31 +1317,31 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
               </>
             ) : (
               <div className="mb-5 rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-5 text-center">
-                <h3 className="text-xl font-black text-emerald-900">النتيجة النهائية للعام الدراسي</h3>
-                <p className="mt-2 text-sm font-bold text-emerald-800">تم احتساب المعدل من مجموع الفصل الأول ومجموع الفصل الثاني فقط.</p>
+                <h3 className="text-xl font-black text-emerald-900">{t('annualFinalResult')}</h3>
+                <p className="mt-2 text-sm font-bold text-emerald-800">{t('annualAverageCalculationNote')}</p>
               </div>
             )}
 
             {reportScope === 'final' && (
             <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
                 <div className="bg-amber-200 p-4 border-l-2 border-black flex items-center justify-center font-black text-black">
-                    النتيجة النهائية<br/>للعام الدراسي
+                    {t('annualFinalResultLine1')}<br/>{t('annualFinalResultLine2')}
                 </div>
                 <div className="flex-1 flex justify-around items-center p-4">
                     <div className="text-center">
-                        <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
+                        <p className="text-xs font-bold mb-1">{t('semester1TotalShort')}</p>
                         <p className="font-black text-lg">{hasSem1Grades ? sem1Total : '-'}</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
+                        <p className="text-xs font-bold mb-1">{t('semester2TotalShort')}</p>
                         <p className="font-black text-lg">{hasSem2Grades ? sem2Total : '-'}</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-xs font-bold mb-1">المعدل النهائي</p>
-                        <p className="font-black text-xl text-blue-800">{finalAverage ?? 'غير مكتمل'}</p>
+                        <p className="text-xs font-bold mb-1">{t('finalAverageLabel')}</p>
+                        <p className="font-black text-xl text-blue-800">{finalAverage ?? t('incompleteStatus')}</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-xs font-bold mb-1">التقدير العام</p>
+                        <p className="text-xs font-bold mb-1">{t('overallGradeLabel')}</p>
                         <p className="font-black text-2xl text-emerald-700">{finalAverage === null ? '-' : getSymbol(finalAverage)}</p>
                     </div>
                 </div>
@@ -1489,7 +1487,7 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
       }
     });
     safeStudents.forEach(s => { if (s && s.grade) grades.add(s.grade); });
-    if (grades.size === 0 && safeClasses.length > 0) return ['عام'];
+    if (grades.size === 0 && safeClasses.length > 0) return [t('generalSubject')];
 
     return Array.from(grades).sort((a, b) => {
       const numA = parseInt(a);
@@ -1573,12 +1571,12 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
     fileName.endsWith('.pdf');
 
   if (!isImage && !isPdf) {
-    alert('اختر صورة بصيغة PNG أو JPG أو WEBP، أو ملف PDF صالح.');
+    alert(t('certificateInvalidFileType'));
     return;
   }
 
   if (file.size > 12 * 1024 * 1024) {
-    alert('حجم الملف كبير. الحد الأقصى المسموح به هو 12 ميجابايت.');
+    alert(t('certificateFileTooLarge'));
     return;
   }
 
@@ -1705,24 +1703,24 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
     );
 
     if (errorMessage.includes('PasswordException')) {
-      alert('ملف PDF محمي بكلمة مرور، ولا يمكن استخدامه خلفية للشهادة.');
+      alert(t('certificatePdfPasswordProtected'));
     } else if (
       errorMessage.includes('InvalidPDFException') ||
       errorMessage.includes('INVALID_PDF_HEADER')
     ) {
-      alert('ملف PDF غير صالح أو تالف. جرّب حفظه من جديد ثم رفعه.');
+      alert(t('certificatePdfInvalid'));
     } else if (errorMessage.includes('MissingPDFException')) {
-      alert('تعذر الوصول إلى ملف PDF المحدد.');
+      alert(t('certificatePdfMissing'));
     } else if (errorMessage.includes('PDF_HAS_NO_PAGES')) {
-      alert('ملف PDF لا يحتوي على صفحات صالحة.');
+      alert(t('certificatePdfNoPages'));
     } else if (
       errorMessage.includes('worker') ||
       errorMessage.includes('Worker')
     ) {
-      alert('تعذر تشغيل محرك قراءة PDF داخل التطبيق.');
+      alert(t('certificatePdfWorkerError'));
     } else {
       alert(
-        'تعذر قراءة خلفية الشهادة. جرّب ملف PDF آخر أو حوّل الشهادة إلى صورة PNG.'
+        t('certificateBackgroundReadError')
       );
     }
   } finally {
@@ -1795,15 +1793,15 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
   // 💉 فتح نافذة الطباعة الخاصة بالإحصائيات
  const openAnalyticsPreview = () => {
   if (analyticsData.totalStudents === 0) {
-    return alert('لا يوجد طلاب مطابقين لعرض وطباعة الإحصائيات');
+    return alert(t('analyticsNoStudentsForPrint'));
   }
 
   const title =
     analyticsPrintScope === 'sem1'
-      ? 'تقرير نتائج الفصل الدراسي الأول'
+      ? t('firstSemesterResultsReport')
       : analyticsPrintScope === 'sem2'
-        ? 'تقرير نتائج الفصل الدراسي الثاني'
-        : 'تقرير النتيجة النهائية للعام الدراسي';
+        ? t('secondSemesterResultsReport')
+        : t('annualResultsReport');
 
   setPreviewData({
     isOpen: true,
@@ -1939,7 +1937,7 @@ if (hasSem1Grades && hasSem2Grades) {
           <div className="mb-3">
               <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-textPrimary">{label}</span>
-                  <span className="text-textSecondary">{count} طالب ({percentage}%)</span>
+                  <span className="text-textSecondary">{count} {t('studentsCountWord')} ({percentage}%)</span>
               </div>
               <div className="w-full bg-bgSoft rounded-full h-3 overflow-hidden border border-borderColor">
                   <div className={`h-full ${colorClass} transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
@@ -1966,7 +1964,7 @@ if (hasSem1Grades && hasSem2Grades) {
     { id: 'certificates', label: t('certificatesTab'), icon: Icon3DCertificate },
     { id: 'parent_cards', label: t('parentCardsTab'), icon: Icon3DParentCard }, 
     { id: 'summon', label: t('summonTab'), icon: Icon3DSummon },
-    { id: 'analytics', label: t('التحليل الإحصائي') || 'analyticstab', icon: Icon3DAnalytics },
+    { id: 'analytics', label: t('analyticsTab'), icon: Icon3DAnalytics },
   ];
 
   return (
@@ -2049,11 +2047,11 @@ if (hasSem1Grades && hasSem2Grades) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-textSecondary mb-2">نوع النتيجة في التقرير</label>
+                  <label className="block text-xs font-black text-textSecondary mb-2">{t('reportResultType')}</label>
                   <select value={studentReportScope} onChange={(e) => setStudentReportScope(e.target.value as AcademicReportScope)} className="w-full p-4 border rounded-2xl font-black outline-none text-sm bg-bgCard border-borderColor text-textPrimary focus:border-primary">
-                    <option value="sem1">الفصل الدراسي الأول فقط</option>
-                    <option value="sem2">الفصل الدراسي الثاني فقط</option>
-                    <option value="final">النتيجة النهائية للعام الدراسي</option>
+                    <option value="sem1">{t('firstSemesterOnly')}</option>
+                    <option value="sem2">{t('secondSemesterOnly')}</option>
+                    <option value="final">{t('annualFinalResult')}</option>
                   </select>
                 </div>
               </div>
@@ -2103,11 +2101,11 @@ if (hasSem1Grades && hasSem2Grades) {
                   {getClassesForGrade(gradesGrade).map(c => <option key={c} value={c} className="bg-bgCard text-textPrimary">{c}</option>)}
                 </select>
                 <div>
-                  <label className="block text-xs font-black text-textSecondary mb-2">نوع سجل الدرجات</label>
+                  <label className="block text-xs font-black text-textSecondary mb-2">{t('gradesRecordType')}</label>
                   <select value={gradesReportScope} onChange={(e) => setGradesReportScope(e.target.value as AcademicReportScope)} className="w-full p-4 border rounded-2xl font-black outline-none text-sm bg-bgCard border-borderColor text-textPrimary focus:border-warning">
-                    <option value="sem1">درجات الفصل الدراسي الأول فقط</option>
-                    <option value="sem2">درجات الفصل الدراسي الثاني فقط</option>
-                    <option value="final">النتيجة النهائية للعام الدراسي</option>
+                    <option value="sem1">{t('firstSemesterGradesOnly')}</option>
+                    <option value="sem2">{t('secondSemesterGradesOnly')}</option>
+                    <option value="final">{t('annualFinalResult')}</option>
                   </select>
                 </div>
               </div>
@@ -2310,7 +2308,7 @@ if (hasSem1Grades && hasSem2Grades) {
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="flex items-center gap-3 border-b pb-4 mb-2 border-borderColor">
                 <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600"><Icon3DAnalytics className="w-5 h-5" /></div>
-                <h3 className="font-black text-lg text-textPrimary">التحليل الإحصائي للنتائج</h3>
+                <h3 className="font-black text-lg text-textPrimary">{t('analyticsResultsTitle')}</h3>
               </div>
 
               <div className="space-y-4">
@@ -2337,19 +2335,19 @@ if (hasSem1Grades && hasSem2Grades) {
                       {/* لوحة المعلومات السريعة */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                           <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
-                              <p className="text-[10px] font-bold text-textSecondary mb-1">إجمالي الطلاب</p>
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">{t('analyticsTotalStudents')}</p>
                               <p className="text-2xl font-black text-indigo-600">{analyticsData.totalStudents}</p>
                           </div>
                           <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
-                              <p className="text-[10px] font-bold text-textSecondary mb-1">متوسط الفصل 1</p>
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">{t('analyticsSemester1Average')}</p>
                               <p className="text-xl font-black text-textPrimary">{Math.round(analyticsData.sem1.totalScore / analyticsData.totalStudents)}</p>
                           </div>
                           <div className="bg-bgSoft border border-borderColor p-4 rounded-2xl text-center">
-                              <p className="text-[10px] font-bold text-textSecondary mb-1">متوسط الفصل 2</p>
+                              <p className="text-[10px] font-bold text-textSecondary mb-1">{t('analyticsSemester2Average')}</p>
                               <p className="text-xl font-black text-textPrimary">{Math.round(analyticsData.sem2.totalScore / analyticsData.totalStudents)}</p>
                           </div>
                           <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center">
-                              <p className="text-[10px] font-bold text-amber-700 mb-1">الأول على الصف</p>
+                              <p className="text-[10px] font-bold text-amber-700 mb-1">{t('analyticsTopStudentInGrade')}</p>
                               <p className="text-sm font-black text-amber-900 truncate">{analyticsData.topStudent.name}</p>
                           </div>
                       </div>
@@ -2357,28 +2355,28 @@ if (hasSem1Grades && hasSem2Grades) {
                       {/* الرسومات البيانية */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                           <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
-                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">نتائج الفصل الأول</h4>
-                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem1[c.key as keyof typeof analyticsData.sem1].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">{t('firstSemesterResults')}</h4>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem1[c.key as keyof typeof analyticsData.sem1].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
 
                           <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
-                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">نتائج الفصل الثاني</h4>
-                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem2[c.key as keyof typeof analyticsData.sem2].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+                              <h4 className="font-black text-sm text-center mb-6 text-textPrimary">{t('secondSemesterResults')}</h4>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem2[c.key as keyof typeof analyticsData.sem2].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
 
                           <div className="border-2 border-indigo-100 bg-indigo-50/50 p-5 rounded-2xl shadow-sm">
                               <h4 className="font-black text-sm text-center mb-6 text-indigo-900 flex items-center justify-center gap-2">
-                                  <TrendingUp className="w-4 h-4" /> النتيجة العامة النهائية
+                                  <TrendingUp className="w-4 h-4" /> {t('annualFinalResult')}
                               </h4>
-                               {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.final[c.key as keyof typeof analyticsData.final].length, analyticsData.totalStudents, c.bar, c.label)}</React.Fragment>)}                          </div>
+                               {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.final[c.key as keyof typeof analyticsData.final].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
                       </div>
 
                       {/* 💉 قسم جديد: تفاصيل الأسماء في واجهة التطبيق */}
                       <div className="mt-8 border-t border-borderColor pt-6">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                              <h4 className="font-black text-base text-textPrimary flex items-center gap-2"><Users className="w-5 h-5 text-indigo-600"/> قوائم تفصيلية للنتائج:</h4>
+                              <h4 className="font-black text-base text-textPrimary flex items-center gap-2"><Users className="w-5 h-5 text-indigo-600"/> {t('analyticsDetailedLists')}</h4>
                               <div className="flex bg-bgSoft p-1 rounded-xl border border-borderColor shadow-inner">
-                                  <button onClick={() => setAnalyticsDetailTab('sem1')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem1' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>الفصل الأول</button>
-                                  <button onClick={() => setAnalyticsDetailTab('sem2')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem2' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>الفصل الثاني</button>
-                                  <button onClick={() => setAnalyticsDetailTab('final')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'final' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>النتيجة النهائية</button>
+                                  <button onClick={() => setAnalyticsDetailTab('sem1')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem1' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>{t('firstSemesterWord')}</button>
+                                  <button onClick={() => setAnalyticsDetailTab('sem2')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'sem2' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>{t('secondSemesterWord')}</button>
+                                  <button onClick={() => setAnalyticsDetailTab('final')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${analyticsDetailTab === 'final' ? 'bg-bgCard shadow-sm text-indigo-600' : 'text-textSecondary hover:text-textPrimary'}`}>{t('finalResultShort')}</button>
                               </div>
                           </div>
 
@@ -2388,8 +2386,8 @@ if (hasSem1Grades && hasSem2Grades) {
                               return (
                                   <div key={cat.key} className="mb-4 bg-bgCard border border-borderColor rounded-2xl overflow-hidden shadow-sm">
                                       <div className={`p-3 ${cat.color.replace('bg-', 'bg-opacity-20 bg-')} flex justify-between items-center border-b border-borderColor`}>
-                                          <span className={`font-black text-sm ${cat.text}`}>تقدير: {cat.label}</span>
-                                          <span className={`text-xs font-black bg-white/60 px-2 py-1 rounded-lg ${cat.text}`}>{list.length} طلاب</span>
+                                          <span className={`font-black text-sm ${cat.text}`}>{t('gradeLabelPrefix')} {getGradeCategoryLabel(cat.key, t)}</span>
+                                          <span className={`text-xs font-black bg-white/60 px-2 py-1 rounded-lg ${cat.text}`}>{list.length} {t('studentsCountWord')}</span>
                                       </div>
                                       <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                           {[...list].sort((a,b) => analyticsDetailTab === 'final' ? b.final - a.final : b.score - a.score).map((s, idx) => (
@@ -2407,7 +2405,7 @@ if (hasSem1Grades && hasSem2Grades) {
                       </div>
 <div className="mt-6 border-t border-borderColor pt-5">
   <label className="block text-xs font-black text-textSecondary mb-2">
-    نوع التقرير المراد طباعته
+    {t('printReportType')}
   </label>
 
   <select
@@ -2417,9 +2415,9 @@ if (hasSem1Grades && hasSem2Grades) {
     }
     className="w-full p-4 border rounded-2xl font-black outline-none transition-colors text-sm bg-bgCard border-borderColor text-textPrimary focus:border-indigo-600"
   >
-    <option value="sem1">الفصل الدراسي الأول فقط</option>
-    <option value="sem2">الفصل الدراسي الثاني فقط</option>
-    <option value="final">النتيجة النهائية للعام الدراسي</option>
+    <option value="sem1">{t('firstSemesterOnly')}</option>
+    <option value="sem2">{t('secondSemesterOnly')}</option>
+    <option value="final">{t('annualFinalResult')}</option>
   </select>
 </div>
                       {/* زر الطباعة */}
@@ -2430,17 +2428,17 @@ if (hasSem1Grades && hasSem2Grades) {
   >
     <Icon3DPrint className="w-5 h-5" />
     {analyticsPrintScope === 'sem1'
-      ? 'طباعة تقرير الفصل الدراسي الأول'
+      ? t('printFirstSemesterReport')
       : analyticsPrintScope === 'sem2'
-        ? 'طباعة تقرير الفصل الدراسي الثاني'
-        : 'طباعة تقرير النتيجة النهائية'}
+        ? t('printSecondSemesterReport')
+        : t('printAnnualResultReport')}
   </button>
 </div>
                   </>
               ) : (
                   <div className="flex flex-col items-center justify-center py-20 opacity-60">
                       <Icon3DAnalytics className="w-16 h-16 grayscale opacity-50 mb-4" />
-                      <p className="text-textSecondary font-bold">لا يوجد طلاب مطابقين لعرض الإحصائيات</p>
+                      <p className="text-textSecondary font-bold">{t('analyticsNoMatchingStudents')}</p>
                   </div>
               )}
 
@@ -2458,24 +2456,24 @@ if (hasSem1Grades && hasSem2Grades) {
               <textarea value={tempCertSettings.bodyText} onChange={(e) => setTempCertSettings({ ...tempCertSettings, bodyText: e.target.value })} className="w-full p-3 border rounded-xl font-bold h-24 outline-none transition-colors resize-none bg-bgSoft border-borderColor text-textPrimary focus:border-primary placeholder:text-textSecondary" placeholder={t('certificateBodyPlaceholder')} />
 
               <div className="rounded-2xl border border-borderColor bg-bgSoft p-4 text-right">
-                <h4 className="font-black text-sm text-textPrimary mb-1">خلفية شهادة مخصصة</h4>
-                <p className="text-[11px] font-bold text-textSecondary mb-4">ارفع صورة شهادة فارغة أو ملف PDF، وسيكتب راصد محتوى الشهادة فوق الصفحة الأولى.</p>
+                <h4 className="font-black text-sm text-textPrimary mb-1">{t('customCertificateBackground')}</h4>
+                <p className="text-[11px] font-bold text-textSecondary mb-4">{t('customCertificateBackgroundHint')}</p>
                 <label className="w-full cursor-pointer rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-4 flex items-center justify-center gap-2 text-primary font-black text-sm hover:bg-primary/10">
                   {isProcessingCertificateBackground ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                  {isProcessingCertificateBackground ? 'جاري تجهيز الخلفية...' : 'اختيار صورة أو PDF'}
+                  {isProcessingCertificateBackground ? t('preparingCertificateBackground') : t('chooseImageOrPdf')}
                   <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" disabled={isProcessingCertificateBackground} onChange={(event) => { const file = event.target.files?.[0]; handleCertificateBackgroundUpload(file); event.currentTarget.value = ''; }} />
                 </label>
                 {tempCertSettings.customCertificateBackground && (
                   <div className="mt-4 space-y-3">
                     <div className="relative overflow-hidden rounded-xl border border-borderColor bg-white aspect-[297/210]">
-                      <img src={tempCertSettings.customCertificateBackground} alt="معاينة خلفية الشهادة" className="w-full h-full object-fill" />
+                      <img src={tempCertSettings.customCertificateBackground} alt={t('certificateBackgroundPreview')} className="w-full h-full object-fill" />
                     </div>
                     <div className="flex items-center justify-between gap-2 text-xs font-bold text-textSecondary">
-                      <span className="truncate">{tempCertSettings.customCertificateBackgroundName || 'خلفية الشهادة المخصصة'}</span>
-                      <button type="button" onClick={removeCertificateBackground} className="shrink-0 px-3 py-2 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center gap-1"><Trash2 className="w-4 h-4" /> حذف</button>
+                      <span className="truncate">{tempCertSettings.customCertificateBackgroundName || t('customCertificateBackground')}</span>
+                      <button type="button" onClick={removeCertificateBackground} className="shrink-0 px-3 py-2 rounded-xl bg-danger/10 text-danger border border-danger/20 flex items-center gap-1"><Trash2 className="w-4 h-4" /> {t('mailboxDelete')}</button>
                     </div>
                     <label className="flex items-center justify-between gap-3 rounded-xl border border-borderColor bg-bgCard p-3">
-                      <span className="font-black text-sm text-textPrimary">استخدام الخلفية المخصصة</span>
+                      <span className="font-black text-sm text-textPrimary">{t('useCustomCertificateBackground')}</span>
                       <input type="checkbox" checked={Boolean(tempCertSettings.useCustomCertificateBackground)} onChange={(e) => setTempCertSettings({ ...tempCertSettings, useCustomCertificateBackground: e.target.checked })} className="w-5 h-5" />
                     </label>
                   </div>
