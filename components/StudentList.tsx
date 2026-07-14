@@ -374,20 +374,20 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const handleExportStudentCodesExcel = async () => {
         if (studentsForCodesExport.length === 0) {
-            alert('لا توجد أسماء طلاب للتصدير حسب الصف أو الفصل المحدد.');
+            alert(t('studentsNoCodesToExport'));
             return;
         }
 
         const exportRows = studentsForCodesExport.map((student, index) => {
-            const className = student.classes && student.classes.length > 0 ? student.classes[0] : 'غير محدد';
+            const className = student.classes && student.classes.length > 0 ? student.classes[0] : t('unspecified');
 
             return {
-                'م': index + 1,
-                'اسم الطالب': student.name || '',
-                'الصف / الفصل': className,
-                'كود راصد السري': getStudentRasedCode(student),
-                'رقم ولي الأمر': student.parentPhone || '',
-                'النوع': student.gender === 'female' ? 'طالبة' : 'طالب'
+                [t('excelNo')]: index + 1,
+                [t('excelStudentName')]: student.name || '',
+                [t('studentsExcelClassSection')]: className,
+                [t('studentsExcelRasedCode')]: getStudentRasedCode(student),
+                [t('studentsExcelParentPhone')]: student.parentPhone || '',
+                [t('studentsExcelGender')]: student.gender === 'female' ? t('femaleStudentLabel') : t('maleStudentLabel')
             };
         });
 
@@ -402,14 +402,14 @@ const StudentList: React.FC<StudentListProps> = ({
         ];
 
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'أكواد الطلاب');
+        XLSX.utils.book_append_sheet(workbook, worksheet, t('studentsCodesSheetName'));
 
         const datePart = new Date().toLocaleDateString('en-CA');
         const filterPart = selectedClass !== 'all'
             ? selectedClass
             : selectedGrade !== 'all'
-                ? `الصف_${selectedGrade}`
-                : 'كل_الطلاب';
+                ? `${t('gradePrefix')}_${selectedGrade}`
+                : t('studentsAllStudentsFilePart');
 
         const fileName = `Rased_Student_Codes_${sanitizeFileName(filterPart)}_${datePart}.xlsx`;
 
@@ -427,9 +427,9 @@ const StudentList: React.FC<StudentListProps> = ({
                 });
 
                 alert(
-                    `تم حفظ ملف أكواد الطلاب بنجاح على الجهاز.\n\n` +
-                    `اسم الملف:\n${fileName}\n\n` +
-                    `الموقع: مستندات التطبيق / Documents`
+                    `${t('studentsCodesSavedSuccess')}\n\n` +
+                    `${t('studentsFileNameLabel')}:\n${fileName}\n\n` +
+                    `${t('studentsSaveLocationLabel')}: ${t('studentsDocumentsLocation')}`
                 );
 
                 return;
@@ -438,7 +438,7 @@ const StudentList: React.FC<StudentListProps> = ({
             XLSX.writeFile(workbook, fileName);
         } catch (error) {
             console.error('Export student codes failed:', error);
-            alert('تعذر إنشاء ملف Excel. حاول مرة أخرى.');
+            alert(t('studentsCodesExportError'));
         }
     };
 
@@ -484,14 +484,14 @@ const StudentList: React.FC<StudentListProps> = ({
         });
 
         if (eligibleStudents.length === 0) {
-            alert(t('alertNoPresentStudentsForDraw') || 'لا يوجد طلاب متاحين للقرعة (الجميع غائب أو لديه سلوك سلبي)');
+            alert(t('alertNoPresentStudentsForDraw'));
             return;
         }
 
         let candidates = eligibleStudents.filter(s => !pickedStudentIds.includes(s.id));
 
         if (candidates.length === 0) {
-            if (confirm(t('alertAllPresentSelected') || 'تم سحب جميع الطلاب المتاحين. هل تريد تصفير القرعة والبدء من جديد؟')) {
+            if (confirm(t('alertAllPresentSelected'))) {
                 setPickedStudentIds([]);
                 candidates = eligibleStudents;
             } else {
@@ -539,7 +539,7 @@ const StudentList: React.FC<StudentListProps> = ({
         const behaviorText = isFemale ? t('whatsappSmartBehaviorFemale') : t('whatsappSmartBehaviorMale');
         const teacherTitle = teacherInfo?.gender === 'female' ? t('whatsappSmartTeacherFemale') : t('whatsappSmartTeacherMale');
 
-        const message = `${t('whatsappSmartMsg1')} ${childTitle} (${student.name}) ${t('whatsappSmartMsg2')} ${childTitle} ${scoreText} (${totalScore}) ${t('whatsappSmartMsg3')} ${teacherInfo?.subject || '...'}، ${behaviorText}: "${topBehavior}"${t('whatsappSmartMsg4')} ${teacherTitle}: ${teacherInfo?.name || ''}`;
+        const message = `${t('whatsappSmartMsg1')} ${childTitle} (${student.name}) ${t('whatsappSmartMsg2')} ${childTitle} ${scoreText} (${totalScore}) ${t('whatsappSmartMsg3')} ${teacherInfo?.subject || '...'}${language === 'ar' ? '،' : ','} ${behaviorText}: "${topBehavior}"${t('whatsappSmartMsg4')} ${teacherTitle}: ${teacherInfo?.name || ''}`;
         const msg = encodeURIComponent(message);
         let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
         if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
@@ -683,11 +683,11 @@ const StudentList: React.FC<StudentListProps> = ({
         const existingStudent = findExistingStudentByNameAndClass(safeStudents, name, className);
         if (existingStudent) {
             alert(
-                `تم العثور على الطالب مسبقًا في نفس الفصل.\n\n` +
-                `الطالب: ${existingStudent.name}\n` +
-                `الفصل: ${getStudentClassValueForIdentity(existingStudent)}\n` +
-                `كود راصد: ${getExistingRasedCodeFromStudent(existingStudent) || 'غير محدد'}\n\n` +
-                `لن يتم إنشاء كود جديد للطالب.`
+                `${t('studentsDuplicateFound')}\n\n` +
+                `${t('studentsStudentLabel')}: ${existingStudent.name}\n` +
+                `${t('studentsClassLabel')}: ${getStudentClassValueForIdentity(existingStudent)}\n` +
+                `${t('studentsRasedCodeLabel')}: ${getExistingRasedCodeFromStudent(existingStudent) || t('unspecified')}\n\n` +
+                t('studentsNoNewCodeCreated')
             );
             setNewStudentName('');
             setNewStudentPhone('');
@@ -721,11 +721,11 @@ const StudentList: React.FC<StudentListProps> = ({
 
             if (duplicate) {
                 alert(
-                    `يوجد طالب آخر بنفس الاسم والفصل.\n\n` +
-                    `الطالب: ${duplicate.name}\n` +
-                    `الفصل: ${getStudentClassValueForIdentity(duplicate)}\n` +
-                    `كود راصد: ${getExistingRasedCodeFromStudent(duplicate) || 'غير محدد'}\n\n` +
-                    `يرجى تعديل الاسم أو الفصل لتجنب دمج طالبين مختلفين.`
+                    `${t('studentsDuplicateEditFound')}\n\n` +
+                    `${t('studentsStudentLabel')}: ${duplicate.name}\n` +
+                    `${t('studentsClassLabel')}: ${getStudentClassValueForIdentity(duplicate)}\n` +
+                    `${t('studentsRasedCodeLabel')}: ${getExistingRasedCodeFromStudent(duplicate) || t('unspecified')}\n\n` +
+                    t('studentsDuplicateEditHint')
                 );
                 return;
             }
@@ -751,7 +751,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <div className="relative shrink-0">
                         <button
                             data-voice-command="فتح المؤقت مؤقت الحصة افتح العداد"
-                            aria-label="فتح المؤقت"
+                            aria-label={t('timerTitle')}
                             onClick={() => setShowTimerModal(true)}
                             className={`w-10 h-10 shrink-0 rounded-xl border active:scale-95 transition-all flex items-center justify-center shadow-sm ${
                                 timerSeconds > 0
@@ -771,7 +771,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
                     <button
                         data-voice-command="اختيار طالب عشوائي القرعة قرعة عشوائية اختر طالب"
-                        aria-label="اختيار طالب عشوائي"
+                        aria-label={t('randomDraw')}
                         onClick={handleRandomPick}
                         className="w-10 h-10 shrink-0 rounded-xl border border-borderColor bg-bgCard text-textPrimary hover:bg-bgSoft active:scale-95 transition-all flex items-center justify-center shadow-sm"
                         title={t('randomDraw')}
@@ -782,7 +782,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <div className="relative z-[9999] shrink-0">
                         <button
                             data-voice-command="فتح قائمة الطلاب المزيد خيارات الطلاب"
-                            aria-label="فتح قائمة الطلاب"
+                            aria-label={t('moreBtn')}
                             onClick={() => setShowMenu(!showMenu)}
                             className={`w-10 h-10 shrink-0 rounded-xl border active:scale-95 transition-all flex items-center justify-center shadow-sm ${
                                 showMenu
@@ -807,7 +807,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
                                         >
                                             <FileSpreadsheet className="w-4 h-4 text-success" />
-                                            تحميل أسماء وأكواد الطلاب Excel
+                                            {t('studentsExportCodesExcel')}
                                         </button>
 
                                         <div className="my-1 border-t border-borderColor" />
@@ -873,7 +873,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                 <button
                                     type="button"
                                     data-voice-command="عرض كل الطلاب كل الطلاب"
-                                    aria-label="عرض كل الطلاب"
+                                    aria-label={t('all')}
                                     onClick={() => {
                                         setSelectedGrade('all');
                                         setSelectedClass('all');
@@ -892,7 +892,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                         <button
                                             type="button"
                                             data-voice-command={`عرض الصف ${g}`}
-                                            aria-label={`عرض الصف ${g}`}
+                                            aria-label={`${t('gradePrefix')} ${g}`}
                                             onClick={() => {
                                                 setSelectedGrade(g);
                                                 setSelectedClass('all');
@@ -913,12 +913,12 @@ const StudentList: React.FC<StudentListProps> = ({
                         <div className="relative w-full md:w-60 shrink-0">
                             <select
                                 data-voice-field="فصل الطلاب"
-                                aria-label="اختيار فصل الطلاب"
+                                aria-label={t('selectClassPlaceholder')}
                                 value={selectedClass}
                                 onChange={(e) => setSelectedClass(e.target.value)}
                                 className="w-full h-11 rounded-2xl border border-borderColor bg-bgCard px-4 text-sm font-black text-textPrimary outline-none shadow-sm transition-all focus:border-primary/40 focus:bg-bgSoft"
                             >
-                                <option value="all">كل الفصول</option>
+                                <option value="all">{t('allClasses')}</option>
                                 {safeClasses
                                     .filter(c => selectedGrade === 'all' || normalizeArabicDigitsForIdentity(c).startsWith(selectedGrade))
                                     .map(c => (
@@ -936,7 +936,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <input
                         type="text"
                         data-voice-field="بحث الطلاب"
-                        aria-label="بحث الطلاب"
+                        aria-label={t('searchStudent')}
                         placeholder={t('searchStudent')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -958,15 +958,15 @@ const StudentList: React.FC<StudentListProps> = ({
                                     subtitle={studentClass}
                                     badge={totalPoints !== 0 ? `${totalPoints}` : undefined}
                                     badgeTone={totalPoints >= 0 ? 'warning' : 'danger'}
-                                    statusText={totalPoints !== 0 ? `${totalPoints} نقطة هذا الشهر` : undefined}
+                                    statusText={totalPoints !== 0 ? `${totalPoints} ${t('studentsPointsThisMonth')}` : undefined}
                                     statusTone={totalPoints >= 0 ? 'warning' : 'danger'}
                                     indexLabel={index + 1}
                                     actions={[
-                                        { key: 'positive', label: 'تعزيز', icon: ThumbsUp, tone: 'success', showOnMobile: true, voiceCommand: `تعزيز إيجابي ${student.name} افتح تعزيز ${student.name} نقاط تعزيز ${student.name}`, ariaLabel: `تعزيز إيجابي ${student.name}`, title: `تعزيز إيجابي ${student.name}`, onClick: () => handleBehavior(student, 'positive') },
-                                        { key: 'negative', label: 'تنبيه', icon: ThumbsDown, tone: 'danger', showOnMobile: true, voiceCommand: `سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`, ariaLabel: `تنبيه سلوكي ${student.name}`, title: `تنبيه سلوكي ${student.name}`, danger: true, onClick: () => handleBehavior(student, 'negative') },
-                                        { key: 'smart-report', label: 'تميز', icon: MessageCircle, tone: 'info', showOnMobile: false, voiceCommand: `تقرير تميز ${student.name} تقرير درجات ${student.name} واتساب ${student.name}`, ariaLabel: `تقرير الدرجات والتميز ${student.name}`, title: 'تقرير الدرجات والتميز (واتساب)', onClick: () => handleSendSmartReport(student) },
-                                        { key: 'negative-report', label: 'إنذار', icon: Send, tone: 'warning', showOnMobile: false, voiceCommand: `تقرير سلوكي ${student.name} إنذار ${student.name} إرسال إنذار ${student.name}`, ariaLabel: `تقرير سلوكي إنذار ${student.name}`, title: 'تقرير سلوكي إنذار (واتساب)', onClick: () => handleSendNegativeReport(student) },
-                                        { key: 'edit', label: 'تعديل', icon: Edit2, tone: 'neutral', showOnMobile: false, voiceCommand: `تعديل بيانات ${student.name} تعديل الطالب ${student.name}`, ariaLabel: `تعديل بيانات ${student.name}`, title: t('editStudentData'), onClick: () => setEditingStudent(student) }
+                                        { key: 'positive', label: t('reinforceBtn'), icon: ThumbsUp, tone: 'success', showOnMobile: true, voiceCommand: `تعزيز إيجابي ${student.name} افتح تعزيز ${student.name} نقاط تعزيز ${student.name}`, ariaLabel: `تعزيز إيجابي ${student.name}`, title: `تعزيز إيجابي ${student.name}`, onClick: () => handleBehavior(student, 'positive') },
+                                        { key: 'negative', label: t('studentsAlertAction'), icon: ThumbsDown, tone: 'danger', showOnMobile: true, voiceCommand: `سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`, ariaLabel: `تنبيه سلوكي ${student.name}`, title: `تنبيه سلوكي ${student.name}`, danger: true, onClick: () => handleBehavior(student, 'negative') },
+                                        { key: 'smart-report', label: t('studentsExcellenceAction'), icon: MessageCircle, tone: 'info', showOnMobile: false, voiceCommand: `تقرير تميز ${student.name} تقرير درجات ${student.name} واتساب ${student.name}`, ariaLabel: `تقرير الدرجات والتميز ${student.name}`, title: t('studentsExcellenceReportTitle'), onClick: () => handleSendSmartReport(student) },
+                                        { key: 'negative-report', label: t('studentsWarningAction'), icon: Send, tone: 'warning', showOnMobile: false, voiceCommand: `تقرير سلوكي ${student.name} إنذار ${student.name} إرسال إنذار ${student.name}`, ariaLabel: `تقرير سلوكي إنذار ${student.name}`, title: t('studentsBehaviorWarningTitle'), onClick: () => handleSendNegativeReport(student) },
+                                        { key: 'edit', label: t('studentsEditAction'), icon: Edit2, tone: 'neutral', showOnMobile: false, voiceCommand: `تعديل بيانات ${student.name} تعديل الطالب ${student.name}`, ariaLabel: `تعديل بيانات ${student.name}`, title: t('editStudentData'), onClick: () => setEditingStudent(student) }
                                     ]}
                                 />
                             );
@@ -988,10 +988,10 @@ const StudentList: React.FC<StudentListProps> = ({
             <DrawerSheet isOpen={showCardsModal} onClose={() => setShowCardsModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
                 <div className="flex flex-col h-full w-full bg-bgSoft">
                     <div className="flex justify-between items-center p-6 border-b border-borderColor bg-bgCard shrink-0 print:hidden">
-                        <div><h3 className="font-black text-xl text-primary flex items-center gap-2"><Printer className="w-6 h-6" /> بطاقات راصد السرية (جوازات المرور)</h3><p className="text-xs text-textSecondary font-bold mt-1">قم بطباعة هذه البطاقات وتوزيعها على الطلاب ليتمكن أولياء الأمور من الدخول</p></div>
-                        <button onClick={() => window.print()} className="px-6 py-2.5 bg-primary text-white text-sm font-black rounded-xl shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center gap-2"><Printer size={18} /> بدء الطباعة</button>
+                        <div><h3 className="font-black text-xl text-primary flex items-center gap-2"><Printer className="w-6 h-6" /> {t('studentsSecretCardsTitle')}</h3><p className="text-xs text-textSecondary font-bold mt-1">{t('studentsSecretCardsSubtitle')}</p></div>
+                        <button onClick={() => window.print()} className="px-6 py-2.5 bg-primary text-white text-sm font-black rounded-xl shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center gap-2"><Printer size={18} /> {t('studentsStartPrinting')}</button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible"><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4 print:w-full print:bg-white">{filteredStudents.map(student => <div key={student.id} className="bg-bgCard print:bg-white border-2 border-dashed border-borderColor print:border-gray-400 p-5 rounded-2xl flex flex-col items-center text-center shadow-sm relative overflow-hidden"><div className="absolute inset-0 flex items-center justify-center opacity-[0.03] print:opacity-[0.05] pointer-events-none"><Sparkles className="w-32 h-32 text-primary print:text-black" /></div><div className="relative z-10 w-full"><h4 className="font-black text-lg text-textPrimary print:text-black mb-1 line-clamp-1">{student.name}</h4><span className="text-xs font-bold bg-bgSoft print:bg-gray-100 text-textSecondary print:text-gray-600 px-3 py-1 rounded-full">الصف: {student.classes[0]}</span><div className="mt-5 mb-4 p-4 bg-primary/5 print:bg-gray-50 border border-primary/20 print:border-gray-300 rounded-xl w-full"><p className="text-[10px] font-bold text-textSecondary print:text-gray-500 mb-1 uppercase tracking-wider">كود الدخول السري</p><p className="font-mono text-xl md:text-2xl font-black text-primary print:text-black tracking-widest">{(student as any).rasedId || (student as any).parentCode || 'جاري التوليد...'}</p></div><p className="text-[9px] font-bold text-textSecondary/70 print:text-gray-500 leading-relaxed">يرجى إدخال هذا الكود في بوابة (ولي الأمر) أو (الطالب) لمتابعة التقييم المستمر.</p></div></div>)}</div></div>
+                    <div className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible"><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4 print:w-full print:bg-white">{filteredStudents.map(student => <div key={student.id} className="bg-bgCard print:bg-white border-2 border-dashed border-borderColor print:border-gray-400 p-5 rounded-2xl flex flex-col items-center text-center shadow-sm relative overflow-hidden"><div className="absolute inset-0 flex items-center justify-center opacity-[0.03] print:opacity-[0.05] pointer-events-none"><Sparkles className="w-32 h-32 text-primary print:text-black" /></div><div className="relative z-10 w-full"><h4 className="font-black text-lg text-textPrimary print:text-black mb-1 line-clamp-1">{student.name}</h4><span className="text-xs font-bold bg-bgSoft print:bg-gray-100 text-textSecondary print:text-gray-600 px-3 py-1 rounded-full">{t('classLabel')} {student.classes[0]}</span><div className="mt-5 mb-4 p-4 bg-primary/5 print:bg-gray-50 border border-primary/20 print:border-gray-300 rounded-xl w-full"><p className="text-[10px] font-bold text-textSecondary print:text-gray-500 mb-1 uppercase tracking-wider">{t('secretCodeLabel')}</p><p className="font-mono text-xl md:text-2xl font-black text-primary print:text-black tracking-widest">{(student as any).rasedId || (student as any).parentCode || t('studentsGeneratingCode')}</p></div><p className="text-[9px] font-bold text-textSecondary/70 print:text-gray-500 leading-relaxed">{t('studentsSecretCodeInstructions')}</p></div></div>)}</div></div>
                 </div>
             </DrawerSheet>
 
