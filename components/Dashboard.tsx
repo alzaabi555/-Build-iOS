@@ -434,7 +434,7 @@ const updateWeekData = (
 const validateTermPlan = (plan: TermWeekPlan[]) => {
     for (const week of plan) {
         if ((week.start && !week.end) || (!week.start && week.end)) {
-            alert(`يرجى إكمال تاريخ البداية والنهاية في ${week.name}`);
+            alert(`${t('completeWeekDatesAlert')} ${week.name}`);
             return false;
         }
 
@@ -443,7 +443,7 @@ const validateTermPlan = (plan: TermWeekPlan[]) => {
             const end = new Date(`${week.end}T23:59:59`);
 
             if (end < start) {
-                alert(`تاريخ النهاية يجب أن يكون بعد تاريخ البداية في ${week.name}`);
+                alert(`${t('weekEndAfterStartAlert')} ${week.name}`);
                 return false;
             }
         }
@@ -459,7 +459,7 @@ const handleSaveTermPlan = () => {
     localStorage.setItem('rased_term_plan', JSON.stringify(tempTermPlan));
     setShowTermPlanModal(false);
 
-    alert(t('alertTermPlanSaved') || 'تم حفظ الخطة الفصلية بنجاح');
+    alert(t('alertTermPlanSaved'));
 };
 
 const handleAddTermWeek = () => {
@@ -478,15 +478,15 @@ const handleAddTermWeek = () => {
 };
 
 const handleDeleteTermWeek = (idx: number) => {
-    const weekName = tempTermPlan[idx]?.name || 'هذا الأسبوع';
+    const weekName = tempTermPlan[idx]?.name || t('thisWeek');
 
-    if (!window.confirm(`هل تريد حذف ${weekName}؟`)) return;
+    if (!window.confirm(`${t('confirmDeleteWeekPrefix')} ${weekName}${t('questionMark')}`)) return;
 
     setTempTermPlan(prev => prev.filter((_, index) => index !== idx));
 };
 
 const handleResetTermPlan = () => {
-    if (!window.confirm('سيتم مسح الخطة الحالية وإنشاء خطة فارغة من 18 أسبوعًا. هل تريد المتابعة؟')) {
+    if (!window.confirm(t('confirmResetTermPlan'))) {
         return;
     }
 
@@ -533,17 +533,17 @@ const handleImportTermPlanExcel = async (e: React.ChangeEvent<HTMLInputElement>)
         });
 
         if (importedPlan.length === 0) {
-            alert('لم يتم العثور على بيانات صالحة في ملف Excel');
+            alert(t('noValidTermPlanExcelData'));
             return;
         }
 
         if (!validateTermPlan(importedPlan)) return;
 
         setTempTermPlan(importedPlan);
-        alert(t('alertTermPlanImported') || 'تم استيراد الخطة الفصلية بنجاح');
+        alert(t('alertTermPlanImported'));
     } catch (error) {
         console.error(error);
-        alert(t('alertExcelFormatError') || 'خطأ في تنسيق ملف Excel');
+        alert(t('alertExcelFormatError'));
     } finally {
         if (e.target) e.target.value = '';
     }
@@ -728,7 +728,7 @@ type PeriodStatus = 'active' | 'upcoming' | 'completed' | 'unknown';
 const getPeriodStatus = (start?: string, end?: string): PeriodStatus => {
     if (!start || !end) return 'unknown';
 
-    // إذا كنا نعرض جدول الأحد في عطلة نهاية الأسبوع، لا نحسبها مكتملة أو نشطة
+    // إذا كنا نعرض جدول الأحد في عطلة {t('weekEndLabel')}، لا نحسبها مكتملة أو نشطة
     if (!isToday) return 'upcoming';
 
     const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -814,28 +814,28 @@ const handleStartAttendance = (className?: string) => {
 
 const statusMeta = {
     active: {
-        label: t('now') || 'جارية الآن',
+        label: t('currentNowStatus'),
         className: 'bg-success text-white',
         cardClass: 'bg-primary border-primary shadow-lg scale-[1.01]',
         textClass: 'text-white',
         subTextClass: 'text-white/80'
     },
     upcoming: {
-        label: 'قادمة',
+        label: t('upcomingStatus'),
         className: 'bg-info/10 text-info border border-info/20',
         cardClass: 'glass-card border-borderColor hover:shadow-md',
         textClass: 'text-textPrimary',
         subTextClass: 'text-textSecondary'
     },
     completed: {
-        label: 'مكتملة',
+        label: t('completedStatus'),
         className: 'bg-success/10 text-success border border-success/20',
         cardClass: 'glass-card border-borderColor opacity-80',
         textClass: 'text-textPrimary',
         subTextClass: 'text-textSecondary'
     },
     unknown: {
-        label: 'غير محددة',
+        label: t('unknownStatus'),
         className: 'bg-bgSoft text-textSecondary border border-borderColor',
         cardClass: 'glass-card border-borderColor',
         textClass: 'text-textPrimary',
@@ -933,7 +933,7 @@ const EmptyActionCard = ({
                             setTheme(nextTheme as any);
                         }} 
                         className="w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all bg-bgSoft border-borderColor text-primary hover:bg-primary hover:text-white shadow-sm"
-                        title={t('themeSettings') || 'تغيير المظهر'}
+                        title={t('themeSettings')}
                     >
                         <Palette size={16} />
                     </button>
@@ -952,7 +952,7 @@ const EmptyActionCard = ({
 
                                     <button onClick={() => { scheduleFileInputRef.current?.click(); }} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
                                         <div className={`p-1.5 rounded-lg bg-success/10`}><Download size={16} className="text-success"/></div>
-                                        <span className="text-xs font-bold text-textPrimary">{isImportingSchedule ? '...' : (t('importSchedule') || 'استيراد الجدول')}</span>
+                                        <span className="text-xs font-bold text-textPrimary">{isImportingSchedule ? '...' : t('importSchedule')}</span>
                                     </button>
 
                                     <button onClick={handleTestNotification} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} transition-colors hover:bg-bgSoft`}>
@@ -1019,7 +1019,7 @@ const EmptyActionCard = ({
                 </div>
                 <div className={dir === 'rtl' ? 'text-left' : 'text-right'}>
                     <div className="text-xl md:text-2xl font-black text-textPrimary">{todayPeriodsCount}</div>
-                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">حصص اليوم</div>
+                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">{t('todayPeriodsCount')}</div>
                 </div>
             </div>
         </div>
@@ -1034,7 +1034,7 @@ const EmptyActionCard = ({
                         {smartNextPeriod?.startTime || '--:--'}
                     </div>
                     <div className="text-[10px] md:text-xs font-bold text-textSecondary">
-                        {smartNextPeriod?.status === 'active' ? 'الحصة الحالية' : 'الحصة القادمة'}
+                        {smartNextPeriod?.status === 'active' ? t('currentPeriodLabel') : t('nextPeriodLabel')}
                     </div>
                 </div>
             </div>
@@ -1047,7 +1047,7 @@ const EmptyActionCard = ({
                 </div>
                 <div className={dir === 'rtl' ? 'text-left' : 'text-right'}>
                     <div className="text-xl md:text-2xl font-black text-textPrimary">{students?.length || 0}</div>
-                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">طالب</div>
+                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">{t('studentSingular')}</div>
                 </div>
             </div>
         </div>
@@ -1061,9 +1061,9 @@ const EmptyActionCard = ({
                 </div>
                 <div className={dir === 'rtl' ? 'text-left' : 'text-right'}>
                     <div className="text-sm md:text-base font-black text-textPrimary">
-                        {notificationsEnabled ? 'مفعلة' : 'متوقفة'}
+                        {notificationsEnabled ? t('enabled') : t('pausedStatus')}
                     </div>
-                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">الإشعارات</div>
+                    <div className="text-[10px] md:text-xs font-bold text-textSecondary">{t('notifications')}</div>
                 </div>
             </div>
         </div>
@@ -1103,7 +1103,7 @@ const EmptyActionCard = ({
                                             ? 'text-white/80'
                                             : 'text-primary'
                                     }`}>
-                                        {smartNextPeriod.status === 'active' ? 'الحصة الجارية الآن' : 'الحصة القادمة'}
+                                        {smartNextPeriod.status === 'active' ? t('currentPeriodRunning') : t('nextPeriodLabel')}
                                     </div>
 
                                     <h3 className={`text-lg md:text-xl font-black ${
@@ -1119,7 +1119,7 @@ const EmptyActionCard = ({
                                             ? 'text-white/80'
                                             : 'text-textSecondary'
                                     }`}>
-                                        الحصة {smartNextPeriod.index + 1} · {smartNextPeriod.startTime || '--:--'} - {smartNextPeriod.endTime || '--:--'}
+                                        {t('period')} {smartNextPeriod.index + 1} · {smartNextPeriod.startTime || '--:--'} - {smartNextPeriod.endTime || '--:--'}
                                     </p>
                                 </div>
                             </div>
@@ -1133,7 +1133,7 @@ const EmptyActionCard = ({
                                 }`}
                             >
                                 <CheckCircle2 size={16} />
-                                {smartNextPeriod.status === 'active' ? 'بدء تسجيل الحضور' : 'الاستعداد للحصة'}
+                                {smartNextPeriod.status === 'active' ? t('startAttendanceRecording') : t('prepareForPeriod')}
                             </button>
                         </div>
                     </div>
@@ -1145,10 +1145,10 @@ const EmptyActionCard = ({
                             </div>
                             <div>
                                 <h3 className="font-black text-textPrimary text-sm md:text-base">
-                                    لا توجد حصص قادمة
+                                    {t('noUpcomingPeriods')}
                                 </h3>
                                 <p className="text-xs text-textSecondary font-bold mt-1">
-                                    لا توجد حصص متبقية في جدول اليوم.
+                                    {t('noRemainingPeriodsToday')}
                                 </p>
                             </div>
                         </div>
@@ -1160,9 +1160,9 @@ const EmptyActionCard = ({
             <div className="rounded-3xl border border-borderColor glass-panel p-4 md:p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-3">
                     <div>
-                        <h3 className="text-sm md:text-base font-black text-textPrimary">تقدم اليوم الدراسي</h3>
+                        <h3 className="text-sm md:text-base font-black text-textPrimary">{t('schoolDayProgress')}</h3>
                         <p className="text-xs font-bold text-textSecondary mt-1">
-                            تم إنجاز {completedPeriodsCount} من {todayPeriodsCount} حصص
+                            {t('completedPeriodsPrefix')} {completedPeriodsCount} {t('ofWord')} {todayPeriodsCount} {t('periodsWord')}
                         </p>
                     </div>
                     <span className="text-xl md:text-2xl font-black text-primary">{dayProgress}%</span>
@@ -1227,7 +1227,7 @@ const EmptyActionCard = ({
                                                     {subject}
                                                 </h4>
                                                 <p className={`text-[11px] font-bold mt-1 ${meta.subTextClass}`}>
-                                                    الحصة {idx + 1}
+                                                    {t('period')} {idx + 1}
                                                 </p>
                                             </div>
                                         </div>
@@ -1239,7 +1239,7 @@ const EmptyActionCard = ({
 
                                     <div className="flex items-center justify-between mt-auto">
                                         <div className="flex flex-col">
-                                            <span className={`text-[10px] font-bold ${meta.subTextClass}`}>الوقت</span>
+                                            <span className={`text-[10px] font-bold ${meta.subTextClass}`}>{t('timeLabelNoColon')}</span>
                                             <span className={`text-xs md:text-sm font-black font-mono ${meta.textClass}`}>
                                                 {time.startTime}-{time.endTime}
                                             </span>
@@ -1251,14 +1251,14 @@ const EmptyActionCard = ({
                                                 className="px-3 py-2 rounded-xl font-black text-[10px] shadow-md flex items-center gap-1 active:scale-95 bg-white text-primary"
                                             >
                                                 <CheckCircle2 size={14} />
-                                                حضور
+                                                {t('attendanceShort')}
                                             </button>
                                         ) : status === 'completed' ? (
                                             <button
                                                 onClick={() => handleStartAttendance(subject)}
                                                 className="px-3 py-2 rounded-xl font-black text-[10px] border border-success/20 bg-success/10 text-success active:scale-95"
                                             >
-                                                مراجعة
+                                                {t('reviewAction')}
                                             </button>
                                         ) : (
                                             <button
@@ -1267,7 +1267,7 @@ const EmptyActionCard = ({
                                                 }}
                                                 className="px-3 py-2 rounded-xl font-black text-[10px] border border-borderColor bg-bgSoft text-textSecondary active:scale-95"
                                             >
-                                                تفاصيل
+                                                {t('detailsAction')}
                                             </button>
                                         )}
                                     </div>
@@ -1278,9 +1278,9 @@ const EmptyActionCard = ({
                 ) : (
                     <EmptyActionCard
                         icon={<Clock size={22} />}
-                        title="لا توجد حصص في جدول اليوم"
-                        description="قم بإضافة جدول الحصص أو استيراده من ملف Excel ليظهر هنا."
-                        actionLabel="إعداد الجدول"
+                        title={t('noPeriodsTodayTitle')}
+                        description={t('noPeriodsTodayDescription')}
+                        actionLabel={t('configureSchedule')}
                         onAction={() => setShowScheduleModal(true)}
                         color="primary"
                     />
@@ -1290,7 +1290,7 @@ const EmptyActionCard = ({
 
         {/* العمود الجانبي */}
         <div className="xl:col-span-4 space-y-4 md:space-y-6">
-
+            
 {/* 📖 الخطة الفصلية */}
 <div className="relative z-10">
     <div className="rounded-3xl p-4 md:p-5 shadow-sm border glass-panel border-borderColor">
@@ -1302,7 +1302,7 @@ const EmptyActionCard = ({
 
                 <div>
                     <h2 className="text-sm md:text-base font-black text-textPrimary">
-                        {t('termPlanTitle') || 'الخطة الفصلية'}
+                        {t('termPlanTitle')}
                     </h2>
 
                     {currentWeekPlan ? (
@@ -1311,7 +1311,7 @@ const EmptyActionCard = ({
                         </p>
                     ) : (
                         <p className="text-[10px] font-bold text-textSecondary mt-0.5">
-                            لا يوجد أسبوع مطابق لتاريخ اليوم
+                            {t('noMatchingWeekToday')}
                         </p>
                     )}
                 </div>
@@ -1320,7 +1320,7 @@ const EmptyActionCard = ({
             <button
                 onClick={() => setShowTermPlanModal(true)}
                 className="p-1.5 md:p-2 rounded-xl transition-colors bg-bgSoft text-textSecondary hover:bg-bgCard hover:text-textPrimary"
-                title="تخصيص الخطة الفصلية"
+                title={t('customizeTermPlan')}
             >
                 <Settings size={16} className="md:w-5 md:h-5" />
             </button>
@@ -1340,7 +1340,7 @@ const EmptyActionCard = ({
                             isTermPlanReady ? 'text-info' : 'text-warning'
                         }`}
                     >
-                        {currentWeekPlan.start || 'بدون تاريخ'} - {currentWeekPlan.end || 'بدون تاريخ'}
+                        {currentWeekPlan.start || t('noDate')} - {currentWeekPlan.end || t('noDate')}
                     </span>
 
                     <span
@@ -1348,7 +1348,7 @@ const EmptyActionCard = ({
                             isTermPlanReady ? 'bg-info text-white' : 'bg-warning text-white'
                         }`}
                     >
-                        {isTermPlanReady ? 'جاهزة' : 'تحتاج إكمال'}
+                        {isTermPlanReady ? t('readyFeminine') : t('needsCompletion')}
                     </span>
                 </div>
 
@@ -1361,9 +1361,9 @@ const EmptyActionCard = ({
                         />
                         <span>
                             <span className={isTermPlanReady ? 'text-info' : 'text-warning'}>
-                                الوحدة:
+                                {t('unitLabel')}
                             </span>{' '}
-                            {currentWeekPlan.unit || 'لم تحدد'}
+                            {currentWeekPlan.unit || t('notSpecified')}
                         </span>
                     </div>
 
@@ -1375,9 +1375,9 @@ const EmptyActionCard = ({
                         />
                         <span>
                             <span className={isTermPlanReady ? 'text-info' : 'text-warning'}>
-                                الدرس:
+                                {t('lessonLabel')}
                             </span>{' '}
-                            {currentWeekPlan.lesson || currentWeekPlan.defaultTopic || 'لم يحدد'}
+                            {currentWeekPlan.lesson || currentWeekPlan.defaultTopic || t('notSpecified')}
                         </span>
                     </div>
                 </div>
@@ -1387,7 +1387,7 @@ const EmptyActionCard = ({
                         onClick={() => setShowTermPlanModal(true)}
                         className="mt-4 w-full py-2.5 rounded-xl bg-warning text-white text-xs font-black active:scale-95 transition-all"
                     >
-                        إكمال بيانات الخطة
+                        {t('completePlanData')}
                     </button>
                 )}
             </div>
@@ -1398,18 +1398,18 @@ const EmptyActionCard = ({
                 </div>
 
                 <h4 className="text-sm font-black text-textPrimary">
-                    لا توجد خطة للأسبوع الحالي
+                    {t('noPlanForCurrentWeek')}
                 </h4>
 
                 <p className="text-xs font-bold text-textSecondary mt-1 leading-relaxed">
-                    أدخل تواريخ الأسابيع يدويًا أو استوردها من ملف Excel لتظهر الخطة حسب تاريخ اليوم.
+                    {t('termPlanEmptyDescription')}
                 </p>
 
                 <button
                     onClick={() => setShowTermPlanModal(true)}
                     className="mt-4 px-4 py-2 rounded-xl bg-info text-white text-xs font-black shadow-sm active:scale-95 transition-all"
                 >
-                    إعداد الخطة
+                    {t('configurePlan')}
                 </button>
             </div>
         )}
@@ -1429,7 +1429,7 @@ const EmptyActionCard = ({
                                     {t('continuousAssessmentPlan')}
                                 </h2>
                                 <p className="text-[10px] font-bold text-textSecondary mt-0.5">
-                                    {currentAssessmentPlan ? `${t('monthPrefix')} ${currentAssessmentPlan.monthName}` : 'الشهر الحالي'}
+                                    {currentAssessmentPlan ? `${t('monthPrefix')} ${currentAssessmentPlan.monthName}` : t('currentMonthFallback')}
                                 </p>
                             </div>
                         </div>
@@ -1468,9 +1468,9 @@ const EmptyActionCard = ({
                     ) : (
                         <EmptyActionCard
                             icon={<CalendarDays size={22} />}
-                            title="لا توجد خطة تقويم لهذا الشهر"
-                            description="أضف مهام التقويم المستمر لهذا الشهر حتى تظهر للمعلم مباشرة."
-                            actionLabel="إنشاء خطة تقويم"
+                            title={t('noAssessmentPlanThisMonth')}
+                            description={t('assessmentPlanEmptyDescription')}
+                            actionLabel={t('createAssessmentPlan')}
                             onAction={() => setShowPlanSettingsModal(true)}
                             color="warning"
                         />
@@ -1490,11 +1490,11 @@ const EmptyActionCard = ({
         <div className="flex justify-between items-start gap-3 mb-4 pb-3 border-b border-borderColor">
             <div>
                 <h3 className="font-black text-lg text-textPrimary">
-                    {t('customizeTermPlan') || 'تخصيص الخطة الفصلية'}
+                    {t('customizeTermPlan')}
                 </h3>
 
                 <p className="text-[11px] font-bold text-textSecondary mt-1 leading-relaxed">
-                    يمكنك إدخال الأسابيع يدويًا أو استيرادها من ملف Excel.
+                    {t('termPlanEditorDescription')}
                 </p>
             </div>
 
@@ -1504,7 +1504,7 @@ const EmptyActionCard = ({
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-primary/10 text-primary hover:bg-primary/20"
                 >
                     <Plus size={14} />
-                    أسبوع
+                    {t('weekWord')}
                 </button>
 
                 <button
@@ -1527,7 +1527,7 @@ const EmptyActionCard = ({
 
         <div className="flex items-center justify-between gap-2 mb-3">
             <div className="text-[11px] font-bold text-textSecondary">
-                عدد الأسابيع: {tempTermPlan.length}
+                {t('weeksCountLabel')} {tempTermPlan.length}
             </div>
 
             <button
@@ -1535,7 +1535,7 @@ const EmptyActionCard = ({
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-danger/10 text-danger hover:bg-danger/20"
             >
                 <RefreshCcw size={14} />
-                إعادة تهيئة
+                {t('resetInitialization')}
             </button>
         </div>
 
@@ -1555,13 +1555,13 @@ const EmptyActionCard = ({
                         <div className="flex justify-between items-center mb-3 gap-2">
                             <div className="flex-1">
                                 <label className="block text-[10px] font-bold text-textSecondary mb-1">
-                                    اسم الأسبوع
+                                    {t('weekNameLabel')}
                                 </label>
 
                                 <input
                                     value={week.name}
                                     onChange={(e) => updateWeekData(idx, 'name', e.target.value)}
-                                    placeholder="مثال: الأسبوع الأول"
+                                    placeholder={t('weekNamePlaceholder')}
                                     className="w-full p-2 rounded-lg text-xs font-black outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info"
                                 />
                             </div>
@@ -1569,7 +1569,7 @@ const EmptyActionCard = ({
                             <button
                                 onClick={() => handleDeleteTermWeek(idx)}
                                 className="mt-5 p-2 rounded-lg transition-colors bg-danger/10 text-danger hover:bg-danger/20 shrink-0"
-                                title="حذف الأسبوع"
+                                title={t('deleteWeekTitle')}
                             >
                                 <Trash2 size={15} />
                             </button>
@@ -1578,7 +1578,7 @@ const EmptyActionCard = ({
                         <div className="grid grid-cols-2 gap-2 mb-3">
                             <div>
                                 <label className="block text-[10px] font-bold text-textSecondary mb-1">
-                                    بداية الأسبوع
+                                    {t('weekStartLabel')}
                                 </label>
 
                                 <input
@@ -1591,7 +1591,7 @@ const EmptyActionCard = ({
 
                             <div>
                                 <label className="block text-[10px] font-bold text-textSecondary mb-1">
-                                    نهاية الأسبوع
+                                    {t('weekEndLabel')}
                                 </label>
 
                                 <input
@@ -1607,28 +1607,28 @@ const EmptyActionCard = ({
                             <input
                                 value={week.unit}
                                 onChange={(e) => updateWeekData(idx, 'unit', e.target.value)}
-                                placeholder="اسم الوحدة مثال: الوحدة الأولى"
+                                placeholder={t('unitNameDetailedPlaceholder')}
                                 className="w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info"
                             />
 
                             <input
                                 value={week.lesson}
                                 onChange={(e) => updateWeekData(idx, 'lesson', e.target.value)}
-                                placeholder="اسم الدرس مثال: الدرس الأول"
+                                placeholder={t('lessonNameDetailedPlaceholder')}
                                 className="w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info"
                             />
 
                             <input
                                 value={week.defaultTopic}
                                 onChange={(e) => updateWeekData(idx, 'defaultTopic', e.target.value)}
-                                placeholder="موضوع افتراضي اختياري مثال: تهيئة ومراجعة"
+                                placeholder={t('defaultTopicPlaceholder')}
                                 className="w-full p-2 rounded-lg text-xs font-bold outline-none border transition-colors bg-bgSoft border-borderColor text-textPrimary focus:border-info"
                             />
                         </div>
 
                         {isCurrent && (
                             <div className="mt-3 text-[10px] font-bold text-info bg-info/10 border border-info/20 rounded-lg px-3 py-2">
-                                هذا هو الأسبوع الحالي حسب التاريخ المدخل.
+                                {t('currentWeekByDateNote')}
                             </div>
                         )}
                     </div>
@@ -1640,18 +1640,18 @@ const EmptyActionCard = ({
                     <BookOpen size={28} className="mx-auto text-textSecondary mb-2" />
 
                     <h4 className="text-sm font-black text-textPrimary">
-                        لا توجد أسابيع مضافة
+                        {t('noWeeksAdded')}
                     </h4>
 
                     <p className="text-xs font-bold text-textSecondary mt-1">
-                        أضف الأسابيع يدويًا أو استوردها من ملف Excel.
+                        {t('addWeeksOrImport')}
                     </p>
 
                     <button
                         onClick={handleAddTermWeek}
                         className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-black"
                     >
-                        إضافة أسبوع
+                        {t('addWeek')}
                     </button>
                 </div>
             )}
@@ -1663,7 +1663,7 @@ const EmptyActionCard = ({
                 className="w-full py-3 text-white rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all bg-primary hover:bg-primary/80"
             >
                 <Save size={16} />
-                {t('saveChanges') || 'حفظ التغييرات'}
+                {t('saveChanges')}
             </button>
         </div>
     </div>
