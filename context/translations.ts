@@ -124,3 +124,4 @@ export const translationsBatch7Additions = {
     studentsEditAction: "Edit"
   }
 } as const;
+export const translations = translationsBatch1Additions;
