@@ -23,18 +23,18 @@ const About: React.FC = () => {
   const { t, dir } = useApp();
 
   const features = [
-    'إدارة الطلاب والفصول ومتابعة البيانات الأساسية',
-    'الحضور والغياب والسلوك والدرجات وأدوات التقويم',
-    'الجدول الدراسي والويدجيت والخطط الفصلية والتقويم المستمر',
-    'المجموعات والمهام والمكتبة والألعاب التعليمية',
-    'المراسلات والتقارير والتحليل الإحصائي والشهادات',
-    'النسخ المحلية والمزامنة السحابية بين أجهزة المعلم'
+    t('aboutFeatureStudents'),
+    t('aboutFeatureTracking'),
+    t('aboutFeatureSchedule'),
+    t('aboutFeatureLearning'),
+    t('aboutFeatureCommunication'),
+    t('aboutFeatureBackup')
   ];
 
   return (
     <PageLayout
-      title={t('aboutTitle') || 'حول راصد المعلم'}
-      subtitle="معلومات التطبيق والدعم والخصوصية"
+      title={t('aboutTitle')}
+      subtitle={t('aboutSubtitle')}
       icon={<Info size={24} />}
     >
       <div
@@ -58,19 +58,18 @@ const About: React.FC = () => {
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                 <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black text-primary">
-                  منظومة تعليمية متكاملة
+                  {t('aboutIntegratedPlatform')}
                 </span>
                 <span className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-black text-success">
-                  للمعلم
+                  {t('aboutForTeacher')}
                 </span>
               </div>
 
               <h1 className="text-2xl font-black text-textPrimary md:text-4xl">
-                {t('appNameAbout') || 'راصد المعلم'}
+                {t('appNameAbout')}
               </h1>
               <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-textSecondary md:text-base md:leading-8">
-                منصة تساعد المعلم على تنظيم أعماله اليومية، متابعة الطلاب، إدارة المحتوى التعليمي،
-                إعداد التقارير، والتكامل مع بقية تطبيقات منظومة راصد من واجهة موحدة وسهلة الاستخدام.
+                {t('aboutHeroDescription')}
               </p>
             </div>
           </div>
@@ -79,8 +78,8 @@ const About: React.FC = () => {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <Section
             icon={<Sparkles size={20} />}
-            title="ما الذي يقدمه راصد المعلم؟"
-            subtitle="أدوات مترابطة لدعم العمل التعليمي اليومي"
+            title={t('aboutCapabilitiesTitle')}
+            subtitle={t('aboutCapabilitiesSubtitle')}
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {features.map((feature, index) => (
@@ -102,20 +101,20 @@ const About: React.FC = () => {
 
           <Section
             icon={<ShieldCheck size={20} />}
-            title="الخصوصية وحماية البيانات"
-            subtitle="بيانات المعلم تحت إدارته"
+            title={t('aboutPrivacyTitle')}
+            subtitle={t('aboutPrivacySubtitle')}
           >
             <div className="space-y-3">
               <InfoCard
                 icon={<ShieldCheck size={18} />}
-                title="الحفظ والنسخ الاحتياطي"
-                text="يوفر التطبيق حفظًا محليًا وخيارات للنسخ والاستعادة والمزامنة السحابية وفق إعدادات المعلم."
+                title={t('aboutBackupTitle')}
+                text={t('aboutBackupText')}
                 tone="success"
               />
               <InfoCard
                 icon={<Info size={18} />}
-                title="مراجعة البيانات"
-                text="يُنصح بإنشاء نسخة احتياطية قبل إعادة الضبط أو الانتقال إلى جهاز آخر."
+                title={t('aboutReviewTitle')}
+                text={t('aboutReviewText')}
                 tone="primary"
               />
             </div>
@@ -124,20 +123,20 @@ const About: React.FC = () => {
 
         <Section
           icon={<MessageCircleQuestion size={20} />}
-          title={t('techSupport') || 'الدعم والتواصل'}
-          subtitle="قنوات التواصل الخاصة بالدعم الفني والملاحظات"
+          title={t('aboutSupportTitle')}
+          subtitle={t('aboutSupportSubtitle')}
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ContactCard
               icon={<Phone size={20} />}
-              title={t('techSupport') || 'الدعم الفني'}
+              title={t('techSupport')}
               value={SUPPORT_PHONE}
               href={`tel:${SUPPORT_PHONE}`}
               dir={dir}
             />
             <ContactCard
               icon={<Mail size={20} />}
-              title={t('emailLabel') || 'البريد الإلكتروني'}
+              title={t('emailLabel')}
               value={SUPPORT_EMAIL}
               href={`mailto:${SUPPORT_EMAIL}`}
               dir={dir}
@@ -147,31 +146,31 @@ const About: React.FC = () => {
 
         <Section
           icon={<Code2 size={20} />}
-          title={t('aboutDeveloperTitle') || 'التطوير'}
-          subtitle="تطوير وتحديث مستمر لخدمة البيئة التعليمية"
+          title={t('aboutDeveloperTitle')}
+          subtitle={t('aboutDeveloperSubtitle')}
         >
           <div className="flex flex-col gap-4 rounded-2xl border border-borderColor bg-bgSoft p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-black text-textPrimary">
-                {t('developerName') || 'محمد درويش خميس الزعابي'}
+                {t('developerName')}
               </p>
               <p className="mt-1 text-xs font-bold leading-6 text-textSecondary">
-                صُمم التطبيق لتطوير تجربة المعلم الرقمية، وتُضاف التحسينات استنادًا إلى الاستخدام الفعلي والملاحظات الميدانية.
+                {t('aboutDeveloperText')}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-black text-primary">
               <BookOpen size={16} />
-              تطوير تعليمي مستمر
+              {t('aboutContinuousDevelopment')}
             </div>
           </div>
         </Section>
 
         <footer className="rounded-2xl border border-borderColor bg-bgCard px-4 py-4 text-center shadow-sm">
           <p className="text-xs font-black text-textPrimary">
-            {t('allRightsReservedFooter') || 'جميع الحقوق محفوظة'} © {new Date().getFullYear()}
+            {t('allRightsReservedFooter')} © {new Date().getFullYear()}
           </p>
           <p className="mt-1 text-[10px] font-bold text-textSecondary">
-            راصد المعلم — أدوات عملية لإدارة التعليم والمتابعة
+            {t('aboutFooterDescription')}
           </p>
         </footer>
       </div>
