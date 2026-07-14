@@ -89,7 +89,8 @@ const buildFullBackupRecords = (
 };
 
 const restoreFullBackupFromRecords = (
-  records: any[]
+  records: any[],
+  translate: (key: string) => string
 ): RasedBackupPayload | null => {
   const manifestRecord = records.find(
     record => record.id === 'full_backup_manifest'
@@ -110,7 +111,7 @@ const restoreFullBackupFromRecords = (
 
   const manifest = safeJsonParse<any>(manifestRecord.data, null);
   if (!manifest || chunks.length < Number(manifest.chunkCount || 0)) {
-    throw new Error('النسخة السحابية غير مكتملة. أعد رفع النسخة ثم حاول مجددًا.');
+    throw new Error(translate('syncCloudBackupIncomplete'));
   }
 
   const serialized = chunks.map(record => String(record.data || '')).join('');
@@ -118,7 +119,7 @@ const restoreFullBackupFromRecords = (
     manifest.totalLength &&
     serialized.length !== Number(manifest.totalLength)
   ) {
-    throw new Error('تعذر تجميع النسخة السحابية بصورة صحيحة.');
+    throw new Error(translate('syncCloudBackupAssembleError'));
   }
 
   return JSON.parse(serialized) as RasedBackupPayload;
@@ -219,14 +220,14 @@ const GlobalSyncManager: React.FC = () => {
       });
 
     if (parentPayload.length === 0) {
-      throw new Error('لا يوجد طالب يمتلك كود راصد RSD للمزامنة.');
+      throw new Error(t('syncNoStudentRasedCode'));
     }
 
     await postJson(PARENT_APP_URL, parentPayload);
   };
 
   const syncAdminApp = async () => {
-    setSyncMessage('جاري إرسال التقرير الشامل للإدارة...');
+    setSyncMessage(t('syncingAdminMsg'));
     const schoolCode = adminSchoolCode.trim();
     localStorage.setItem('rased_admin_school_code', schoolCode);
     const today = new Date();
@@ -287,7 +288,7 @@ const GlobalSyncManager: React.FC = () => {
     });
     const result = await response.json();
     if (result.status !== 'success') {
-      throw new Error(result.message || 'تعذر حفظ النسخة في السحابة.');
+      throw new Error(result.message || t('syncCloudSaveError'));
     }
   };
 
@@ -373,7 +374,7 @@ const GlobalSyncManager: React.FC = () => {
       throw new Error(t('alertNoDataInCloud'));
     }
 
-    const fullBackup = restoreFullBackupFromRecords(result.records);
+    const fullBackup = restoreFullBackupFromRecords(result.records, t);
     const backupToRestore =
       fullBackup || restoreLegacyCloudRecords(result.records);
 
@@ -392,11 +393,11 @@ const GlobalSyncManager: React.FC = () => {
       (type === 'backup' || type === 'restore') &&
       !teacherInfo?.civilId?.trim()
     ) {
-      alert('أدخل كود المعلم السري في الإعدادات لربط النسخة السحابية.');
+      alert(t('syncEnterTeacherSecret'));
       return;
     }
     if (type === 'admin' && adminSchoolCode.trim().length < 2) {
-      alert('أدخل كود المدرسة أولًا للاتصال بنظام الإدارة.');
+      alert(t('syncEnterSchoolCode'));
       return;
     }
     if (type === 'restore' && !window.confirm(t('alertConfirmPull'))) return;
@@ -423,14 +424,14 @@ const GlobalSyncManager: React.FC = () => {
 
   return (
     <PageLayout
-      title="مركز المزامنة"
-      subtitle="إدارة المزامنة والنسخ الاحتياطي الشامل"
+      title={t('syncMenuTitle')}
+      subtitle={t('syncCenterComprehensiveSubtitle')}
       icon={<CloudSync size={24} />}
       rightActions={
         <div className="flex items-center gap-3">
           <span className="text-[10px] md:text-xs font-bold flex items-center gap-1 text-success bg-success/10 px-2 py-1 rounded-md border border-success/20">
             <Server className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden sm:inline">متصل</span>
+            <span className="hidden sm:inline">{t('connectedStatus')}</span>
           </span>
           <button
             type="button"
@@ -438,7 +439,7 @@ const GlobalSyncManager: React.FC = () => {
             className="px-3 md:px-4 py-2 rounded-xl border border-primary bg-primary text-white font-bold flex items-center gap-2 hover:bg-primary/90 shadow-md active:scale-95"
           >
             <CloudSync className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">مزامنة سريعة</span>
+            <span className="hidden sm:inline text-xs">{t('quickSyncBtn')}</span>
           </button>
         </div>
       }
@@ -473,7 +474,7 @@ const GlobalSyncManager: React.FC = () => {
                   onClick={() => setSyncState('idle')}
                   className="px-6 py-2.5 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-bold"
                 >
-                  رجوع
+                  {t('backBtn')}
                 </button>
               </>
             )}
@@ -483,39 +484,39 @@ const GlobalSyncManager: React.FC = () => {
         {syncState === 'idle' && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="عدد الطلاب" value={students.length} />
-              <StatCard label="الفصول" value={classes.length} />
-              <StatCard label="الأدوات" value={assessmentTools.length} />
-              <StatCard label="الحالة" value="جاهز" success />
+              <StatCard label={t('studentsCountLabel')} value={students.length} />
+              <StatCard label={t('classesCountLabel')} value={classes.length} />
+              <StatCard label={t('toolsCountLabel')} value={assessmentTools.length} />
+              <StatCard label={t('statusLabel')} value={t('readyStatus')} success />
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-2 rounded-3xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm">
                 <h2 className="font-bold text-lg border-b border-borderColor pb-3 flex items-center gap-2">
-                  <Smartphone className="w-5 h-5 text-primary" /> التطبيقات
+                  <Smartphone className="w-5 h-5 text-primary" /> {t('appsSectionTitle')}
                 </h2>
                 <SyncRow
-                  title="تطبيق الطلاب"
-                  text="إرسال الطلاب والمهام والمكتبة وأسئلة الألعاب"
+                  title={t('studentAppTitle')}
+                  text={t('syncStudentAppFullDesc')}
                   icon={<GraduationCap className="w-5 h-5" />}
-                  buttonText="مزامنة"
+                  buttonText={t('syncBtn')}
                   buttonClass="border-primary/30 bg-primary/10 text-primary hover:bg-primary"
                   onClick={() => handleSync('student')}
                 />
                 <SyncRow
-                  title="تطبيق أولياء الأمور"
-                  text="مزامنة السلوك والدرجات والحضور"
+                  title={t('parentAppTitle')}
+                  text={t('syncParentAppFullDesc')}
                   icon={<Users className="w-5 h-5" />}
-                  buttonText="مزامنة"
+                  buttonText={t('syncBtn')}
                   buttonClass="border-warning/30 bg-warning/10 text-warning hover:bg-warning"
                   onClick={() => handleSync('parent')}
                 />
                 <div className="flex flex-col gap-3 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5">
                   <h4 className="font-bold flex items-center gap-2">
-                    <Building className="w-5 h-5 text-emerald-600" /> راصد الإدارة
+                    <Building className="w-5 h-5 text-emerald-600" /> {t('syncAdminAppTitle')}
                   </h4>
                   <p className="text-xs font-bold text-textSecondary">
-                    إرسال تقرير الغياب والتأخر والتسرب للإدارة
+                    {t('syncAdminAppDesc')}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -523,7 +524,7 @@ const GlobalSyncManager: React.FC = () => {
                       onChange={event =>
                         setAdminSchoolCode(event.target.value.replace(/\D/g, ''))
                       }
-                      placeholder="أدخل كود المدرسة"
+                      placeholder={t('syncSchoolCodePlaceholder')}
                       maxLength={6}
                       className="flex-1 px-4 py-3 rounded-xl border border-borderColor bg-bgCard outline-none focus:border-emerald-500 font-mono text-center"
                     />
@@ -532,7 +533,7 @@ const GlobalSyncManager: React.FC = () => {
                       onClick={() => handleSync('admin')}
                       className="px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center gap-2"
                     >
-                      <CloudUpload className="w-5 h-5" /> إرسال للإدارة
+                      <CloudUpload className="w-5 h-5" /> {t('syncSendToAdmin')}
                     </button>
                   </div>
                 </div>
@@ -540,10 +541,10 @@ const GlobalSyncManager: React.FC = () => {
 
               <div className="rounded-3xl border border-borderColor bg-bgCard p-5 space-y-4 shadow-sm flex flex-col">
                 <h2 className="font-bold text-lg border-b border-borderColor pb-3 flex items-center gap-2">
-                  <CloudSync className="w-5 h-5 text-primary" /> السحابة المركزية
+                  <CloudSync className="w-5 h-5 text-primary" /> {t('cloudSectionTitle')}
                 </h2>
                 <p className="text-[11px] font-bold text-textSecondary leading-6">
-                  النسخة الشاملة تتضمن الخطط والمجموعات والمهام والمكتبة والمراسلات المحلية وإعدادات التقارير والشهادات وبنوك ونتائج الألعاب.
+                  {t('comprehensiveBackupIncludes')}
                 </p>
                 <div className="flex flex-col gap-3 flex-1 justify-center">
                   <button
@@ -551,7 +552,7 @@ const GlobalSyncManager: React.FC = () => {
                     onClick={() => handleSync('backup')}
                     className="w-full p-4 rounded-2xl border-2 border-borderColor bg-bgSoft font-bold flex items-center justify-between hover:border-primary group active:scale-95"
                   >
-                    <span className="text-sm">رفع نسخة احتياطية شاملة</span>
+                    <span className="text-sm">{t('syncUploadComprehensiveBackup')}</span>
                     <CloudUpload className="w-5 h-5 text-primary" />
                   </button>
                   <button
@@ -559,7 +560,7 @@ const GlobalSyncManager: React.FC = () => {
                     onClick={() => handleSync('restore')}
                     className="w-full p-4 rounded-2xl border-2 border-borderColor bg-bgSoft font-bold flex items-center justify-between hover:border-success group active:scale-95"
                   >
-                    <span className="text-sm">استرجاع البيانات</span>
+                    <span className="text-sm">{t('restoreDataBtn')}</span>
                     <CloudDownload className="w-5 h-5 text-success" />
                   </button>
                 </div>
