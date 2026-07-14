@@ -14,13 +14,14 @@ import {
   WifiOff,
   CalendarDays
 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 // =========================================================================
 // TeacherGameResultsDashboard
 // -------------------------------------------------------------------------
-// لوحة نتائج ألعاب الطلاب للمعلم.
+// لوحة {tr('gameResultsTitle')} للمعلم.
 // - تعرض نتائج الطلاب حسب الفلاتر.
-// - تضيف إحصائية الطلاب غير المشاركين حسب الصف/الشعبة/الفصل الدراسي/اللعبة.
+// - تضيف إحصائية {tr('gameNonParticipantsTitle')} حسب الصف/الشعبة/الفصل الدراسي/اللعبة.
 // - تعتمد على قائمة الطلاب الكاملة من props للمقارنة مع نتائج الألعاب.
 // =========================================================================
 
@@ -105,22 +106,20 @@ interface NonParticipantStudent {
   rawStudent: TeacherGameResultsStudent;
 }
 
-const GAME_LABELS: Record<string, string> = {
-  snake_ladder: 'السلم والثعبان',
-  knowledge_race: 'سباق المعرفة',
-  football_quiz: 'ركلات المعرفة',
-  true_false: 'صح أم خطأ',
-  match_cards: 'طابق المفهوم',
-  sequence_order: 'رتّب الأحداث'
+const GAME_LABEL_KEYS: Record<string, string> = {
+  snake_ladder: 'gameNameSnakeLadder',
+  knowledge_race: 'gameNameKnowledgeRace',
+  football_quiz: 'gameNameFootballQuiz',
+  true_false: 'gameNameTrueFalse',
+  match_cards: 'gameNameMatchCards',
+  sequence_order: 'gameNameSequenceOrder'
 };
 
-const SYNC_LABELS: Record<string, string> = {
-  local_only: 'محلي فقط',
-  pending_sync: 'بانتظار المزامنة',
-  synced: 'متزامن'
+const SYNC_LABEL_KEYS: Record<string, string> = {
+  local_only: 'gameSyncLocalOnly',
+  pending_sync: 'gameSyncPending',
+  synced: 'gameSyncSynced'
 };
-
-const getGameLabel = (gameType?: string) => GAME_LABELS[gameType || ''] || gameType || 'غير محدد';
 
 const normalizeCode = (value?: unknown) => String(value || '').trim().toUpperCase();
 const normalizeText = (value?: unknown) => String(value || '').trim().replace(/[أإآ]/g, 'ا').replace(/\s+/g, ' ').toLowerCase();
@@ -141,11 +140,11 @@ const normalizeClassName = (value?: unknown) => {
     .toLowerCase();
 };
 
-const formatDateTime = (value?: string) => {
-  if (!value) return 'غير محدد';
+const formatDateTime = (value: string | undefined, locale: string, fallback: string) => {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير محدد';
-  return new Intl.DateTimeFormat('ar-OM', {
+  if (Number.isNaN(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short'
   }).format(date);
@@ -165,7 +164,7 @@ const getStudentCanonicalId = (student: TeacherGameResultsStudent) => {
 };
 
 const getStudentPrimaryClass = (student: TeacherGameResultsStudent) => {
-  return student.className || student.classes?.[0] || 'غير محدد';
+  return student.className || student.classes?.[0] || '—';
 };
 
 const getStudentDisplayNameFromStudent = (student: TeacherGameResultsStudent) => {
@@ -179,7 +178,7 @@ const getStudentDisplayName = (result: TeacherGameResultLogEntry, studentsMap: M
 
 const getStudentClassName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
   const student = studentsMap.get(normalizeCode(result.studentId));
-  return result.className || student?.className || student?.classes?.[0] || 'غير محدد';
+  return result.className || student?.className || student?.classes?.[0] || '—';
 };
 
 const getResultSemester = (raw: Record<string, unknown>) => {
@@ -280,40 +279,27 @@ const downloadCsv = (fileName: string, headers: string[], rows: string[][]) => {
   URL.revokeObjectURL(url);
 };
 
-const exportResultsAsCsv = (results: TeacherGameResultLogEntry[], studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const headers = [
-    'اسم الطالب',
-    'الصف',
-    'الفصل الدراسي',
-    'اللعبة',
-    'النقاط',
-    'الصحيح',
-    'الخطأ',
-    'مكتمل',
-    'الأسئلة الضعيفة',
-    'وقت اللعب',
-    'حالة المزامنة'
-  ];
+const exportResultsAsCsv = (results: TeacherGameResultLogEntry[], studentsMap: Map<string, TeacherGameResultsStudent>, labels: { headers: string[]; yes: string; no: string; unknown: string; filePrefix: string }, getGameLabel: (type?: string) => string, getSyncLabel: (status?: string) => string, formatValue: (value?: string) => string) => {
+  const headers = labels.headers;
 
   const rows = results.map(result => [
     getStudentDisplayName(result, studentsMap),
     getStudentClassName(result, studentsMap),
-    result.semester || 'غير محدد',
+    result.semester || labels.unknown,
     getGameLabel(result.gameType),
     String(result.score),
     String(result.correct),
     String(result.wrong),
-    result.completed ? 'نعم' : 'لا',
+    result.completed ? labels.yes : labels.no,
     String(result.weakQuestionIds.length),
-    formatDateTime(result.playedAt),
-    SYNC_LABELS[result.syncStatus || 'local_only'] || 'غير محدد'
+    formatValue(result.playedAt),
+    getSyncLabel(result.syncStatus)
   ]);
 
-  downloadCsv(`teacher_game_results_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  downloadCsv(`${labels.filePrefix}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
-const exportNonParticipantsAsCsv = (students: NonParticipantStudent[]) => {
-  const headers = ['اسم الطالب', 'كود راصد', 'الصف / الشعبة', 'المرحلة', 'الفصل الدراسي'];
+const exportNonParticipantsAsCsv = (students: NonParticipantStudent[], headers: string[], filePrefix: string) => {
   const rows = students.map(student => [
     student.studentName,
     student.studentId,
@@ -322,7 +308,7 @@ const exportNonParticipantsAsCsv = (students: NonParticipantStudent[]) => {
     student.semester || ''
   ]);
 
-  downloadCsv(`teacher_game_non_participants_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  downloadCsv(`${filePrefix}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
 };
 
 const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = ({
@@ -333,6 +319,17 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   isLoading = false,
   onRefresh
 }) => {
+  const { t, dir, language } = useApp();
+  const tr = (key: string, values?: Record<string, string | number>) => {
+    let text = String(t(key) || key);
+    if (values) Object.entries(values).forEach(([name, value]) => { text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value)); });
+    return text;
+  };
+  const locale = language === 'ar' ? 'ar-OM' : 'en-GB';
+  const unknownLabel = tr('gameUnknown');
+  const getGameLabel = (gameType?: string) => tr(GAME_LABEL_KEYS[gameType || ''] || '') !== '' && GAME_LABEL_KEYS[gameType || ''] ? tr(GAME_LABEL_KEYS[gameType || '']) : (gameType || unknownLabel);
+  const getSyncLabel = (status?: string) => SYNC_LABEL_KEYS[status || ''] ? tr(SYNC_LABEL_KEYS[status || '']) : unknownLabel;
+
   const [query, setQuery] = useState('');
   const [gameFilter, setGameFilter] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -389,7 +386,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const classOptions = useMemo(() => {
     const fromResults = allResults.map(result => getStudentClassName(result, studentsMap));
     const fromStudents = normalizedStudents.map(student => student.className);
-    return Array.from(new Set([...fromResults, ...fromStudents].filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar'));
+    return Array.from(new Set([...fromResults, ...fromStudents].filter(Boolean))).sort((a, b) => a.localeCompare(b, language === 'ar' ? 'ar' : 'en'));
   }, [allResults, studentsMap, normalizedStudents]);
 
   const semesterOptions = useMemo(() => {
@@ -534,7 +531,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   }, [filteredResults, groupedResults, eligibleStudents, nonParticipatingStudents]);
 
   return (
-    <div className={`rased-teacher-light bg-bgMain text-textPrimary rounded-3xl ${className}`} dir="rtl">
+    <div className={`rased-teacher-light bg-bgMain text-textPrimary rounded-3xl ${className}`} dir={dir}>
       <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm relative overflow-hidden mb-4">
         <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -543,9 +540,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
               <BarChart3 className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-textPrimary mb-1">نتائج ألعاب الطلاب</h2>
+              <h2 className="text-lg font-black text-textPrimary mb-1">{tr('gameResultsTitle')}</h2>
               <p className="text-[11px] font-bold text-textSecondary leading-6">
-                متابعة محاولات الطلاب، النقاط، الأسئلة الضعيفة، وحالة المشاركة. تعرض اللوحة أيضًا الطلاب الذين لم تظهر لهم أي نتيجة حسب الصف/الشعبة والفصل الدراسي.
+                {tr('gameResultsSubtitle')}
               </p>
             </div>
           </div>
@@ -563,16 +560,16 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
               className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95"
             >
               <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'جاري التحديث' : 'تحديث'}
+              {isLoading ? tr('gameRefreshing') : tr('gameRefresh')}
             </button>
             <button
               type="button"
-              onClick={() => exportResultsAsCsv(filteredResults, studentsMap)}
+              onClick={() => exportResultsAsCsv(filteredResults, studentsMap, { headers: [tr('gameCsvStudentName'), tr('gameCsvClass'), tr('gameCsvSemester'), tr('gameCsvGame'), tr('gameCsvPoints'), tr('gameCsvCorrect'), tr('gameCsvWrong'), tr('gameCsvCompleted'), tr('gameCsvWeakQuestions'), tr('gameCsvPlayedAt'), tr('gameCsvSyncStatus')], yes: tr('yes'), no: tr('no'), unknown: unknownLabel, filePrefix: 'teacher_game_results' }, getGameLabel, getSyncLabel, value => formatDateTime(value, locale, unknownLabel))}
               disabled={filteredResults.length === 0}
               className="h-10 px-3 rounded-2xl bg-primary text-white font-black text-xs flex items-center gap-2 active:scale-95 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              تصدير CSV
+              {tr('gameExportCsv')}
             </button>
           </div>
         </div>
@@ -583,42 +580,42 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
           <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
             <Gamepad2 className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">المحاولات</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameAttempts')}</p>
           <p className="text-xl font-black text-textPrimary">{summary.totalAttempts}</p>
         </div>
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-info/10 text-info border border-info/20 flex items-center justify-center mb-2">
             <Users className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">شاركوا</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameParticipated')}</p>
           <p className="text-xl font-black text-textPrimary">{summary.uniqueStudents}</p>
         </div>
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">لم يشاركوا</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">لم ي{tr('gameParticipated')}</p>
           <p className="text-xl font-black text-danger">{summary.nonParticipants}</p>
         </div>
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center mb-2">
             <CheckCircle2 className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">نسبة المشاركة</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameParticipationRate')}</p>
           <p className="text-xl font-black text-success">{summary.participationRate}%</p>
         </div>
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-warning/10 text-warning border border-warning/20 flex items-center justify-center mb-2">
             <Trophy className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">متوسط نقاط الطالب</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameAverageStudentScore')}</p>
           <p className="text-xl font-black text-warning">{summary.averageScore}</p>
         </div>
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-2">
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <p className="text-[9px] font-black text-textSecondary mb-1">أسئلة ضعيفة</p>
+          <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameWeakQuestions')}</p>
           <p className="text-xl font-black text-danger">{summary.totalWeakQuestions}</p>
         </div>
       </section>
@@ -630,7 +627,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="ابحث باسم الطالب أو اللعبة أو الصف أو الدرس..."
+              placeholder={tr('gameSearchPlaceholder')}
               className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40"
             />
           </label>
@@ -642,7 +639,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
               onChange={event => setGameFilter(event.target.value)}
               className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
             >
-              <option value="all">كل الألعاب</option>
+              <option value="all">{tr('gameAllGames')}</option>
               {gameTypes.map(gameType => (
                 <option key={gameType} value={gameType}>{getGameLabel(gameType)}</option>
               ))}
@@ -654,7 +651,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             onChange={event => setClassFilter(event.target.value)}
             className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
           >
-            <option value="all">كل الصفوف والشعب</option>
+            <option value="all">{tr('gameAllClasses')}</option>
             {classOptions.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
@@ -665,9 +662,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             onChange={event => setSemesterFilter(event.target.value)}
             className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
           >
-            <option value="all">كل الفصول الدراسية</option>
+            <option value="all">{tr('gameAllSemesters')}</option>
             {semesterOptions.map(option => (
-              <option key={option} value={option}>الفصل {option}</option>
+              <option key={option} value={option}>{tr('semesterLabel')} {option}</option>
             ))}
           </select>
 
@@ -676,9 +673,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             onChange={event => setCompletionFilter(event.target.value as CompletionFilter)}
             className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
           >
-            <option value="all">كل الحالات</option>
-            <option value="completed">مكتمل</option>
-            <option value="not_completed">غير مكتمل</option>
+            <option value="all">{tr('gameAllStatuses')}</option>
+            <option value="completed">{tr('gameCompleted')}</option>
+            <option value="not_completed">{tr('gameNotCompleted')}</option>
           </select>
 
           <select
@@ -686,10 +683,10 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             onChange={event => setSyncFilter(event.target.value)}
             className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary focus:outline-none focus:border-primary/40"
           >
-            <option value="all">كل حالات المزامنة</option>
-            <option value="local_only">محلي فقط</option>
-            <option value="pending_sync">بانتظار المزامنة</option>
-            <option value="synced">متزامن</option>
+            <option value="all">{tr('gameAllSyncStatuses')}</option>
+            <option value="local_only">{tr('gameSyncLocalOnly')}</option>
+            <option value="pending_sync">{tr('gameSyncPending')}</option>
+            <option value="synced">{tr('gameSyncSynced')}</option>
           </select>
         </div>
       </section>
@@ -701,9 +698,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-textPrimary mb-1">الطلاب غير المشاركين</h3>
+              <h3 className="text-sm font-black text-textPrimary mb-1">{tr('gameNonParticipantsTitle')}</h3>
               <p className="text-[11px] font-bold text-textSecondary leading-6">
-                تعرض هذه القائمة الطلاب الموجودين في قائمة الفصل ولم تظهر لهم أي نتيجة ألعاب حسب الفلاتر المحددة. تساعد المعلم على متابعة أسباب عدم الدخول أو عدم حل الأسئلة.
+                {tr('gameNonParticipantsDescription')}
               </p>
             </div>
           </div>
@@ -714,31 +711,31 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
               onClick={() => setShowNonParticipants(prev => !prev)}
               className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs active:scale-95"
             >
-              {showNonParticipants ? 'إخفاء القائمة' : 'عرض القائمة'}
+              {showNonParticipants ? tr('gameHideList') : tr('gameShowList')}
             </button>
             <button
               type="button"
-              onClick={() => exportNonParticipantsAsCsv(nonParticipatingStudents)}
+              onClick={() => exportNonParticipantsAsCsv(nonParticipatingStudents, [tr('gameCsvStudentName'), tr('gameCsvRasedCode'), tr('gameCsvClassSection'), tr('gameCsvGrade'), tr('gameCsvSemester')], 'teacher_game_non_participants')}
               disabled={nonParticipatingStudents.length === 0}
               className="h-10 px-3 rounded-2xl bg-danger text-white font-black text-xs flex items-center gap-2 active:scale-95 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              تصدير غير المشاركين
+              {tr('gameExportNonParticipants')}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-center">
-            <p className="text-[9px] font-black text-textSecondary mb-1">طلاب الفلتر</p>
+            <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameFilteredStudents')}</p>
             <p className="text-lg font-black text-textPrimary">{summary.expectedStudents}</p>
           </div>
           <div className="rounded-2xl bg-success/5 border border-success/15 p-3 text-center">
-            <p className="text-[9px] font-black text-textSecondary mb-1">شاركوا</p>
+            <p className="text-[9px] font-black text-textSecondary mb-1">{tr('gameParticipated')}</p>
             <p className="text-lg font-black text-success">{summary.uniqueStudents}</p>
           </div>
           <div className="rounded-2xl bg-danger/5 border border-danger/15 p-3 text-center">
-            <p className="text-[9px] font-black text-textSecondary mb-1">لم يشاركوا</p>
+            <p className="text-[9px] font-black text-textSecondary mb-1">لم ي{tr('gameParticipated')}</p>
             <p className="text-lg font-black text-danger">{summary.nonParticipants}</p>
           </div>
         </div>
@@ -747,14 +744,14 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
           <div>
             {normalizedStudents.length === 0 ? (
               <div className="rounded-2xl bg-warning/10 border border-warning/20 p-4 text-center">
-                <p className="text-sm font-black text-textPrimary mb-1">لا توجد قائمة طلاب كاملة للمقارنة</p>
+                <p className="text-sm font-black text-textPrimary mb-1">{tr('gameNoCompleteStudentList')}</p>
                 <p className="text-[11px] font-bold text-textSecondary leading-6">
-                  لا يمكن معرفة غير المشاركين بدقة إلا إذا وصل هذا المكوّن بقائمة طلاب الفصل كاملة عبر خاصية students.
+                  {tr('gameNoCompleteStudentListHint')}
                 </p>
               </div>
             ) : nonParticipatingStudents.length === 0 ? (
               <div className="rounded-2xl bg-success/10 border border-success/20 p-4 text-center text-success font-black">
-                جميع طلاب الفلتر لديهم مشاركة أو نتيجة ظاهرة حسب الفلاتر الحالية.
+                جميع {tr('gameFilteredStudents')} لديهم مشاركة أو نتيجة ظاهرة حسب الفلاتر الحالية.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
@@ -765,7 +762,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
                       <div className="flex flex-wrap items-center gap-1 mt-1">
                         <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{student.className}</span>
                         {student.grade && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{student.grade}</span>}
-                        {student.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">فصل {student.semester}</span>}
+                        {student.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{tr('semesterLabel')} {student.semester}</span>}
                       </div>
                     </div>
                     <span className="text-[9px] font-mono font-black text-danger bg-danger/10 border border-danger/20 px-2 py-1 rounded-xl shrink-0" dir="ltr">
@@ -783,9 +780,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         {groupedResults.length === 0 ? (
           <div className="bg-bgCard border border-borderColor rounded-3xl p-6 text-center shadow-sm">
             <WifiOff className="w-12 h-12 mx-auto text-textMuted mb-3" />
-            <h3 className="text-base font-black text-textPrimary mb-1">لا توجد نتائج بعد</h3>
+            <h3 className="text-base font-black text-textPrimary mb-1">{tr('gameNoResultsTitle')}</h3>
             <p className="text-[11px] font-bold text-textSecondary leading-6">
-              ستظهر هنا نتائج الطلاب بعد إكمال الألعاب. إذا كانت قائمة الطلاب متوفرة فستظل قائمة غير المشاركين مفيدة لمعرفة من لم تظهر له نتائج.
+              {tr('gameNoResultsHint')}
             </p>
           </div>
         ) : (
@@ -812,11 +809,11 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
                             {student.className}
                           </span>
                           <span className="text-[9px] font-black bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full">
-                            {student.attempts} محاولة
+                            {student.attempts} {tr('gameAttemptWord')}
                           </span>
                           <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full flex items-center gap-1">
                             <CalendarDays className="w-3 h-3" />
-                            آخر لعب: {formatDateTime(student.latestPlayedAt)}
+                            {tr('gameLastPlayed')}: {formatDateTime(student.latestPlayedAt, locale, unknownLabel)}
                           </span>
                         </div>
                       </div>
@@ -824,24 +821,24 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
 
                     <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 lg:min-w-[520px]">
                       <div className="rounded-2xl bg-bgSoft border border-borderColor p-2 text-center">
-                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">المجموع</p>
+                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">{tr('gameTotal')}</p>
                         <p className="text-sm font-black text-warning">{student.totalScore}</p>
                       </div>
                       <div className="rounded-2xl bg-bgSoft border border-borderColor p-2 text-center">
-                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">صحيح</p>
+                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">{tr('gameCorrect')}</p>
                         <p className="text-sm font-black text-success">{student.totalCorrect}</p>
                       </div>
                       <div className="rounded-2xl bg-bgSoft border border-borderColor p-2 text-center">
-                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">خطأ</p>
+                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">{tr('gameWrong')}</p>
                         <p className="text-sm font-black text-danger">{student.totalWrong}</p>
                       </div>
                       <div className="rounded-2xl bg-bgSoft border border-borderColor p-2 text-center">
-                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">ضعف</p>
+                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">{tr('gameWeak')}</p>
                         <p className="text-sm font-black text-danger">{student.totalWeakQuestions}</p>
                       </div>
                       <div className="rounded-2xl bg-bgSoft border border-borderColor p-2 text-center col-span-4 lg:col-span-1">
-                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">التفاصيل</p>
-                        <p className="text-[10px] font-black text-primary">{isExpanded ? 'إخفاء' : 'عرض'}</p>
+                        <p className="text-[8px] font-bold text-textSecondary mb-0.5">{tr('gameDetails')}</p>
+                        <p className="text-[10px] font-black text-primary">{isExpanded ? tr('gameHide') : tr('gameShow')}</p>
                       </div>
                     </div>
                   </div>
@@ -859,42 +856,42 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
                               <span className="text-xs font-black text-primary">{getGameLabel(game.gameType)}</span>
                               {game.subject && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{game.subject}</span>}
                               {game.lesson && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{game.lesson}</span>}
-                              {game.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">فصل {game.semester}</span>}
+                              {game.semester && <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{tr('semesterLabel')} {game.semester}</span>}
                               <span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">
-                                {formatDateTime(game.playedAt)}
+                                {formatDateTime(game.playedAt, locale, unknownLabel)}
                               </span>
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${syncStatus === 'synced' ? 'bg-success/10 text-success border-success/20' : syncStatus === 'pending_sync' ? 'bg-warning/10 text-warning border-warning/20' : 'bg-bgCard text-textSecondary border-borderColor'}`}>
-                                {SYNC_LABELS[syncStatus] || 'غير محدد'}
+                                {getSyncLabel(syncStatus)}
                               </span>
                             </div>
 
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${game.completed ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20'}`}>
-                              {game.completed ? 'مكتمل' : 'غير مكتمل'}
+                              {game.completed ? tr('gameCompleted') : tr('gameNotCompleted')}
                             </span>
                           </div>
 
                           <div className="grid grid-cols-4 gap-2 mt-3 text-center">
                             <div className="rounded-xl bg-bgCard border border-borderColor p-2">
-                              <p className="text-[8px] text-textSecondary mb-0.5">النقاط</p>
+                              <p className="text-[8px] text-textSecondary mb-0.5">{tr('gamePoints')}</p>
                               <p className="font-black text-warning">{game.score}</p>
                             </div>
                             <div className="rounded-xl bg-bgCard border border-borderColor p-2">
-                              <p className="text-[8px] text-textSecondary mb-0.5">صحيح</p>
+                              <p className="text-[8px] text-textSecondary mb-0.5">{tr('gameCorrect')}</p>
                               <p className="font-black text-success">{game.correct}</p>
                             </div>
                             <div className="rounded-xl bg-bgCard border border-borderColor p-2">
-                              <p className="text-[8px] text-textSecondary mb-0.5">خطأ</p>
+                              <p className="text-[8px] text-textSecondary mb-0.5">{tr('gameWrong')}</p>
                               <p className="font-black text-danger">{game.wrong}</p>
                             </div>
                             <div className="rounded-xl bg-bgCard border border-borderColor p-2">
-                              <p className="text-[8px] text-textSecondary mb-0.5">ضعف</p>
+                              <p className="text-[8px] text-textSecondary mb-0.5">{tr('gameWeak')}</p>
                               <p className="font-black text-danger">{game.weakQuestionIds.length}</p>
                             </div>
                           </div>
 
                           {game.weakQuestionIds.length > 0 && (
                             <div className="mt-3 rounded-2xl bg-danger/5 border border-danger/15 p-3">
-                              <p className="text-[10px] font-black text-danger mb-1">معرّفات الأسئلة التي تحتاج مراجعة:</p>
+                              <p className="text-[10px] font-black text-danger mb-1">{tr('gameReviewQuestionIds')}</p>
                               <p className="text-[10px] font-bold text-textSecondary leading-5 break-words">
                                 {game.weakQuestionIds.join('، ')}
                               </p>
