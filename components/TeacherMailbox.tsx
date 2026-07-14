@@ -59,13 +59,13 @@ interface MailMessage {
   grade?: string;
 }
 
-const MESSAGE_TYPES: Array<{ id: TeacherMessageType; label: string; icon: React.ElementType; tone: string }> = [
-  { id: 'general', label: 'ملاحظة عامة', icon: MessageCircle, tone: 'text-primary bg-primary/10 border-primary/20' },
-  { id: 'behavior_alert', label: 'تنبيه سلوكي', icon: AlertTriangle, tone: 'text-danger bg-danger/10 border-danger/20' },
-  { id: 'performance_report', label: 'تقرير أداء', icon: FileText, tone: 'text-info bg-info/10 border-info/20' },
-  { id: 'follow_up', label: 'طلب متابعة', icon: RefreshCw, tone: 'text-warning bg-warning/10 border-warning/20' },
-  { id: 'praise', label: 'إشادة', icon: Sparkles, tone: 'text-success bg-success/10 border-success/20' },
-  { id: 'homework', label: 'تذكير بواجب', icon: CheckCircle2, tone: 'text-primary bg-primary/10 border-primary/20' }
+const MESSAGE_TYPES: Array<{ id: TeacherMessageType; labelKey: string; icon: React.ElementType; tone: string }> = [
+  { id: 'general', labelKey: 'mailboxTypeGeneral', icon: MessageCircle, tone: 'text-primary bg-primary/10 border-primary/20' },
+  { id: 'behavior_alert', labelKey: 'mailboxTypeBehavior', icon: AlertTriangle, tone: 'text-danger bg-danger/10 border-danger/20' },
+  { id: 'performance_report', labelKey: 'mailboxTypePerformance', icon: FileText, tone: 'text-info bg-info/10 border-info/20' },
+  { id: 'follow_up', labelKey: 'mailboxTypeFollowUp', icon: RefreshCw, tone: 'text-warning bg-warning/10 border-warning/20' },
+  { id: 'praise', labelKey: 'mailboxTypePraise', icon: Sparkles, tone: 'text-success bg-success/10 border-success/20' },
+  { id: 'homework', labelKey: 'mailboxTypeHomework', icon: CheckCircle2, tone: 'text-primary bg-primary/10 border-primary/20' }
 ];
 
 const normalizeCode = (value: unknown) => String(value || '').trim().toUpperCase();
@@ -105,13 +105,13 @@ const getStudentCode = (student: Student) => normalizeCode(
   ''
 );
 
-const getStudentClassName = (student: Student) => String(student.classes?.[0] || (student as any).className || 'غير محدد').trim();
+const getStudentClassName = (student: Student) => String(student.classes?.[0] || (student as any).className || '').trim();
 
-const formatDateTime = (value?: string) => {
-  if (!value) return 'غير محدد';
+const formatDateTime = (value: string | undefined, language: string, fallback: string) => {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير محدد';
-  return new Intl.DateTimeFormat('ar-OM', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-OM' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
 const getTypeInfo = (type?: string) => MESSAGE_TYPES.find(item => item.id === type) || MESSAGE_TYPES[0];
@@ -120,23 +120,30 @@ const isTeacherSentMessage = (msg: MailMessage) => {
   return msg.sender === 'teacher' || msg.direction === 'teacher_to_parent' || msg.status === 'teacher_sent';
 };
 
-const buildTemplate = (type: TeacherMessageType, student?: Student, subject?: string) => {
-  const name = student?.name || 'الطالب';
-  const subjectText = subject || 'المادة';
-  switch (type) {
-    case 'behavior_alert':
-      return `ولي الأمر الكريم، نرجو متابعة سلوك الطالب/ة ${name} في مادة ${subjectText}، فقد تم تسجيل ملاحظة تحتاج إلى متابعة وتوجيه. شاكرين تعاونكم.`;
-    case 'performance_report':
-      return `ولي الأمر الكريم، نود إفادتكم بمتابعة أداء الطالب/ة ${name} في مادة ${subjectText}. نرجو الاطلاع والمتابعة المنزلية، وسنوافيكم بأي مستجدات.`;
-    case 'follow_up':
-      return `ولي الأمر الكريم، نرجو متابعة الطالب/ة ${name} في مادة ${subjectText} خلال الفترة القادمة، والتأكد من إنجاز المطلوب والمراجعة المستمرة.`;
-    case 'praise':
-      return `ولي الأمر الكريم، نود إشادتكم بتميز الطالب/ة ${name} ومشاركته/ها الإيجابية في مادة ${subjectText}. نشكركم على دعمكم المستمر.`;
-    case 'homework':
-      return `ولي الأمر الكريم، نرجو تذكير الطالب/ة ${name} بمتابعة الواجب أو المهمة المطلوبة في مادة ${subjectText}. شاكرين تعاونكم.`;
-    default:
-      return `ولي الأمر الكريم، نود إرسال ملاحظة بخصوص الطالب/ة ${name} في مادة ${subjectText}.`;
-  }
+const interpolate = (template: string, replacements: Record<string, string>) => {
+  return Object.entries(replacements).reduce(
+    (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, 'g'), value),
+    template
+  );
+};
+
+const buildTemplate = (
+  type: TeacherMessageType,
+  student: Student | undefined,
+  subject: string | undefined,
+  translate: (key: string) => string
+) => {
+  const name = student?.name || translate('mailboxDefaultStudent');
+  const subjectText = subject || translate('mailboxDefaultSubject');
+  const keyMap: Record<TeacherMessageType, string> = {
+    general: 'mailboxTemplateGeneral',
+    behavior_alert: 'mailboxTemplateBehavior',
+    performance_report: 'mailboxTemplatePerformance',
+    follow_up: 'mailboxTemplateFollowUp',
+    praise: 'mailboxTemplatePraise',
+    homework: 'mailboxTemplateHomework'
+  };
+  return interpolate(translate(keyMap[type]), { name, subject: subjectText });
 };
 
 const EmptyState: React.FC<{ icon?: React.ElementType; title: string; text: string }> = ({ icon: Icon = Mail, title, text }) => (
@@ -148,7 +155,7 @@ const EmptyState: React.FC<{ icon?: React.ElementType; title: string; text: stri
 );
 
 const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherInfo, currentSemester }) => {
-  const { t, dir } = useApp();
+  const { t, dir, language } = useApp();
   const [activeTab, setActiveTab] = useState<MailboxTab>('inbox');
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [localSentMessages, setLocalSentMessages] = useState<MailMessage[]>(() => {
@@ -288,7 +295,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   };
 
   const handleDeleteMessage = async (msg: MailMessage) => {
-    const confirmed = window.confirm('هل تريد حذف هذه الرسالة من صفحة المراسلات؟ لن تظهر مرة أخرى بعد التحديث.');
+    const confirmed = window.confirm(t('mailboxConfirmDelete'));
     if (!confirmed) return;
 
     const rowNumber = String(msg.rowNumber || msg.messageRow || msg.row || '');
@@ -313,7 +320,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       setLocalSentMessages(prev => prev.filter(item => item !== msg));
     } catch (error) {
       console.error('Error deleting message:', error);
-      alert('تعذر حذف الرسالة الآن. حاول مرة أخرى.');
+      alert(t('mailboxDeleteError'));
     }
   };
 
@@ -331,17 +338,17 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         schoolName: String(msg.schoolName || teacherInfo?.school || ''),
         subject: String(msg.subject || teacherInfo?.subject || ''),
         replyText: replyText.trim(),
-        teacherName: teacherInfo?.name || 'المعلم',
+        teacherName: teacherInfo?.name || t('mailboxDefaultTeacher'),
         semester: currentSemester
       });
-      setMessages(prev => prev.map(item => item === msg ? { ...item, status: 'replied', teacherReply: replyText.trim(), replyDate: new Date().toISOString(), teacherName: teacherInfo?.name || 'المعلم' } : item));
+      setMessages(prev => prev.map(item => item === msg ? { ...item, status: 'replied', teacherReply: replyText.trim(), replyDate: new Date().toISOString(), teacherName: teacherInfo?.name || t('mailboxDefaultTeacher') } : item));
       setReplyText('');
       setReplyingToMsg(null);
-      alert(t('replySentSuccessfully') || 'تم إرسال الرد بنجاح عبر السحابة لولي الأمر!');
+      alert(t('mailboxReplySuccess'));
       setTimeout(fetchParentMessages, 1200);
     } catch (error) {
       console.error('Error sending reply:', error);
-      alert('تعذر إرسال الرد. حاول مرة أخرى.');
+      alert(t('mailboxReplyError'));
     } finally {
       setIsSending(false);
     }
@@ -350,26 +357,26 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const handleSelectStudent = (student: Student) => {
     const code = getStudentCode(student);
     setSelectedStudentId(code || student.id);
-    setTeacherMessage(buildTemplate(messageType, student, teacherInfo?.subject));
+    setTeacherMessage(buildTemplate(messageType, student, teacherInfo?.subject, t));
   };
 
   const handleChangeType = (type: TeacherMessageType) => {
     setMessageType(type);
-    setTeacherMessage(buildTemplate(type, selectedStudent, teacherInfo?.subject));
+    setTeacherMessage(buildTemplate(type, selectedStudent, teacherInfo?.subject, t));
   };
 
   const handleSendTeacherMessage = async () => {
     if (!selectedStudent) {
-      alert('يرجى اختيار الطالب أولًا.');
+      alert(t('mailboxSelectStudentAlert'));
       return;
     }
     if (!teacherMessage.trim()) {
-      alert('يرجى كتابة نص الرسالة.');
+      alert(t('mailboxWriteMessageAlert'));
       return;
     }
     const rasedId = getStudentCode(selectedStudent);
     if (!rasedId) {
-      alert('لا يوجد كود راصد لهذا الطالب.');
+      alert(t('mailboxNoRasedCode'));
       return;
     }
     const className = getStudentClassName(selectedStudent);
@@ -381,10 +388,10 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         rasedId,
         civilID: rasedId,
         parentCode: rasedId,
-        studentName: selectedStudent.name || 'طالب',
-        schoolName: teacherInfo?.school || 'غير محدد',
-        subject: teacherInfo?.subject || 'غير محدد',
-        teacherName: teacherInfo?.name || 'المعلم',
+        studentName: selectedStudent.name || t('mailboxStudentFallback'),
+        schoolName: teacherInfo?.school || t('mailboxUnknown'),
+        subject: teacherInfo?.subject || t('mailboxUnknown'),
+        teacherName: teacherInfo?.name || t('mailboxDefaultTeacher'),
         messageType,
         message: teacherMessage.trim(),
         sender: 'teacher',
@@ -404,7 +411,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         subject: teacherInfo?.subject || '',
         message: teacherMessage.trim(),
         status: 'teacher_sent',
-        teacherName: teacherInfo?.name || 'المعلم',
+        teacherName: teacherInfo?.name || t('mailboxDefaultTeacher'),
         sender: 'teacher',
         messageType,
         direction: 'teacher_to_parent',
@@ -416,12 +423,12 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       setTeacherMessage('');
       setSelectedStudentId('');
       setMessageType('general');
-      alert('تم إرسال رسالة المعلم لولي الأمر بنجاح.');
+      alert(t('mailboxSendSuccess'));
       setActiveTab('sent');
       setTimeout(fetchParentMessages, 1200);
     } catch (error) {
       console.error('Error sending teacher message:', error);
-      alert('تعذر إرسال الرسالة. تأكد من تحديث سحابة ولي الأمر لدعم sendTeacherMessage.');
+      alert(t('mailboxSendError'));
     } finally {
       setIsSending(false);
     }
@@ -430,6 +437,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const MailMessageCard = ({ msg, index }: { msg: MailMessage; index: number }) => {
     const teacherSent = isTeacherSentMessage(msg);
     const typeInfo = getTypeInfo(msg.messageType);
+    const typeLabel = t(typeInfo.labelKey);
     const Icon = teacherSent ? typeInfo.icon : Inbox;
     return (
       <article key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
@@ -439,26 +447,26 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
               <Icon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-black text-textPrimary truncate">{msg.studentName || 'طالب غير محدد'}</h3>
+              <h3 className="text-sm font-black text-textPrimary truncate">{msg.studentName || t('mailboxUnknownStudent')}</h3>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full" dir="ltr">{msg.rasedId || msg.civilID || msg.parentCode || 'RSD'}</span>
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${teacherSent ? typeInfo.tone : 'bg-bgSoft border-borderColor text-textSecondary'}`}>{teacherSent ? typeInfo.label : 'وارد من ولي الأمر'}</span>
-                <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />{formatDateTime(msg.date)}</span>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${teacherSent ? typeInfo.tone : 'bg-bgSoft border-borderColor text-textSecondary'}`}>{teacherSent ? typeLabel : t('mailboxIncomingFromParent')}</span>
+                <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />{formatDateTime(msg.date, language, t('mailboxUnknown'))}</span>
                 {msg.className && <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{msg.className}</span>}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 self-start">
-            {msg.status === 'replied' && <span className="text-[9px] font-black bg-success/10 text-success border border-success/20 px-2 py-1 rounded-xl">تم الرد</span>}
+            {msg.status === 'replied' && <span className="text-[9px] font-black bg-success/10 text-success border border-success/20 px-2 py-1 rounded-xl">{t('mailboxReplied')}</span>}
             <button type="button" onClick={() => handleDeleteMessage(msg)} className="h-8 px-2 rounded-xl bg-danger/10 border border-danger/20 text-danger text-[10px] font-black flex items-center gap-1 active:scale-95">
-              <Trash2 className="w-3.5 h-3.5" /> حذف
+              <Trash2 className="w-3.5 h-3.5" /> {t('mailboxDelete')}
             </button>
           </div>
         </div>
-        <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary leading-7">{msg.message || 'لا يوجد نص'}</div>
+        <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary leading-7">{msg.message || t('mailboxNoText')}</div>
         {msg.teacherReply && (
           <div className="mt-3 rounded-2xl bg-success/10 border border-success/20 p-3 text-sm font-bold text-success leading-7">
-            <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black">رد المعلم</span><span className="text-[9px] font-bold opacity-70">{formatDateTime(msg.replyDate)}</span></div>
+            <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black">{t('mailboxTeacherReply')}</span><span className="text-[9px] font-bold opacity-70">{formatDateTime(msg.replyDate, language, t('mailboxUnknown'))}</span></div>
             {msg.teacherReply}
           </div>
         )}
@@ -466,14 +474,14 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
           <div className="mt-3 border-t border-borderColor pt-3">
             {replyingToMsg === msg ? (
               <div className="space-y-3">
-                <textarea value={replyText} onChange={event => setReplyText(event.target.value)} rows={3} placeholder="اكتب ردك لولي الأمر هنا..." className="w-full rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary focus:outline-none focus:border-primary/40" />
+                <textarea value={replyText} onChange={event => setReplyText(event.target.value)} rows={3} placeholder={t('mailboxReplyPlaceholder')} className="w-full rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary focus:outline-none focus:border-primary/40" />
                 <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => { setReplyingToMsg(null); setReplyText(''); }} className="h-10 px-4 rounded-xl bg-bgSoft border border-borderColor text-textSecondary font-black text-xs flex items-center gap-2"><X className="w-4 h-4" />إلغاء</button>
-                  <button type="button" onClick={() => handleSendReply(msg)} disabled={isSending || !replyText.trim()} className="h-10 px-4 rounded-xl bg-success text-white font-black text-xs flex items-center gap-2 disabled:opacity-50">{isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Reply className="w-4 h-4" />}إرسال الرد</button>
+                  <button type="button" onClick={() => { setReplyingToMsg(null); setReplyText(''); }} className="h-10 px-4 rounded-xl bg-bgSoft border border-borderColor text-textSecondary font-black text-xs flex items-center gap-2"><X className="w-4 h-4" />{t('mailboxCancel')}</button>
+                  <button type="button" onClick={() => handleSendReply(msg)} disabled={isSending || !replyText.trim()} className="h-10 px-4 rounded-xl bg-success text-white font-black text-xs flex items-center gap-2 disabled:opacity-50">{isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Reply className="w-4 h-4" />}{t('mailboxSendReply')}</button>
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setReplyingToMsg(msg)} className="h-10 px-4 rounded-xl bg-success/10 border border-success/20 text-success font-black text-xs flex items-center gap-2 active:scale-95"><Reply className="w-4 h-4" />الرد على ولي الأمر</button>
+              <button type="button" onClick={() => setReplyingToMsg(msg)} className="h-10 px-4 rounded-xl bg-success/10 border border-success/20 text-success font-black text-xs flex items-center gap-2 active:scale-95"><Reply className="w-4 h-4" />{t('mailboxReplyToParent')}</button>
             )}
           </div>
         )}
@@ -489,51 +497,51 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0"><Mail className="w-6 h-6" /></div>
             <div>
-              <h2 className="text-lg font-black text-textPrimary mb-1">مركز المراسلات</h2>
-              <p className="text-[11px] font-bold text-textSecondary leading-6">صفحة مستقلة للوارد والمرسل وإرسال رسائل مباشرة لولي الأمر.</p>
+              <h2 className="text-lg font-black text-textPrimary mb-1">{t('mailboxTitle')}</h2>
+              <p className="text-[11px] font-bold text-textSecondary leading-6">{t('mailboxSubtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={fetchParentMessages} className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95"><RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />تحديث</button>
-            <button type="button" onClick={() => setActiveTab('compose')} className="h-10 px-3 rounded-2xl bg-primary text-white font-black text-xs flex items-center gap-2 active:scale-95"><Send className="w-4 h-4" />رسالة جديدة</button>
+            <button type="button" onClick={fetchParentMessages} className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95"><RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />{t('mailboxRefresh')}</button>
+            <button type="button" onClick={() => setActiveTab('compose')} className="h-10 px-3 rounded-2xl bg-primary text-white font-black text-xs flex items-center gap-2 active:scale-95"><Send className="w-4 h-4" />{t('mailboxNewMessage')}</button>
           </div>
         </div>
         {(!hasTeacherContext || !hasStudents) && (
           <div className="relative z-10 mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-            {!hasTeacherContext && <div className="rounded-2xl bg-warning/10 border border-warning/20 text-warning p-3 text-[11px] font-bold leading-6">تنبيه: اسم المدرسة أو المادة غير مكتمل. ستظل الصفحة ظاهرة، لكن جلب الرسائل قد يحتاج ضبط بيانات المعلم.</div>}
-            {!hasStudents && <div className="rounded-2xl bg-bgSoft border border-borderColor text-textSecondary p-3 text-[11px] font-bold leading-6">لا توجد قائمة طلاب محملة حاليًا. يمكن استقبال الرسائل، وسيظهر اختيار الطلاب عند توفر القائمة.</div>}
+            {!hasTeacherContext && <div className="rounded-2xl bg-warning/10 border border-warning/20 text-warning p-3 text-[11px] font-bold leading-6">{t('mailboxMissingTeacherContext')}</div>}
+            {!hasStudents && <div className="rounded-2xl bg-bgSoft border border-borderColor text-textSecondary p-3 text-[11px] font-bold leading-6">{t('mailboxNoStudentsLoaded')}</div>}
           </div>
         )}
       </section>
 
       <section className="grid grid-cols-3 gap-2 bg-bgCard border border-borderColor rounded-3xl p-2 shadow-sm mb-4">
-        <button type="button" onClick={() => setActiveTab('inbox')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'inbox' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Inbox className="w-4 h-4" />الوارد <span className="text-[9px] font-black opacity-80">{inboxMessages.length}</span></button>
-        <button type="button" onClick={() => setActiveTab('sent')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'sent' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Archive className="w-4 h-4" />المرسل <span className="text-[9px] font-black opacity-80">{sentMessages.length}</span></button>
-        <button type="button" onClick={() => setActiveTab('compose')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'compose' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Send className="w-4 h-4" />إرسال</button>
+        <button type="button" onClick={() => setActiveTab('inbox')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'inbox' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Inbox className="w-4 h-4" />{t('mailboxInbox')} <span className="text-[9px] font-black opacity-80">{inboxMessages.length}</span></button>
+        <button type="button" onClick={() => setActiveTab('sent')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'sent' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Archive className="w-4 h-4" />{t('mailboxSent')} <span className="text-[9px] font-black opacity-80">{sentMessages.length}</span></button>
+        <button type="button" onClick={() => setActiveTab('compose')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'compose' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Send className="w-4 h-4" />{t('mailboxCompose')}</button>
       </section>
 
       {activeTab === 'inbox' || activeTab === 'sent' ? (
         <section className="space-y-3">
-          <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><label className="relative block"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث باسم الطالب أو الكود أو نص الرسالة..." className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40" /></label></div>
-          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title="جاري جلب الرسائل" text="يتم الآن تحميل رسائل أولياء الأمور من السحابة." /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? 'لا توجد رسائل واردة' : 'لا توجد رسائل مرسلة'} text={activeTab === 'inbox' ? 'الرسائل الواردة من ولي الأمر ستظهر هنا.' : 'الرسائل التي يرسلها المعلم لولي الأمر ستظهر هنا.'} /> : visibleMessages.map((msg, index) => <MailMessageCard key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} msg={msg} index={index} />)}
+          <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><label className="relative block"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('mailboxSearchPlaceholder')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label></div>
+          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title={t('mailboxFetchingTitle')} text={t('mailboxFetchingText')} /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? t('mailboxNoInbox') : t('mailboxNoSent')} text={activeTab === 'inbox' ? t('mailboxNoInboxHint') : t('mailboxNoSentHint')} /> : visibleMessages.map((msg, index) => <MailMessageCard key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} msg={msg} index={index} />)}
         </section>
       ) : (
         <section className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
-            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><User className="w-4 h-4 text-primary" />اختيار الطالب</h3>
+            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><User className="w-4 h-4 text-primary" />{t('mailboxSelectStudent')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
               <select value={selectedGradeForSend} onChange={(e) => setSelectedGradeForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
-                <option value="all">كل الصفوف</option>
-                {gradeOptions.map(grade => <option key={grade} value={grade}>الصف {grade}</option>)}
+                <option value="all">{t('mailboxAllGrades')}</option>
+                {gradeOptions.map(grade => <option key={grade} value={grade}>{t('mailboxGradePrefix')} {grade}</option>)}
               </select>
               <select value={selectedClassForSend} onChange={(e) => setSelectedClassForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
-                <option value="all">كل الفصول</option>
+                <option value="all">{t('mailboxAllClasses')}</option>
                 {filteredClassOptions.map(className => <option key={className} value={className}>{className}</option>)}
               </select>
             </div>
-            <label className="relative block mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder="ابحث داخل الطلاب المعروضين..." className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor pr-10 pl-3 text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40" /></label>
+            <label className="relative block mb-3"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder={t('mailboxStudentSearch')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label>
             <div className="space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
-              {studentsForSend.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">لا توجد نتائج طلاب حسب الصف أو الفصل المحدد.</div> : studentsForSend.map(student => {
+              {studentsForSend.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">{t('mailboxNoStudentResults')}</div> : studentsForSend.map(student => {
                 const code = getStudentCode(student);
                 const active = selectedStudentId === code || selectedStudentId === student.id;
                 return <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className={`w-full rounded-2xl border p-3 text-start transition-all active:scale-[0.99] ${active ? 'bg-primary/10 border-primary/30' : 'bg-bgSoft border-borderColor hover:border-primary/20'}`}><p className="text-xs font-black text-textPrimary truncate">{student.name}</p><div className="flex flex-wrap items-center gap-1 mt-1"><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(student)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{code || 'RSD'}</span></div></button>;
@@ -541,11 +549,11 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
             </div>
           </div>
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
-            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><Send className="w-4 h-4 text-primary" />إرسال رسالة لولي الأمر</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">{MESSAGE_TYPES.map(type => { const active = messageType === type.id; const Icon = type.icon; return <button key={type.id} type="button" onClick={() => handleChangeType(type.id)} className={`rounded-2xl border p-3 text-xs font-black flex flex-col items-center gap-1 transition-all active:scale-95 ${active ? type.tone : 'bg-bgSoft border-borderColor text-textSecondary hover:text-primary'}`}><Icon className="w-4 h-4" />{type.label}</button>; })}</div>
-            <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 mb-4"><p className="text-[10px] font-black text-textSecondary mb-1">الطالب المحدد</p>{selectedStudent ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-black text-textPrimary">{selectedStudent.name}</span><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(selectedStudent)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{getStudentCode(selectedStudent)}</span></div> : <span className="text-xs font-bold text-danger">لم يتم اختيار طالب بعد.</span>}</div>
-            <textarea value={teacherMessage} onChange={event => setTeacherMessage(event.target.value)} rows={9} placeholder="اكتب نص الرسالة التي ستصل إلى ولي الأمر..." className="w-full rounded-3xl bg-bgSoft border border-borderColor p-4 text-sm font-bold text-textPrimary leading-7 focus:outline-none focus:border-primary/40" />
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4"><p className="text-[10px] font-bold text-textSecondary leading-5">الرسالة ستحفظ في سحابة ولي الأمر وتظهر في سجل المرسل، وستُضاف أيضًا إلى TeacherReplies عند توفر صف الطالب.</p><button type="button" onClick={handleSendTeacherMessage} disabled={isSending || !selectedStudent || !teacherMessage.trim()} className="h-12 px-5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}إرسال لولي الأمر</button></div>
+            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><Send className="w-4 h-4 text-primary" />{t('mailboxSendToParent')}</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">{MESSAGE_TYPES.map(type => { const active = messageType === type.id; const Icon = type.icon; return <button key={type.id} type="button" onClick={() => handleChangeType(type.id)} className={`rounded-2xl border p-3 text-xs font-black flex flex-col items-center gap-1 transition-all active:scale-95 ${active ? type.tone : 'bg-bgSoft border-borderColor text-textSecondary hover:text-primary'}`}><Icon className="w-4 h-4" />{t(type.labelKey)}</button>; })}</div>
+            <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 mb-4"><p className="text-[10px] font-black text-textSecondary mb-1">{t('mailboxSelectedStudent')}</p>{selectedStudent ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-black text-textPrimary">{selectedStudent.name}</span><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(selectedStudent)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{getStudentCode(selectedStudent)}</span></div> : <span className="text-xs font-bold text-danger">{t('mailboxNoStudentSelected')}</span>}</div>
+            <textarea value={teacherMessage} onChange={event => setTeacherMessage(event.target.value)} rows={9} placeholder={t('mailboxMessagePlaceholder')} className="w-full rounded-3xl bg-bgSoft border border-borderColor p-4 text-sm font-bold text-textPrimary leading-7 focus:outline-none focus:border-primary/40" />
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4"><p className="text-[10px] font-bold text-textSecondary leading-5">{t('mailboxCloudNotice')}</p><button type="button" onClick={handleSendTeacherMessage} disabled={isSending || !selectedStudent || !teacherMessage.trim()} className="h-12 px-5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{t('mailboxSendButton')}</button></div>
           </div>
         </section>
       )}
