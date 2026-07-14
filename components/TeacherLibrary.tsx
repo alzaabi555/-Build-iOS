@@ -120,7 +120,7 @@ const TeacherLibrary: React.FC = () => {
   };
 
   const deleteFromArchive = (id: string) => {
-      if(window.confirm(t('confirmDeleteArchive') || 'هل أنت متأكد من حذف هذا الرابط من الأرشيف؟ (هذا لن يحذفه من عند الطلاب)')) {
+      if(window.confirm(t('libraryConfirmDeleteArchive') || 'هل أنت متأكد من حذف هذا الرابط من الأرشيف؟ (هذا لن يحذفه من عند الطلاب)')) {
           setArchive(prev => prev.filter(item => item.id !== id));
       }
   };
@@ -149,7 +149,7 @@ const TeacherLibrary: React.FC = () => {
             {success && (
             <div className="absolute inset-0 z-20 bg-success/10 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
                 <CheckCircle2 className="w-16 h-16 text-success mb-2 drop-shadow-md" />
-                <h2 className="text-lg font-black text-textPrimary">{t('sendSuccess') || 'تم الإرسال للطلاب بنجاح!'}</h2>
+                <h2 className="text-lg font-black text-textPrimary">{t('librarySendSuccess') || 'تم الإرسال للطلاب بنجاح!'}</h2>
             </div>
             )}
 
@@ -231,14 +231,14 @@ const TeacherLibrary: React.FC = () => {
         {/* 🗂️ بطاقة أرشيف الروابط المرسلة */}
         <div className="mt-8">
             <h3 className="font-black text-lg mb-4 flex items-center gap-2 text-textPrimary">
-                <History className="w-5 h-5 text-primary" /> {t('archiveTitle') || 'أرشيف الروابط المرسلة'}
+                <History className="w-5 h-5 text-primary" /> {t('libraryArchiveTitle') || 'أرشيف الروابط المرسلة'}
             </h3>
 
             {archive.length === 0 ? (
                 <div className={`p-8 rounded-[2rem] border text-center border-dashed bg-bgSoft border-borderColor`}>
                     <Library className={`mx-auto mb-3 w-10 h-10 opacity-20 text-textSecondary`} />
                     <p className={`text-xs font-bold text-textSecondary`}>
-                        {t('noArchiveYet') || 'لا يوجد روابط في الأرشيف حالياً. الروابط التي سترسلها ستظهر هنا.'}
+                        {t('libraryArchiveEmpty') || 'لا يوجد روابط في الأرشيف حالياً. الروابط التي سترسلها ستظهر هنا.'}
                     </p>
                 </div>
             ) : (
@@ -268,14 +268,14 @@ const TeacherLibrary: React.FC = () => {
                                     <button 
                                         onClick={() => openLink(item.link)} 
                                         className="p-2 rounded-lg bg-bgSoft text-textSecondary hover:bg-primary/10 hover:text-primary transition-colors"
-                                        title={t('openLink') || 'فتح الرابط'}
+                                        title={t('libraryOpenLink') || 'فتح الرابط'}
                                     >
                                         <ExternalLink size={16} />
                                     </button>
                                     <button 
                                         onClick={() => deleteFromArchive(item.id)} 
                                         className="p-2 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
-                                        title={t('deleteArchiveItem') || 'حذف من الأرشيف'}
+                                        title={t('libraryDeleteFromArchive') || 'حذف من الأرشيف'}
                                     >
                                         <Trash2 size={16} />
                                     </button>
