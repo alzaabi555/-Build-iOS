@@ -1,4 +1,4 @@
-export const translationsBatch7Additions = {
+export const translations = {
   ar: {
     syncCloudBackupIncomplete: "النسخة السحابية غير مكتملة. أعد رفع النسخة ثم حاول مجددًا.",
     syncCloudBackupAssembleError: "تعذر تجميع النسخة السحابية بصورة صحيحة.",
@@ -124,4 +124,4 @@ export const translationsBatch7Additions = {
     studentsEditAction: "Edit"
   }
 } as const;
-export const translations = translationsBatch1Additions;
+
