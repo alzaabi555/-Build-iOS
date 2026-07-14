@@ -1,8 +1,8 @@
 export interface Student {
   id: string;
-  ministryId?: string; // معرف الوزارة للمزامنة
+  ministryId?: string;
   name: string;
-  gender?: 'male' | 'female'; // تحديد الجنس
+  gender?: 'male' | 'female';
   grade: string;
   classes: string[];
   attendance: AttendanceRecord[];
@@ -10,22 +10,25 @@ export interface Student {
   grades: GradeRecord[];
   parentPhone?: string;
   avatar?: string;
-  spentCoins?: number; 
-  groupId?: string | null; // معرف الفريق (ديناميكي)
+  spentCoins?: number;
+  groupId?: string | null;
   examPapers?: ExamPaper[];
-  rasedId?: string; // 💉 كود راصد السري الآمن
-  parentCode?: string; // ✅ الكود السري الخاص بتطبيق ولي الأمر
+  rasedId?: string;
+  parentCode?: string;
 }
 
 export interface Group {
   id: string;
   name: string;
-  color: string; // Tailwind color
+  color: string;
 }
 
 export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
+  semester?: '1' | '2';
+  notes?: string;
+  session?: number | string;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'truant';
@@ -37,6 +40,7 @@ export interface BehaviorRecord {
   description: string;
   points: number;
   semester?: '1' | '2';
+  session?: number | string;
 }
 
 export type BehaviorType = 'positive' | 'negative';
@@ -44,7 +48,7 @@ export type BehaviorType = 'positive' | 'negative';
 export interface GradeRecord {
   id: string;
   subject: string;
-  category: string; // "short_test_1", "project", etc.
+  category: string;
   score: number;
   maxScore: number;
   date: string;
@@ -53,29 +57,184 @@ export interface GradeRecord {
 
 export interface ScheduleDay {
   dayName: string;
-  periods: string[]; // Array of class names or subjects for 8 periods
+  periods: string[];
 }
 
 export interface PeriodTime {
   periodNumber: number;
-  startTime: string; // "07:30"
-  endTime: string;   // "08:10"
+  startTime: string;
+  endTime: string;
 }
 
 export interface AssessmentTool {
   id: string;
   name: string;
   maxScore: number;
+  isFinal?: boolean;
+}
+
+export interface GradeSettings {
+  totalScore: number;
+  finalExamScore: number;
+  finalExamName: string;
+  finalExamWeight?: number;
 }
 
 export interface CertificateSettings {
   title: string;
   bodyText: string;
-  backgroundImage?: string; // Base64 string for custom background
-  showDefaultDesign: boolean; // Toggle built-in CSS shapes
+  backgroundImage?: string;
+  showDefaultDesign: boolean;
+  useCustomCertificateBackground?: boolean;
+  customCertificateBackground?: string;
+  customCertificateBackgroundType?: 'image' | 'pdf' | '';
+  customCertificateBackgroundName?: string;
+  hideDefaultCertificateFrame?: boolean;
+  customBackgroundFit?: 'stretch' | 'cover' | 'contain';
 }
 
-// --- أنواع بيانات الوزارة (Ministry Sync) ---
+export interface TeacherTask {
+  id: string;
+  title: string;
+  subject: string;
+  targetClass: string;
+  createdAt: string;
+}
+
+export interface TeacherLibraryItem {
+  id: string;
+  title: string;
+  link: string;
+  type: 'link' | 'youtube' | 'pdf' | string;
+  targetClass: string;
+  date: string;
+}
+
+export interface AssessmentMonth {
+  id: string;
+  monthIndex: number;
+  monthName: string;
+  tasks: string[];
+}
+
+export interface TermWeekPlan {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  unit: string;
+  lesson: string;
+  defaultTopic: string;
+}
+
+export interface TeacherSentMessage {
+  rowNumber?: number;
+  row?: number;
+  messageRow?: number;
+  localId?: string;
+  date?: string;
+  rasedId?: string;
+  civilID?: string;
+  parentCode?: string;
+  studentName?: string;
+  schoolName?: string;
+  subject?: string;
+  message?: string;
+  status?: string;
+  teacherReply?: string;
+  replyDate?: string;
+  teacherName?: string;
+  sender?: string;
+  messageType?: string;
+  direction?: string;
+  readByParent?: string;
+  readByTeacher?: string;
+  semester?: string;
+  className?: string;
+  grade?: string;
+}
+
+export type GameQuestionType =
+  | 'multiple_choice'
+  | 'true_false'
+  | 'matching'
+  | 'sequence';
+
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
+
+export type EducationalGameType =
+  | 'snake_ladder'
+  | 'race'
+  | 'knowledge_race'
+  | 'true_false'
+  | 'football'
+  | 'penalty'
+  | 'matching'
+  | 'match_cards'
+  | 'sequence'
+  | 'order';
+
+export interface TeacherGameQuestion {
+  id: string;
+  schoolCode: string;
+  teacherId: string;
+  subject: string;
+  grade: string;
+  classes: string[];
+  semester?: '1' | '2';
+  unit: string;
+  lesson: string;
+  gameTypes: EducationalGameType[];
+  questionType: GameQuestionType;
+  question: string;
+  options: string[];
+  correctAnswerIndex?: number;
+  correctAnswerText?: string;
+  pairs?: Array<{ left: string; right: string }>;
+  sequence?: string[];
+  explanation: string;
+  difficulty: GameDifficulty;
+  skill?: string;
+  active: boolean;
+  visibleFrom?: string;
+  createdAt: string;
+  updatedAt: string;
+  status?: 'active' | 'archived' | 'review' | string;
+  publishBatchId?: string;
+  archivedAt?: string;
+}
+
+export type TeacherGameType =
+  | 'snake_ladder'
+  | 'knowledge_race'
+  | 'football_quiz'
+  | 'true_false'
+  | 'match_cards'
+  | 'sequence_order'
+  | string;
+
+export interface TeacherGameResultLogEntry {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  className?: string;
+  grade?: string;
+  semester?: string;
+  gameType: TeacherGameType;
+  score: number;
+  correct: number;
+  wrong: number;
+  completed: boolean;
+  weakQuestionIds: string[];
+  playedAt: string;
+  savedAt?: string;
+  syncStatus?: 'local_only' | 'pending_sync' | 'synced';
+  subject?: string;
+  unit?: string;
+  lesson?: string;
+  rawResult?: unknown;
+}
+
 export interface MinistrySession {
   userId: string;
   auth: string;
@@ -97,7 +256,6 @@ export interface StdsGradeDetail {
   Notes: string;
 }
 
-// --- Exam Grading Types ---
 export interface GradingData {
   mcq: (number | null)[];
   essay: { [key: string]: { [part: string]: number } };
@@ -106,36 +264,61 @@ export interface GradingData {
 export interface ExamPaper {
   id: string;
   title: string;
-  fileData: string; // Base64 string
+  fileData: string;
   date: string;
   gradingData?: GradingData;
   totalScore?: number;
   maxScore?: number;
 }
 
-// ============================================================================
-// ✅ نظام المجموعات التفاعلية (Interactive Student Groups)
-// ============================================================================
-
-// 1. واجهة المجموعة الفرعية (مثلاً: مجموعة العباقرة، مجموعة الأبطال)
 export interface SubGroup {
   id: string;
-  name: string;          // اسم المجموعة الذي يختاره المعلم بحرية
-  color: string;         // لون مميز للمجموعة (سنوفره للمعلم كخيارات بصرية)
-  studentIds: string[];  // قائمة بأرقام هويات الطلاب (id) المنضمين لهذه المجموعة
+  name: string;
+  color: string;
+  studentIds: string[];
+  isCompleted?: boolean;
 }
 
-// 2. واجهة التقسيمة الكبرى (مثلاً: مشروع العلوم، مسابقة الإملاء)
 export interface GroupCategorization {
   id: string;
-  title: string;         // اسم التقسيمة العامة الذي يكتبه المعلم
-  classId: string;       // الفصل المرتبط بهذه التقسيمة (مثلاً: سابع / 1)
-  createdAt: string;     // تاريخ الإنشاء
-  groups: SubGroup[];    // المجموعات الفرعية التي تندرج تحت هذه التقسيمة
+  title: string;
+  classId: string;
+  createdAt: string;
+  archivedAt?: string;
+  groups: SubGroup[];
 }
 
-// --- تعريف الجسر الإلكتروني (Electron Bridge) ---
-// هذا يسمح لـ TypeScript بمعرفة أن window.electron موجود وآمن للاستخدام
+export interface RasedExtendedStorageSnapshot {
+  termPlan: TermWeekPlan[];
+  assessmentPlan: AssessmentMonth[];
+  tasks: TeacherTask[];
+  libraryArchive: TeacherLibraryItem[];
+  sentMessagesLocal: TeacherSentMessage[];
+  gradingSettings: Record<string, unknown> | null;
+  gameStorage: Record<string, unknown>;
+}
+
+export interface RasedBackupPayload {
+  schemaVersion: number;
+  version: string;
+  timestamp: string;
+  students: Student[];
+  classes: string[];
+  hiddenClasses: string[];
+  groups: Group[];
+  categorizations: GroupCategorization[];
+  schedule: ScheduleDay[];
+  periodTimes: PeriodTime[];
+  teacherInfo: Record<string, unknown>;
+  currentSemester: '1' | '2';
+  assessmentTools: AssessmentTool[];
+  gradeSettings: GradeSettings;
+  certificateSettings: CertificateSettings;
+  defaultStudentGender: 'male' | 'female';
+  language: 'ar' | 'en';
+  extendedStorage: RasedExtendedStorageSnapshot;
+}
+
 declare global {
   interface Window {
     electron?: {
@@ -143,3 +326,5 @@ declare global {
     };
   }
 }
+
+export {};
