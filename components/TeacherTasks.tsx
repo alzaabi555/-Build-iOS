@@ -88,7 +88,7 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
   };
 
   // 🛡️ حماية من ظهور مفتاح الترجمة ككلمة إنجليزية
-  const archiveTitleText = t('archiveTitle') === 'archiveTitle' ? 'سجل المهام (الأرشيف)' : (t('archiveTitle') || 'سجل المهام (الأرشيف)');
+  const archiveTitleText = t('tasksArchiveTitle') === 'tasksArchiveTitle' ? 'سجل المهام (الأرشيف)' : (t('tasksArchiveTitle') || 'سجل المهام (الأرشيف)');
 
   return (
     // 💉 تغليف الصفحة بالكامل بالمكون الجديد
@@ -182,7 +182,7 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
             <div className={`p-8 rounded-[2rem] border text-center border-dashed bg-bgSoft border-borderColor`}>
               <CheckSquare size={40} className={`mx-auto mb-3 opacity-20 text-textSecondary`} />
               <p className={`text-xs font-bold text-textSecondary`}>
-                {t('noTasksAdded') || 'لا توجد مهام في الأرشيف حالياً. أضف مهمة لطلابك لتظهر هنا!'}
+                {t('tasksArchiveEmpty') || 'لا توجد مهام في الأرشيف حالياً. أضف مهمة لطلابك لتظهر هنا!'}
               </p>
             </div>
           ) : (
@@ -208,7 +208,7 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
                     <button 
                         onClick={() => handleDeleteTask(task.id)} 
                         className={`p-2 rounded-lg transition-colors shrink-0 bg-danger/10 text-danger hover:bg-danger/20`}
-                        title={t('deleteArchiveItem') || 'حذف من الأرشيف'}
+                        title={t('tasksDeleteFromArchive') || 'حذف من الأرشيف'}
                     >
                       <Trash2 size={16} />
                     </button>
