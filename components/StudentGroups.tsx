@@ -56,7 +56,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [autoGroupCount, setAutoGroupCount] = useState(4);
-  const [autoGroupPrefix, setAutoGroupPrefix] = useState('فريق');
+  const [autoGroupPrefix, setAutoGroupPrefix] = useState(t('groupDefaultPrefix'));
   const [autoDistribute, setAutoDistribute] = useState(true);
   const [autoShuffle, setAutoShuffle] = useState(true);
 
@@ -175,14 +175,14 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleDeleteCategorization = (id: string) => {
-    if (window.confirm('هل تريد حذف هذا التقسيم نهائيًا؟')) {
+    if (window.confirm(t('groupsConfirmDeleteCategorization'))) {
       setCategorizations(categorizations.filter((cat: any) => cat.id !== id));
       if (activeCatId === id) setActiveCatId('');
     }
   };
 
   const handleArchiveCategorization = (id: string) => {
-    if (!window.confirm('هل تريد أرشفة هذا التقسيم؟ سيختفي من القائمة النشطة ويمكن عرضه لاحقًا من الأرشيف.')) return;
+    if (!window.confirm(t('groupsConfirmArchiveCategorization'))) return;
 
     setCategorizations((prev: any[]) =>
       prev.map((cat: any) =>
@@ -237,7 +237,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     if (!activeCatId) return;
 
     const count = Math.max(1, Math.min(12, Number(autoGroupCount) || 1));
-    const prefix = autoGroupPrefix.trim() || 'فريق';
+    const prefix = autoGroupPrefix.trim() || t('groupDefaultPrefix');
 
     let studentPool = [...classStudents];
 
@@ -283,7 +283,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleDeleteGroup = (groupId: string) => {
-    if (!window.confirm(t('confirmDeleteGroup') || 'هل تريد حذف هذه المجموعة؟')) return;
+    if (!window.confirm(t('confirmDeleteGroup'))) return;
 
     setCategorizations((prev: any[]) =>
       prev.map((cat: any) => {
@@ -420,7 +420,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
       return {
         ...group,
         id: Math.random().toString(36).substring(2, 9),
-        name: group.name || `المجموعة ${index + 1}`,
+        name: group.name || `${t('groupsDefaultName')} ${index + 1}`,
         studentIds,
         isCompleted: false
       };
@@ -428,7 +428,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
     const copiedCat = {
       id: Math.random().toString(36).substring(2, 9),
-      title: `${copyCat.title} - نسخة`,
+      title: `${copyCat.title} - ${t('groupsCopySuffix')}`,
       classId: targetClass,
       createdAt: new Date().toISOString(),
       groups: copiedGroups
@@ -600,6 +600,13 @@ const fitCanvasText = (
   return `${result}…`;
 };
 
+const interpolateText = (template: string, replacements: Record<string, string | number>) => {
+  return Object.entries(replacements).reduce(
+    (result, [key, value]) => result.replace(new RegExp(`\{${key}\}`, 'g'), String(value)),
+    template
+  );
+};
+
 const drawRtlText = (
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -660,9 +667,32 @@ const drawLtrText = (
   ctx.restore();
 };
 
+const drawLocalizedText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options?: {
+    font?: string;
+    color?: string;
+    align?: CanvasTextAlign;
+    maxWidth?: number;
+    baseline?: CanvasTextBaseline;
+  }
+) => {
+  if (dir === 'rtl') {
+    drawRtlText(ctx, text, x, y, options);
+  } else {
+    drawLtrText(ctx, text, x, y, {
+      ...options,
+      align: options?.align || 'left'
+    });
+  }
+};
+
 const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
   if (!activeCat) {
-    throw new Error('لا يوجد تقسيم نشط للتصدير');
+    throw new Error(t('groupsNoActiveExport'));
   }
 
   const groups = activeCat.groups || [];
@@ -727,7 +757,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
-    throw new Error('تعذر إنشاء Canvas');
+    throw new Error(t('groupsCanvasError'));
   }
 
   ctx.fillStyle = '#f8fafc';
@@ -743,9 +773,9 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     '#0f172a'
   );
 
-  drawRtlText(
+  drawLocalizedText(
     ctx,
-    `راصد - ${activeCat.title}`,
+    interpolateText(t('groupsCanvasHeader'), { title: activeCat.title }),
     canvasWidth - 52,
     60,
     {
@@ -755,9 +785,9 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     }
   );
 
-  drawRtlText(
+  drawLocalizedText(
     ctx,
-    `الفصل: ${selectedClass} • عدد المجموعات: ${groups.length}`,
+    interpolateText(t('groupsCanvasSubheader'), { className: selectedClass, count: groups.length }),
     canvasWidth - 52,
     92,
     {
@@ -790,9 +820,9 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     fillRoundRect(ctx, x, y, cardWidth, 58, 26, color.solid);
     ctx.restore();
 
-    drawRtlText(
+    drawLocalizedText(
       ctx,
-      group.name || `المجموعة ${index + 1}`,
+      group.name || `${t('groupsDefaultName')} ${index + 1}`,
       x + cardWidth - 24,
       y + 37,
       {
@@ -804,7 +834,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
 
     drawLtrText(
       ctx,
-      `${names.length} طلاب`,
+      interpolateText(t('groupsCanvasStudentsCount'), { count: names.length }),
       x + 28,
       y + 37,
       {
@@ -816,9 +846,9 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     );
 
     if (names.length === 0) {
-      drawRtlText(
+      drawLocalizedText(
         ctx,
-        'لا يوجد طلاب في هذه المجموعة',
+        t('groupsNoStudentsInGroup'),
         x + cardWidth - 24,
         y + 95,
         {
@@ -836,7 +866,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
     const maxNameWidth = cardWidth - 55;
 
     names.forEach((name: string, nameIndex: number) => {
-      drawRtlText(
+      drawLocalizedText(
         ctx,
         name,
         x + cardWidth - 24,
@@ -884,11 +914,11 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
     await saveOrShareFile(
       blob,
       fileName,
-      'تصدير مجموعات راصد كصورة'
+      t('groupsExportImageTitle')
     );
   } catch (error) {
     console.error(error);
-    alert('تعذر تصدير المجموعات كصورة.');
+    alert(t('groupsExportImageError'));
   }
 };
 
@@ -921,11 +951,11 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
       await saveOrShareFile(
         pdfBlob,
         fileName,
-        'تصدير مجموعات راصد PDF'
+        t('groupsExportPdfTitle')
       );
     } catch (error) {
       console.error(error);
-      alert('تعذر تصدير المجموعات كملف PDF.');
+      alert(t('groupsExportPdfError'));
     }
   };
 
@@ -939,17 +969,17 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
   }
 
   const summaryCards = [
-    { label: 'طلاب الفصل', value: classStudents.length, icon: Users, tone: 'text-primary bg-primary/10 border-primary/20' },
-    { label: 'المجموعات', value: activeCat?.groups?.length || 0, icon: Layers, tone: 'text-info bg-info/10 border-info/20' },
-    { label: 'الموزعون', value: assignedCount, icon: CheckCircle2, tone: 'text-success bg-success/10 border-success/20' },
-    { label: 'غير موزعين', value: unassignedStudents.length, icon: UserPlus, tone: 'text-warning bg-warning/10 border-warning/20' },
-    { label: 'مكتملة', value: completedGroupsCount, icon: Check, tone: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' }
+    { label: t('groupsClassStudents'), value: classStudents.length, icon: Users, tone: 'text-primary bg-primary/10 border-primary/20' },
+    { label: t('groupsSummaryGroups'), value: activeCat?.groups?.length || 0, icon: Layers, tone: 'text-info bg-info/10 border-info/20' },
+    { label: t('groupsAssigned'), value: assignedCount, icon: CheckCircle2, tone: 'text-success bg-success/10 border-success/20' },
+    { label: t('groupsUnassigned'), value: unassignedStudents.length, icon: UserPlus, tone: 'text-warning bg-warning/10 border-warning/20' },
+    { label: t('groupsCompleted'), value: completedGroupsCount, icon: Check, tone: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' }
   ];
 
   return (
     <PageLayout
-      title={t('manageGroupsTitle') || 'إدارة المجموعات'}
-      subtitle={t('groupsSubtitle') || 'تقسيم الطلاب وتنظيم فرق العمل'}
+      title={t('manageGroupsTitle')}
+      subtitle={t('groupsSubtitle')}
       icon={<Users size={24} />}
       showBackButton={!!onBack}
       onBack={onBack}
@@ -997,13 +1027,13 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
           <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between mb-3">
             <div className="flex items-center gap-2">
               <FolderPlus className="w-5 h-5 text-primary" />
-              <h2 className="font-black text-base md:text-lg text-textPrimary">التقسيمات</h2>
+              <h2 className="font-black text-base md:text-lg text-textPrimary">{t('groupsCategorizationsHeading')}</h2>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 flex-1 lg:flex-none">
               <input
                 type="text"
-                placeholder={t('catNamePlaceholder') || 'اسم التقسيم الجديد'}
+                placeholder={t('catNamePlaceholder')}
                 value={newCatTitle}
                 onChange={(event) => setNewCatTitle(event.target.value)}
                 onKeyDown={(event) => event.key === 'Enter' && handleCreateCategorization()}
@@ -1015,7 +1045,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 className="px-4 py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all disabled:opacity-50 bg-primary text-white hover:bg-primary/90 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
-                تقسيم
+                {t('groupsCreateCategorization')}
               </button>
               <button
                 onClick={() => setShowArchived(prev => !prev)}
@@ -1026,14 +1056,14 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 }`}
               >
                 <Archive className="w-4 h-4" />
-                {showArchived ? 'الأرشيف' : 'عرض الأرشيف'}
+                {showArchived ? t('groupsArchive') : t('groupsShowArchive')}
               </button>
             </div>
           </div>
 
           {classCategorizations.length === 0 ? (
             <div className="p-6 rounded-2xl border border-dashed border-borderColor bg-bgSoft text-center text-textSecondary">
-              {showArchived ? 'لا توجد تقسيمات مؤرشفة لهذا الفصل.' : 'لا توجد تقسيمات بعد. أنشئ تقسيمًا جديدًا للبدء.'}
+              {showArchived ? t('groupsNoArchived') : t('groupsNoActive')}
             </div>
           ) : (
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -1057,7 +1087,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                           {cat.title}
                         </h3>
                         <p className="text-[10px] font-bold text-textSecondary mt-1">
-                          {(cat.groups || []).length} مجموعات • {totalStudents} طالب
+                          {(cat.groups || []).length} {t('groupsCount')} • {totalStudents} {t('studentsCountWord')}
                         </p>
                       </div>
 
@@ -1070,7 +1100,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                               handleArchiveCategorization(cat.id);
                             }}
                             className="p-1.5 rounded-lg text-textSecondary hover:text-warning hover:bg-warning/10"
-                            title="أرشفة"
+                            title={t('groupsArchiveAction')}
                           >
                             <Archive size={15} />
                           </button>
@@ -1082,7 +1112,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                               handleRestoreCategorization(cat.id);
                             }}
                             className="p-1.5 rounded-lg text-success hover:bg-success/10"
-                            title="استعادة"
+                            title={t('groupsRestoreAction')}
                           >
                             <RotateCcw size={15} />
                           </button>
@@ -1095,7 +1125,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                             openCopyModal(cat);
                           }}
                           className="p-1.5 rounded-lg text-textSecondary hover:text-primary hover:bg-primary/10"
-                          title="نسخ"
+                          title={t('groupsCopyAction')}
                         >
                           <Copy size={15} />
                         </button>
@@ -1107,7 +1137,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                             handleDeleteCategorization(cat.id);
                           }}
                           className="p-1.5 rounded-lg text-danger hover:bg-danger/10"
-                          title="حذف"
+                          title={t('groupsDeleteAction')}
                         >
                           <Trash2 size={15} />
                         </button>
@@ -1123,8 +1153,8 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
         {!activeCat ? (
           <section className="min-h-[360px] bg-bgCard border border-borderColor rounded-3xl flex flex-col items-center justify-center p-10 text-center text-textSecondary">
             <Users className="w-20 h-20 mb-5 opacity-50" />
-            <h2 className="text-xl md:text-2xl font-black">اختر تقسيمًا لعرض المجموعات</h2>
-            <p className="text-sm font-bold mt-2">يمكنك إنشاء تقسيم جديد أو اختيار تقسيم سابق من الأعلى.</p>
+            <h2 className="text-xl md:text-2xl font-black">{t('groupsSelectCategorization')}</h2>
+            <p className="text-sm font-bold mt-2">{t('groupsSelectCategorizationHint')}</p>
           </section>
         ) : (
           <>
@@ -1137,7 +1167,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                   <div className="min-w-0">
                     <h2 className="text-lg font-black text-textPrimary truncate">{activeCat.title}</h2>
                     <p className="text-xs font-bold text-textSecondary mt-0.5">
-                      إدارة مجموعات فصل {selectedClass}
+                      {t('groupsManagingClass')} {selectedClass}
                     </p>
                   </div>
                 </div>
@@ -1148,7 +1178,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                     className="px-4 py-2.5 rounded-xl bg-primary text-white font-black text-xs flex items-center gap-2 shadow-sm active:scale-95"
                   >
                     <Sparkles size={15} />
-                    إنشاء تلقائي
+                    {t('groupsAutoCreate')}
                   </button>
 
                   <button
@@ -1156,7 +1186,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                     className="px-4 py-2.5 rounded-xl bg-info/10 text-info border border-info/20 font-black text-xs flex items-center gap-2 active:scale-95"
                   >
                     <Eye size={15} />
-                    عرض تقديمي
+                    {t('groupsPresentation')}
                   </button>
 
                   <button
@@ -1164,7 +1194,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                     className="px-4 py-2.5 rounded-xl bg-success/10 text-success border border-success/20 font-black text-xs flex items-center gap-2 active:scale-95"
                   >
                     <ImageIcon size={15} />
-                    صورة
+                    {t('groupsImage')}
                   </button>
 
                   <button
@@ -1172,7 +1202,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                     className="px-4 py-2.5 rounded-xl bg-warning/10 text-warning border border-warning/20 font-black text-xs flex items-center gap-2 active:scale-95"
                   >
                     <FileText size={15} />
-                    PDF
+                    {t('groupsPdf')}
                   </button>
                 </div>
               </div>
@@ -1197,7 +1227,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
 
                   <input
                     type="text"
-                    placeholder={t('groupNamePlaceholder') || 'اسم المجموعة'}
+                    placeholder={t('groupNamePlaceholder')}
                     value={newGroupName}
                     onChange={(event) => setNewGroupName(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && handleCreateGroup()}
@@ -1210,7 +1240,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                     className="px-4 py-3 rounded-xl font-black flex items-center gap-2 transition-all disabled:opacity-50 bg-primary text-white hover:bg-primary/90 shadow-sm"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة
+                    {t('groupsAdd')}
                   </button>
                 </div>
 
@@ -1218,16 +1248,16 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h3 className="font-black text-sm text-textPrimary flex items-center gap-2">
                       <UserPlus size={16} className="text-warning" />
-                      الطلاب غير الموزعين
+                      {t('unassignedStudents')}
                     </h3>
                     <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-bgCard border border-borderColor text-textSecondary">
-                      {unassignedStudents.length} متبقٍ
+                      {t('remainingLabel')} {unassignedStudents.length}
                     </span>
                   </div>
 
                   {unassignedStudents.length === 0 ? (
                     <div className="text-center py-3 rounded-xl bg-success/10 text-success border border-success/20 text-xs font-black">
-                      تم توزيع جميع الطلاب في هذا التقسيم
+                      {t('groupsAllAssignedInCategorization')}
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto custom-scrollbar">
@@ -1249,9 +1279,9 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
               {(activeCat.groups || []).length === 0 ? (
                 <div className="col-span-full rounded-3xl border border-dashed border-borderColor bg-bgCard p-10 text-center text-textSecondary">
                   <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-black text-textPrimary">لا توجد مجموعات بعد</h3>
+                  <h3 className="text-lg font-black text-textPrimary">{t('groupsNoGroupsYet')}</h3>
                   <p className="text-sm font-bold mt-2">
-                    أضف مجموعة يدويًا أو استخدم الإنشاء التلقائي لتوزيع الطلاب بسرعة.
+                    {t('groupsNoGroupsHint')}
                   </p>
                 </div>
               ) : (
@@ -1274,7 +1304,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                           <div className="flex items-center gap-3 min-w-0">
                             <button
                               onClick={() => toggleGroupCompletion(group.id)}
-                              title={isCompleted ? 'إلغاء الإكمال' : 'تمييز كمكتملة'}
+                              title={isCompleted ? t('groupsUndoCompletion') : t('groupsMarkCompleted')}
                               className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all shrink-0 ${
                                 isCompleted
                                   ? 'bg-success text-white border-success shadow-sm'
@@ -1289,7 +1319,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                                 {group.name}
                               </h3>
                               <p className="text-[10px] font-bold text-textSecondary mt-0.5">
-                                {groupStudents.length} طالب
+                                {interpolateText(t('groupsStudentCount'), { count: groupStudents.length })}
                               </p>
                             </div>
                           </div>
@@ -1297,7 +1327,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                           <button
                             onClick={() => handleDeleteGroup(group.id)}
                             className="p-2 rounded-xl text-danger hover:bg-danger/10 transition-colors shrink-0"
-                            title="حذف المجموعة"
+                            title={t('deleteGroupBtn')}
                           >
                             <Trash2 size={17} />
                           </button>
@@ -1307,7 +1337,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       <div className={`p-4 min-h-[150px] ${isCompleted ? 'bg-transparent' : color.bg}`}>
                         {groupStudents.length === 0 ? (
                           <div className="h-full min-h-[90px] flex items-center justify-center text-center rounded-2xl border border-dashed border-borderColor text-textSecondary text-xs font-bold bg-bgCard/60">
-                            لا يوجد طلاب في هذه المجموعة
+                            {t('groupsNoStudentsInGroup')}
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 gap-2">
@@ -1326,7 +1356,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                                   <button
                                     onClick={() => removeStudentFromGroup(student.id, group.id)}
                                     className="p-1 rounded-md opacity-0 group-hover/item:opacity-100 transition-all text-danger hover:bg-danger/20 shrink-0"
-                                    title="إزالة من المجموعة"
+                                    title={t('removeFromGroupBtn')}
                                   >
                                     <UserMinus size={13} />
                                   </button>
@@ -1344,7 +1374,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                             className="w-full py-2.5 rounded-xl border-2 border-dashed font-black text-xs flex items-center justify-center gap-2 transition-colors border-borderColor text-textSecondary hover:bg-primary/10 hover:text-primary hover:border-primary/50"
                           >
                             <UserPlus size={15} />
-                            إضافة / تعديل الطلاب
+                            {t('groupsAddEditStudents')}
                           </button>
                         </div>
                       )}
@@ -1363,16 +1393,16 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
             <div className="pb-4 border-b border-borderColor">
               <h3 className="font-black text-xl text-textPrimary flex items-center gap-2">
                 <Sparkles className="text-primary" size={22} />
-                إنشاء مجموعات تلقائيًا
+                {t('groupsAutoCreateTitle')}
               </h3>
               <p className="text-xs font-bold text-textSecondary mt-1">
-                يمكنك إنشاء مجموعات بعدد محدد وتوزيع الطلاب عليها تلقائيًا.
+                {t('groupsAutoCreateDescription')}
               </p>
             </div>
 
             <div className="py-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
               <div>
-                <label className="block text-xs font-black text-textSecondary mb-2">عدد المجموعات</label>
+                <label className="block text-xs font-black text-textSecondary mb-2">{t('groupsNumberOfGroups')}</label>
                 <input
                   type="number"
                   min={1}
@@ -1384,19 +1414,19 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-textSecondary mb-2">بادئة اسم المجموعة</label>
+                <label className="block text-xs font-black text-textSecondary mb-2">{t('groupsNamePrefix')}</label>
                 <input
                   value={autoGroupPrefix}
                   onChange={(event) => setAutoGroupPrefix(event.target.value)}
                   className="w-full p-3 rounded-xl border bg-bgSoft border-borderColor text-textPrimary font-bold outline-none focus:border-primary"
-                  placeholder="مثال: فريق"
+                  placeholder={t('groupsPrefixExample')}
                 />
               </div>
 
               <label className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-borderColor bg-bgSoft cursor-pointer">
                 <div>
-                  <p className="font-black text-sm text-textPrimary">توزيع الطلاب تلقائيًا</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">سيتم توزيع طلاب الفصل بالتساوي على المجموعات.</p>
+                  <p className="font-black text-sm text-textPrimary">{t('groupsAutoDistribute')}</p>
+                  <p className="text-[10px] font-bold text-textSecondary mt-1">{t('groupsAutoDistributeHint')}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -1408,8 +1438,8 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
 
               <label className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-borderColor bg-bgSoft cursor-pointer">
                 <div>
-                  <p className="font-black text-sm text-textPrimary">توزيع عشوائي</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">يخلط الطلاب قبل توزيعهم على المجموعات.</p>
+                  <p className="font-black text-sm text-textPrimary">{t('groupsRandomDistribution')}</p>
+                  <p className="text-[10px] font-bold text-textSecondary mt-1">{t('groupsRandomDistributionHint')}</p>
                 </div>
                 <input
                   type="checkbox"
@@ -1426,7 +1456,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 className="w-full py-4 rounded-2xl bg-primary text-white font-black flex items-center justify-center gap-2 active:scale-95"
               >
                 <Shuffle size={18} />
-                إنشاء المجموعات
+                {t('groupsCreateGroups')}
               </button>
             </div>
           </div>
@@ -1439,7 +1469,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
             <div className="pb-4 border-b border-borderColor">
               <h3 className="font-black text-xl text-textPrimary flex items-center gap-2">
                 <Copy className="text-primary" size={22} />
-                نسخ التقسيم
+                {t('groupsCopyTitle')}
               </h3>
               <p className="text-xs font-bold text-textSecondary mt-1">
                 {copyCat.title}
@@ -1448,10 +1478,10 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
 
             <div className="py-5 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
               {[
-                { id: 'same_empty', label: 'نسخ داخل نفس الفصل مع تفريغ الطلاب', hint: 'يحافظ على أسماء المجموعات فقط.' },
-                { id: 'same_with_students', label: 'نسخ داخل نفس الفصل مع الطلاب', hint: 'ينسخ المجموعات والطلاب كما هي.' },
-                { id: 'other_empty', label: 'نسخ إلى فصل آخر مع تفريغ الطلاب', hint: 'مناسب لإعادة استخدام نفس التقسيم.' },
-                { id: 'other_with_students', label: 'نسخ إلى فصل آخر مع الطلاب المتطابقين', hint: 'ينسخ فقط الطلاب الموجودين في الفصل الهدف إن وجدوا.' }
+                { id: 'same_empty', label: t('groupsCopySameEmpty'), hint: t('groupsCopySameEmptyHint') },
+                { id: 'same_with_students', label: t('groupsCopySameStudents'), hint: t('groupsCopySameStudentsHint') },
+                { id: 'other_empty', label: t('groupsCopyOtherEmpty'), hint: t('groupsCopyOtherEmptyHint') },
+                { id: 'other_with_students', label: t('groupsCopyOtherStudents'), hint: t('groupsCopyOtherStudentsHint') }
               ].map(option => (
                 <button
                   key={option.id}
@@ -1470,7 +1500,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
 
               {(copyMode === 'other_empty' || copyMode === 'other_with_students') && (
                 <div className="pt-2">
-                  <label className="block text-xs font-black text-textSecondary mb-2">الفصل الهدف</label>
+                  <label className="block text-xs font-black text-textSecondary mb-2">{t('groupsTargetClass')}</label>
                   <select
                     value={copyTargetClass}
                     onChange={(event) => setCopyTargetClass(event.target.value)}
@@ -1492,7 +1522,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 className="w-full py-4 rounded-2xl bg-primary text-white font-black flex items-center justify-center gap-2 active:scale-95"
               >
                 <Copy size={18} />
-                تنفيذ النسخ
+                {t('groupsExecuteCopy')}
               </button>
             </div>
           </div>
@@ -1504,9 +1534,9 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
           <div ref={presentationRef} className="flex flex-col h-full w-full bg-bgMain">
             <div className="pb-4 border-b border-borderColor flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-black text-2xl text-textPrimary">عرض المجموعات</h3>
+                <h3 className="font-black text-2xl text-textPrimary">{t('groupsPresentationTitle')}</h3>
                 <p className="text-sm font-bold text-primary mt-1">
-                  {activeCat.title} - فصل {selectedClass}
+                  {activeCat.title} - {t('groupsClassPrefix')} {selectedClass}
                 </p>
               </div>
               <button
@@ -1528,7 +1558,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       <h2 className={`text-xl font-black mb-3 ${color.text}`}>{group.name}</h2>
                       <div className="grid grid-cols-1 gap-2">
                         {groupStudents.length === 0 ? (
-                          <div className="text-sm font-bold text-textSecondary">لا يوجد طلاب</div>
+                          <div className="text-sm font-bold text-textSecondary">{t('noStudents')}</div>
                         ) : (
                           groupStudents.map((student: any) => (
                             <div key={student.id} className="p-3 rounded-2xl bg-bgSoft border border-borderColor font-black text-textPrimary">
@@ -1549,7 +1579,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 className="flex-1 py-3 rounded-2xl bg-success text-white font-black flex items-center justify-center gap-2"
               >
                 <Download size={18} />
-                صورة
+                {t('groupsImage')}
               </button>
               <button
                 onClick={handleExportAsPdf}
@@ -1570,10 +1600,10 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
             <div className="p-5 pb-4 border-b border-borderColor bg-bgSoft flex justify-between items-center shrink-0">
               <div>
                 <h3 className="font-black text-lg md:text-xl text-textPrimary">
-                  {t('selectStudentsTitle') || 'اختيار الطلاب'}
+                  {t('selectStudentsTitle')}
                 </h3>
                 <p className="text-sm font-bold mt-1 text-primary">
-                  المجموعة: {(activeCat.groups || []).find((group: any) => group.id === assigningToGroup.groupId)?.name}
+                  {t('groupLabel')} {(activeCat.groups || []).find((group: any) => group.id === assigningToGroup.groupId)?.name}
                 </p>
               </div>
             </div>
@@ -1628,7 +1658,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                 onClick={saveBulkAssignment}
                 className="flex-1 py-4 rounded-xl font-black text-sm transition-colors shadow-lg active:scale-95 bg-primary text-white hover:bg-primary/90"
               >
-                تأكيد التوزيع ({selectedStudentIds.size})
+                {t('groupsConfirmAssignment')} ({selectedStudentIds.size})
               </button>
             </div>
 
