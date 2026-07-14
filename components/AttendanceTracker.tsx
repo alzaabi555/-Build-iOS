@@ -369,7 +369,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     const adminSchoolCode = localStorage.getItem('rased_admin_school_code');
 
     if (!adminSchoolCode || adminSchoolCode.trim().length < 2) {
-      alert('الرجاء إدخال كود المدرسة في شاشة الإعدادات للاتصال بالإدارة.');
+      alert(t('attendanceAdminSchoolCodeRequired'));
       return;
     }
 
@@ -440,7 +440,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch {
-      alert('تأكد من الاتصال بالإنترنت لإرسال التقرير.');
+      alert(t('attendanceAdminSyncInternetError'));
     } finally {
       setIsSyncingAdmin(false);
     }
@@ -462,7 +462,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <input
               type="text"
               data-voice-field="بحث الحضور"
-              aria-label="بحث الحضور"
+              aria-label={t('attendanceSearchAria')}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder={t('searchStudentPlaceholder')}
@@ -477,7 +477,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         <div className="flex items-center gap-2 relative">
           <button
             data-voice-command="إرسال تقرير الحضور للإدارة رفع الغياب للإدارة إرسال غياب اليوم للإدارة"
-            aria-label="إرسال تقرير الحضور للإدارة"
+            aria-label={t('attendanceSendAdminReport')}
             onClick={initiateAdminSync}
             disabled={isSyncingAdmin}
             className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all shadow-sm ${
@@ -485,7 +485,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 ? 'bg-success/10 text-success border-success/30'
                 : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/15'
             }`}
-            title="إرسال تقرير اليوم للإدارة"
+            title={t('attendanceSendTodayReport')}
           >
             {isSyncingAdmin ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -503,35 +503,35 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               } w-48 bg-bgCard border border-borderColor shadow-xl rounded-xl p-3 z-50 animate-in fade-in zoom-in duration-200`}
             >
               <p className="text-xs font-bold text-center mb-3 text-textPrimary">
-                هذا الغياب لأي حصة؟
+                {t('attendanceSelectPeriodQuestion')}
               </p>
 
               <div className="flex flex-col gap-2">
                 <button
                   data-voice-command="الحصة الأولى حصة أولى الأولى"
-                  aria-label="الحصة الأولى"
+                  aria-label={t('attendanceFirstPeriod')}
                   onClick={() => executeAdminSync('الحصة الأولى')}
                   className="py-2 px-3 bg-primary/10 text-primary hover:bg-primary/15 rounded-lg text-xs font-bold transition-colors"
                 >
-                  الحصة الأولى
+                  {t('attendanceFirstPeriod')}
                 </button>
 
                 <button
                   data-voice-command="الحصة الخامسة حصة خامسة الخامسة"
-                  aria-label="الحصة الخامسة"
+                  aria-label={t('attendanceFifthPeriod')}
                   onClick={() => executeAdminSync('الحصة الخامسة')}
                   className="py-2 px-3 bg-primary/10 text-primary hover:bg-primary/15 rounded-lg text-xs font-bold transition-colors"
                 >
-                  الحصة الخامسة
+                  {t('attendanceFifthPeriod')}
                 </button>
 
                 <button
                   data-voice-command="إلغاء اختيار الحصة إلغاء إرسال التقرير"
-                  aria-label="إلغاء اختيار الحصة"
+                  aria-label={t('attendanceCancelPeriodSelection')}
                   onClick={() => setShowPeriodSelector(false)}
                   className="py-2 px-3 mt-1 bg-bgSoft text-textSecondary hover:text-danger rounded-lg text-xs font-bold transition-colors"
                 >
-                  إلغاء
+                  {t('cancelAction')}
                 </button>
               </div>
             </div>
@@ -539,7 +539,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
           <button
             data-voice-command="تصدير الحضور تصدير سجل الحضور مشاركة سجل الحضور"
-            aria-label="تصدير سجل الحضور"
+            aria-label={t('exportRecord')}
             onClick={handleExportDailyExcel}
             disabled={isExportingExcel}
             className="w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center active:scale-95 transition-all bg-bgCard border-borderColor text-textPrimary hover:bg-bgSoft shadow-sm"
@@ -570,7 +570,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               <input
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="بحث عن طالب..."
+                placeholder={t('searchStudentPlaceholder')}
                 className={`w-full h-12 border rounded-2xl ${
                   dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'
                 } text-sm font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40 shadow-sm`}
@@ -584,7 +584,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               type="button"
               onClick={() => setWeekOffset(prev => prev - 1)}
               className="p-1.5 text-textSecondary hover:bg-bgSoft rounded-xl transition-colors active:scale-95"
-              aria-label="الأسبوع السابق"
+              aria-label={t('attendancePreviousWeek')}
             >
               <ChevronRight
                 className={`w-4 h-4 ${
@@ -607,7 +607,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     key={idx}
                     type="button"
                     data-voice-command={`اختر تاريخ ${date.getDate()}`}
-                    aria-label={`اختيار تاريخ ${date.getDate()}`}
+                    aria-label={`${t('attendanceSelectDate')} ${date.getDate()}`}
                     onClick={() =>
                       setSelectedDate(date.toLocaleDateString('en-CA'))
                     }
@@ -646,7 +646,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               type="button"
               onClick={() => setWeekOffset(prev => prev + 1)}
               className="p-1.5 text-textSecondary hover:bg-bgSoft rounded-xl transition-colors active:scale-95"
-              aria-label="الأسبوع التالي"
+              aria-label={t('attendanceNextWeek')}
             >
               <ChevronLeft
                 className={`w-4 h-4 ${
@@ -664,7 +664,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 <button
                   type="button"
                   data-voice-command="عرض كل الطلاب في الحضور كل الحضور"
-                  aria-label="عرض كل الطلاب"
+                  aria-label={t('attendanceShowAllStudents')}
                   onClick={() => {
                     setSelectedGrade('all');
                     setClassFilter('all');
@@ -685,7 +685,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     <button
                       type="button"
                       data-voice-command={`عرض الصف ${g} في الحضور`}
-                      aria-label={`عرض الصف ${g}`}
+                      aria-label={`${t('attendanceShowGrade')} ${g}`}
                       onClick={() => {
                         setSelectedGrade(g);
                         setClassFilter('all');
@@ -705,16 +705,16 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
             {/* قائمة الفصول المنسدلة */}
             <div className="relative w-full md:w-60 shrink-0">
-              <label className="sr-only">اختيار الفصل</label>
+              <label className="sr-only">{t('attendanceSelectClass')}</label>
 
               <select
                 data-voice-field="فصل الحضور"
-                aria-label="اختيار فصل الحضور"
+                aria-label={t('attendanceSelectClass')}
                 value={classFilter}
                 onChange={e => setClassFilter(e.target.value)}
                 className="w-full h-11 rounded-2xl border border-borderColor bg-bgCard px-4 text-sm font-black text-textPrimary outline-none shadow-sm transition-all focus:border-primary/40 focus:bg-bgSoft"
               >
-                <option value="all">كل الفصول</option>
+                <option value="all">{t('allClasses')}</option>
 
                 {visibleClasses.map(c => (
                   <option key={c} value={c}>
@@ -731,7 +731,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         <div className="flex justify-between items-center gap-2 text-center">
           <button
             data-voice-command="حضور الجميع تسجيل حضور الجميع تحضير الجميع"
-            aria-label="تسجيل حضور الجميع"
+            aria-label={t('attendanceMarkAllPresent')}
             onClick={() => markAll('present')}
             className="flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-success/10 border-success/30 hover:bg-success/20"
           >
@@ -746,7 +746,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           <button
             data-voice-command="غياب الجميع تسجيل غياب الجميع"
             data-voice-danger="true"
-            aria-label="تسجيل غياب الجميع"
+            aria-label={t('attendanceMarkAllAbsent')}
             onClick={() => markAll('absent')}
             className="flex-1 rounded-2xl p-2.5 border shadow-sm active:scale-95 transition-all bg-danger/10 border-danger/30 hover:bg-danger/20"
           >
@@ -787,7 +787,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   ? t('late')
                   : status === 'truant'
                   ? t('truant')
-                  : 'لم يسجل بعد';
+                  : t('attendanceNotRecordedYet');
 
               const statusTone =
                 status === 'present'
@@ -828,8 +828,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       tone: status === 'present' ? 'success' : 'neutral',
                       showOnMobile: true,
                       voiceCommand: `سجل حضور ${student.name} حضور ${student.name} تحضير ${student.name}`,
-                      ariaLabel: `تسجيل حضور ${student.name}`,
-                      title: `تسجيل حضور ${student.name}`,
+                      ariaLabel: `${t('attendanceMarkPresentFor')} ${student.name}` ,
+                      title: `${t('attendanceMarkPresentFor')} ${student.name}` ,
                       onClick: () => toggleAttendance(student.id, 'present')
                     },
                     {
@@ -839,8 +839,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       tone: status === 'absent' ? 'danger' : 'neutral',
                       showOnMobile: true,
                       voiceCommand: `سجل غياب ${student.name} غياب ${student.name} ${student.name} غائب`,
-                      ariaLabel: `تسجيل غياب ${student.name}`,
-                      title: `تسجيل غياب ${student.name}`,
+                      ariaLabel: `${t('attendanceMarkAbsentFor')} ${student.name}` ,
+                      title: `${t('attendanceMarkAbsentFor')} ${student.name}` ,
                       danger: true,
                       onClick: () => toggleAttendance(student.id, 'absent')
                     },
@@ -851,8 +851,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       tone: status === 'late' ? 'warning' : 'neutral',
                       showOnMobile: true,
                       voiceCommand: `سجل تأخر ${student.name} تأخير ${student.name} ${student.name} متأخر`,
-                      ariaLabel: `تسجيل تأخر ${student.name}`,
-                      title: `تسجيل تأخر ${student.name}`,
+                      ariaLabel: `${t('attendanceMarkLateFor')} ${student.name}` ,
+                      title: `${t('attendanceMarkLateFor')} ${student.name}` ,
                       onClick: () => toggleAttendance(student.id, 'late')
                     },
                     {
@@ -862,8 +862,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       tone: status === 'truant' ? 'info' : 'neutral',
                       showOnMobile: false,
                       voiceCommand: `سجل هروب ${student.name} سجل تسرب ${student.name} خروج ${student.name}`,
-                      ariaLabel: `تسجيل هروب أو تسرب ${student.name}`,
-                      title: `تسجيل هروب أو تسرب ${student.name}`,
+                      ariaLabel: `${t('attendanceMarkTruantFor')} ${student.name}` ,
+                      title: `${t('attendanceMarkTruantFor')} ${student.name}` ,
                       onClick: () => toggleAttendance(student.id, 'truant')
                     }
                   ]}
@@ -916,8 +916,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <div className="space-y-3 w-full mt-auto shrink-0">
               <button
                 data-voice-command="إرسال واتساب إرسال تنبيه واتساب"
-                aria-label="إرسال تنبيه واتساب"
-                title="إرسال واتساب"
+                aria-label={t('sendWhatsapp')}
+                title={t('sendWhatsapp')}
                 onClick={() => performNotification('whatsapp')}
                 className="w-full py-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg bg-[#25D366] hover:bg-[#1fa851]"
               >
@@ -927,8 +927,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
               <button
                 data-voice-command="إرسال رسالة نصية إرسال SMS"
-                aria-label="إرسال رسالة نصية"
-                title="إرسال رسالة نصية"
+                aria-label={t('sendSms')}
+                title={t('sendSms')}
                 onClick={() => performNotification('sms')}
                 className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 border bg-transparent text-textPrimary border-borderColor hover:bg-bgSoft"
               >
@@ -937,8 +937,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
               <button
                 data-voice-command="إلغاء الإشعار إغلاق الإشعار"
-                aria-label="إلغاء الإشعار"
-                title="إلغاء"
+                aria-label={t('cancelAction')}
+                title={t('cancelAction')}
                 onClick={() => setNotificationTarget(null)}
                 className="w-full py-3 font-bold text-xs transition-colors text-textSecondary hover:text-danger"
               >
