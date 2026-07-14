@@ -262,10 +262,10 @@ const StudentReport: React.FC<StudentReportProps> = ({
 
   const reportPeriodLabel =
     reportPeriod === 'annual'
-      ? 'النتيجة النهائية للعام الدراسي'
+      ? t('annualFinalResult')
       : reportPeriod === '1'
-        ? 'تقرير الفصل الدراسي الأول'
-        : 'تقرير الفصل الدراسي الثاني';
+        ? t('firstSemesterReport')
+        : t('secondSemesterReport');
 
   return (
     <div
@@ -303,11 +303,11 @@ const StudentReport: React.FC<StudentReportProps> = ({
               setReportPeriod(event.target.value as ReportPeriod)
             }
             className="bg-bgCard border border-borderColor text-textPrimary px-3 py-2.5 rounded-xl font-black text-xs outline-none focus:border-primary min-w-[210px]"
-            title="اختيار فترة التقرير"
+            title={t('selectReportPeriod')}
           >
-            <option value="1">الفصل الدراسي الأول فقط</option>
-            <option value="2">الفصل الدراسي الثاني فقط</option>
-            <option value="annual">النتيجة النهائية للعام الدراسي</option>
+            <option value="1">{t('firstSemesterOnly')}</option>
+            <option value="2">{t('secondSemesterOnly')}</option>
+            <option value="annual">{t('annualFinalResult')}</option>
           </select>
 
           <button
@@ -377,7 +377,7 @@ const StudentReport: React.FC<StudentReportProps> = ({
                 </p>
                 <p className="font-bold text-sm mb-1 text-black">
                   {reportPeriod === 'annual'
-                    ? 'النتيجة النهائية للعام الدراسي'
+                    ? t('annualFinalResult')
                     : `${t('semesterPrefix')} ${
                         reportPeriod === '1'
                           ? t('firstSemesterWord')
@@ -485,10 +485,10 @@ const StudentReport: React.FC<StudentReportProps> = ({
                         {teacherInfo?.subject || t('subjectCol')}
                       </td>
                       <td className="border border-black p-3 text-sm text-center bg-blue-50 text-black">
-                        مجموع الفصل الدراسي الأول
+                        {t('firstSemesterTotal')}
                       </td>
                       <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
-                        {hasSemesterOneData ? sem1Total : 'غير متوفر'}
+                        {hasSemesterOneData ? sem1Total : t('notAvailable')}
                       </td>
                     </tr>
 
@@ -501,10 +501,10 @@ const StudentReport: React.FC<StudentReportProps> = ({
                         {teacherInfo?.subject || t('subjectCol')}
                       </td>
                       <td className="border border-black p-3 text-sm text-center bg-emerald-50 text-black">
-                        مجموع الفصل الدراسي الثاني
+                        {t('secondSemesterTotal')}
                       </td>
                       <td className="border border-black p-3 text-sm text-center font-bold font-mono text-black">
-                        {hasSemesterTwoData ? sem2Total : 'غير متوفر'}
+                        {hasSemesterTwoData ? sem2Total : t('notAvailable')}
                       </td>
                     </tr>
 
@@ -513,12 +513,12 @@ const StudentReport: React.FC<StudentReportProps> = ({
                         colSpan={2}
                         className="border border-black p-3 text-sm font-black text-center text-black"
                       >
-                        المعدل النهائي للعام الدراسي
+                        {t('annualFinalAverage')}
                       </td>
                       <td className="border border-black p-3 text-lg font-black text-center font-mono text-blue-800">
                         {finalAverage !== null
                           ? finalAverage.toFixed(2)
-                          : 'غير مكتمل'}
+                          : t('incompleteStatus')}
                       </td>
                     </tr>
                   </>
@@ -633,33 +633,33 @@ const StudentReport: React.FC<StudentReportProps> = ({
                   dir === 'rtl' ? 'border-l-2' : 'border-r-2'
                 } border-black flex items-center justify-center font-black text-black text-center`}
               >
-                النتيجة النهائية
+                {t('annualFinalResultLine1')}
                 <br />
-                للعام الدراسي
+                {t('annualFinalResultLine2')}
               </div>
               <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 items-center p-4">
                 <div className="text-center">
-                  <p className="text-xs font-bold mb-1">مجموع الفصل 1</p>
+                  <p className="text-xs font-bold mb-1">{t('semester1TotalShort')}</p>
                   <p className="font-black text-lg">
-                    {hasSemesterOneData ? sem1Total : 'غير متوفر'}
+                    {hasSemesterOneData ? sem1Total : t('notAvailable')}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-bold mb-1">مجموع الفصل 2</p>
+                  <p className="text-xs font-bold mb-1">{t('semester2TotalShort')}</p>
                   <p className="font-black text-lg">
-                    {hasSemesterTwoData ? sem2Total : 'غير متوفر'}
+                    {hasSemesterTwoData ? sem2Total : t('notAvailable')}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-bold mb-1">المعدل النهائي</p>
+                  <p className="text-xs font-bold mb-1">{t('finalAverageLabel')}</p>
                   <p className="font-black text-xl text-blue-800">
                     {finalAverage !== null
                       ? finalAverage.toFixed(2)
-                      : 'غير مكتمل'}
+                      : t('incompleteStatus')}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-bold mb-1">التقدير العام</p>
+                  <p className="text-xs font-bold mb-1">{t('overallGradeLabel')}</p>
                   <p className="font-black text-2xl text-emerald-700">
                     {finalAverage !== null ? getSymbol(finalAverage) : '-'}
                   </p>
