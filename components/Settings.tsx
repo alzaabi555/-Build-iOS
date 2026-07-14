@@ -91,10 +91,10 @@ const Settings: React.FC = () => {
           encoding: Encoding.UTF8
         });
         await Share.share({
-          title: 'Rased Backup',
-          text: 'نسخة احتياطية شاملة من راصد المعلم',
+          title: t('backupShareTitle'),
+          text: t('backupShareText'),
           url: result.uri,
-          dialogTitle: 'حفظ أو مشاركة النسخة الاحتياطية'
+          dialogTitle: t('backupShareDialogTitle')
         });
       } else {
         const blob = new Blob([jsonString], {
@@ -178,7 +178,7 @@ const Settings: React.FC = () => {
       window.location.reload();
     } catch (error) {
       console.error('Factory reset failed:', error);
-      alert('تعذر إتمام إعادة الضبط. حاول مرة أخرى.');
+      alert(t('factoryResetFailed'));
     } finally {
       setLoading(null);
       setActiveDrawer(null);
@@ -256,7 +256,7 @@ const Settings: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-textSecondary">
-                    {language === 'ar' ? 'العربية' : 'English'}
+                    {language === 'ar' ? t('arabicLanguageName') : t('englishLanguageName')}
                   </span>
                   <ChevronIcon size={16} className="text-textSecondary" />
                 </div>
@@ -313,7 +313,7 @@ const Settings: React.FC = () => {
 
           <section className="space-y-2">
             <h3 className="px-2 text-[10px] font-black uppercase tracking-wider text-textSecondary">
-              إدارة الصلاحيات
+              {t('permissionsManagement')}
             </h3>
             <div className="glass-card rounded-2xl overflow-hidden border border-borderColor">
               <button
@@ -325,7 +325,7 @@ const Settings: React.FC = () => {
                   <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
                     <Shield size={20} />
                   </div>
-                  <span className="font-bold text-sm">إعدادات المعلم الأول</span>
+                  <span className="font-bold text-sm">{t('seniorTeacherSettings')}</span>
                 </div>
                 <ChevronIcon size={16} className="text-textSecondary" />
               </button>
@@ -408,13 +408,13 @@ const Settings: React.FC = () => {
             </label>
             <label className="block space-y-1 pt-2">
               <span className="text-xs font-bold flex items-center gap-1 text-amber-500">
-                <Key size={14} /> كود المعلم السري للسحابة
+                <Key size={14} /> {t('teacherCloudSecretCode')}
               </span>
               <input
                 value={civilId}
                 onChange={event => setCivilId(event.target.value)}
                 className="w-full rounded-xl px-4 py-3.5 outline-none font-mono font-black tracking-widest text-center border bg-amber-500/5 border-amber-500/20 focus:border-amber-500"
-                placeholder="أدخل رقم الهاتف أو كودًا خاصًا"
+                placeholder={t('teacherCloudSecretPlaceholder')}
                 dir="ltr"
               />
             </label>
@@ -443,7 +443,7 @@ const Settings: React.FC = () => {
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
             <div className="rounded-2xl bg-primary/5 border border-primary/15 p-4 text-xs font-bold text-textSecondary leading-6">
-              النسخة الشاملة تتضمن الطلاب، الخطط، المجموعات، المهام، المكتبة، سجل الرسائل المحلي، إعدادات التقارير والشهادات، وبنوك ونتائج الألعاب المحلية.
+              {t('comprehensiveBackupIncludes')}
             </div>
             <div className="glass-card rounded-2xl overflow-hidden border border-borderColor divide-y divide-borderColor/50">
               <button
@@ -530,7 +530,7 @@ const Settings: React.FC = () => {
         <div className="flex flex-col h-full w-full">
           <div className="px-6 pb-4 border-b border-borderColor">
             <h3 className="font-black text-xl flex items-center gap-2">
-              <Shield className="text-purple-500" /> إعدادات القيادة
+              <Shield className="text-purple-500" /> {t('leadershipSettings')}
             </h3>
           </div>
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
@@ -539,9 +539,9 @@ const Settings: React.FC = () => {
                 <div className="w-16 h-16 mx-auto bg-purple-500/10 text-purple-500 rounded-full flex items-center justify-center">
                   <Key size={32} />
                 </div>
-                <h4 className="font-bold">بوابة المعلم الأول</h4>
+                <h4 className="font-bold">{t('seniorTeacherPortal')}</h4>
                 <p className="text-xs text-textSecondary">
-                  أدخل الرمز السري لتفعيل الصلاحيات الإشرافية.
+                  {t('enterLeadershipPasscode')}
                 </p>
                 <input
                   type="password"
@@ -562,11 +562,11 @@ const Settings: React.FC = () => {
                 <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 flex gap-3">
                   <Shield className="w-6 h-6 shrink-0" />
                   <p className="text-xs font-bold leading-relaxed">
-                    يمكنك تفعيل صلاحيات المعلم الأول وإدخال القسم الذي تشرف عليه.
+                    {t('leadershipPermissionsDescription')}
                   </p>
                 </div>
                 <label className="flex items-center justify-between p-4 rounded-xl border border-borderColor bg-bgSoft cursor-pointer">
-                  <span className="font-bold text-sm">تفعيل صلاحيات المعلم الأول</span>
+                  <span className="font-bold text-sm">{t('enableSeniorTeacherRole')}</span>
                   <input
                     type="checkbox"
                     checked={role === 'senior'}
@@ -579,13 +579,13 @@ const Settings: React.FC = () => {
                 {role === 'senior' && (
                   <label className="block space-y-2">
                     <span className="text-xs font-bold text-textSecondary">
-                      القسم الذي تشرف عليه
+                      {t('supervisedDepartment')}
                     </span>
                     <input
                       value={departmentName}
                       onChange={event => setDepartmentName(event.target.value)}
                       className="w-full rounded-xl px-4 py-3.5 outline-none text-sm font-bold border bg-bgSoft border-borderColor focus:border-purple-500"
-                      placeholder="مثال: قسم الرياضيات"
+                      placeholder={t('departmentExamplePlaceholder')}
                     />
                   </label>
                 )}
@@ -599,7 +599,7 @@ const Settings: React.FC = () => {
                 onClick={saveLeadership}
                 className="w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white"
               >
-                <Save size={18} /> حفظ الصلاحيات
+                <Save size={18} /> {t('savePermissions')}
               </button>
             </div>
           )}
