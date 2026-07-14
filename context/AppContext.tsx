@@ -1,12 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { Student, ScheduleDay, PeriodTime, Group, AssessmentTool, CertificateSettings, GradeSettings, GroupCategorization } from '../types';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
+import type {
+  AssessmentTool,
+  CertificateSettings,
+  GradeSettings,
+  Group,
+  GroupCategorization,
+  PeriodTime,
+  RasedBackupPayload,
+  RasedExtendedStorageSnapshot,
+  ScheduleDay,
+  Student
+} from '../types';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
-import { translations } from './translations'; 
+import { translations } from './translations';
 
-type Language = 'ar' | 'en';
+export type Language = 'ar' | 'en';
 
-interface TeacherInfo {
+export interface TeacherInfo {
   name: string;
   school: string;
   subject: string;
@@ -16,10 +33,14 @@ interface TeacherInfo {
   ministryLogo?: string;
   academicYear?: string;
   gender?: 'male' | 'female';
-  civilId?: string; 
-  // 💉 الجينات الجديدة: تحديد دور المعلم والقسم الذي يشرف عليه
-  role?: 'teacher' | 'senior'; 
+  civilId?: string;
+  role?: 'teacher' | 'senior';
   departmentName?: string;
+}
+
+export interface RestoreBackupOptions {
+  saveToDeviceFile?: boolean;
+  reloadAfterRestore?: boolean;
 }
 
 interface AppContextType {
@@ -50,24 +71,189 @@ interface AppContextType {
   setDefaultStudentGender: React.Dispatch<React.SetStateAction<'male' | 'female'>>;
   categorizations: GroupCategorization[];
   setCategorizations: React.Dispatch<React.SetStateAction<GroupCategorization[]>>;
-  
-  // 🌍 دوال اللغة
   language: Language;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
-  t: (key: keyof typeof translations['ar'] | string) => string; 
-  dir: 'rtl' | 'ltr'; 
+  t: (key: keyof typeof translations['ar'] | string) => string;
+  dir: 'rtl' | 'ltr';
+  createBackupPayload: () => RasedBackupPayload;
+  restoreBackupPayload: (
+    rawBackup: unknown,
+    options?: RestoreBackupOptions
+  ) => Promise<RasedBackupPayload>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const DBFILENAME = 'teacher_raseddatabasev2.json';
+export const RASED_DB_FILENAME = 'teacher_raseddatabasev2.json';
+export const RASED_BACKUP_SCHEMA_VERSION = 5;
+export const RASED_APP_DATA_VERSION = '5.0.0';
 
-// =========================================================================
-// 🔐 أدوات هوية الطالب ومنع تكرار أكواد راصد
-// =========================================================================
+const CORE_STORAGE_KEYS = {
+  students: 'teacher_studentData',
+  classes: 'teacher_classesData',
+  hiddenClasses: 'teacher_hiddenClasses',
+  groups: 'teacher_groupsData',
+  categorizations: 'teacher_categorizationsData',
+  schedule: 'teacher_scheduleData',
+  periodTimes: 'teacher_periodTimes',
+  assessmentTools: 'teacher_assessmentTools',
+  gradeSettings: 'teacher_gradeSettings',
+  certificateSettings: 'teacher_certificateSettings',
+  currentSemester: 'teacher_currentSemester',
+  defaultStudentGender: 'teacher_defaultStudentGender',
+  language: 'teacher_appLanguage'
+} as const;
 
-const normalizeArabicName = (name: string) => {
-  return String(name || '')
+const EXTENDED_STORAGE_KEYS = {
+  termPlan: 'rased_term_plan',
+  assessmentPlan: 'rased_assessment_plan',
+  tasks: 'rased_teacher_tasks',
+  libraryArchive: 'rased_library_archive',
+  sentMessagesLocal: 'rased_teacher_sent_messages_local',
+  gradingSettings: 'rased_grading_settings'
+} as const;
+
+const GAME_STORAGE_EXACT_KEYS = ['rased_game_questions'] as const;
+const GAME_STORAGE_PREFIXES = [
+  'rased_teacher_game_questions_',
+  'rased_student_game_results_log_',
+  'rased_student_latest_game_result_'
+] as const;
+
+const DEFAULT_GROUPS: Group[] = [
+  { id: 'g1', name: 'الصقور', color: 'emerald' },
+  { id: 'g2', name: 'النمور', color: 'orange' },
+  { id: 'g3', name: 'النجوم', color: 'purple' },
+  { id: 'g4', name: 'الرواد', color: 'blue' }
+];
+
+const DEFAULT_SCHEDULE: ScheduleDay[] = [
+  { dayName: 'الأحد', periods: Array(8).fill('') },
+  { dayName: 'الاثنين', periods: Array(8).fill('') },
+  { dayName: 'الثلاثاء', periods: Array(8).fill('') },
+  { dayName: 'الأربعاء', periods: Array(8).fill('') },
+  { dayName: 'الخميس', periods: Array(8).fill('') }
+];
+
+const createDefaultPeriodTimes = (): PeriodTime[] =>
+  Array.from({ length: 8 }, (_, index) => ({
+    periodNumber: index + 1,
+    startTime: '',
+    endTime: ''
+  }));
+
+const safeJsonParse = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const readStorageJson = <T,>(key: string, fallback: T): T =>
+  safeJsonParse<T>(localStorage.getItem(key), fallback);
+
+const writeStorageJson = (key: string, value: unknown) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+const collectGameStorage = (): Record<string, unknown> => {
+  const collected: Record<string, unknown> = {};
+
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key) continue;
+
+      const isExactKey = GAME_STORAGE_EXACT_KEYS.includes(
+        key as (typeof GAME_STORAGE_EXACT_KEYS)[number]
+      );
+      const hasKnownPrefix = GAME_STORAGE_PREFIXES.some(prefix =>
+        key.startsWith(prefix)
+      );
+
+      if (!isExactKey && !hasKnownPrefix) continue;
+
+      const rawValue = localStorage.getItem(key);
+      if (rawValue === null) continue;
+      collected[key] = safeJsonParse<unknown>(rawValue, rawValue);
+    }
+  } catch (error) {
+    console.warn('Unable to collect game storage.', error);
+  }
+
+  return collected;
+};
+
+export const readRasedExtendedStorage = (): RasedExtendedStorageSnapshot => ({
+  termPlan: readStorageJson(EXTENDED_STORAGE_KEYS.termPlan, []),
+  assessmentPlan: readStorageJson(EXTENDED_STORAGE_KEYS.assessmentPlan, []),
+  tasks: readStorageJson(EXTENDED_STORAGE_KEYS.tasks, []),
+  libraryArchive: readStorageJson(EXTENDED_STORAGE_KEYS.libraryArchive, []),
+  sentMessagesLocal: readStorageJson(
+    EXTENDED_STORAGE_KEYS.sentMessagesLocal,
+    []
+  ),
+  gradingSettings: readStorageJson(
+    EXTENDED_STORAGE_KEYS.gradingSettings,
+    null
+  ),
+  gameStorage: collectGameStorage()
+});
+
+export const writeRasedExtendedStorage = (
+  snapshot?: Partial<RasedExtendedStorageSnapshot> | null
+) => {
+  if (!snapshot) return;
+
+  if (Array.isArray(snapshot.termPlan)) {
+    writeStorageJson(EXTENDED_STORAGE_KEYS.termPlan, snapshot.termPlan);
+  }
+  if (Array.isArray(snapshot.assessmentPlan)) {
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.assessmentPlan,
+      snapshot.assessmentPlan
+    );
+  }
+  if (Array.isArray(snapshot.tasks)) {
+    writeStorageJson(EXTENDED_STORAGE_KEYS.tasks, snapshot.tasks);
+  }
+  if (Array.isArray(snapshot.libraryArchive)) {
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.libraryArchive,
+      snapshot.libraryArchive
+    );
+  }
+  if (Array.isArray(snapshot.sentMessagesLocal)) {
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.sentMessagesLocal,
+      snapshot.sentMessagesLocal.slice(0, 100)
+    );
+  }
+  if (snapshot.gradingSettings !== undefined) {
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.gradingSettings,
+      snapshot.gradingSettings
+    );
+  }
+
+  if (snapshot.gameStorage && typeof snapshot.gameStorage === 'object') {
+    Object.entries(snapshot.gameStorage).forEach(([key, value]) => {
+      const isExactKey = GAME_STORAGE_EXACT_KEYS.includes(
+        key as (typeof GAME_STORAGE_EXACT_KEYS)[number]
+      );
+      const hasKnownPrefix = GAME_STORAGE_PREFIXES.some(prefix =>
+        key.startsWith(prefix)
+      );
+      if (!isExactKey && !hasKnownPrefix) return;
+      writeStorageJson(key, value);
+    });
+  }
+};
+
+const normalizeArabicName = (name: string) =>
+  String(name || '')
     .trim()
     .replace(/[أإآ]/g, 'ا')
     .replace(/[ؤئء]/g, '')
@@ -76,7 +262,6 @@ const normalizeArabicName = (name: string) => {
     .replace(/[ًٌٍَُِّْـ]/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase();
-};
 
 const normalizeArabicDigits = (value: string) => {
   const arabicDigits: Record<string, string> = {
@@ -102,11 +287,14 @@ const normalizeArabicDigits = (value: string) => {
     '۹': '9'
   };
 
-  return String(value || '').replace(/[٠-٩۰-۹]/g, digit => arabicDigits[digit] || digit);
+  return String(value || '').replace(
+    /[٠-٩۰-۹]/g,
+    digit => arabicDigits[digit] || digit
+  );
 };
 
-const normalizeClassName = (className: string) => {
-  return normalizeArabicDigits(className)
+const normalizeClassName = (className: string) =>
+  normalizeArabicDigits(className)
     .trim()
     .replace(/\s+/g, '')
     .replace(/الصف/g, '')
@@ -129,48 +317,46 @@ const normalizeClassName = (className: string) => {
     .replace(/الحاديعشر|حاديعشر/g, '11')
     .replace(/الثانيعشر|ثانيعشر/g, '12')
     .toLowerCase();
-};
 
-const getStudentClassValue = (student: any) => {
-  return String(
-    student?.classes?.[0] ||
-    student?.className ||
-    student?.class ||
-    ''
+const getStudentClassValue = (student: any) =>
+  String(
+    student?.classes?.[0] || student?.className || student?.class || ''
   ).trim();
-};
 
 const getExistingRasedCodeFromStudent = (student: any) => {
   const possibleCode = String(
     student?.rasedId ||
-    student?.rasedID ||
-    student?.secretCode ||
-    student?.parentCode ||
-    student?.civilID ||
-    student?.civilId ||
-    ''
-  ).trim().toUpperCase();
+      student?.rasedID ||
+      student?.secretCode ||
+      student?.parentCode ||
+      student?.civilID ||
+      student?.civilId ||
+      ''
+  )
+    .trim()
+    .toUpperCase();
 
   return possibleCode.startsWith('RSD-') ? possibleCode : '';
 };
 
-const makeStudentIdentityKey = (schoolName: string, name: string, className: string) => {
+const makeStudentIdentityKey = (
+  schoolName: string,
+  name: string,
+  className: string
+) => {
   const normalizedSchool = String(schoolName || '')
     .trim()
     .replace(/\s+/g, '')
     .toLowerCase();
-
   const normalizedName = normalizeArabicName(name).replace(/\s+/g, '');
   const normalizedClass = normalizeClassName(className);
-
   return `${normalizedSchool}_${normalizedName}_${normalizedClass}`;
 };
 
 const hashToRasedCode = (value: string) => {
   let hash = 5381;
-
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash * 33) ^ value.charCodeAt(i);
+  for (let index = 0; index < value.length; index += 1) {
+    hash = hash * 33 ^ value.charCodeAt(index);
   }
 
   const code = Math.abs(hash)
@@ -183,38 +369,49 @@ const hashToRasedCode = (value: string) => {
   return `RSD-${code}`;
 };
 
-const generateRasedId = (name: string, className: string, schoolName = '') => {
+const generateRasedId = (
+  name: string,
+  className: string,
+  schoolName = ''
+) => {
   if (!name || !className) {
     return `RSD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   }
 
-  const identityKey = makeStudentIdentityKey(schoolName, name, className);
-  return hashToRasedCode(identityKey);
+  return hashToRasedCode(
+    makeStudentIdentityKey(schoolName, name, className)
+  );
 };
 
 const mergeStudentArrays = (oldList: any[] = [], newList: any[] = []) => {
   const map = new Map<string, any>();
-
   [...oldList, ...newList].forEach(item => {
     if (!item) return;
     const id = String(item.id || item.date || JSON.stringify(item));
     if (!map.has(id)) map.set(id, item);
   });
-
   return Array.from(map.values());
 };
 
-const migrateAndDedupeStudents = (rawStudents: any[], schoolName: string) => {
+const migrateAndDedupeStudents = (
+  rawStudents: any[],
+  schoolName: string
+): Student[] => {
   const identityMap = new Map<string, any>();
 
   rawStudents.forEach(rawStudent => {
     if (!rawStudent) return;
 
     const studentClass = getStudentClassValue(rawStudent) || 'غير محدد';
-    const identityKey = makeStudentIdentityKey(schoolName, rawStudent.name || '', studentClass);
-
+    const identityKey = makeStudentIdentityKey(
+      schoolName,
+      rawStudent.name || '',
+      studentClass
+    );
     const existingCode = getExistingRasedCodeFromStudent(rawStudent);
-    const rasedId = existingCode || generateRasedId(rawStudent.name || '', studentClass, schoolName);
+    const rasedId =
+      existingCode ||
+      generateRasedId(rawStudent.name || '', studentClass, schoolName);
 
     const {
       civilID,
@@ -230,20 +427,27 @@ const migrateAndDedupeStudents = (rawStudents: any[], schoolName: string) => {
       id: cleanStudent.id || rawStudent.id || rasedId,
       rasedId,
       name: rawStudent.name || '',
-      classes: Array.isArray(rawStudent.classes) && rawStudent.classes.length > 0
-        ? rawStudent.classes
-        : [studentClass],
-      grade: rawStudent.grade,
+      classes:
+        Array.isArray(rawStudent.classes) && rawStudent.classes.length > 0
+          ? rawStudent.classes
+          : [studentClass],
+      grade: rawStudent.grade || '',
       parentPhone: rawStudent.parentPhone || '',
       gender: rawStudent.gender || 'male',
       avatar: rawStudent.avatar,
-      behaviors: Array.isArray(rawStudent.behaviors) ? rawStudent.behaviors : [],
+      behaviors: Array.isArray(rawStudent.behaviors)
+        ? rawStudent.behaviors
+        : [],
       grades: Array.isArray(rawStudent.grades) ? rawStudent.grades : [],
-      attendance: Array.isArray(rawStudent.attendance) ? rawStudent.attendance : []
+      attendance: Array.isArray(rawStudent.attendance)
+        ? rawStudent.attendance
+        : [],
+      examPapers: Array.isArray(rawStudent.examPapers)
+        ? rawStudent.examPapers
+        : []
     };
 
     const existing = identityMap.get(identityKey);
-
     if (!existing) {
       identityMap.set(identityKey, normalizedStudent);
       return;
@@ -252,89 +456,356 @@ const migrateAndDedupeStudents = (rawStudents: any[], schoolName: string) => {
     identityMap.set(identityKey, {
       ...existing,
       ...normalizedStudent,
-
-      // الأهم: لا نغير كود راصد القديم
       rasedId: existing.rasedId || normalizedStudent.rasedId,
-
-      // نحافظ على بيانات الطالب الأقدم إذا كانت موجودة
-      parentPhone: normalizedStudent.parentPhone || existing.parentPhone,
+      parentPhone:
+        normalizedStudent.parentPhone || existing.parentPhone,
       gender: normalizedStudent.gender || existing.gender,
       avatar: normalizedStudent.avatar || existing.avatar,
-
-      behaviors: mergeStudentArrays(existing.behaviors, normalizedStudent.behaviors),
+      behaviors: mergeStudentArrays(
+        existing.behaviors,
+        normalizedStudent.behaviors
+      ),
       grades: mergeStudentArrays(existing.grades, normalizedStudent.grades),
-      attendance: mergeStudentArrays(existing.attendance, normalizedStudent.attendance)
+      attendance: mergeStudentArrays(
+        existing.attendance,
+        normalizedStudent.attendance
+      ),
+      examPapers: mergeStudentArrays(
+        existing.examPapers,
+        normalizedStudent.examPapers
+      )
     });
   });
 
   return Array.from(identityMap.values());
 };
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
+const normalizeLegacyBackup = (
+  rawBackup: any,
+  fallback: RasedBackupPayload
+): RasedBackupPayload => {
+  const source = rawBackup?.core
+    ? {
+        ...rawBackup,
+        ...rawBackup.core,
+        extendedStorage:
+          rawBackup.extendedStorage ||
+          rawBackup.teaching ||
+          rawBackup.dashboard ||
+          {}
+      }
+    : rawBackup || {};
 
+  const legacyExtended = source.extendedStorage || {};
+
+  return {
+    schemaVersion:
+      Number(source.schemaVersion) || RASED_BACKUP_SCHEMA_VERSION,
+    version: String(source.version || RASED_APP_DATA_VERSION),
+    timestamp: String(
+      source.timestamp || source.exportedAt || new Date().toISOString()
+    ),
+    students: Array.isArray(source.students)
+      ? source.students
+      : fallback.students,
+    classes: Array.isArray(source.classes) ? source.classes : fallback.classes,
+    hiddenClasses: Array.isArray(source.hiddenClasses)
+      ? source.hiddenClasses
+      : fallback.hiddenClasses,
+    groups: Array.isArray(source.groups) ? source.groups : fallback.groups,
+    categorizations: Array.isArray(source.categorizations)
+      ? source.categorizations
+      : fallback.categorizations,
+    schedule: Array.isArray(source.schedule)
+      ? source.schedule
+      : fallback.schedule,
+    periodTimes: Array.isArray(source.periodTimes)
+      ? source.periodTimes
+      : fallback.periodTimes,
+    teacherInfo:
+      source.teacherInfo && typeof source.teacherInfo === 'object'
+        ? source.teacherInfo
+        : fallback.teacherInfo,
+    currentSemester:
+      source.currentSemester === '2' ? '2' : source.currentSemester === '1'
+        ? '1'
+        : fallback.currentSemester,
+    assessmentTools: Array.isArray(source.assessmentTools)
+      ? source.assessmentTools
+      : fallback.assessmentTools,
+    gradeSettings:
+      source.gradeSettings && typeof source.gradeSettings === 'object'
+        ? { ...fallback.gradeSettings, ...source.gradeSettings }
+        : fallback.gradeSettings,
+    certificateSettings:
+      source.certificateSettings &&
+      typeof source.certificateSettings === 'object'
+        ? { ...fallback.certificateSettings, ...source.certificateSettings }
+        : fallback.certificateSettings,
+    defaultStudentGender:
+      source.defaultStudentGender === 'female' ? 'female' : 'male',
+    language: source.language === 'en' ? 'en' : fallback.language,
+    extendedStorage: {
+      termPlan: Array.isArray(legacyExtended.termPlan)
+        ? legacyExtended.termPlan
+        : Array.isArray(source.termPlan)
+          ? source.termPlan
+          : fallback.extendedStorage.termPlan,
+      assessmentPlan: Array.isArray(legacyExtended.assessmentPlan)
+        ? legacyExtended.assessmentPlan
+        : Array.isArray(source.assessmentPlan)
+          ? source.assessmentPlan
+          : fallback.extendedStorage.assessmentPlan,
+      tasks: Array.isArray(legacyExtended.tasks)
+        ? legacyExtended.tasks
+        : Array.isArray(source.tasks)
+          ? source.tasks
+          : fallback.extendedStorage.tasks,
+      libraryArchive: Array.isArray(legacyExtended.libraryArchive)
+        ? legacyExtended.libraryArchive
+        : Array.isArray(source.libraryArchive)
+          ? source.libraryArchive
+          : Array.isArray(source.library)
+            ? source.library
+            : fallback.extendedStorage.libraryArchive,
+      sentMessagesLocal: Array.isArray(legacyExtended.sentMessagesLocal)
+        ? legacyExtended.sentMessagesLocal
+        : Array.isArray(source.sentMessagesLocal)
+          ? source.sentMessagesLocal
+          : fallback.extendedStorage.sentMessagesLocal,
+      gradingSettings:
+        legacyExtended.gradingSettings !== undefined
+          ? legacyExtended.gradingSettings
+          : source.gradingSettings !== undefined
+            ? source.gradingSettings
+            : fallback.extendedStorage.gradingSettings,
+      gameStorage:
+        legacyExtended.gameStorage &&
+        typeof legacyExtended.gameStorage === 'object'
+          ? legacyExtended.gameStorage
+          : source.gameStorage && typeof source.gameStorage === 'object'
+            ? source.gameStorage
+            : fallback.extendedStorage.gameStorage
+    }
+  };
+};
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
+  children
+}) => {
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [language, setLanguage] = useState<Language>(
-    (localStorage.getItem('teacher_appLanguage') as Language) || 'ar'
+    (localStorage.getItem(CORE_STORAGE_KEYS.language) as Language) || 'ar'
   );
 
   const currentMonth = new Date().getMonth();
-  const defaultSemester: '1' | '2' = currentMonth >= 1 && currentMonth <= 7 ? '2' : '1';
-  const [currentSemester, setCurrentSemester] = useState<'1' | '2'>(defaultSemester);
+  const defaultSemester: '1' | '2' =
+    currentMonth >= 1 && currentMonth <= 7 ? '2' : '1';
 
+  const [currentSemester, setCurrentSemester] = useState<'1' | '2'>(
+    defaultSemester
+  );
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [hiddenClasses, setHiddenClasses] = useState<string[]>([]);
-
-  const [groups, setGroups] = useState<Group[]>([
-    { id: 'g1', name: 'الصقور', color: 'emerald' },
-    { id: 'g2', name: 'النمور', color: 'orange' },
-    { id: 'g3', name: 'النجوم', color: 'purple' },
-    { id: 'g4', name: 'الرواد', color: 'blue' },
-  ]);
-
-  const [categorizations, setCategorizations] = useState<GroupCategorization[]>([]);
-
-  const [schedule, setSchedule] = useState<ScheduleDay[]>([
-    { dayName: 'الأحد', periods: Array(8).fill('') },
-    { dayName: 'الاثنين', periods: Array(8).fill('') },
-    { dayName: 'الثلاثاء', periods: Array(8).fill('') },
-    { dayName: 'الأربعاء', periods: Array(8).fill('') },
-    { dayName: 'الخميس', periods: Array(8).fill('') },
-  ]);
-
+  const [groups, setGroups] = useState<Group[]>(DEFAULT_GROUPS);
+  const [categorizations, setCategorizations] = useState<
+    GroupCategorization[]
+  >([]);
+  const [schedule, setSchedule] = useState<ScheduleDay[]>(DEFAULT_SCHEDULE);
   const [periodTimes, setPeriodTimes] = useState<PeriodTime[]>(
-    Array(8).fill(null).map((_, i) => ({ periodNumber: i + 1, startTime: '', endTime: '' }))
+    createDefaultPeriodTimes()
   );
 
   const now = new Date();
-  const defaultAcademicYear = now.getMonth() >= 7 
-    ? `${now.getFullYear()} / ${now.getFullYear() + 1}` 
-    : `${now.getFullYear() - 1} / ${now.getFullYear()}`;
+  const defaultAcademicYear =
+    now.getMonth() >= 7
+      ? `${now.getFullYear()} / ${now.getFullYear() + 1}`
+      : `${now.getFullYear() - 1} / ${now.getFullYear()}`;
 
-  // 💉 تهيئة الحقول الجديدة للقيادة
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo>({
-    name: '', school: '', subject: '', governorate: '', avatar: '', stamp: '',
-    ministryLogo: '', academicYear: defaultAcademicYear, gender: 'male', civilId: '',
-    role: 'teacher', departmentName: ''
+    name: '',
+    school: '',
+    subject: '',
+    governorate: '',
+    avatar: '',
+    stamp: '',
+    ministryLogo: '',
+    academicYear: defaultAcademicYear,
+    gender: 'male',
+    civilId: '',
+    role: 'teacher',
+    departmentName: ''
   });
 
   const [assessmentTools, setAssessmentTools] = useState<AssessmentTool[]>([]);
   const [gradeSettings, setGradeSettings] = useState<GradeSettings>({
-      totalScore: 100, finalExamScore: 40, finalExamName: 'الامتحان النهائي'
+    totalScore: 100,
+    finalExamScore: 40,
+    finalExamName: 'الامتحان النهائي'
   });
-
-  const [certificateSettings, setCertificateSettings] = useState<CertificateSettings>({
-    title: 'شهادة تفوق دراسي',
-    bodyText: 'تتشرف إدارة المدرسة بمنح الطالب هذه الشهادة نظير تفوقه وتميزه في المادة',
-    showDefaultDesign: true,
-  });
-
-  const [defaultStudentGender, setDefaultStudentGender] = useState<'male' | 'female'>('male');
+  const [certificateSettings, setCertificateSettings] =
+    useState<CertificateSettings>({
+      title: 'شهادة تفوق دراسي',
+      bodyText:
+        'تتشرف إدارة المدرسة بمنح الطالب هذه الشهادة نظير تفوقه وتميزه في المادة',
+      showDefaultDesign: true
+    });
+  const [defaultStudentGender, setDefaultStudentGender] = useState<
+    'male' | 'female'
+  >('male');
 
   const isInitialLoad = useRef(true);
-  const saveTimeoutRef = useRef<any>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isHeavyEnvironment = () => Capacitor.isNativePlatform() || (window as any).electron !== undefined;
+  const isHeavyEnvironment = () =>
+    Capacitor.isNativePlatform() || (window as any).electron !== undefined;
+
+  const createBackupPayload = (): RasedBackupPayload => ({
+    schemaVersion: RASED_BACKUP_SCHEMA_VERSION,
+    version: RASED_APP_DATA_VERSION,
+    timestamp: new Date().toISOString(),
+    students,
+    classes,
+    hiddenClasses,
+    groups,
+    categorizations,
+    schedule,
+    periodTimes,
+    teacherInfo,
+    currentSemester,
+    assessmentTools,
+    gradeSettings,
+    certificateSettings,
+    defaultStudentGender,
+    language,
+    extendedStorage: readRasedExtendedStorage()
+  });
+
+  const persistCoreToLocalStorage = (payload: RasedBackupPayload) => {
+    writeStorageJson(CORE_STORAGE_KEYS.students, payload.students);
+    writeStorageJson(CORE_STORAGE_KEYS.classes, payload.classes);
+    writeStorageJson(CORE_STORAGE_KEYS.hiddenClasses, payload.hiddenClasses);
+    writeStorageJson(CORE_STORAGE_KEYS.groups, payload.groups);
+    writeStorageJson(
+      CORE_STORAGE_KEYS.categorizations,
+      payload.categorizations
+    );
+    writeStorageJson(CORE_STORAGE_KEYS.schedule, payload.schedule);
+    writeStorageJson(CORE_STORAGE_KEYS.periodTimes, payload.periodTimes);
+    writeStorageJson(
+      CORE_STORAGE_KEYS.assessmentTools,
+      payload.assessmentTools
+    );
+    writeStorageJson(CORE_STORAGE_KEYS.gradeSettings, payload.gradeSettings);
+    writeStorageJson(
+      CORE_STORAGE_KEYS.certificateSettings,
+      payload.certificateSettings
+    );
+
+    localStorage.setItem(
+      CORE_STORAGE_KEYS.currentSemester,
+      payload.currentSemester
+    );
+    localStorage.setItem(
+      CORE_STORAGE_KEYS.defaultStudentGender,
+      payload.defaultStudentGender
+    );
+    localStorage.setItem(CORE_STORAGE_KEYS.language, payload.language);
+
+    localStorage.setItem('teacher_teacherName', teacherInfo.name || '');
+    localStorage.setItem('teacher_schoolName', teacherInfo.school || '');
+    localStorage.setItem('teacher_subjectName', teacherInfo.subject || '');
+    localStorage.setItem(
+      'teacher_governorate',
+      teacherInfo.governorate || ''
+    );
+    localStorage.setItem('teacher_teacherAvatar', teacherInfo.avatar || '');
+    localStorage.setItem('teacher_teacherStamp', teacherInfo.stamp || '');
+    localStorage.setItem(
+      'teacher_ministryLogo',
+      teacherInfo.ministryLogo || ''
+    );
+    localStorage.setItem(
+      'teacher_academicYear',
+      teacherInfo.academicYear || ''
+    );
+    localStorage.setItem(
+      'teacher_teacherGender',
+      teacherInfo.gender || 'male'
+    );
+    localStorage.setItem('teacher_civilId', teacherInfo.civilId || '');
+    localStorage.setItem('teacher_role', teacherInfo.role || 'teacher');
+    localStorage.setItem(
+      'teacher_departmentName',
+      teacherInfo.departmentName || ''
+    );
+    localStorage.setItem('teacher_lastLocalUpdate', Date.now().toString());
+
+    writeRasedExtendedStorage(payload.extendedStorage);
+  };
+
+  const restoreBackupPayload = async (
+    rawBackup: unknown,
+    options: RestoreBackupOptions = {}
+  ): Promise<RasedBackupPayload> => {
+    if (!rawBackup || typeof rawBackup !== 'object') {
+      throw new Error('INVALID_BACKUP_PAYLOAD');
+    }
+
+    const fallback = createBackupPayload();
+    const normalized = normalizeLegacyBackup(rawBackup as any, fallback);
+
+    if (!Array.isArray(normalized.students)) {
+      throw new Error('INVALID_STUDENTS_DATA');
+    }
+
+    const migratedStudents = migrateAndDedupeStudents(
+      normalized.students,
+      String((normalized.teacherInfo as TeacherInfo)?.school || '')
+    );
+    const safeTeacherInfo = {
+      ...teacherInfo,
+      ...(normalized.teacherInfo as TeacherInfo)
+    };
+    const finalPayload: RasedBackupPayload = {
+      ...normalized,
+      students: migratedStudents,
+      teacherInfo: safeTeacherInfo
+    };
+
+    setStudents(finalPayload.students);
+    setClasses(finalPayload.classes);
+    setHiddenClasses(finalPayload.hiddenClasses);
+    setGroups(finalPayload.groups);
+    setCategorizations(finalPayload.categorizations);
+    setSchedule(finalPayload.schedule);
+    setPeriodTimes(finalPayload.periodTimes);
+    setTeacherInfo(safeTeacherInfo);
+    setCurrentSemester(finalPayload.currentSemester);
+    setAssessmentTools(finalPayload.assessmentTools);
+    setGradeSettings(finalPayload.gradeSettings);
+    setCertificateSettings(finalPayload.certificateSettings);
+    setDefaultStudentGender(finalPayload.defaultStudentGender);
+    setLanguage(finalPayload.language);
+
+    persistCoreToLocalStorage(finalPayload);
+
+    if (options.saveToDeviceFile !== false && isHeavyEnvironment()) {
+      await Filesystem.writeFile({
+        path: RASED_DB_FILENAME,
+        data: JSON.stringify(finalPayload),
+        directory: Directory.Data,
+        encoding: Encoding.UTF8
+      });
+    }
+
+    if (options.reloadAfterRestore) {
+      window.setTimeout(() => window.location.reload(), 400);
+    }
+
+    return finalPayload;
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -344,164 +815,222 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (isHeavyEnvironment()) {
           try {
             const result = await Filesystem.readFile({
-              path: DBFILENAME,
+              path: RASED_DB_FILENAME,
               directory: Directory.Data,
-              encoding: Encoding.UTF8,
+              encoding: Encoding.UTF8
             });
-            if (result.data) {
-              data = JSON.parse(result.data as string);
-            }
-          } catch (e) {
-            console.log('ℹ️ No local file yet, checking localStorage...');
+            if (result.data) data = JSON.parse(result.data as string);
+          } catch {
+            console.log('No local database file yet; checking localStorage.');
           }
         }
 
         if (!data) {
-          const lsStudents = localStorage.getItem('teacher_studentData');
-          if (lsStudents) {
+          const storedStudents = localStorage.getItem(
+            CORE_STORAGE_KEYS.students
+          );
+          if (storedStudents) {
             data = {
-              students: JSON.parse(lsStudents),
-              classes: JSON.parse(localStorage.getItem('teacher_classesData') || '[]'),
-              hiddenClasses: JSON.parse(localStorage.getItem('teacher_hiddenClasses') || '[]'),
-              groups: JSON.parse(localStorage.getItem('teacher_groupsData') || '[]'),
-              categorizations: JSON.parse(localStorage.getItem('teacher_categorizationsData') || '[]'),
-              schedule: JSON.parse(localStorage.getItem('teacher_scheduleData') || '[]'),
-              periodTimes: JSON.parse(localStorage.getItem('teacher_periodTimes') || '[]'),
-              assessmentTools: JSON.parse(localStorage.getItem('teacher_assessmentTools') || '[]'),
-              gradeSettings: JSON.parse(localStorage.getItem('teacher_gradeSettings') || 'null'),
-              currentSemester: localStorage.getItem('teacher_currentSemester'),
+              students: safeJsonParse(storedStudents, []),
+              classes: readStorageJson(CORE_STORAGE_KEYS.classes, []),
+              hiddenClasses: readStorageJson(
+                CORE_STORAGE_KEYS.hiddenClasses,
+                []
+              ),
+              groups: readStorageJson(CORE_STORAGE_KEYS.groups, DEFAULT_GROUPS),
+              categorizations: readStorageJson(
+                CORE_STORAGE_KEYS.categorizations,
+                []
+              ),
+              schedule: readStorageJson(
+                CORE_STORAGE_KEYS.schedule,
+                DEFAULT_SCHEDULE
+              ),
+              periodTimes: readStorageJson(
+                CORE_STORAGE_KEYS.periodTimes,
+                createDefaultPeriodTimes()
+              ),
+              assessmentTools: readStorageJson(
+                CORE_STORAGE_KEYS.assessmentTools,
+                []
+              ),
+              gradeSettings: readStorageJson(
+                CORE_STORAGE_KEYS.gradeSettings,
+                null
+              ),
+              certificateSettings: readStorageJson(
+                CORE_STORAGE_KEYS.certificateSettings,
+                null
+              ),
+              currentSemester: localStorage.getItem(
+                CORE_STORAGE_KEYS.currentSemester
+              ),
+              defaultStudentGender: localStorage.getItem(
+                CORE_STORAGE_KEYS.defaultStudentGender
+              ),
+              language: localStorage.getItem(CORE_STORAGE_KEYS.language),
               teacherInfo: {
                 name: localStorage.getItem('teacher_teacherName') || '',
                 school: localStorage.getItem('teacher_schoolName') || '',
                 subject: localStorage.getItem('teacher_subjectName') || '',
-                governorate: localStorage.getItem('teacher_governorate') || '',
+                governorate:
+                  localStorage.getItem('teacher_governorate') || '',
                 avatar: localStorage.getItem('teacher_teacherAvatar') || '',
                 stamp: localStorage.getItem('teacher_teacherStamp') || '',
-                ministryLogo: localStorage.getItem('teacher_ministryLogo') || '',
-                academicYear: localStorage.getItem('teacher_academicYear') || defaultAcademicYear,
-                gender: localStorage.getItem('teacher_teacherGender') || 'male',
+                ministryLogo:
+                  localStorage.getItem('teacher_ministryLogo') || '',
+                academicYear:
+                  localStorage.getItem('teacher_academicYear') ||
+                  defaultAcademicYear,
+                gender:
+                  localStorage.getItem('teacher_teacherGender') || 'male',
                 civilId: localStorage.getItem('teacher_civilId') || '',
-                // 💉 استرجاع الدور والقسم من الذاكرة
                 role: localStorage.getItem('teacher_role') || 'teacher',
-                departmentName: localStorage.getItem('teacher_departmentName') || '',
+                departmentName:
+                  localStorage.getItem('teacher_departmentName') || ''
               },
-              certificateSettings: JSON.parse(localStorage.getItem('teacher_certificateSettings') || 'null'),
-              defaultStudentGender: localStorage.getItem('teacher_defaultStudentGender') || 'male',
+              extendedStorage: readRasedExtendedStorage()
             };
           }
         }
 
         if (data) {
-         // 🔐 مهاجر أكواد RSD المحسن:
-// - يحافظ على الأكواد القديمة.
-// - يمنع تكرار نفس الطالب داخل نفس المدرسة ونفس الفصل.
-// - يوحّد الطلاب الذين تم إدخالهم أكثر من مرة من معلمين أو استيرادات متعددة.
-if (data.students && data.students.length > 0) {
-  const loadedTeacherInfo = data.teacherInfo || {};
-  const activeSchoolName =
-    loadedTeacherInfo.school ||
-    localStorage.getItem('teacher_schoolName') ||
-    '';
+          const fallback = createBackupPayload();
+          const normalized = normalizeLegacyBackup(data, fallback);
+          const loadedTeacherInfo = normalized.teacherInfo as TeacherInfo;
+          const activeSchoolName =
+            loadedTeacherInfo?.school ||
+            localStorage.getItem('teacher_schoolName') ||
+            '';
 
-  const migratedStudents = migrateAndDedupeStudents(data.students, activeSchoolName);
-  setStudents(migratedStudents);
-} else {
-  setStudents([]);
-}
-
-          if (data.classes) setClasses(data.classes);
-          if (data.hiddenClasses) setHiddenClasses(data.hiddenClasses);
-          if (data.groups) setGroups(data.groups);
-          if (data.categorizations) setCategorizations(data.categorizations);
-          if (data.schedule) setSchedule(data.schedule);
-          if (data.periodTimes) setPeriodTimes(data.periodTimes);
-          if (data.assessmentTools) setAssessmentTools(data.assessmentTools);
-          if (data.gradeSettings) setGradeSettings(data.gradeSettings);
-          if (data.currentSemester) setCurrentSemester(data.currentSemester);
-          if (data.teacherInfo) setTeacherInfo(prev => ({ ...prev, ...data.teacherInfo }));
-          if (data.certificateSettings) setCertificateSettings(prev => ({ ...prev, ...data.certificateSettings }));
-          if (data.defaultStudentGender) setDefaultStudentGender(data.defaultStudentGender);
+          setStudents(
+            migrateAndDedupeStudents(normalized.students, activeSchoolName)
+          );
+          setClasses(normalized.classes);
+          setHiddenClasses(normalized.hiddenClasses);
+          setGroups(normalized.groups);
+          setCategorizations(normalized.categorizations);
+          setSchedule(normalized.schedule);
+          setPeriodTimes(normalized.periodTimes);
+          setAssessmentTools(normalized.assessmentTools);
+          setGradeSettings(previous => ({
+            ...previous,
+            ...normalized.gradeSettings
+          }));
+          setCurrentSemester(normalized.currentSemester);
+          setTeacherInfo(previous => ({
+            ...previous,
+            ...loadedTeacherInfo
+          }));
+          setCertificateSettings(previous => ({
+            ...previous,
+            ...normalized.certificateSettings
+          }));
+          setDefaultStudentGender(normalized.defaultStudentGender);
+          setLanguage(normalized.language);
+          writeRasedExtendedStorage(normalized.extendedStorage);
         }
       } catch (error) {
-        console.error('❌ Data loading error', error);
+        console.error('Data loading error', error);
       } finally {
         setIsDataLoaded(true);
-        setTimeout(() => { isInitialLoad.current = false; }, 1000);
+        window.setTimeout(() => {
+          isInitialLoad.current = false;
+        }, 1000);
       }
     };
+
     loadData();
   }, []);
 
   useEffect(() => {
     if (isInitialLoad.current) return;
-
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      const dataToSave = {
-        version: '3.8.6',
-        timestamp: new Date().toISOString(),
-        students, classes, hiddenClasses, groups, schedule, periodTimes,
-        teacherInfo, currentSemester, assessmentTools, gradeSettings,
-        certificateSettings, defaultStudentGender, categorizations
-      };
-
-      const isHeavy = isHeavyEnvironment();
-
-      if (isHeavy) {
-        try {
-          await Filesystem.writeFile({
-            path: DBFILENAME,
-            data: JSON.stringify(dataToSave),
-            directory: Directory.Data,
-            encoding: Encoding.UTF8,
-          });
-        } catch (e) {}
-      }
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      const payload = createBackupPayload();
 
       try {
-        localStorage.setItem('teacher_lastLocalUpdate', Date.now().toString());
-        localStorage.setItem('teacher_teacherName', teacherInfo.name || '');
-        localStorage.setItem('teacher_schoolName', teacherInfo.school || '');
-        localStorage.setItem('teacher_subjectName', teacherInfo.subject || '');
-        localStorage.setItem('teacher_academicYear', teacherInfo.academicYear || '');
-        localStorage.setItem('teacher_currentSemester', String(currentSemester));
-        localStorage.setItem('teacher_defaultStudentGender', defaultStudentGender);
-        localStorage.setItem('teacher_civilId', teacherInfo.civilId || '');
-        localStorage.setItem('teacher_appLanguage', language);
-        
-        // 💉 حفظ الجينات الجديدة للإدارة
-        localStorage.setItem('teacher_role', teacherInfo.role || 'teacher');
-        localStorage.setItem('teacher_departmentName', teacherInfo.departmentName || '');
+        persistCoreToLocalStorage(payload);
+      } catch (error) {
+        console.error('Unable to save localStorage data.', error);
+      }
 
-        if (!isHeavy) {
-            localStorage.setItem('teacher_studentData', JSON.stringify(students));
-            localStorage.setItem('teacher_classesData', JSON.stringify(classes));
-            localStorage.setItem('teacher_assessmentTools', JSON.stringify(assessmentTools));
-            localStorage.setItem('teacher_categorizationsData', JSON.stringify(categorizations));
+      if (isHeavyEnvironment()) {
+        try {
+          await Filesystem.writeFile({
+            path: RASED_DB_FILENAME,
+            data: JSON.stringify(payload),
+            directory: Directory.Data,
+            encoding: Encoding.UTF8
+          });
+        } catch (error) {
+          console.error('Unable to save local database file.', error);
         }
-      } catch (e) {}
-    }, 2000); 
+      }
+    }, 2000);
 
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [students, classes, hiddenClasses, groups, schedule, periodTimes, teacherInfo, currentSemester, assessmentTools, gradeSettings, certificateSettings, defaultStudentGender, categorizations, language]);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [
+    students,
+    classes,
+    hiddenClasses,
+    groups,
+    schedule,
+    periodTimes,
+    teacherInfo,
+    currentSemester,
+    assessmentTools,
+    gradeSettings,
+    certificateSettings,
+    defaultStudentGender,
+    categorizations,
+    language
+  ]);
 
-  const t = (key: keyof typeof translations['ar'] | string): string => {
-    return (translations[language] as any)[key] || key;
-  };
+  const t = (key: keyof typeof translations['ar'] | string): string =>
+    (translations[language] as any)[key] || key;
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
 
   return (
     <AppContext.Provider
       value={{
-        students, setStudents, classes, setClasses, hiddenClasses, setHiddenClasses,
-        groups, setGroups, schedule, setSchedule, periodTimes, setPeriodTimes,
-        teacherInfo, setTeacherInfo, currentSemester, setCurrentSemester,
-        assessmentTools, setAssessmentTools, gradeSettings, setGradeSettings,
-        certificateSettings, setCertificateSettings, isDataLoaded,
-        defaultStudentGender, setDefaultStudentGender, categorizations, setCategorizations,
-        language, setLanguage, t, dir
+        students,
+        setStudents,
+        classes,
+        setClasses,
+        hiddenClasses,
+        setHiddenClasses,
+        groups,
+        setGroups,
+        schedule,
+        setSchedule,
+        periodTimes,
+        setPeriodTimes,
+        teacherInfo,
+        setTeacherInfo,
+        currentSemester,
+        setCurrentSemester,
+        assessmentTools,
+        setAssessmentTools,
+        gradeSettings,
+        setGradeSettings,
+        certificateSettings,
+        setCertificateSettings,
+        isDataLoaded,
+        defaultStudentGender,
+        setDefaultStudentGender,
+        categorizations,
+        setCategorizations,
+        language,
+        setLanguage,
+        t,
+        dir,
+        createBackupPayload,
+        restoreBackupPayload
       }}
     >
       <div dir={dir} className="h-full w-full">
@@ -513,6 +1042,8 @@ if (data.students && data.students.length > 0) {
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (context === undefined) throw new Error('useApp must be used within an AppProvider');
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
   return context;
 };
