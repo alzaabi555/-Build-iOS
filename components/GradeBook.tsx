@@ -31,6 +31,47 @@ const DEFAULT_GRADING_SETTINGS = {
   finalExamName: 'الامتحان النهائي'
 };
 
+const normalizeGradingSettings = (value: unknown) => {
+  let source: any = value;
+
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = null;
+    }
+  }
+
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return { ...DEFAULT_GRADING_SETTINGS };
+  }
+
+  const totalScore = Number(source.totalScore);
+  const finalExamWeight = Number(
+    source.finalExamWeight ?? source.finalExamScore
+  );
+  const safeTotalScore =
+    Number.isFinite(totalScore) && totalScore > 0
+      ? totalScore
+      : DEFAULT_GRADING_SETTINGS.totalScore;
+  const safeFinalExamWeight =
+    Number.isFinite(finalExamWeight) &&
+    finalExamWeight >= 0 &&
+    finalExamWeight <= safeTotalScore
+      ? finalExamWeight
+      : DEFAULT_GRADING_SETTINGS.finalExamWeight;
+
+  return {
+    ...DEFAULT_GRADING_SETTINGS,
+    ...source,
+    totalScore: safeTotalScore,
+    finalExamWeight: safeFinalExamWeight,
+    finalExamName:
+      String(source.finalExamName || '').trim() ||
+      DEFAULT_GRADING_SETTINGS.finalExamName
+  };
+};
+
 const GradeBook: React.FC<GradeBookProps> = ({ 
   students = [], 
   classes = [], 
@@ -43,13 +84,36 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const { assessmentTools, setAssessmentTools, t, dir } = useApp();
   const tools = useMemo(() => Array.isArray(assessmentTools) ? assessmentTools : [], [assessmentTools]);
 
-  const [gradingSettings, setGradingSettings] = useState(() => {
-    const saved = localStorage.getItem('rased_grading_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_GRADING_SETTINGS;
-  });
+  const [gradingSettings, setGradingSettingsState] = useState(() =>
+    normalizeGradingSettings(
+      localStorage.getItem('rased_grading_settings')
+    )
+  );
+
+  const setGradingSettings = React.useCallback((valueOrUpdater: any) => {
+    setGradingSettingsState(previousValue => {
+      const nextValue =
+        typeof valueOrUpdater === 'function'
+          ? valueOrUpdater(normalizeGradingSettings(previousValue))
+          : valueOrUpdater;
+      return normalizeGradingSettings(nextValue);
+    });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('rased_grading_settings', JSON.stringify(gradingSettings));
+    const safeSettings = normalizeGradingSettings(gradingSettings);
+    localStorage.setItem(
+      'rased_grading_settings',
+      JSON.stringify(safeSettings)
+    );
+
+    if (
+      !gradingSettings ||
+      typeof gradingSettings !== 'object' ||
+      Array.isArray(gradingSettings)
+    ) {
+      setGradingSettingsState(safeSettings);
+    }
   }, [gradingSettings]);
 
   const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
