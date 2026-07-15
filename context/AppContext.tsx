@@ -120,6 +120,100 @@ const GAME_STORAGE_PREFIXES = [
   'rased_student_latest_game_result_'
 ] as const;
 
+const DEFAULT_GRADE_SETTINGS: GradeSettings = {
+  totalScore: 100,
+  finalExamScore: 40,
+  finalExamName: 'الامتحان النهائي'
+};
+
+const DEFAULT_EXTENDED_GRADING_SETTINGS = {
+  totalScore: 100,
+  finalExamWeight: 40,
+  finalExamName: 'الامتحان النهائي'
+};
+
+const normalizeGradeSettings = (value: unknown): GradeSettings => {
+  let source: any = value;
+
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = null;
+    }
+  }
+
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return { ...DEFAULT_GRADE_SETTINGS };
+  }
+
+  const totalScore = Number(source.totalScore);
+  const finalExamScore = Number(
+    source.finalExamScore ?? source.finalExamWeight
+  );
+  const safeTotalScore =
+    Number.isFinite(totalScore) && totalScore > 0
+      ? totalScore
+      : DEFAULT_GRADE_SETTINGS.totalScore;
+  const safeFinalExamScore =
+    Number.isFinite(finalExamScore) &&
+    finalExamScore >= 0 &&
+    finalExamScore <= safeTotalScore
+      ? finalExamScore
+      : DEFAULT_GRADE_SETTINGS.finalExamScore;
+
+  return {
+    ...DEFAULT_GRADE_SETTINGS,
+    ...source,
+    totalScore: safeTotalScore,
+    finalExamScore: safeFinalExamScore,
+    finalExamName:
+      String(source.finalExamName || '').trim() ||
+      DEFAULT_GRADE_SETTINGS.finalExamName
+  };
+};
+
+const normalizeExtendedGradingSettings = (value: unknown) => {
+  let source: any = value;
+
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = null;
+    }
+  }
+
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return { ...DEFAULT_EXTENDED_GRADING_SETTINGS };
+  }
+
+  const totalScore = Number(source.totalScore);
+  const finalExamWeight = Number(
+    source.finalExamWeight ?? source.finalExamScore
+  );
+  const safeTotalScore =
+    Number.isFinite(totalScore) && totalScore > 0
+      ? totalScore
+      : DEFAULT_EXTENDED_GRADING_SETTINGS.totalScore;
+  const safeFinalExamWeight =
+    Number.isFinite(finalExamWeight) &&
+    finalExamWeight >= 0 &&
+    finalExamWeight <= safeTotalScore
+      ? finalExamWeight
+      : DEFAULT_EXTENDED_GRADING_SETTINGS.finalExamWeight;
+
+  return {
+    ...DEFAULT_EXTENDED_GRADING_SETTINGS,
+    ...source,
+    totalScore: safeTotalScore,
+    finalExamWeight: safeFinalExamWeight,
+    finalExamName:
+      String(source.finalExamName || '').trim() ||
+      DEFAULT_EXTENDED_GRADING_SETTINGS.finalExamName
+  };
+};
+
 const DEFAULT_GROUPS: Group[] = [
   { id: 'g1', name: 'الصقور', color: 'emerald' },
   { id: 'g2', name: 'النمور', color: 'orange' },
@@ -195,9 +289,8 @@ export const readRasedExtendedStorage = (): RasedExtendedStorageSnapshot => ({
     EXTENDED_STORAGE_KEYS.sentMessagesLocal,
     []
   ),
-  gradingSettings: readStorageJson(
-    EXTENDED_STORAGE_KEYS.gradingSettings,
-    null
+  gradingSettings: normalizeExtendedGradingSettings(
+    localStorage.getItem(EXTENDED_STORAGE_KEYS.gradingSettings)
   ),
   gameStorage: collectGameStorage()
 });
@@ -234,7 +327,7 @@ export const writeRasedExtendedStorage = (
   if (snapshot.gradingSettings !== undefined) {
     writeStorageJson(
       EXTENDED_STORAGE_KEYS.gradingSettings,
-      snapshot.gradingSettings
+      normalizeExtendedGradingSettings(snapshot.gradingSettings)
     );
   }
 
@@ -533,10 +626,9 @@ const normalizeLegacyBackup = (
     assessmentTools: Array.isArray(source.assessmentTools)
       ? source.assessmentTools
       : fallback.assessmentTools,
-    gradeSettings:
-      source.gradeSettings && typeof source.gradeSettings === 'object'
-        ? { ...fallback.gradeSettings, ...source.gradeSettings }
-        : fallback.gradeSettings,
+    gradeSettings: normalizeGradeSettings(
+      source.gradeSettings ?? fallback.gradeSettings
+    ),
     certificateSettings:
       source.certificateSettings &&
       typeof source.certificateSettings === 'object'
@@ -573,12 +665,13 @@ const normalizeLegacyBackup = (
         : Array.isArray(source.sentMessagesLocal)
           ? source.sentMessagesLocal
           : fallback.extendedStorage.sentMessagesLocal,
-      gradingSettings:
+      gradingSettings: normalizeExtendedGradingSettings(
         legacyExtended.gradingSettings !== undefined
           ? legacyExtended.gradingSettings
           : source.gradingSettings !== undefined
             ? source.gradingSettings
-            : fallback.extendedStorage.gradingSettings,
+            : fallback.extendedStorage.gradingSettings
+      ),
       gameStorage:
         legacyExtended.gameStorage &&
         typeof legacyExtended.gameStorage === 'object'
@@ -639,11 +732,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [assessmentTools, setAssessmentTools] = useState<AssessmentTool[]>([]);
-  const [gradeSettings, setGradeSettings] = useState<GradeSettings>({
-    totalScore: 100,
-    finalExamScore: 40,
-    finalExamName: 'الامتحان النهائي'
-  });
+  const [gradeSettings, setGradeSettingsState] = useState<GradeSettings>(() =>
+    normalizeGradeSettings(
+      localStorage.getItem(CORE_STORAGE_KEYS.gradeSettings)
+    )
+  );
+  const setGradeSettings: React.Dispatch<
+    React.SetStateAction<GradeSettings>
+  > = valueOrUpdater => {
+    setGradeSettingsState(previousValue => {
+      const nextValue =
+        typeof valueOrUpdater === 'function'
+          ? valueOrUpdater(normalizeGradeSettings(previousValue))
+          : valueOrUpdater;
+      return normalizeGradeSettings(nextValue);
+    });
+  };
   const [certificateSettings, setCertificateSettings] =
     useState<CertificateSettings>({
       title: 'شهادة تفوق دراسي',
@@ -675,7 +779,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     teacherInfo,
     currentSemester,
     assessmentTools,
-    gradeSettings,
+    gradeSettings: normalizeGradeSettings(gradeSettings),
     certificateSettings,
     defaultStudentGender,
     language,
@@ -697,7 +801,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       CORE_STORAGE_KEYS.assessmentTools,
       payload.assessmentTools
     );
-    writeStorageJson(CORE_STORAGE_KEYS.gradeSettings, payload.gradeSettings);
+    writeStorageJson(
+      CORE_STORAGE_KEYS.gradeSettings,
+      normalizeGradeSettings(payload.gradeSettings)
+    );
     writeStorageJson(
       CORE_STORAGE_KEYS.certificateSettings,
       payload.certificateSettings
@@ -784,7 +891,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setTeacherInfo(safeTeacherInfo);
     setCurrentSemester(finalPayload.currentSemester);
     setAssessmentTools(finalPayload.assessmentTools);
-    setGradeSettings(finalPayload.gradeSettings);
+    setGradeSettings(normalizeGradeSettings(finalPayload.gradeSettings));
     setCertificateSettings(finalPayload.certificateSettings);
     setDefaultStudentGender(finalPayload.defaultStudentGender);
     setLanguage(finalPayload.language);
@@ -854,9 +961,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
                 CORE_STORAGE_KEYS.assessmentTools,
                 []
               ),
-              gradeSettings: readStorageJson(
-                CORE_STORAGE_KEYS.gradeSettings,
-                null
+              gradeSettings: normalizeGradeSettings(
+                localStorage.getItem(CORE_STORAGE_KEYS.gradeSettings)
               ),
               certificateSettings: readStorageJson(
                 CORE_STORAGE_KEYS.certificateSettings,
@@ -913,10 +1019,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setSchedule(normalized.schedule);
           setPeriodTimes(normalized.periodTimes);
           setAssessmentTools(normalized.assessmentTools);
-          setGradeSettings(previous => ({
-            ...previous,
-            ...normalized.gradeSettings
-          }));
+          setGradeSettings(previous =>
+            normalizeGradeSettings({
+              ...previous,
+              ...normalized.gradeSettings
+            })
+          );
           setCurrentSemester(normalized.currentSemester);
           setTeacherInfo(previous => ({
             ...previous,
