@@ -687,9 +687,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [language, setLanguage] = useState<Language>(
-    (localStorage.getItem(CORE_STORAGE_KEYS.language) as Language) || 'ar'
-  );
+  const [language, setLanguage] = useState<Language>(() => {
+    const storedLanguage = localStorage.getItem(CORE_STORAGE_KEYS.language);
+    return storedLanguage === 'en' ? 'en' : 'ar';
+  });
 
   const currentMonth = new Date().getMonth();
   const defaultSemester: '1' | '2' =
@@ -1098,8 +1099,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     language
   ]);
 
-  const t = (key: keyof typeof translations['ar'] | string): string =>
-    (translations[language] as any)[key] || key;
+  const t = (key: keyof typeof translations['ar'] | string): string => {
+    const currentDictionary = (translations?.[language] || {}) as Record<string, string>;
+    const arabicDictionary = (translations?.ar || {}) as Record<string, string>;
+    const englishDictionary = (translations?.en || {}) as Record<string, string>;
+
+    return (
+      currentDictionary[key] ??
+      arabicDictionary[key] ??
+      englishDictionary[key] ??
+      String(key)
+    );
+  };
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
 
