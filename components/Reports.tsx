@@ -221,9 +221,65 @@ interface ReportsProps {
 
 type AcademicReportScope = 'sem1' | 'sem2' | 'final';
 
+const DEFAULT_REPORT_GRADING_SETTINGS = {
+  totalScore: 100,
+  finalExamWeight: 40,
+  finalExamName: 'الامتحان النهائي'
+};
+
 const getGradingSettings = () => {
-  const saved = localStorage.getItem('rased_grading_settings');
-  return saved ? JSON.parse(saved) : null; 
+  try {
+    const saved = localStorage.getItem('rased_grading_settings');
+    const parsed = saved ? JSON.parse(saved) : null;
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { ...DEFAULT_REPORT_GRADING_SETTINGS };
+    }
+
+    const totalScore = Number(parsed.totalScore);
+    const finalExamWeight = Number(
+      parsed.finalExamWeight ?? parsed.finalExamScore
+    );
+    const safeTotalScore =
+      Number.isFinite(totalScore) && totalScore > 0
+        ? totalScore
+        : DEFAULT_REPORT_GRADING_SETTINGS.totalScore;
+    const safeFinalExamWeight =
+      Number.isFinite(finalExamWeight) &&
+      finalExamWeight >= 0 &&
+      finalExamWeight <= safeTotalScore
+        ? finalExamWeight
+        : DEFAULT_REPORT_GRADING_SETTINGS.finalExamWeight;
+
+    return {
+      ...DEFAULT_REPORT_GRADING_SETTINGS,
+      ...parsed,
+      totalScore: safeTotalScore,
+      finalExamWeight: safeFinalExamWeight,
+      finalExamName:
+        String(parsed.finalExamName || '').trim() ||
+        DEFAULT_REPORT_GRADING_SETTINGS.finalExamName
+    };
+  } catch (error) {
+    console.error('Unable to read report grading settings:', error);
+    return { ...DEFAULT_REPORT_GRADING_SETTINGS };
+  }
+};
+
+const getGradeCategoryLabel = (
+  categoryKey: string,
+  t: (key: string) => string
+) => {
+  const translationKeys: Record<string, string> = {
+    A: 'analyticsGradeA',
+    B: 'analyticsGradeB',
+    C: 'analyticsGradeC',
+    D: 'analyticsGradeD',
+    F: 'analyticsGradeF'
+  };
+
+  const translationKey = translationKeys[categoryKey];
+  return translationKey ? t(translationKey) : categoryKey;
 };
 
 // --- نافذة المعاينة (Print Preview Modal) ---
@@ -363,7 +419,16 @@ const AnalyticsTemplate = ({
         ? t('secondSemesterScore')
         : t('finalAverageLabel');
 
-  const selectedData = data[reportScope];
+  const selectedData = data?.[reportScope] || {
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+    F: [],
+    incomplete: [],
+    totalScore: 0,
+    completedCount: 0
+  };
 
   const completedCount =
     reportScope === 'final'
@@ -782,7 +847,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
   const finalExamName = isDefaultExamName ? t('finalExamNameDefault') : savedFinalExamName;
   const finalWeight = settings.finalExamWeight;
   const continuousWeight = settings.totalScore - finalWeight;
-  const continuousTools = safeTools.filter((tool: any) => tool.name.trim() !== finalExamName);
+  const continuousTools = safeTools.filter((tool: any) => String(tool.name || '').trim() !== finalExamName);
   const scopeTitle = reportScope === 'sem1'
     ? t('firstSemesterGradesRecord')
     : reportScope === 'sem2'
@@ -808,7 +873,7 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
   const getSemesterTotal = (student: any, semesterId: string) => {
     const semesterGrades = (student.grades || []).filter((grade: any) => (grade.semester || '1') === semesterId);
     return safeTools.reduce((sum: number, tool: any) => {
-      const grade = semesterGrades.find((record: any) => record.category?.trim() === tool.name?.trim());
+      const grade = semesterGrades.find((record: any) => String(record.category || '').trim() === String(tool.name || '').trim());
       return sum + (grade ? toGradeNumber(grade.score) : 0);
     }, 0);
   };
@@ -871,12 +936,12 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
                   const semesterGrades = (student.grades || []).filter((grade: any) => (grade.semester || '1') === selectedSemester);
                   let continuousSum = 0;
                   const continuousCells = continuousTools.map((tool: any) => {
-                    const grade = semesterGrades.find((record: any) => record.category?.trim() === tool.name?.trim());
+                    const grade = semesterGrades.find((record: any) => String(record.category || '').trim() === String(tool.name || '').trim());
                     const value = grade ? toGradeNumber(grade.score) : 0;
                     continuousSum += value;
                     return <td key={tool.id} className="border border-black p-1 text-center font-medium text-black">{grade ? grade.score : '-'}</td>;
                   });
-                  const finalGrade = semesterGrades.find((record: any) => record.category?.trim() === finalExamName);
+                  const finalGrade = semesterGrades.find((record: any) => String(record.category || '').trim() === finalExamName);
                   const finalValue = finalGrade ? toGradeNumber(finalGrade.score) : 0;
                   const semesterTotal = continuousSum + finalValue;
                   const sem1Total = getSemesterTotal(student, '1');
@@ -1157,8 +1222,8 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
   if (safeStudents.length === 0) return <div className="text-black text-center p-10">{t('noStudentDataToDisplay')}</div>;
 
   const safeTools = Array.isArray(assessmentTools) ? assessmentTools : [];
-  const continuousTools = safeTools.filter((t: any) => t.name.trim() !== finalExamName);
-  const finalTool = safeTools.find((t: any) => t.name.trim() === finalExamName);
+  const continuousTools = safeTools.filter((t: any) => String(t.name || '').trim() !== finalExamName);
+  const finalTool = safeTools.find((t: any) => String(t.name || '').trim() === finalExamName);
 
   const translateBehavior = (desc: string) => {
     const map: any = {
@@ -1232,10 +1297,10 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
         let sem2Total = 0;
         
         safeTools.forEach((t: any) => {
-            const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+            const g1 = sem1Grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
             if (g1) sem1Total += (Number(g1.score) || 0);
             
-            const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+            const g2 = sem2Grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
             if (g2) sem2Total += (Number(g2.score) || 0);
         });
         const hasSem1Grades = sem1Grades.length > 0;
@@ -1288,7 +1353,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
               </thead>
               <tbody>
                 {continuousTools.map((t: any) => {
-                  const g = grades.find((r: any) => r.category.trim() === t.name.trim());
+                  const g = grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
                   return (
                     <tr key={t.id}>
                       <td className={`border border-black p-3 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
@@ -1873,10 +1938,10 @@ const [analyticsPrintScope, setAnalyticsPrintScope] = useState<'sem1' | 'sem2' |
           let s2Total = 0;
           
           safeTools.forEach((t: any) => {
-              const g1 = sem1Grades.find((r: any) => r.category.trim() === t.name.trim());
+              const g1 = sem1Grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
               if (g1) s1Total += (Number(g1.score) || 0);
               
-              const g2 = sem2Grades.find((r: any) => r.category.trim() === t.name.trim());
+              const g2 = sem2Grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
               if (g2) s2Total += (Number(g2.score) || 0);
           });
 
@@ -2356,17 +2421,17 @@ if (hasSem1Grades && hasSem2Grades) {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                           <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
                               <h4 className="font-black text-sm text-center mb-6 text-textPrimary">{t('firstSemesterResults')}</h4>
-                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem1[c.key as keyof typeof analyticsData.sem1].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar((Array.isArray((analyticsData.sem1 as any)[c.key]) ? (analyticsData.sem1 as any)[c.key].length : 0), analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
 
                           <div className="border border-borderColor bg-bgCard p-5 rounded-2xl shadow-sm">
                               <h4 className="font-black text-sm text-center mb-6 text-textPrimary">{t('secondSemesterResults')}</h4>
-                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.sem2[c.key as keyof typeof analyticsData.sem2].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
+                              {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar((Array.isArray((analyticsData.sem2 as any)[c.key]) ? (analyticsData.sem2 as any)[c.key].length : 0), analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
 
                           <div className="border-2 border-indigo-100 bg-indigo-50/50 p-5 rounded-2xl shadow-sm">
                               <h4 className="font-black text-sm text-center mb-6 text-indigo-900 flex items-center justify-center gap-2">
                                   <TrendingUp className="w-4 h-4" /> {t('annualFinalResult')}
                               </h4>
-                               {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar(analyticsData.final[c.key as keyof typeof analyticsData.final].length, analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
+                               {GRADE_CATEGORIES.map(c => <React.Fragment key={c.key}>{renderProgressBar((Array.isArray((analyticsData.final as any)[c.key]) ? (analyticsData.final as any)[c.key].length : 0), analyticsData.totalStudents, c.bar, getGradeCategoryLabel(c.key, t))}</React.Fragment>)}                          </div>
                       </div>
 
                       {/* 💉 قسم جديد: تفاصيل الأسماء في واجهة التطبيق */}
@@ -2381,7 +2446,8 @@ if (hasSem1Grades && hasSem2Grades) {
                           </div>
 
                           {GRADE_CATEGORIES.map(cat => {
-                              const list = analyticsData[analyticsDetailTab][cat.key as keyof typeof analyticsData.sem1] as any[];
+                              const rawList = (analyticsData as any)?.[analyticsDetailTab]?.[cat.key];
+                              const list = Array.isArray(rawList) ? rawList : [];
                               if (!list || list.length === 0) return null;
                               return (
                                   <div key={cat.key} className="mb-4 bg-bgCard border border-borderColor rounded-2xl overflow-hidden shadow-sm">
