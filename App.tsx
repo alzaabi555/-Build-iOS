@@ -565,86 +565,90 @@ const handleToggleNotifications = () => {
   if (showWelcome) return <WelcomeScreen onFinish={handleFinishWelcome} />;
 
   const handleNavigate = (tab: string) => {
+    if (tab === 'dashboard' || tab === 'home') {
+      setActiveTab('dashboard');
+      return;
+    }
+    if (tab === 'senior_dashboard') {
+      setActiveTab('senior_dashboard');
+      return;
+    }
     if (tab === 'attendance') {
       setStudentManagementView('attendance');
       setActiveTab('student_management');
       return;
     }
-
-    if (tab === 'students') {
+    if (tab === 'students' || tab === 'student_management') {
       setStudentManagementView('students');
       setActiveTab('student_management');
       return;
     }
-
     if (tab === 'groups') {
       setStudentManagementView('groups');
       setActiveTab('student_management');
       return;
     }
-
-    if (tab === 'mailbox') {
+    if (tab === 'mailbox' || tab === 'messages' || tab === 'inbox') {
       setActiveTab('mailbox');
       return;
     }
-
-    if (tab === 'grades') {
+    if (tab === 'grades' || tab === 'gradebook' || tab === 'learning_evaluation') {
       setLearningView('grades');
       setActiveTab('learning_evaluation');
       return;
     }
-
     if (tab === 'tasks') {
       setLearningView('tasks');
       setActiveTab('learning_evaluation');
       return;
     }
-
     if (tab === 'library') {
       setLearningView('library');
       setActiveTab('learning_evaluation');
       return;
     }
-
-    if (tab === 'leaderboard') {
+    if (tab === 'game_questions' || tab === 'games' || tab === 'questions') {
+      setGamesView('questions');
+      setActiveTab('games');
+      return;
+    }
+    if (tab === 'game_results' || tab === 'results') {
+      setGamesView('results');
+      setActiveTab('games');
+      return;
+    }
+    if (tab === 'leaderboard' || tab === 'knights') {
       setReportsView('leaderboard');
       setActiveTab('reports_analysis');
       return;
     }
-
-    if (tab === 'reports') {
+    if (tab === 'reports' || tab === 'analytics' || tab === 'reports_analysis') {
       setReportsView('reports');
       setActiveTab('reports_analysis');
       return;
     }
-
-    if (tab === 'sync') {
+    if (tab === 'sync' || tab === 'admin_sync') {
       setAdminView('sync');
       setActiveTab('admin_sync');
       return;
     }
-
-    if (tab === 'guide') {
+    if (tab === 'guide' || tab === 'help') {
       setHelpView('guide');
       setActiveTab('help_settings');
       return;
     }
-
     if (tab === 'settings') {
       setHelpView('settings');
       setActiveTab('help_settings');
       return;
     }
-
     if (tab === 'about') {
       setHelpView('about');
       setActiveTab('help_settings');
       return;
     }
-
     setActiveTab(tab);
   };
-
   const renderHubTabs = <T extends string>(
     items: { id: T; label: string; icon?: React.ElementType }[],
     value: T,
