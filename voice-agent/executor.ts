@@ -16,257 +16,149 @@ interface ExecutorContext {
 }
 
 const todayKey = () => new Date().toLocaleDateString('en-CA');
-
 const normalizeDateKey = (date: string) => {
-  return new Date(date).toLocaleDateString('en-CA');
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime()) ? String(date || '') : parsed.toLocaleDateString('en-CA');
+};
+const normalizeIdentity = (value: string) =>
+  String(value || '').trim().toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ');
+const isEnglishUi = () => {
+  if (typeof document !== 'undefined' && document.documentElement.lang?.toLowerCase().startsWith('en')) return true;
+  if (typeof localStorage !== 'undefined') return localStorage.getItem('teacher_appLanguage') === 'en';
+  return false;
+};
+const text = (ar: string, en: string) => (isEnglishUi() ? en : ar);
+
+const ROUTE_LABELS: Record<string, [string, string]> = {
+  dashboard: ['الصفحة الرئيسية', 'Dashboard'], students: ['صفحة الطلاب', 'Students'], attendance: ['صفحة الحضور', 'Attendance'],
+  groups: ['إدارة المجموعات', 'Groups'], mailbox: ['مركز المراسلات', 'Mailbox'], grades: ['سجل الدرجات', 'Gradebook'],
+  tasks: ['صفحة المهام', 'Tasks'], library: ['المكتبة', 'Library'], game_questions: ['بنك أسئلة الألعاب', 'Game question bank'],
+  game_results: ['نتائج الألعاب', 'Game results'], reports: ['مركز التقارير', 'Reports'], leaderboard: ['لوحة الفرسان', 'Leaderboard'],
+  sync: ['مركز المزامنة', 'Sync center'], guide: ['دليل الاستخدام', 'User guide'], settings: ['الإعدادات', 'Settings'],
+  about: ['حول التطبيق', 'About'], senior_dashboard: ['لوحة المعلم الأول', 'Senior teacher dashboard']
 };
 
 export const executeTask = (task: VoiceTask, context: ExecutorContext): boolean => {
-  const {
-    setStudents,
-    currentSemester,
-    onNavigate,
-    saveSnapshot,
-    createId,
-    memory,
-    displayFeedback,
-    speak
-  } = context;
+  const { setStudents, currentSemester, onNavigate, saveSnapshot, createId, memory, displayFeedback, speak } = context;
 
-  const updateAttendanceForToday = (
-    studentId: string,
-    status: 'present' | 'absent' | 'late' | 'truant'
-  ) => {
+  const updateAttendanceForToday = (studentId: string, status: 'present' | 'absent' | 'late' | 'truant') => {
     const today = todayKey();
-
-    setStudents((prev) =>
-      prev.map((student) => {
-        if (student.id !== studentId) return student;
-
-        const filteredAttendance = (student.attendance || []).filter(
-          (record) => normalizeDateKey(record.date) !== today
-        );
-
-        return {
-          ...student,
-          attendance: [
-            ...filteredAttendance,
-            {
-              date: today,
-              status
-            }
-          ]
-        };
-      })
-    );
+    setStudents(prev => prev.map(student => {
+      if (student.id !== studentId) return student;
+      const filteredAttendance = (Array.isArray(student.attendance) ? student.attendance : []).filter(record => normalizeDateKey(record.date) !== today);
+      return { ...student, attendance: [...filteredAttendance, { date: today, status }] };
+    }));
   };
 
   switch (task.type) {
-    case 'feedback': {
+    case 'feedback':
       displayFeedback(task.payload.message, task.payload.feedbackType);
-
-      if (task.payload.speak) {
-        speak(task.payload.speak);
-      }
-
+      if (task.payload.speak) speak(task.payload.speak);
       return true;
-    }
-
-    case 'undo': {
+    case 'undo':
       return false;
-    }
-
-    case 'ask_student_name': {
+    case 'ask_student_name':
       memory.setPendingCreateStudent(task.payload.grade);
-      displayFeedback('ما اسم الطالب؟', 'info');
-      speak('ما اسم الطالب؟');
+      displayFeedback(text('ما اسم الطالب؟', 'What is the student name?'), 'info');
+      speak(text('ما اسم الطالب؟', 'What is the student name?'));
       return true;
-    }
-
     case 'create_student': {
-      const cleanName = task.payload.name.trim();
-
+      const cleanName = String(task.payload.name || '').trim().replace(/\s+/g, ' ');
+      const cleanGrade = String(task.payload.grade || '').trim() || text('بدون فصل', 'No class');
       if (!cleanName) {
-        displayFeedback('لم أتعرف على اسم الطالب', 'error');
-        speak('لم أتعرف على اسم الطالب');
+        displayFeedback(text('لم أتعرف على اسم الطالب', 'Student name was not recognized'), 'error');
         return false;
       }
-
+      let created = false;
+      let duplicateName = '';
       saveSnapshot();
-
-      const newStudent: Student = {
-        id: createId(),
-        name: cleanName,
-        grade: task.payload.grade,
-        classes: [task.payload.grade],
-        attendance: [],
-        behaviors: [],
-        grades: []
-      };
-
-      setStudents((prev) => [...prev, newStudent]);
-      memory.rememberStudent(newStudent.id, newStudent.name);
-
-      displayFeedback(`تم إنشاء الطالب: ${cleanName}`, 'success');
-      speak(`تم إنشاء ${cleanName.split(' ')[0]}`);
+      setStudents(prev => {
+        const duplicate = prev.find(student => normalizeIdentity(student.name) === normalizeIdentity(cleanName) && normalizeIdentity(String(student.classes?.[0] || student.grade || '')) === normalizeIdentity(cleanGrade));
+        if (duplicate) {
+          duplicateName = duplicate.name;
+          return prev;
+        }
+        const newStudent: Student = { id: createId(), name: cleanName, grade: cleanGrade, classes: [cleanGrade], attendance: [], behaviors: [], grades: [] };
+        created = true;
+        memory.rememberStudent(newStudent.id, newStudent.name);
+        return [...prev, newStudent];
+      });
+      if (!created) {
+        displayFeedback(text(`الطالب ${duplicateName || cleanName} موجود مسبقًا في الفصل نفسه`, `${duplicateName || cleanName} already exists in the same class`), 'error');
+        return false;
+      }
+      displayFeedback(text(`تم إنشاء الطالب: ${cleanName}`, `Student created: ${cleanName}`), 'success');
+      speak(text(`تم إنشاء ${cleanName.split(' ')[0]}`, `${cleanName.split(' ')[0]} was created`));
       return true;
     }
-
     case 'add_points': {
+      const amount = Math.max(1, Math.abs(Number(task.payload.amount) || 1));
       saveSnapshot();
-
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === task.payload.studentId
-            ? {
-                ...student,
-                behaviors: [
-                  ...(student.behaviors || []),
-                  {
-                    id: createId(),
-                    date: new Date().toISOString(),
-                    type: 'positive',
-                    description: 'إضافة ذكية صوتياً',
-                    points: task.payload.amount,
-                    semester: currentSemester
-                  }
-                ]
-              }
-            : student
-        )
-      );
-
+      setStudents(prev => prev.map(student => student.id === task.payload.studentId ? {
+        ...student,
+        behaviors: [...(Array.isArray(student.behaviors) ? student.behaviors : []), {
+          id: createId(), date: new Date().toISOString(), type: 'positive',
+          description: text('إضافة ذكية صوتيًا', 'Voice smart award'), points: amount, semester: currentSemester
+        }]
+      } : student));
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(
-        `تمت إضافة ${task.payload.amount} نقاط لـ ${task.payload.studentName}`,
-        'success'
-      );
-      speak(`تمت إضافة ${task.payload.amount}`);
+      displayFeedback(text(`تمت إضافة ${amount} نقاط لـ ${task.payload.studentName}`, `${amount} points added to ${task.payload.studentName}`), 'success');
       return true;
     }
-
     case 'deduct_points': {
+      const amount = Math.max(1, Math.abs(Number(task.payload.amount) || 1));
       saveSnapshot();
-
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === task.payload.studentId
-            ? {
-                ...student,
-                behaviors: [
-                  ...(student.behaviors || []),
-                  {
-                    id: createId(),
-                    date: new Date().toISOString(),
-                    type: 'negative',
-                    description: 'خصم ذكي صوتياً',
-                    points: -Math.abs(task.payload.amount),
-                    semester: currentSemester
-                  }
-                ]
-              }
-            : student
-        )
-      );
-
+      setStudents(prev => prev.map(student => student.id === task.payload.studentId ? {
+        ...student,
+        behaviors: [...(Array.isArray(student.behaviors) ? student.behaviors : []), {
+          id: createId(), date: new Date().toISOString(), type: 'negative',
+          description: text('خصم ذكي صوتيًا', 'Voice smart deduction'), points: -amount, semester: currentSemester
+        }]
+      } : student));
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(
-        `تم خصم ${task.payload.amount} من ${task.payload.studentName}`,
-        'success'
-      );
-      speak('تم الخصم');
+      displayFeedback(text(`تم خصم ${amount} من ${task.payload.studentName}`, `${amount} points deducted from ${task.payload.studentName}`), 'success');
       return true;
     }
-
-    case 'mark_absent': {
-      saveSnapshot();
-
-      updateAttendanceForToday(task.payload.studentId, 'absent');
-
-      memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تم تسجيل غياب: ${task.payload.studentName}`, 'success');
-      speak('تم تسجيل الغياب');
-      return true;
-    }
-
-    case 'mark_present': {
-      saveSnapshot();
-
-      updateAttendanceForToday(task.payload.studentId, 'present');
-
-      memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تم تسجيل حضور: ${task.payload.studentName}`, 'success');
-      speak('تم تسجيل الحضور');
-      return true;
-    }
-
-    case 'mark_late': {
-      saveSnapshot();
-
-      updateAttendanceForToday(task.payload.studentId, 'late');
-
-      memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تم تسجيل تأخر: ${task.payload.studentName}`, 'success');
-      speak('تم تسجيل التأخر');
-      return true;
-    }
-
+    case 'mark_absent':
+    case 'mark_present':
+    case 'mark_late':
     case 'mark_truant': {
+      const statusMap = {
+        mark_absent: ['absent', 'تم تسجيل غياب', 'Marked absent'], mark_present: ['present', 'تم تسجيل حضور', 'Marked present'],
+        mark_late: ['late', 'تم تسجيل تأخر', 'Marked late'], mark_truant: ['truant', 'تم تسجيل هروب/تسرب', 'Marked truant']
+      } as const;
+      const [status, ar, en] = statusMap[task.type];
       saveSnapshot();
-
-      updateAttendanceForToday(task.payload.studentId, 'truant');
-
+      updateAttendanceForToday(task.payload.studentId, status);
       memory.rememberStudent(task.payload.studentId, task.payload.studentName);
-      displayFeedback(`تم تسجيل هروب/تسرب: ${task.payload.studentName}`, 'success');
-      speak('تم تسجيل الحالة');
+      displayFeedback(`${text(ar, en)}: ${task.payload.studentName}`, 'success');
+      speak(text(ar, en));
       return true;
     }
-
     case 'navigate': {
       if (!onNavigate) {
-        displayFeedback('لا توجد دالة تنقل متاحة', 'error');
+        displayFeedback(text('لا توجد دالة تنقل متاحة', 'Navigation is unavailable'), 'error');
         return false;
       }
-
       onNavigate(task.payload.route);
       memory.setContext(task.payload.route);
-      displayFeedback('جاري الانتقال...', 'success');
+      const label = ROUTE_LABELS[task.payload.route];
+      displayFeedback(label ? text(`تم فتح ${label[0]}`, `${label[1]} opened`) : text('جاري الانتقال...', 'Opening...'), 'success');
       return true;
     }
-
     case 'write_field': {
-      const success =
-        writeToField(task.payload.fieldKeyword, task.payload.value) ||
-        writeToField('بحث', task.payload.value) ||
-        writeToField('بحث الحضور', task.payload.value) ||
-        writeToField('search', task.payload.value) ||
-        writeToField('اسم', task.payload.value);
-
-      if (success) {
-        displayFeedback(`تمت كتابة: ${task.payload.value}`, 'success');
-        return true;
-      }
-
-      displayFeedback('لم أجد حقل كتابة مناسب', 'error');
-      return false;
+      const success = writeToField(task.payload.fieldKeyword, task.payload.value) || writeToField('بحث', task.payload.value) || writeToField('بحث الحضور', task.payload.value) || writeToField('search', task.payload.value) || writeToField('name', task.payload.value) || writeToField('اسم', task.payload.value);
+      displayFeedback(success ? text(`تمت كتابة: ${task.payload.value}`, `Entered: ${task.payload.value}`) : text('لم أجد حقل كتابة مناسب', 'No suitable input field was found'), success ? 'success' : 'error');
+      return success;
     }
-
     case 'dom_click': {
       const success = scanAndClick(task.payload.command);
-
-      if (success) {
-        displayFeedback('تم تنفيذ الإجراء', 'success');
-        return true;
-      }
-
-      displayFeedback('لم أجد زرًا مناسبًا لهذا الأمر', 'error');
-      return false;
+      displayFeedback(success ? text('تم تنفيذ الإجراء', 'Action completed') : text('لم أجد زرًا مناسبًا لهذا الأمر', 'No matching button was found'), success ? 'success' : 'error');
+      return success;
     }
-
     case 'unknown':
-    default: {
-      displayFeedback(`عفواً، لم أفهم: "${task.payload.text}"`, 'error');
+    default:
+      displayFeedback(text(`عفوًا، لم أفهم: "${task.payload.text}"`, `Sorry, I did not understand: "${task.payload.text}"`), 'error');
       return false;
-    }
   }
 };
