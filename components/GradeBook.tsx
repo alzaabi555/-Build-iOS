@@ -697,6 +697,8 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     </select>
   </div>
 </div>
+
+   {/* ================= 2. كبسولة أدوات التقويم ================= */}
             <div className="w-full md:hidden">
   <label
     htmlFor="mobile-assessment-tool"
