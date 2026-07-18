@@ -697,26 +697,78 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     </select>
   </div>
 </div>
-            {/* ================= 2. كبسولة أدوات التقويم ================= */}
-            <div className="w-full overflow-x-auto no-scrollbar pb-1">
-<div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-primary/5 border-primary/20 shadow-sm">                    {tools.map((tool, index) => (
-                        <React.Fragment key={tool.id}>
-                            {index > 0 && <div className={`w-[1px] h-4 mx-1.5 rounded-full shrink-0 bg-primary/20`} />}
-                            <button 
-                                onClick={() => setActiveToolId(tool.id)} 
-                                className={`relative px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-300 ${activeToolId === tool.id ? 'bg-primary text-white shadow-md' : 'text-textSecondary hover:text-primary hover:bg-primary/10'}`}
-                            >
-                                {activeToolId === tool.id && <Check className="w-3 h-3" />}
-                                {tool.isFinal && <span className="text-warning text-[10px]">★</span>}
-                                {tool.name}
-                            </button>
-                        </React.Fragment>
-                    ))}
-                    {tools.length === 0 && (
-                        <span className={`px-4 py-2 text-[10px] font-bold text-textSecondary`}>{t('noToolsAdded')}</span>
-                    )}
-                </div>
-            </div>
+            <div className="w-full md:hidden">
+  <label
+    htmlFor="mobile-assessment-tool"
+    className="block mb-1.5 text-[10px] font-black text-textSecondary"
+  >
+    {t('assessmentToolCol')}
+  </label>
+
+  <select
+    id="mobile-assessment-tool"
+    data-voice-field="أداة التقويم"
+    aria-label={t('assessmentToolCol')}
+    value={activeToolId}
+    onChange={(event) => setActiveToolId(event.target.value)}
+    disabled={tools.length === 0}
+    className={`w-full h-12 rounded-2xl border border-primary/20 bg-primary/5 px-4 font-black text-sm text-textPrimary outline-none shadow-sm transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60 ${
+      dir === 'rtl' ? 'text-right' : 'text-left'
+    }`}
+  >
+    {tools.length === 0 ? (
+      <option value="">
+        {t('noToolsAdded')}
+      </option>
+    ) : (
+      tools.map((tool) => (
+        <option key={tool.id} value={tool.id}>
+          {tool.isFinal ? `★ ${tool.name}` : tool.name}
+        </option>
+      ))
+    )}
+  </select>
+</div>
+
+<div className="hidden w-full overflow-x-auto no-scrollbar pb-1 md:block">
+  <div className="inline-flex items-center p-1.5 rounded-full border transition-all bg-primary/5 border-primary/20 shadow-sm">
+    {tools.map((tool, index) => (
+      <React.Fragment key={tool.id}>
+        {index > 0 && (
+          <div className="w-[1px] h-4 mx-1.5 rounded-full shrink-0 bg-primary/20" />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setActiveToolId(tool.id)}
+          className={`relative px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-300 ${
+            activeToolId === tool.id
+              ? 'bg-primary text-white shadow-md'
+              : 'text-textSecondary hover:text-primary hover:bg-primary/10'
+          }`}
+        >
+          {activeToolId === tool.id && (
+            <Check className="w-3 h-3" />
+          )}
+
+          {tool.isFinal && (
+            <span className="text-warning text-[10px]">
+              ★
+            </span>
+          )}
+
+          {tool.name}
+        </button>
+      </React.Fragment>
+    ))}
+
+    {tools.length === 0 && (
+      <span className="px-4 py-2 text-[10px] font-bold text-textSecondary">
+        {t('noToolsAdded')}
+      </span>
+    )}
+  </div>
+</div>
 
             {/* ================= 3. أزرار الإجراءات السريعة (عصرية ومدمجة جداً) ================= */}
             <div className={`flex items-center justify-between gap-2 mt-1 p-2 rounded-2xl border bg-bgCard border-borderColor shadow-sm`}>
