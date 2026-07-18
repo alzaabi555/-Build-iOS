@@ -449,30 +449,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   return (
     <PageLayout
       title={t('attendanceTitle')}
-      icon={
-        <div className="flex items-center gap-3">
-          <CheckCircle2 className="w-6 h-6 text-primary" />
-          <div className="relative group hidden sm:block w-32 md:w-48 transition-all duration-300 focus-within:w-64">
-            <Search
-              className={`absolute ${
-                dir === 'rtl' ? 'right-3' : 'left-3'
-              } top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`}
-            />
-
-            <input
-              type="text"
-              data-voice-field="بحث الحضور"
-              aria-label={t('searchStudentPlaceholder')}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder={t('searchStudentPlaceholder')}
-              className={`w-full border rounded-xl py-2 ${
-                dir === 'rtl' ? 'pr-9 pl-3' : 'pl-9 pr-3'
-              } text-xs font-bold outline-none transition-all bg-bgCard border-borderColor text-textPrimary placeholder:text-textSecondary focus:bg-bgSoft focus:border-primary/40`}
-            />
-          </div>
-        </div>
-      }
+     icon={
+  <CheckCircle2 className="w-6 h-6 text-primary" />
+}
       rightActions={
         <div className="flex items-center gap-2 relative">
           <button
