@@ -57,6 +57,8 @@ interface MailMessage {
   semester?: string;
   className?: string;
   grade?: string;
+  replyToRow?: string | number;
+  replyToMessage?: string;
 }
 
 const MESSAGE_TYPES: Array<{ id: TeacherMessageType; labelKey: string; icon: React.ElementType; tone: string }> = [
@@ -106,6 +108,19 @@ const getStudentCode = (student: Student) => normalizeCode(
 );
 
 const getStudentClassName = (student: Student) => String(student.classes?.[0] || (student as any).className || '').trim();
+const formatClassLabel = (className: string) => {
+  const raw = normalizeArabicDigits(String(className || '')).trim();
+  if (!raw) return '';
+  const grade = getGradeFromClassName(raw);
+  const explicit = raw.match(/(?:^|\s)(12|11|10|[1-9])\s*[\/\-–—]\s*([1-9]\d?)(?:\s|$)/);
+  if (explicit) return `${explicit[1]}/${explicit[2]}`;
+  const numbers = raw.match(/12|11|10|[1-9]/g) || [];
+  if (grade !== 'غير محدد' && numbers.length >= 2) {
+    const section = numbers.find((value, index) => index > 0 && value !== grade) || numbers[1];
+    if (section) return `${grade}/${section}`;
+  }
+  return raw;
+};
 
 const formatDateTime = (value: string | undefined, language: string, fallback: string) => {
   if (!value) return fallback;
@@ -170,7 +185,6 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const [isFetching, setIsFetching] = useState(false);
   const [query, setQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
-  const [selectedGradeForSend, setSelectedGradeForSend] = useState('all');
   const [selectedClassForSend, setSelectedClassForSend] = useState('all');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [messageType, setMessageType] = useState<TeacherMessageType>('general');
@@ -191,24 +205,10 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     return Array.from(set).sort();
   }, [students]);
 
-  const gradeOptions = useMemo(() => {
-    const set = new Set<string>();
-    classOptions.forEach(className => set.add(getGradeFromClassName(className)));
-    return Array.from(set).filter(Boolean).sort((a, b) => Number(a) - Number(b));
-  }, [classOptions]);
-
-  const filteredClassOptions = useMemo(() => {
-    return classOptions.filter(className => selectedGradeForSend === 'all' || getGradeFromClassName(className) === selectedGradeForSend);
-  }, [classOptions, selectedGradeForSend]);
-
   useEffect(() => {
     localStorage.setItem('rased_teacher_sent_messages_local', JSON.stringify(localSentMessages.slice(0, 100)));
   }, [localSentMessages]);
 
-  useEffect(() => {
-    setSelectedClassForSend('all');
-    setSelectedStudentId('');
-  }, [selectedGradeForSend]);
 
   useEffect(() => {
     setSelectedStudentId('');
@@ -225,17 +225,15 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       .filter(Boolean)
       .filter(student => {
         const className = getStudentClassName(student);
-        const grade = getGradeFromClassName(className);
-        const gradeOk = selectedGradeForSend === 'all' || grade === selectedGradeForSend;
         const classOk = selectedClassForSend === 'all' || className === selectedClassForSend;
         const queryOk = !q ||
           String(student.name || '').toLowerCase().includes(q) ||
           getStudentCode(student).toLowerCase().includes(q) ||
           className.toLowerCase().includes(q);
-        return gradeOk && classOk && queryOk;
+        return classOk && queryOk;
       })
       .slice(0, 100);
-  }, [students, studentQuery, selectedGradeForSend, selectedClassForSend]);
+  }, [students, studentQuery, selectedClassForSend]);
 
   const inboxMessages = useMemo(() => messages.filter(msg => !isTeacherSentMessage(msg)), [messages]);
   const sentMessages = useMemo(() => {
@@ -264,17 +262,18 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     try {
       const school = teacherInfo?.school || '';
       const subject = teacherInfo?.subject || '';
-      const params = new URLSearchParams({ action: 'getMessages' });
+      const params = new URLSearchParams({ action: 'getMessages', t: String(Date.now()) });
       if (school) params.set('school', school);
       if (subject) params.set('subject', subject);
       params.set('semester', currentSemester);
       const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`);
       const result = await response.json();
-      if (result.status === 'success') setMessages(Array.isArray(result.messages) ? result.messages : []);
-      else setMessages([]);
+      if (result.status === 'success') {
+        const list = Array.isArray(result.messages) ? result.messages : [];
+        setMessages(list.sort((a: MailMessage, b: MailMessage) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
+      }
     } catch (error) {
       console.error('Error fetching parent messages:', error);
-      setMessages([]);
     } finally {
       setIsFetching(false);
     }
@@ -284,14 +283,18 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     fetchParentMessages();
   }, [teacherInfo?.school, teacherInfo?.subject, currentSemester]);
 
-  const sendUrlEncoded = async (payload: Record<string, string>) => {
-    const body = new URLSearchParams(payload);
-    await fetch(GOOGLE_WEB_APP_URL, {
+  const sendCloudMessage = async (payload: Record<string, string>) => {
+    const response = await fetch(GOOGLE_WEB_APP_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
+    const result = await response.json();
+    if (result.status !== 'success' && result.success !== true) {
+      throw new Error(result.message || 'Cloud message request failed');
+    }
+    return result;
   };
 
   const handleDeleteMessage = async (msg: MailMessage) => {
@@ -329,7 +332,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     setIsSending(true);
     try {
       const rasedId = normalizeCode(msg.rasedId || msg.civilID || msg.parentCode || '');
-      await sendUrlEncoded({
+      await sendCloudMessage({
         action: 'sendTeacherReply',
         rowNumber: String(msg.rowNumber || msg.messageRow || msg.row || ''),
         rasedId,
@@ -383,7 +386,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
     const grade = getGradeFromClassName(className);
     setIsSending(true);
     try {
-      await sendUrlEncoded({
+      const cloudResult = await sendCloudMessage({
         action: 'sendTeacherMessage',
         rasedId,
         civilID: rasedId,
@@ -419,7 +422,15 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         className,
         grade
       };
-      setLocalSentMessages(prev => [localRecord, ...prev].slice(0, 100));
+      const savedRecord: MailMessage = cloudResult.messageData
+        ? { ...localRecord, ...cloudResult.messageData, localId: localRecord.localId }
+        : localRecord;
+      setLocalSentMessages(prev => [savedRecord, ...prev.filter(item => item.localId !== localRecord.localId)].slice(0, 100));
+      setMessages(prev => {
+        const rowNumber = savedRecord.rowNumber;
+        const withoutDuplicate = rowNumber ? prev.filter(item => item.rowNumber !== rowNumber) : prev;
+        return [savedRecord, ...withoutDuplicate];
+      });
       setTeacherMessage('');
       setSelectedStudentId('');
       setMessageType('general');
@@ -452,7 +463,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
                 <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full" dir="ltr">{msg.rasedId || msg.civilID || msg.parentCode || 'RSD'}</span>
                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${teacherSent ? typeInfo.tone : 'bg-bgSoft border-borderColor text-textSecondary'}`}>{teacherSent ? typeLabel : t('mailboxIncomingFromParent')}</span>
                 <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />{formatDateTime(msg.date, language, t('mailboxUnknown'))}</span>
-                {msg.className && <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{msg.className}</span>}
+                {msg.className && <span className="text-[9px] font-black bg-bgSoft border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{formatClassLabel(msg.className)}</span>}
               </div>
             </div>
           </div>
@@ -463,6 +474,12 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
             </button>
           </div>
         </div>
+        {msg.replyToMessage && (
+          <div className="mb-2 rounded-2xl bg-primary/5 border border-primary/15 p-3">
+            <p className="text-[10px] font-black text-primary mb-1 flex items-center gap-1"><Reply className="w-3.5 h-3.5" />رد على رسالتك</p>
+            <p className="text-[11px] font-bold text-textSecondary leading-5 line-clamp-3">{msg.replyToMessage}</p>
+          </div>
+        )}
         <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold text-textPrimary leading-7">{msg.message || t('mailboxNoText')}</div>
         {msg.teacherReply && (
           <div className="mt-3 rounded-2xl bg-success/10 border border-success/20 p-3 text-sm font-bold text-success leading-7">
@@ -529,14 +546,10 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         <section className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
             <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><User className="w-4 h-4 text-primary" />{t('mailboxSelectStudent')}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-              <select value={selectedGradeForSend} onChange={(e) => setSelectedGradeForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
-                <option value="all">{t('mailboxAllGrades')}</option>
-                {gradeOptions.map(grade => <option key={grade} value={grade}>{t('mailboxGradePrefix')} {grade}</option>)}
-              </select>
+            <div className="mb-3">
               <select value={selectedClassForSend} onChange={(e) => setSelectedClassForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
                 <option value="all">{t('mailboxAllClasses')}</option>
-                {filteredClassOptions.map(className => <option key={className} value={className}>{className}</option>)}
+                {classOptions.map(className => <option key={className} value={className}>{formatClassLabel(className)}</option>)}
               </select>
             </div>
             <label className="relative block mb-3"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder={t('mailboxStudentSearch')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label>
@@ -544,14 +557,14 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
               {studentsForSend.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">{t('mailboxNoStudentResults')}</div> : studentsForSend.map(student => {
                 const code = getStudentCode(student);
                 const active = selectedStudentId === code || selectedStudentId === student.id;
-                return <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className={`w-full rounded-2xl border p-3 text-start transition-all active:scale-[0.99] ${active ? 'bg-primary/10 border-primary/30' : 'bg-bgSoft border-borderColor hover:border-primary/20'}`}><p className="text-xs font-black text-textPrimary truncate">{student.name}</p><div className="flex flex-wrap items-center gap-1 mt-1"><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(student)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{code || 'RSD'}</span></div></button>;
+                return <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className={`w-full rounded-2xl border p-3 text-start transition-all active:scale-[0.99] ${active ? 'bg-primary/10 border-primary/30' : 'bg-bgSoft border-borderColor hover:border-primary/20'}`}><p className="text-xs font-black text-textPrimary truncate">{student.name}</p><div className="flex flex-wrap items-center gap-1 mt-1"><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{formatClassLabel(getStudentClassName(student))}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{code || 'RSD'}</span></div></button>;
               })}
             </div>
           </div>
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
             <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><Send className="w-4 h-4 text-primary" />{t('mailboxSendToParent')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">{MESSAGE_TYPES.map(type => { const active = messageType === type.id; const Icon = type.icon; return <button key={type.id} type="button" onClick={() => handleChangeType(type.id)} className={`rounded-2xl border p-3 text-xs font-black flex flex-col items-center gap-1 transition-all active:scale-95 ${active ? type.tone : 'bg-bgSoft border-borderColor text-textSecondary hover:text-primary'}`}><Icon className="w-4 h-4" />{t(type.labelKey)}</button>; })}</div>
-            <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 mb-4"><p className="text-[10px] font-black text-textSecondary mb-1">{t('mailboxSelectedStudent')}</p>{selectedStudent ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-black text-textPrimary">{selectedStudent.name}</span><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{getStudentClassName(selectedStudent)}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{getStudentCode(selectedStudent)}</span></div> : <span className="text-xs font-bold text-danger">{t('mailboxNoStudentSelected')}</span>}</div>
+            <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 mb-4"><p className="text-[10px] font-black text-textSecondary mb-1">{t('mailboxSelectedStudent')}</p>{selectedStudent ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-black text-textPrimary">{selectedStudent.name}</span><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{formatClassLabel(getStudentClassName(selectedStudent))}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{getStudentCode(selectedStudent)}</span></div> : <span className="text-xs font-bold text-danger">{t('mailboxNoStudentSelected')}</span>}</div>
             <textarea value={teacherMessage} onChange={event => setTeacherMessage(event.target.value)} rows={9} placeholder={t('mailboxMessagePlaceholder')} className="w-full rounded-3xl bg-bgSoft border border-borderColor p-4 text-sm font-bold text-textPrimary leading-7 focus:outline-none focus:border-primary/40" />
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4"><p className="text-[10px] font-bold text-textSecondary leading-5">{t('mailboxCloudNotice')}</p><button type="button" onClick={handleSendTeacherMessage} disabled={isSending || !selectedStudent || !teacherMessage.trim()} className="h-12 px-5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{t('mailboxSendButton')}</button></div>
           </div>
