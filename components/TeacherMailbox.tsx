@@ -130,6 +130,22 @@ const formatDateTime = (value: string | undefined, language: string, fallback: s
 };
 
 const getTypeInfo = (type?: string) => MESSAGE_TYPES.find(item => item.id === type) || MESSAGE_TYPES[0];
+const SENT_STORAGE_KEY = 'rased_teacher_sent_messages_local';
+const readStoredSentMessages = (): MailMessage[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SENT_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+const persistSentMessages = (items: MailMessage[]) => {
+  try {
+    localStorage.setItem(SENT_STORAGE_KEY, JSON.stringify(items.slice(0, 200)));
+  } catch (error) {
+    console.error('Unable to persist sent messages:', error);
+  }
+};
 
 const isTeacherSentMessage = (msg: MailMessage) => {
   return msg.sender === 'teacher' || msg.direction === 'teacher_to_parent' || msg.status === 'teacher_sent';
@@ -173,15 +189,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const { t, dir, language } = useApp();
   const [activeTab, setActiveTab] = useState<MailboxTab>('inbox');
   const [messages, setMessages] = useState<MailMessage[]>([]);
-  const [localSentMessages, setLocalSentMessages] = useState<MailMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem('rased_teacher_sent_messages_local');
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [localSentMessages, setLocalSentMessages] = useState<MailMessage[]>(readStoredSentMessages);
   const [isFetching, setIsFetching] = useState(false);
   const [query, setQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
@@ -206,7 +214,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   }, [students]);
 
   useEffect(() => {
-    localStorage.setItem('rased_teacher_sent_messages_local', JSON.stringify(localSentMessages.slice(0, 100)));
+    persistSentMessages(localSentMessages);
   }, [localSentMessages]);
 
 
@@ -238,9 +246,14 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
   const inboxMessages = useMemo(() => messages.filter(msg => !isTeacherSentMessage(msg)), [messages]);
   const sentMessages = useMemo(() => {
     const cloudSent = messages.filter(msg => isTeacherSentMessage(msg));
-    const cloudKeys = new Set(cloudSent.map(msg => `${msg.message || ''}_${msg.rasedId || msg.civilID || ''}_${msg.date || ''}`));
-    const localOnly = localSentMessages.filter(msg => !cloudKeys.has(`${msg.message || ''}_${msg.rasedId || msg.civilID || ''}_${msg.date || ''}`));
-    return [...localOnly, ...cloudSent];
+    const cloudRows = new Set(cloudSent.map(msg => String(msg.rowNumber || '')).filter(Boolean));
+    const cloudFallbackKeys = new Set(cloudSent.map(msg => `${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`));
+    const localOnly = localSentMessages.filter(msg => {
+      const rowKey = String(msg.rowNumber || '');
+      if (rowKey && cloudRows.has(rowKey)) return false;
+      return !cloudFallbackKeys.has(`${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`);
+    });
+    return [...localOnly, ...cloudSent].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [messages, localSentMessages]);
 
   const visibleMessages = useMemo(() => {
@@ -266,7 +279,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       if (school) params.set('school', school);
       if (subject) params.set('subject', subject);
       params.set('semester', currentSemester);
-      const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`);
+      const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`, { cache: 'no-store', redirect: 'follow' });
       const result = await response.json();
       if (result.status === 'success') {
         const list = Array.isArray(result.messages) ? result.messages : [];
@@ -281,6 +294,22 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
 
   useEffect(() => {
     fetchParentMessages();
+  }, [teacherInfo?.school, teacherInfo?.subject, currentSemester]);
+
+  useEffect(() => {
+    const restoreAndRefresh = () => {
+      setLocalSentMessages(readStoredSentMessages());
+      fetchParentMessages();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') restoreAndRefresh();
+    };
+    window.addEventListener('focus', restoreAndRefresh);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', restoreAndRefresh);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [teacherInfo?.school, teacherInfo?.subject, currentSemester]);
 
   const sendCloudMessage = async (payload: Record<string, string>) => {
@@ -341,6 +370,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         schoolName: String(msg.schoolName || teacherInfo?.school || ''),
         subject: String(msg.subject || teacherInfo?.subject || ''),
         replyText: replyText.trim(),
+        replyTextEncoded: encodeURIComponent(replyText.trim()),
         teacherName: teacherInfo?.name || t('mailboxDefaultTeacher'),
         semester: currentSemester
       });
@@ -397,12 +427,18 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
         teacherName: teacherInfo?.name || t('mailboxDefaultTeacher'),
         messageType,
         message: teacherMessage.trim(),
+        messageEncoded: encodeURIComponent(teacherMessage.trim()),
+        messageLength: String(teacherMessage.trim().length),
         sender: 'teacher',
         direction: 'teacher_to_parent',
         semester: currentSemester,
         className,
         grade
       });
+      const cloudSavedMessage = String(cloudResult.messageData?.message || '');
+      if (cloudSavedMessage && cloudSavedMessage !== teacherMessage.trim()) {
+        throw new Error('Cloud message text verification failed');
+      }
       const localRecord: MailMessage = {
         localId: `local_sent_${Date.now()}`,
         date: new Date().toISOString(),
@@ -425,7 +461,9 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       const savedRecord: MailMessage = cloudResult.messageData
         ? { ...localRecord, ...cloudResult.messageData, localId: localRecord.localId }
         : localRecord;
-      setLocalSentMessages(prev => [savedRecord, ...prev.filter(item => item.localId !== localRecord.localId)].slice(0, 100));
+      const nextLocalSent = [savedRecord, ...readStoredSentMessages().filter(item => item.localId !== localRecord.localId)].slice(0, 200);
+      persistSentMessages(nextLocalSent);
+      setLocalSentMessages(nextLocalSent);
       setMessages(prev => {
         const rowNumber = savedRecord.rowNumber;
         const withoutDuplicate = rowNumber ? prev.filter(item => item.rowNumber !== rowNumber) : prev;
@@ -540,7 +578,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       {activeTab === 'inbox' || activeTab === 'sent' ? (
         <section className="space-y-3">
           <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><label className="relative block"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('mailboxSearchPlaceholder')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label></div>
-          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title={t('mailboxFetchingTitle')} text={t('mailboxFetchingText')} /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? t('mailboxNoInbox') : t('mailboxNoSent')} text={activeTab === 'inbox' ? t('mailboxNoInboxHint') : t('mailboxNoSentHint')} /> : visibleMessages.map((msg, index) => <MailMessageCard key={`${msg.rowNumber || msg.localId || msg.date || index}_${index}`} msg={msg} index={index} />)}
+          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title={t('mailboxFetchingTitle')} text={t('mailboxFetchingText')} /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? t('mailboxNoInbox') : t('mailboxNoSent')} text={activeTab === 'inbox' ? t('mailboxNoInboxHint') : t('mailboxNoSentHint')} /> : visibleMessages.map((msg, index) => MailMessageCard({ msg, index }))}
         </section>
       ) : (
         <section className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
