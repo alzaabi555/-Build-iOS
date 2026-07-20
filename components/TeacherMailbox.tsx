@@ -150,6 +150,11 @@ const persistSentMessages = (items: MailMessage[]) => {
 const isTeacherSentMessage = (msg: MailMessage) => {
   return msg.sender === 'teacher' || msg.direction === 'teacher_to_parent' || msg.status === 'teacher_sent';
 };
+const normalizeMailboxText = (value: unknown) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const isUnknownMailboxSubject = (value: unknown) => {
+  const normalized = normalizeMailboxText(value);
+  return !normalized || normalized === 'غير محدد' || normalized === 'undefined' || normalized === 'null';
+};
 
 const interpolate = (template: string, replacements: Record<string, string>) => {
   return Object.entries(replacements).reduce(
@@ -243,9 +248,21 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       .slice(0, 100);
   }, [students, studentQuery, selectedClassForSend]);
 
-  const inboxMessages = useMemo(() => messages.filter(msg => !isTeacherSentMessage(msg)), [messages]);
+  const teacherStudentCodes = useMemo(() => new Set(students.map(getStudentCode).filter(Boolean)), [students]);
+  const scopedMessages = useMemo(() => {
+    const teacherSubject = normalizeMailboxText(teacherInfo?.subject || '');
+    return messages.filter(msg => {
+      const messageSubject = normalizeMailboxText(msg.subject || '');
+      if (!teacherSubject || messageSubject === teacherSubject) return true;
+      if (isUnknownMailboxSubject(messageSubject)) {
+        return teacherStudentCodes.has(normalizeCode(msg.rasedId || msg.civilID || msg.parentCode || ''));
+      }
+      return false;
+    });
+  }, [messages, teacherInfo?.subject, teacherStudentCodes]);
+  const inboxMessages = useMemo(() => scopedMessages.filter(msg => !isTeacherSentMessage(msg)), [scopedMessages]);
   const sentMessages = useMemo(() => {
-    const cloudSent = messages.filter(msg => isTeacherSentMessage(msg));
+    const cloudSent = scopedMessages.filter(msg => isTeacherSentMessage(msg));
     const cloudRows = new Set(cloudSent.map(msg => String(msg.rowNumber || '')).filter(Boolean));
     const cloudFallbackKeys = new Set(cloudSent.map(msg => `${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`));
     const localOnly = localSentMessages.filter(msg => {
@@ -254,7 +271,7 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       return !cloudFallbackKeys.has(`${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`);
     });
     return [...localOnly, ...cloudSent].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-  }, [messages, localSentMessages]);
+  }, [scopedMessages, localSentMessages]);
 
   const visibleMessages = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -277,7 +294,6 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
       const subject = teacherInfo?.subject || '';
       const params = new URLSearchParams({ action: 'getMessages', t: String(Date.now()) });
       if (school) params.set('school', school);
-      if (subject) params.set('subject', subject);
       params.set('semester', currentSemester);
       const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`, { cache: 'no-store', redirect: 'follow' });
       const result = await response.json();
