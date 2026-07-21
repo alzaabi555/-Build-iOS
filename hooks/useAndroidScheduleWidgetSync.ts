@@ -82,11 +82,26 @@ const getPeriodStatus = (
 };
 
 const formatTimeRange = (period: WidgetPeriod | null) => {
-  if (!period) return '';
-  if (!period.startTime && !period.endTime) return '';
-
-  return `${period.startTime || '--:--'} - ${period.endTime || '--:--'}`;
+  if (!period?.startTime || !period?.endTime) return '';
+  return `${period.startTime} - ${period.endTime}`;
 };
+
+const getNowMinutes = () => {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+};
+
+const getMinutesUntil = (time?: string) => {
+  const target = minutesFromTime(time);
+  return target === null ? null : Math.max(0, target - getNowMinutes());
+};
+
+const getMinutesRemaining = (time?: string) => {
+  const end = minutesFromTime(time);
+  return end === null ? null : Math.max(0, end - getNowMinutes());
+};
+
+const minuteText = (minutes: number) => `${minutes} دقيقة`;
 
 const buildWidgetPayload = (
   schedule: ScheduleDay[],
@@ -132,34 +147,76 @@ const buildWidgetPayload = (
     })
     .filter((item): item is WidgetPeriod => Boolean(item));
 
-  const currentPeriod =
-    validPeriods.find(period => period.status === 'active') || null;
+  const currentPeriod = validPeriods.find(period => period.status === 'active') || null;
+  const nextPeriod = validPeriods.find(period => period.status === 'upcoming') || null;
+  const firstPeriod = validPeriods[0] || null;
+  const lastPeriod = validPeriods[validPeriods.length - 1] || null;
+  const nowMinutes = getNowMinutes();
+  const firstStart = minutesFromTime(firstPeriod?.startTime);
+  const lastEnd = minutesFromTime(lastPeriod?.endTime);
+  const isWeekendPreview = !isToday;
+  const isBeforeSchool = Boolean(isToday && firstStart !== null && nowMinutes < firstStart);
+  const isFinished = Boolean(isToday && lastEnd !== null && nowMinutes >= lastEnd);
+  const isBetweenPeriods = Boolean(isToday && !currentPeriod && nextPeriod && !isBeforeSchool);
 
-  const nextPeriod =
-    validPeriods.find(period => period.status === 'upcoming') || null;
+  let currentTitle = 'لا توجد حصة حاليًا';
+  let currentClass = 'لا توجد حصة الآن';
+  let currentSubject = '';
+  let currentTime = '';
 
+  if (currentPeriod) {
+    const remaining = getMinutesRemaining(currentPeriod.endTime);
+    currentTitle = `الحصة الآن • ${currentPeriod.index + 1}`;
+    currentClass = currentPeriod.className;
+    currentSubject = currentPeriod.subject;
+    currentTime = `${formatTimeRange(currentPeriod)}${remaining !== null ? ` • متبقٍ ${minuteText(remaining)}` : ''}`;
+  } else if (isWeekendPreview) {
+    currentTitle = 'الدوام القادم';
+    currentClass = firstPeriod?.className || 'لا توجد حصص مسجلة';
+    currentSubject = firstPeriod?.subject || '';
+    currentTime = formatTimeRange(firstPeriod);
+  } else if (isBeforeSchool) {
+    const until = getMinutesUntil(firstPeriod?.startTime);
+    currentTitle = 'قبل بداية الدوام';
+    currentClass = firstPeriod ? `الأولى • ${firstPeriod.className}` : 'لا توجد حصص مسجلة';
+    currentSubject = firstPeriod?.subject || '';
+    currentTime = until !== null ? `يبدأ بعد ${minuteText(until)}` : formatTimeRange(firstPeriod);
+  } else if (isBetweenPeriods) {
+    const until = getMinutesUntil(nextPeriod?.startTime);
+    currentTitle = 'بين الحصص';
+    currentClass = 'لا توجد حصة الآن';
+    currentSubject = nextPeriod && until !== null ? `القادمة بعد ${minuteText(until)}` : '';
+  } else if (isFinished) {
+    currentTitle = 'انتهت حصص اليوم';
+    currentClass = `اكتملت ${validPeriods.length} حصص`;
+    currentSubject = 'نتمنى لك يومًا موفقًا';
+  } else if (validPeriods.length === 0) {
+    currentTitle = 'جدول اليوم';
+    currentClass = 'لا توجد حصص مسجلة';
+  } else {
+    currentTitle = 'جدول اليوم';
+    currentClass = 'أوقات الحصص غير مكتملة';
+  }
+
+  const displayNextPeriod = isWeekendPreview ? validPeriods[1] || null : nextPeriod;
+  const nextTitle = displayNextPeriod
+    ? `${isWeekendPreview ? 'تليها' : 'القادمة'} • ${displayNextPeriod.index + 1}`
+    : isFinished ? 'لا توجد حصة قادمة' : 'القادمة';
   const now = new Date();
 
   return {
-    todayName,
-
-   currentTitle: currentPeriod ? `الحصة الآن • ${currentPeriod.index + 1}` : 'لا توجد حصة حاليًا',
-    currentClass: currentPeriod?.className || '',
-    currentSubject: currentPeriod?.subject || subjectName,
-    currentTime: formatTimeRange(currentPeriod),
-
-    nextTitle: nextPeriod ? `القادمة • ${nextPeriod.index + 1}` : 'لا توجد حصة قادمة',
-    nextClass: nextPeriod?.className || '',
-    nextSubject: nextPeriod?.subject || subjectName,
-    nextTime: formatTimeRange(nextPeriod),
-
+    todayName: isWeekendPreview ? `الدوام القادم • ${todayName}` : todayName,
+    currentTitle,
+    currentClass,
+    currentSubject,
+    currentTime,
+    nextTitle,
+    nextClass: displayNextPeriod?.className || 'لا توجد حصة قادمة',
+    nextSubject: displayNextPeriod?.subject || '',
+    nextTime: formatTimeRange(displayNextPeriod),
     school: teacherInfo?.school || '',
     teacherName: teacherInfo?.name || '',
-
-    updatedAt: now.toLocaleTimeString('ar-OM', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    updatedAt: now.toLocaleTimeString('ar-OM', { hour: '2-digit', minute: '2-digit' })
   };
 };
 
