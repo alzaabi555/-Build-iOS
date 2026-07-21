@@ -119,11 +119,11 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
         fallback.currentLabel = "الحصة الآن";
         fallback.currentClass = "افتح راصد";
         fallback.currentSubject = "لتحديث الجدول";
-        fallback.currentTime = "--:--";
+        fallback.currentTime = "";
         fallback.nextLabel = "القادمة";
-        fallback.nextClass = "غير محدد";
+        fallback.nextClass = "لا توجد حصة قادمة";
         fallback.nextSubject = "";
-        fallback.nextTime = "--:--";
+        fallback.nextTime = "";
         fallback.updatedText = "لم يتم التحديث بعد";
 
         try {
@@ -160,15 +160,9 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
                     "-"
             );
 
-            state.currentSubject = safeText(
-                    data.optString("currentSubject", ""),
-                    data.optString("subject", "المادة")
-            );
+            state.currentSubject = safeText(data.optString("currentSubject", ""), "");
 
-            state.currentTime = safeText(
-                    data.optString("currentTime", ""),
-                    "--:--"
-            );
+            state.currentTime = safeText(data.optString("currentTime", ""), "");
 
             state.nextLabel = safeText(
                     data.optString("nextTitle", ""),
@@ -180,15 +174,9 @@ public class RasedScheduleWidgetProvider extends AppWidgetProvider {
                     "-"
             );
 
-            state.nextSubject = safeText(
-                    data.optString("nextSubject", ""),
-                    data.optString("subject", "المادة")
-            );
+            state.nextSubject = safeText(data.optString("nextSubject", ""), "");
 
-            state.nextTime = safeText(
-                    data.optString("nextTime", ""),
-                    "--:--"
-            );
+            state.nextTime = safeText(data.optString("nextTime", ""), "");
 
             String updatedAt = data.optString("updatedAt", "");
 
