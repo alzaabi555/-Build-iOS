@@ -180,7 +180,11 @@ const buildWidgetPayload = (
     currentTitle = 'قبل بداية الدوام';
     currentClass = firstPeriod ? `الأولى • ${firstPeriod.className}` : 'لا توجد حصص مسجلة';
     currentSubject = firstPeriod?.subject || '';
-    currentTime = until !== null ? `يبدأ بعد ${minuteText(until)}` : formatTimeRange(firstPeriod);
+    currentTime = until !== null && until <= 120
+      ? `يبدأ بعد ${minuteText(until)}`
+      : firstPeriod?.startTime
+        ? `يبدأ الساعة ${firstPeriod.startTime}`
+        : formatTimeRange(firstPeriod);
   } else if (isBetweenPeriods) {
     const until = getMinutesUntil(nextPeriod?.startTime);
     currentTitle = 'بين الحصص';
