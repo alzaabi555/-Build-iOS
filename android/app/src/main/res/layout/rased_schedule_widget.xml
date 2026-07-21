@@ -32,7 +32,12 @@
             android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl"
             android:paddingStart="9dp" android:paddingEnd="9dp" android:paddingTop="7dp" android:paddingBottom="7dp"
             android:background="@drawable/rased_schedule_current_period_bg" android:layout_marginStart="4dp">
-            <View android:layout_width="4dp" android:layout_height="60dp" android:background="#8EC5F4" android:layout_marginEnd="8dp" />
+            <TextView
+                android:layout_width="4dp"
+                android:layout_height="60dp"
+                android:text=""
+                android:background="#8EC5F4"
+                android:layout_marginEnd="8dp" />
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                 <TextView android:id="@+id/widget_current_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="الحصة الآن" android:textColor="#2E6388" android:textSize="9sp" android:textStyle="bold" android:maxLines="1" />
@@ -50,7 +55,12 @@
             android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl"
             android:paddingStart="9dp" android:paddingEnd="9dp" android:paddingTop="7dp" android:paddingBottom="7dp"
             android:background="@drawable/rased_schedule_next_period_bg" android:layout_marginEnd="4dp">
-            <View android:layout_width="4dp" android:layout_height="60dp" android:background="#B7D8F5" android:layout_marginEnd="8dp" />
+            <TextView
+                android:layout_width="4dp"
+                android:layout_height="60dp"
+                android:text=""
+                android:background="#B7D8F5"
+                android:layout_marginEnd="8dp" />
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                 <TextView android:id="@+id/widget_next_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="القادمة" android:textColor="#50748F" android:textSize="9sp" android:textStyle="bold" android:maxLines="1" />
