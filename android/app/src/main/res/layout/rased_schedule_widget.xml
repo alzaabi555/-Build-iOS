@@ -1,85 +1,171 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:gravity="top" android:layoutDirection="rtl"
-    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="10dp" android:paddingBottom="9dp"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:layoutDirection="rtl"
+    android:gravity="top"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="10dp"
     android:background="@drawable/rased_schedule_widget_bg">
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl"
-        android:layout_marginBottom="8dp">
-        <TextView android:id="@+id/widget_logo_text" android:layout_width="32dp" android:layout_height="32dp"
-            android:gravity="center" android:text="ر" android:textColor="#FFFFFF" android:textStyle="bold"
-            android:textSize="16sp" android:background="@drawable/rased_schedule_day_chip_bg" android:layout_marginEnd="10dp" />
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:id="@+id/widget_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="راصد" android:textColor="#163A5F" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
-            <TextView android:id="@+id/widget_subtitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="جدول الحصص" android:textColor="#5B7893" android:textSize="10sp" android:maxLines="1" />
-            <TextView android:id="@+id/widget_updated" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="آخر تحديث من راصد" android:textColor="#8CA0B3" android:textSize="8sp" android:maxLines="1" />
-        </LinearLayout>
-        <TextView android:id="@+id/widget_today" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="اليوم" android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold"
-            android:paddingStart="11dp" android:paddingEnd="11dp" android:paddingTop="5dp" android:paddingBottom="5dp"
-            android:background="@drawable/rased_schedule_day_chip_bg" android:maxLines="1" />
-    </LinearLayout>
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:orientation="horizontal" android:baselineAligned="false" android:gravity="center_vertical"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:layoutDirection="rtl">
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
-            android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl"
-            android:paddingStart="9dp" android:paddingEnd="9dp" android:paddingTop="7dp" android:paddingBottom="7dp"
-            android:background="@drawable/rased_schedule_current_period_bg" android:layout_marginStart="4dp">
-            <TextView
-                android:layout_width="4dp"
-                android:layout_height="match_parent"
-                android:minHeight="72dp"
-                android:text=""
-                android:background="#8EC5F4"
-                android:layout_marginEnd="8dp" />
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView
+            android:id="@+id/widget_logo_text"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:gravity="center"
+            android:text="ر"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:background="@drawable/rased_schedule_day_chip_bg"
+            android:layout_marginEnd="10dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:id="@+id/widget_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="راصد" android:textColor="#173B5F" android:textSize="17sp" android:textStyle="bold" android:maxLines="1" />
+            <TextView android:id="@+id/widget_subtitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="جدول الحصص" android:textColor="#607D96" android:textSize="10sp" android:maxLines="1" />
+            <TextView android:id="@+id/widget_updated" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="آخر تحديث من راصد" android:textColor="#91A4B5" android:textSize="8sp" android:maxLines="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_today"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="اليوم"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:paddingStart="13dp"
+            android:paddingEnd="13dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="@drawable/rased_schedule_day_chip_bg"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:text=""
+        android:background="#EDF1F4"
+        android:layout_marginBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:layoutDirection="rtl"
+        android:gravity="center_vertical"
+        android:baselineAligned="false">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layoutDirection="rtl"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:background="@drawable/rased_schedule_current_period_bg">
+
+            <TextView android:layout_width="4dp" android:layout_height="match_parent" android:text=""
+                android:background="#63AEEA" android:layout_marginEnd="11dp" />
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:orientation="vertical" android:gravity="center_vertical">
                 <TextView android:id="@+id/widget_current_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="الحصة الآن" android:textColor="#2E6388" android:textSize="9sp" android:textStyle="bold" android:maxLines="1" />
+                    android:text="الحصة الآن" android:textColor="#2871B7" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
                 <TextView android:id="@+id/widget_current_class" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="-" android:textColor="#163A5F" android:textSize="17sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+                    android:text="-" android:textColor="#173B5F" android:textSize="22sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layout_marginTop="4dp" />
                 <TextView android:id="@+id/widget_current_subject" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="" android:textColor="#5B7893" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" />
+                    android:text="" android:textColor="#355E7C" android:textSize="11sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layout_marginTop="2dp" />
                 <TextView android:id="@+id/widget_current_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="" android:textColor="#245D82" android:textSize="10sp" android:textStyle="bold" android:maxLines="1"
-                    android:ellipsize="end" android:layoutDirection="ltr" android:textDirection="ltr" android:gravity="start" />
+                    android:text="" android:textColor="#2871B7" android:textSize="11sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layoutDirection="ltr" android:textDirection="ltr"
+                    android:gravity="end" android:layout_marginTop="5dp" />
             </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
-            android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl"
-            android:paddingStart="9dp" android:paddingEnd="9dp" android:paddingTop="7dp" android:paddingBottom="7dp"
-            android:background="@drawable/rased_schedule_next_period_bg" android:layout_marginEnd="4dp">
-            <TextView
-                android:layout_width="4dp"
-                android:layout_height="match_parent"
-                android:minHeight="72dp"
-                android:text=""
-                android:background="#B7D8F5"
-                android:layout_marginEnd="8dp" />
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:text=""
+            android:background="#DDE6ED"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layoutDirection="rtl"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:background="@drawable/rased_schedule_next_period_bg">
+
+            <TextView android:layout_width="4dp" android:layout_height="match_parent" android:text=""
+                android:background="#A7D2F3" android:layout_marginEnd="11dp" />
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:orientation="vertical" android:gravity="center_vertical">
                 <TextView android:id="@+id/widget_next_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="القادمة" android:textColor="#50748F" android:textSize="9sp" android:textStyle="bold" android:maxLines="1" />
+                    android:text="القادمة" android:textColor="#637C90" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
                 <TextView android:id="@+id/widget_next_class" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="-" android:textColor="#163A5F" android:textSize="17sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+                    android:text="-" android:textColor="#24506F" android:textSize="22sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layout_marginTop="4dp" />
                 <TextView android:id="@+id/widget_next_subject" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="" android:textColor="#6B8297" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" />
+                    android:text="" android:textColor="#4D6D84" android:textSize="11sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layout_marginTop="2dp" />
                 <TextView android:id="@+id/widget_next_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="" android:textColor="#245D82" android:textSize="10sp" android:textStyle="bold" android:maxLines="1"
-                    android:ellipsize="end" android:layoutDirection="ltr" android:textDirection="ltr" android:gravity="start" />
+                    android:text="" android:textColor="#2F6287" android:textSize="11sp" android:textStyle="bold"
+                    android:maxLines="1" android:ellipsize="end" android:layoutDirection="ltr" android:textDirection="ltr"
+                    android:gravity="end" android:layout_marginTop="5dp" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
-    <TextView android:id="@+id/widget_attendance_tip" android:layout_width="match_parent" android:layout_height="wrap_content"
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:text=""
+        android:background="#EDF1F4"
+        android:layout_marginTop="7dp" />
+
+    <TextView
+        android:id="@+id/widget_attendance_tip"
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
         android:text="تذكير: تسجيل الحضور والغياب مبكرًا يختصر وقت المتابعة."
-        android:textColor="#6F879C" android:textSize="8sp" android:gravity="center" android:maxLines="1"
-        android:ellipsize="end" android:layout_marginTop="6dp" android:layout_marginBottom="1dp" />
+        android:textColor="#758B9D"
+        android:textSize="9sp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end" />
 </LinearLayout>
