@@ -68,6 +68,7 @@
         android:layout_marginBottom="6dp" />
 
     <LinearLayout
+        android:id="@+id/widget_periods_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -149,6 +150,66 @@
                     android:gravity="end" android:layout_marginTop="5dp" />
             </LinearLayout>
         </LinearLayout>
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/widget_status_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:background="@drawable/rased_schedule_status_bg">
+
+        <TextView
+            android:id="@+id/widget_status_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="✓"
+            android:textColor="#FFFFFF"
+            android:textSize="25sp"
+            android:textStyle="bold"
+            android:background="@drawable/rased_schedule_status_icon_bg" />
+
+        <TextView
+            android:id="@+id/widget_status_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="انتهت حصص اليوم"
+            android:textColor="#2A78B9"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/widget_status_main"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="تم تنفيذ 4 حصص"
+            android:textColor="#173B5F"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:maxLines="2"
+            android:layout_marginTop="3dp" />
+
+        <TextView
+            android:id="@+id/widget_status_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="نتمنى لك يومًا موفقًا"
+            android:textColor="#607D96"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:layout_marginTop="3dp" />
     </LinearLayout>
 
     <TextView
