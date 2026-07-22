@@ -177,13 +177,13 @@ const buildWidgetPayload = (
     currentTime = formatTimeRange(firstPeriod);
   } else if (isBeforeSchool) {
     const until = getMinutesUntil(firstPeriod?.startTime);
-    currentTitle = 'قبل بداية الدوام';
-    currentClass = firstPeriod ? `الأولى • ${firstPeriod.className}` : 'لا توجد حصص مسجلة';
+    currentTitle = firstPeriod ? `أول حصة لك • ${firstPeriod.index + 1}` : 'قبل بداية الدوام';
+    currentClass = firstPeriod?.className || 'لا توجد حصص مسجلة';
     currentSubject = firstPeriod?.subject || '';
     currentTime = until !== null && until <= 120
-      ? `يبدأ بعد ${minuteText(until)}`
+      ? `تبدأ بعد ${minuteText(until)}`
       : firstPeriod?.startTime
-        ? `يبدأ الساعة ${firstPeriod.startTime}`
+        ? `تبدأ الساعة ${firstPeriod.startTime}`
         : formatTimeRange(firstPeriod);
   } else if (isBetweenPeriods) {
     const until = getMinutesUntil(nextPeriod?.startTime);
@@ -202,9 +202,17 @@ const buildWidgetPayload = (
     currentClass = 'أوقات الحصص غير مكتملة';
   }
 
-  const displayNextPeriod = isWeekendPreview ? validPeriods[1] || null : nextPeriod;
+  const firstPeriodPosition = firstPeriod
+    ? validPeriods.findIndex(period => period.index === firstPeriod.index)
+    : -1;
+  const periodAfterFirst = firstPeriodPosition >= 0
+    ? validPeriods[firstPeriodPosition + 1] || null
+    : null;
+  const displayNextPeriod = (isWeekendPreview || isBeforeSchool)
+    ? periodAfterFirst
+    : nextPeriod;
   const nextTitle = displayNextPeriod
-    ? `${isWeekendPreview ? 'تليها' : 'القادمة'} • ${displayNextPeriod.index + 1}`
+    ? `${isWeekendPreview || isBeforeSchool ? 'الحصة التالية' : 'القادمة'} • ${displayNextPeriod.index + 1}`
     : isFinished ? 'لا توجد حصة قادمة' : 'القادمة';
   const now = new Date();
 
