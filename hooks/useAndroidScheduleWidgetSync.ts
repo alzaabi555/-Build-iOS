@@ -216,7 +216,25 @@ const buildWidgetPayload = (
     : isFinished ? 'لا توجد حصة قادمة' : 'القادمة';
   const now = new Date();
 
+  const scheduleDays = (Array.isArray(schedule) ? schedule : []).map((day, dayIndexValue) => ({
+    dayIndex: dayIndexValue,
+    dayName: String(day?.dayName || ''),
+    periods: (Array.isArray(day?.periods) ? day.periods : []).map((className, index) => {
+      const time = periodTimes[index] || { startTime: '', endTime: '' };
+      return {
+        periodNumber: index + 1,
+        className: String(className || '').trim(),
+        subject: subjectName,
+        startTime: String(time.startTime || '').trim(),
+        endTime: String(time.endTime || '').trim()
+      };
+    })
+  }));
+
   return {
+    schemaVersion: 2,
+    scheduleUpdatedAtMillis: Date.now(),
+    scheduleDays,
     todayName: isWeekendPreview ? `الدوام القادم • ${todayName}` : todayName,
     currentTitle,
     currentClass,
