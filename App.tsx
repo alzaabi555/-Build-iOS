@@ -60,6 +60,7 @@ import { useAndroidScheduleWidgetSync } from './hooks/useAndroidScheduleWidgetSy
 // 🎮 بنك أسئلة الألعاب التعليمية
 import TeacherGameQuestionsManager from './components/TeacherGameQuestionsManager';
 import TeacherGameResultsDashboard from './components/TeacherGameResultsDashboard';
+import TeacherExamsManager from './components/TeacherExamsManager';
 import type { TeacherGameResultLogEntry } from './components/TeacherGameResultsDashboard';
 import type { PublishGameQuestionsPayload } from './components/TeacherGameQuestionsManager';
 
@@ -375,7 +376,7 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [studentManagementView, setStudentManagementView] = useState<'students' | 'attendance' | 'leaderboard' | 'groups'>('students');
   const [learningView, setLearningView] = useState<'grades' | 'tasks' | 'library'>('grades');
-  const [gamesView, setGamesView] = useState<'questions' | 'results'>('questions');
+  const [gamesView, setGamesView] = useState<'questions' | 'results' | 'exams'>('questions');
   const [reportsView, setReportsView] = useState<'reports' | 'leaderboard'>('reports');
   const [adminView, setAdminView] = useState<'sync'>('sync');
   const [helpView, setHelpView] = useState<'settings' | 'sync' | 'guide' | 'about'>('settings');
@@ -524,7 +525,7 @@ const handleToggleNotifications = () => {
     { id: 'student_management', label: t('navStudentsShort'), IconComponent: Users },
     { id: 'learning_evaluation', label: t('navLearningShort'), IconComponent: BookOpen },
     { id: 'mailbox', label: t('navMailboxShort'), IconComponent: Mail },
-    { id: 'games', label: t('navGamesShort'), IconComponent: Gamepad2 },
+    { id: 'games', label: 'الألعاب التعليمية والاختبارات', IconComponent: Gamepad2 },
     { id: 'reports_analysis', label: t('navReports'), IconComponent: BarChart3 },
     { id: 'help_settings', label: t('navMore'), IconComponent: SettingsIcon }
   ];
@@ -535,7 +536,7 @@ const handleToggleNotifications = () => {
     { id: 'student_management', label: t('navStudentManagement'), icon: Users },
     { id: 'learning_evaluation', label: t('navLearningAssessment'), icon: BookOpen },
     { id: 'mailbox', label: t('navMailboxMain'), icon: Mail },
-    { id: 'games', label: t('navEducationalGames'), icon: Gamepad2 },
+    { id: 'games', label: 'الألعاب التعليمية والاختبارات', icon: Gamepad2 },
     { id: 'reports_analysis', label: t('navReportsStandalone'), icon: BarChart3 },
     { id: 'help_settings', label: t('navSettingsSyncHelp'), icon: SettingsIcon }
   ];
@@ -613,6 +614,11 @@ const handleToggleNotifications = () => {
     }
     if (tab === 'game_results' || tab === 'results' || tab === 'game_non_participants') {
       setGamesView('results');
+      setActiveTab('games');
+      return;
+    }
+    if (tab === 'exams' || tab === 'teacher_exams') {
+      setGamesView('exams');
       setActiveTab('games');
       return;
     }
@@ -1118,6 +1124,17 @@ const handleToggleNotifications = () => {
               >
                 {t('tabResults')}
               </button>
+              <button
+                type="button"
+                onClick={() => setGamesView('exams')}
+                className={`flex-1 h-11 rounded-2xl font-black text-sm transition-all active:scale-95 ${
+                  gamesView === 'exams'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-bgSoft text-textSecondary hover:text-primary'
+                }`}
+              >
+                الاختبارات
+              </button>
             </div>
             {gamesView === 'questions' ? (
               <TeacherGameQuestionsManager
@@ -1131,7 +1148,7 @@ const handleToggleNotifications = () => {
                 gradeOptions={['الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر']}
                 onPublish={handlePublishGameQuestions}
               />
-            ) : (
+            ) : gamesView === 'results' ? (
               <TeacherGameResultsDashboard
                 results={gameResults}
                 students={students}
@@ -1141,6 +1158,8 @@ const handleToggleNotifications = () => {
                 teacherId={teacherInfo?.civilId || localStorage.getItem('rased_teacher_civil_id') || 'default_teacher'}
                 schoolCode={localStorage.getItem('rased_admin_school_code') || (teacherInfo as any)?.schoolCode || teacherInfo?.school || 'default_school'}
               />
+            ) : (
+              <TeacherExamsManager />
             )}
           </div>
         );
