@@ -712,14 +712,33 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   };
 
   const exportJson = () => {
-    const data = JSON.stringify(buildPublishPayload(), null, 2);
-    const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rased-game-questions-${schoolCode}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const exportQuestions = questions
+        .filter(question => question && question.questionType !== 'hints')
+        .map(question => normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions));
+      const payload = {
+        schoolCode,
+        teacherId,
+        exportedAt: new Date().toISOString(),
+        questionCount: exportQuestions.length,
+        questions: exportQuestions
+      };
+      const data = JSON.stringify(payload, null, 2);
+      const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `rased-game-questions-${schoolCode || 'local'}-${Date.now()}.json`;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('success', `تم تصدير ${exportQuestions.length} سؤالًا بنجاح.`);
+    } catch (error) {
+      console.error('Failed to export game questions', error);
+      showToast('danger', 'تعذر تصدير الأسئلة. حاول مرة أخرى.');
+    }
   };
 
   const importJson = async (file: File) => {

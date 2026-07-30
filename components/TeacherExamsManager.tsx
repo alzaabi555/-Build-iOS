@@ -7,6 +7,7 @@ import {
   Download,
   FilePlus2,
   GraduationCap,
+  Gamepad2,
   Library,
   ListChecks,
   Plus,
@@ -140,6 +141,116 @@ function useLocalStorageState<T>(key: string, initialValue: T) {
   return [value, setValue] as const;
 }
 
+const GAME_QUESTION_KEY_PREFIXES = [
+  "rased_teacher_game_questions_",
+  "rased_teacher_game_questions_active_",
+  "rased_teacher_game_questions_archive_",
+] as const;
+
+const GAME_QUESTION_FIXED_KEYS = [
+  "rased_teacher_published_game_questions",
+  "rased_game_questions",
+] as const;
+
+function asTextArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+  if (typeof value !== "string" || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item ?? "").trim()).filter(Boolean);
+  } catch {
+    // ليست JSON، نجرب القائمة المفصولة بفواصل.
+  }
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function readQuestionArrayFromStorage(key: string): any[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || "[]");
+    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed?.questions)) return parsed.questions;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function getAllGameQuestionStorageKeys(): string[] {
+  if (typeof window === "undefined") return [];
+  const keys = new Set<string>(GAME_QUESTION_FIXED_KEYS);
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key) continue;
+    if (GAME_QUESTION_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) keys.add(key);
+  }
+  return Array.from(keys);
+}
+
+function convertGameQuestionToExamBank(raw: any): TeacherExamBankQuestion | null {
+  const text = String(raw?.question ?? "").trim();
+  const sourceId = String(raw?.id ?? "").trim();
+  if (!text || !sourceId || raw?.questionType === "hints") return null;
+
+  const sourceType = String(raw?.questionType ?? "multiple_choice");
+  const questionType: QuestionType = sourceType === "matching"
+    ? "match"
+    : sourceType === "sequence"
+      ? "sequence"
+      : sourceType === "true_false"
+        ? "true_false"
+        : "multiple_choice";
+
+  const pairs = Array.isArray(raw?.pairs) ? raw.pairs : [];
+  const correctMatchedPairs = pairs.reduce((result: Record<string, string>, pair: any) => {
+    const left = String(pair?.left ?? pair?.term ?? "").trim();
+    const right = String(pair?.right ?? pair?.definition ?? "").trim();
+    if (left && right) result[left] = right;
+    return result;
+  }, {});
+
+  const options = questionType === "true_false" ? ["صح", "خطأ"] : asTextArray(raw?.options);
+  const correctIndex = Number(raw?.correctAnswerIndex);
+
+  return {
+    id: sourceId,
+    question: text,
+    questionType,
+    options: questionType === "multiple_choice" || questionType === "true_false" ? options : undefined,
+    correctAnswerIndex: Number.isFinite(correctIndex) ? correctIndex : undefined,
+    correctAnswerText: String(raw?.correctAnswerText ?? "").trim() || undefined,
+    correctOrderedItems: questionType === "sequence" ? asTextArray(raw?.sequence) : undefined,
+    correctMatchedPairs: questionType === "match" && Object.keys(correctMatchedPairs).length > 0 ? correctMatchedPairs : undefined,
+    explanation: String(raw?.explanation ?? "").trim() || undefined,
+    subject: String(raw?.subject ?? "").trim() || undefined,
+    unit: String(raw?.unit ?? "").trim() || undefined,
+    lesson: String(raw?.lesson ?? "").trim() || undefined,
+    difficulty: raw?.difficulty === "hard" || raw?.difficulty === "medium" ? raw.difficulty : "easy",
+    defaultGrade: 1,
+    createdAt: String(raw?.createdAt ?? new Date().toISOString()),
+    updatedAt: String(raw?.updatedAt ?? "").trim() || undefined,
+    sourceBatchId: String(raw?.publishBatchId ?? "").trim() || undefined,
+    sourceGameType: asTextArray(raw?.gameTypes).join(",") || "educational_games",
+    usedInExamIds: [],
+    archived: false,
+  };
+}
+
+function collectGameQuestionsForExamBank(): TeacherExamBankQuestion[] {
+  if (typeof window === "undefined") return [];
+  const byId = new Map<string, TeacherExamBankQuestion>();
+  getAllGameQuestionStorageKeys().forEach((key) => {
+    readQuestionArrayFromStorage(key).forEach((raw) => {
+      const converted = convertGameQuestionToExamBank(raw);
+      if (!converted) return;
+      const previous = byId.get(converted.id);
+      if (!previous || new Date(converted.updatedAt ?? converted.createdAt).getTime() >= new Date(previous.updatedAt ?? previous.createdAt).getTime()) {
+        byId.set(converted.id, converted);
+      }
+    });
+  });
+  return Array.from(byId.values());
+}
+
 function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "slate" | "blue" | "green" | "amber" | "red" }) {
   const tones = {
     slate: "bg-slate-100 text-slate-700",
@@ -154,6 +265,36 @@ function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?:
 export default function TeacherExamsManager() {
   const [questions, setQuestions] = useLocalStorageState<TeacherExamBankQuestion[]>(QUESTION_BANK_KEY, []);
   const [exams, setExams] = useLocalStorageState<RasedExam[]>(EXAMS_KEY, []);
+
+  const syncGameQuestionsIntoBank = () => {
+    const imported = collectGameQuestionsForExamBank();
+    setQuestions((current) => {
+      const map = new Map(current.map((question) => [question.id, question]));
+      imported.forEach((question) => {
+        const existing = map.get(question.id);
+        map.set(question.id, existing
+          ? {
+              ...question,
+              defaultGrade: existing.defaultGrade ?? question.defaultGrade,
+              usedInExamIds: existing.usedInExamIds ?? [],
+              archived: existing.archived ?? false,
+            }
+          : question);
+      });
+      return Array.from(map.values());
+    });
+  };
+
+  useEffect(() => {
+    syncGameQuestionsIntoBank();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key && (GAME_QUESTION_FIXED_KEYS.includes(event.key as any) || GAME_QUESTION_KEY_PREFIXES.some((prefix) => event.key!.startsWith(prefix)))) {
+        syncGameQuestionsIntoBank();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
   const [section, setSection] = useState<"bank" | "create" | "exams" | "results">("bank");
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
@@ -353,6 +494,7 @@ export default function TeacherExamsManager() {
                 <div className="relative flex-1"><Search className="absolute right-3 top-3 h-5 w-5 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في السؤال أو المادة أو الوحدة أو الدرس" className="w-full rounded-2xl border py-3 pr-11 pl-4 outline-none focus:border-blue-400" /></div>
                 <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as "all" | Difficulty)} className="rounded-2xl border bg-white px-4 py-3 font-bold"><option value="all">كل المستويات</option><option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option></select>
                 <button onClick={() => setShowQuestionForm(true)} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-black text-white"><Plus className="h-5 w-5" /> إضافة سؤال</button>
+                <button onClick={syncGameQuestionsIntoBank} className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700"><Gamepad2 className="h-4 w-4" /> مزامنة أسئلة الألعاب</button>
                 <button onClick={exportQuestionBank} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Download className="h-4 w-4" /> تصدير</button>
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Upload className="h-4 w-4" /> استيراد<input type="file" accept="application/json" className="hidden" onChange={(e) => importQuestionBank(e.target.files?.[0])} /></label>
               </div>
