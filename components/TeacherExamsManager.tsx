@@ -101,6 +101,7 @@ export interface RasedExam {
 
 const QUESTION_BANK_KEY = "rased_teacher_exam_question_bank_v1";
 const EXAMS_KEY = "rased_teacher_exams_v1";
+const EXAMS_CLOUD_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec";
 
 const EXAM_TYPE_LABELS: Record<ExamType, string> = {
   short_exam_1: "الاختبار القصير الأول",
@@ -301,6 +302,10 @@ export default function TeacherExamsManager() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, number>>({});
   const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [isPublishingExam, setIsPublishingExam] = useState(false);
+  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+  const [examResults, setExamResults] = useState<any[]>([]);
+  const [isLoadingExamResults, setIsLoadingExamResults] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     questionType: "multiple_choice" as QuestionType,
@@ -370,7 +375,64 @@ export default function TeacherExamsManager() {
     setShowQuestionForm(false);
   }
 
-  function saveExam(status: ExamStatus) {
+  const getCloudIdentity = () => ({
+    schoolCode: localStorage.getItem("rased_admin_school_code") || "RSD_LOCAL",
+    teacherId: localStorage.getItem("rased_teacher_civil_id") || "teacher_local",
+  });
+
+  async function publishExamToCloud(exam: RasedExam) {
+    const identity = getCloudIdentity();
+    const cloudExam = { ...exam, schoolCode: identity.schoolCode, teacherId: identity.teacherId };
+    const response = await fetch(EXAMS_CLOUD_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "publishExam",
+        schoolCode: identity.schoolCode,
+        teacherId: identity.teacherId,
+        exam: cloudExam,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload?.success === false) throw new Error(payload?.error || "فشل إرسال الاختبار إلى السحابة.");
+    return cloudExam as RasedExam;
+  }
+
+  async function fetchExamResults() {
+    const identity = getCloudIdentity();
+    setIsLoadingExamResults(true);
+    try {
+      const response = await fetch(EXAMS_CLOUD_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "getExamResults", ...identity }),
+      });
+      const payload = await response.json();
+      if (payload?.success === false) throw new Error(payload?.error || "فشل جلب النتائج.");
+      setExamResults(Array.isArray(payload?.data) ? payload.data : []);
+      setCloudMessage("تم تحديث نتائج الاختبارات من السحابة.");
+    } catch (error) {
+      console.error(error);
+      setCloudMessage("تعذر جلب نتائج الاختبارات من السحابة.");
+    } finally {
+      setIsLoadingExamResults(false);
+    }
+  }
+
+  async function publishExistingExam(exam: RasedExam) {
+    setIsPublishingExam(true);
+    setCloudMessage(null);
+    try {
+      const publishedExam = await publishExamToCloud({ ...exam, status: "published", publishedAt: exam.publishedAt || nowIso(), updatedAt: nowIso() });
+      setExams((current) => current.map((item) => item.id === exam.id ? publishedExam : item));
+      setCloudMessage("تم نشر الاختبار وإرساله إلى طلاب الفصول المستهدفة.");
+    } catch (error) {
+      console.error(error);
+      setCloudMessage(error instanceof Error ? error.message : "فشل نشر الاختبار.");
+    } finally {
+      setIsPublishingExam(false);
+    }
+  }
+
+  async function saveExam(status: ExamStatus) {
     if (!draft.title.trim() || selectedQuestions.length === 0) return;
     const id = uid("exam");
     const questionsSnapshot: PublishedExamQuestion[] = selectedQuestions.map((q, index) => ({
@@ -401,8 +463,8 @@ export default function TeacherExamsManager() {
       questionIds: selectedQuestions.map((q) => q.id),
       questionCount: selectedQuestions.length,
       maximumGrade,
-      schoolCode: "RSD_LOCAL",
-      teacherId: "teacher_local",
+      schoolCode: getCloudIdentity().schoolCode,
+      teacherId: getCloudIdentity().teacherId,
       classIds: draft.classIds.split(",").map((v) => v.trim()).filter(Boolean),
       subject: draft.subject.trim() || undefined,
       units: draft.units.split(",").map((v) => v.trim()).filter(Boolean),
@@ -423,7 +485,21 @@ export default function TeacherExamsManager() {
       questionsSnapshot,
     };
 
-    setExams((current) => [...current, exam]);
+    let savedExam = exam;
+    if (status === "published") {
+      setIsPublishingExam(true);
+      setCloudMessage(null);
+      try {
+        savedExam = await publishExamToCloud(exam);
+        setCloudMessage("تم نشر الاختبار وإرساله إلى طلاب الفصول المستهدفة.");
+      } catch (error) {
+        console.error(error);
+        setCloudMessage("حُفظ الاختبار محليًا، لكن تعذر إرساله إلى السحابة. يمكنك إعادة النشر من إدارة الاختبارات.");
+      } finally {
+        setIsPublishingExam(false);
+      }
+    }
+    setExams((current) => [...current, savedExam]);
     setQuestions((current) => current.map((q) => selectedIds.includes(q.id)
       ? { ...q, usedInExamIds: Array.from(new Set([...q.usedInExamIds, id])) }
       : q));
@@ -479,6 +555,7 @@ export default function TeacherExamsManager() {
       </header>
 
       <main className="mx-auto max-w-7xl p-4 sm:p-7">
+        {cloudMessage && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-black text-blue-800">{cloudMessage}</div>}
         <nav className="mb-6 flex gap-2 overflow-x-auto pb-2">
           {nav.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setSection(id)} className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black ${section === id ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-600"}`}>
@@ -574,14 +651,14 @@ export default function TeacherExamsManager() {
             <aside className="h-fit rounded-3xl bg-slate-900 p-5 text-white lg:sticky lg:top-5">
               <h2 className="text-lg font-black">معاينة سريعة</h2>
               <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-slate-400">العنوان</span><strong>{draft.title || "غير محدد"}</strong></div><div className="flex justify-between"><span className="text-slate-400">النوع</span><strong>{EXAM_TYPE_LABELS[draft.examType]}</strong></div><div className="flex justify-between"><span className="text-slate-400">الأسئلة</span><strong>{selectedQuestions.length}</strong></div><div className="flex justify-between border-t border-slate-700 pt-3"><span className="text-slate-300">الدرجة النهائية</span><strong className="text-xl text-emerald-400">{maximumGrade}</strong></div></div>
-              <div className="mt-6 grid gap-2"><button onClick={() => saveExam("draft")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-black text-slate-900 disabled:opacity-40"><Save className="h-4 w-4" /> حفظ كمسودة</button><button onClick={() => saveExam("published")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-black disabled:opacity-40"><Send className="h-4 w-4" /> نشر الآن</button><button onClick={() => saveExam("scheduled")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-700 px-4 py-3 font-black disabled:opacity-40"><CalendarClock className="h-4 w-4" /> جدولة</button></div>
+              <div className="mt-6 grid gap-2"><button onClick={() => void saveExam("draft")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-black text-slate-900 disabled:opacity-40"><Save className="h-4 w-4" /> حفظ كمسودة</button><button onClick={() => void saveExam("published")} disabled={!draft.title || !selectedQuestions.length || isPublishingExam} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-black disabled:opacity-40"><Send className="h-4 w-4" /> {isPublishingExam ? "جاري الإرسال..." : "نشر وإرسال للطلاب"}</button><button onClick={() => void saveExam("scheduled")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-700 px-4 py-3 font-black disabled:opacity-40"><CalendarClock className="h-4 w-4" /> جدولة</button></div>
             </aside>
           </div>
         )}
 
-        {section === "exams" && <div className="space-y-3">{exams.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500">لا توجد اختبارات بعد.</div> : exams.map((exam) => <article key={exam.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex gap-2"><Badge tone={exam.status === "published" ? "green" : exam.status === "scheduled" ? "amber" : "slate"}>{STATUS_LABELS[exam.status]}</Badge><Badge tone="blue">{EXAM_TYPE_LABELS[exam.examType]}</Badge></div><h3 className="mt-3 text-lg font-black">{exam.title}</h3><p className="mt-1 text-sm text-slate-500">{exam.questionCount} سؤال · الدرجة النهائية {exam.maximumGrade} · {exam.classIds.join("، ")}</p></div><div className="flex gap-2">{exam.status === "draft" && <button onClick={() => setExams((items) => items.map((item) => item.id === exam.id ? { ...item, status: "published", publishedAt: nowIso(), updatedAt: nowIso() } : item))} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white">نشر</button>}<button onClick={() => setExams((items) => items.map((item) => item.id === exam.id ? { ...item, status: "archived", updatedAt: nowIso() } : item))} className="rounded-2xl bg-slate-100 p-3"><Archive className="h-5 w-5" /></button></div></div></article>)}</div>}
+        {section === "exams" && <div className="space-y-3">{exams.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500">لا توجد اختبارات بعد.</div> : exams.map((exam) => <article key={exam.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex gap-2"><Badge tone={exam.status === "published" ? "green" : exam.status === "scheduled" ? "amber" : "slate"}>{STATUS_LABELS[exam.status]}</Badge><Badge tone="blue">{EXAM_TYPE_LABELS[exam.examType]}</Badge></div><h3 className="mt-3 text-lg font-black">{exam.title}</h3><p className="mt-1 text-sm text-slate-500">{exam.questionCount} سؤال · الدرجة النهائية {exam.maximumGrade} · {exam.classIds.join("، ")}</p></div><div className="flex gap-2">{(exam.status === "draft" || exam.status === "scheduled") && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">نشر وإرسال</button>}{exam.status === "published" && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">إعادة الإرسال</button>}<button onClick={() => setExams((items) => items.map((item) => item.id === exam.id ? { ...item, status: "archived", updatedAt: nowIso() } : item))} className="rounded-2xl bg-slate-100 p-3"><Archive className="h-5 w-5" /></button></div></div></article>)}</div>}
 
-        {section === "results" && <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500"><Users className="mx-auto mb-3 h-9 w-9" /><h2 className="font-black text-slate-800">نتائج الاختبارات</h2><p className="mt-2">هذا القسم جاهز لاستقبال نتائج الطلاب وربط لوحة المؤشرات في المرحلة التالية.</p></div>}
+        {section === "results" && <div className="space-y-4"><div className="flex items-center justify-between rounded-3xl bg-white p-5 shadow-sm"><div><h2 className="font-black text-slate-800">نتائج الاختبارات</h2><p className="mt-1 text-sm text-slate-500">النتائج المسلّمة من الطلاب عبر السحابة.</p></div><button onClick={() => void fetchExamResults()} disabled={isLoadingExamResults} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{isLoadingExamResults ? "جاري التحديث..." : "تحديث النتائج"}</button></div>{examResults.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500"><Users className="mx-auto mb-3 h-9 w-9" /><p>لا توجد نتائج مستلمة حتى الآن.</p></div> : examResults.map((result) => <div key={result.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black">{result.studentName || result.studentId}</h3><p className="mt-1 text-sm text-slate-500">{result.examTitle} · {result.className || "بدون فصل"} · المحاولة {result.attemptNumber}</p></div><div className="text-left"><strong className="text-xl text-emerald-600">{result.earnedGrade} / {result.maximumGrade}</strong><p className="text-xs font-bold text-slate-500">{result.percentage}%</p></div></div></div>)}</div>}
       </main>
     </div>
   );
