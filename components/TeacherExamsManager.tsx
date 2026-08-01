@@ -111,7 +111,8 @@ const LEGACY_EXAM_TYPE_LABELS: Record<string, string> = {
 const getExamTypeLabel = (type?: string) => LEGACY_EXAM_TYPE_LABELS[String(type || "")] || String(type || "اختبار");
 
 interface TeacherExamsManagerProps {
-  classOptions?: string[];
+  classOptions?: unknown[];
+  students?: unknown[];
 }
 
 const STATUS_LABELS: Record<ExamStatus, string> = {
@@ -257,6 +258,73 @@ function collectGameQuestionsForExamBank(): TeacherExamBankQuestion[] {
   return Array.from(byId.values());
 }
 
+function normalizeClassLabel(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value).trim();
+  if (!value || typeof value !== "object") return "";
+  const item = value as Record<string, unknown>;
+  return String(item.name ?? item.className ?? item.class ?? item.label ?? item.value ?? item.id ?? "").trim();
+}
+
+function collectTeacherClasses(classOptions: unknown[], students: unknown[]): string[] {
+  const classes = new Set<string>();
+  classOptions.forEach((item) => {
+    const label = normalizeClassLabel(item);
+    if (label) classes.add(label);
+  });
+  students.forEach((raw) => {
+    const student = (raw || {}) as Record<string, unknown>;
+    const studentClasses = Array.isArray(student.classes)
+      ? student.classes
+      : [student.className ?? student.class];
+    studentClasses.forEach((item) => {
+      const label = normalizeClassLabel(item);
+      if (label) classes.add(label);
+    });
+  });
+  if (typeof window !== "undefined") {
+    getAllGameQuestionStorageKeys().forEach((key) => {
+      readQuestionArrayFromStorage(key).forEach((question) => {
+        const questionClasses = Array.isArray(question?.classes)
+          ? question.classes
+          : [question?.className ?? question?.class];
+        questionClasses.forEach((item: unknown) => {
+          const label = normalizeClassLabel(item);
+          if (label) classes.add(label);
+        });
+      });
+    });
+    ["rased_teacher_classes", "rased_classes", "classes"].forEach((key) => {
+      try {
+        const stored = JSON.parse(window.localStorage.getItem(key) || "[]");
+        if (Array.isArray(stored)) stored.forEach((item) => {
+          const label = normalizeClassLabel(item);
+          if (label) classes.add(label);
+        });
+      } catch {
+        // نتجاوز المفاتيح غير الصالحة.
+      }
+    });
+  }
+  return Array.from(classes).sort((a, b) => a.localeCompare(b, "ar"));
+}
+
+function escapeWordHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return window.btoa(binary);
+}
+
 function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "slate" | "blue" | "green" | "amber" | "red" }) {
   const tones = {
     slate: "bg-slate-100 text-slate-700",
@@ -268,7 +336,7 @@ function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?:
   return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tones[tone]}`}>{children}</span>;
 }
 
-export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsManagerProps) {
+export default function TeacherExamsManager({ classOptions = [], students = [] }: TeacherExamsManagerProps) {
   const [questions, setQuestions] = useLocalStorageState<TeacherExamBankQuestion[]>(QUESTION_BANK_KEY, []);
   const [exams, setExams] = useLocalStorageState<RasedExam[]>(EXAMS_KEY, []);
 
@@ -342,6 +410,11 @@ export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsM
     showResultImmediately: false,
   });
 
+  const teacherClasses = useMemo(
+    () => collectTeacherClasses(classOptions, students),
+    [classOptions, students, questions.length],
+  );
+
   const filteredQuestions = useMemo(() => questions.filter((q) => {
     const text = `${q.question} ${q.subject ?? ""} ${q.unit ?? ""} ${q.lesson ?? ""}`.toLowerCase();
     return !q.archived && text.includes(search.toLowerCase()) && (difficulty === "all" || q.difficulty === difficulty);
@@ -356,7 +429,7 @@ export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsM
     0,
   );
   const availableResultClasses = Array.from(new Set([
-    ...classOptions,
+    ...teacherClasses,
     ...examResults.map((result) => String(result.className || "").trim()).filter(Boolean),
   ]));
   const availableResultExamTypes = Array.from(new Set([
@@ -528,30 +601,97 @@ export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsM
     setSection("exams");
   }
 
-  async function exportQuestionBank() {
-    try {
-      const data = JSON.stringify(questions, null, 2);
-      const fileName = `rased-question-bank-${new Date().toISOString().slice(0, 10)}.json`;
-      const blob = new Blob([data], { type: "application/json;charset=utf-8" });
-      const file = new File([blob], fileName, { type: "application/json" });
-      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean; share?: (data: ShareData) => Promise<void> };
-      if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
-        await nav.share({ title: "بنك أسئلة راصد", files: [file] });
+  async function saveOrShareExport(fileName: string, mimeType: string, content: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const capacitor = (window as any).Capacitor;
+    const filesystem = capacitor?.Plugins?.Filesystem;
+    const sharePlugin = capacitor?.Plugins?.Share;
+
+    if (capacitor?.isNativePlatform?.() && filesystem) {
+      const bytes = new TextEncoder().encode(content);
+      const written = await filesystem.writeFile({
+        path: fileName,
+        data: bytesToBase64(bytes),
+        directory: "CACHE",
+        recursive: true,
+      });
+      if (sharePlugin) {
+        await sharePlugin.share({
+          title: "تصدير بنك أسئلة راصد",
+          text: fileName,
+          url: written.uri,
+          dialogTitle: "حفظ أو مشاركة الملف",
+        });
         return;
       }
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      anchor.style.display = "none";
-      document.body.appendChild(anchor);
-      anchor.click();
+    }
+
+    const file = new File([blob], fileName, { type: mimeType });
+    const nav = navigator as Navigator & {
+      canShare?: (data: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+    if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
+      await nav.share({ title: "بنك أسئلة راصد", files: [file] });
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.target = "_blank";
+    anchor.rel = "noopener";
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    window.setTimeout(() => {
       document.body.removeChild(anchor);
-      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      URL.revokeObjectURL(url);
+    }, 2000);
+  }
+
+  async function exportQuestionBankJson() {
+    try {
+      await saveOrShareExport(
+        `rased-question-bank-${new Date().toISOString().slice(0, 10)}.json`,
+        "application/json;charset=utf-8",
+        JSON.stringify(questions, null, 2),
+      );
     } catch (error) {
       if ((error as Error)?.name !== "AbortError") {
         console.error("Failed to export question bank", error);
-        window.alert("تعذر تصدير بنك الأسئلة على هذا الجهاز.");
+        window.alert("تعذر تصدير بنك الأسئلة. تأكد من تثبيت إضافتي Capacitor Filesystem وShare في نسخة أندرويد.");
+      }
+    }
+  }
+
+  async function exportQuestionBankWord() {
+    try {
+      const questionSections = questions.map((question, index) => {
+        const options = (question.options || []).map((option, optionIndex) => {
+          const isCorrect = optionIndex === question.correctAnswerIndex;
+          return `<li${isCorrect ? ' style="font-weight:bold;color:#047857"' : ''}>${escapeWordHtml(option)}${isCorrect ? " ✓" : ""}</li>`;
+        }).join("");
+        return `<section style="margin-bottom:20px;page-break-inside:avoid">
+          <h3>${index + 1}. ${escapeWordHtml(question.question)}</h3>
+          <p><b>المادة:</b> ${escapeWordHtml(question.subject || "غير مصنف")} | <b>الوحدة:</b> ${escapeWordHtml(question.unit || "")} | <b>الدرس:</b> ${escapeWordHtml(question.lesson || "")}</p>
+          ${options ? `<ol>${options}</ol>` : ""}
+          ${question.correctAnswerText ? `<p><b>الإجابة الصحيحة:</b> ${escapeWordHtml(question.correctAnswerText)}</p>` : ""}
+          ${question.explanation ? `<p><b>التفسير:</b> ${escapeWordHtml(question.explanation)}</p>` : ""}
+          <p><b>الدرجة الافتراضية:</b> ${question.defaultGrade ?? 1}</p>
+        </section>`;
+      }).join("");
+      const wordHtml = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>بنك أسئلة راصد</title><style>body{font-family:Arial,sans-serif;direction:rtl;line-height:1.7;margin:36px}h1{color:#1d4ed8}h3{color:#0f172a}section{border-bottom:1px solid #cbd5e1;padding-bottom:12px}li{margin:5px 0}</style></head><body><h1>بنك أسئلة راصد</h1><p>عدد الأسئلة: ${questions.length}</p>${questionSections}</body></html>`;
+      await saveOrShareExport(
+        `rased-question-bank-${new Date().toISOString().slice(0, 10)}.doc`,
+        "application/msword;charset=utf-8",
+        wordHtml,
+      );
+    } catch (error) {
+      if ((error as Error)?.name !== "AbortError") {
+        console.error("Failed to export Word question bank", error);
+        window.alert("تعذر تصدير بنك الأسئلة بصيغة Word على هذا الجهاز.");
       }
     }
   }
@@ -615,7 +755,8 @@ export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsM
                 <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as "all" | Difficulty)} className="rounded-2xl border bg-white px-4 py-3 font-bold"><option value="all">كل المستويات</option><option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option></select>
                 <button onClick={() => setShowQuestionForm(true)} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-black text-white"><Plus className="h-5 w-5" /> إضافة سؤال</button>
                 <button onClick={syncGameQuestionsIntoBank} className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700"><Gamepad2 className="h-4 w-4" /> مزامنة أسئلة الألعاب</button>
-                <button onClick={() => void exportQuestionBank()} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Download className="h-4 w-4" /> تصدير</button>
+                <button onClick={() => void exportQuestionBankJson()} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Download className="h-4 w-4" /> تصدير JSON</button>
+                <button onClick={() => void exportQuestionBankWord()} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 font-bold text-blue-700"><FilePlus2 className="h-4 w-4" /> تصدير Word</button>
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Upload className="h-4 w-4" /> استيراد<input type="file" accept="application/json" className="hidden" onChange={(e) => importQuestionBank(e.target.files?.[0])} /></label>
               </div>
             </section>
@@ -668,7 +809,7 @@ export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsM
                   <input value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder="المادة" className="rounded-2xl border p-3" />
                   <div className="rounded-2xl border p-3 md:col-span-2">
                     <p className="mb-2 text-xs font-black text-slate-500">الفصول المستهدفة</p>
-                    {classOptions.length > 0 ? <div className="flex flex-wrap gap-2">{classOptions.map((className) => { const selected = draft.classIds.split(",").map((item) => item.trim()).includes(className); return <button key={className} type="button" onClick={() => { const current = draft.classIds.split(",").map((item) => item.trim()).filter(Boolean); const next = selected ? current.filter((item) => item !== className) : [...current, className]; setDraft({ ...draft, classIds: next.join(",") }); }} className={`rounded-xl border px-3 py-2 text-xs font-black ${selected ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-slate-50 text-slate-600"}`}>{className}</button>; })}</div> : <input value={draft.classIds} onChange={(e) => setDraft({ ...draft, classIds: e.target.value })} placeholder="الفصول، مفصولة بفاصلة" className="w-full rounded-xl bg-slate-50 p-3 outline-none" />}
+                    {teacherClasses.length > 0 ? <div className="flex flex-wrap gap-2">{teacherClasses.map((className) => { const selected = draft.classIds.split(",").map((item) => item.trim()).includes(className); return <button key={className} type="button" onClick={() => { const current = draft.classIds.split(",").map((item) => item.trim()).filter(Boolean); const next = selected ? current.filter((item) => item !== className) : [...current, className]; setDraft({ ...draft, classIds: next.join(",") }); }} className={`rounded-xl border px-3 py-2 text-xs font-black ${selected ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-slate-50 text-slate-600"}`}>{className}</button>; })}</div> : <div className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">لم يتم العثور على فصول للمعلم. أضف الفصول والطلاب من قسم إدارة الطلاب أولًا، ثم عد إلى إنشاء الاختبار.</div>}
                   </div>
                   <input value={draft.units} onChange={(e) => setDraft({ ...draft, units: e.target.value })} placeholder="الوحدات" className="rounded-2xl border p-3" />
                   <input value={draft.lessons} onChange={(e) => setDraft({ ...draft, lessons: e.target.value })} placeholder="الدروس" className="rounded-2xl border p-3" />
