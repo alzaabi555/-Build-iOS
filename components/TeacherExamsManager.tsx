@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 
-export type ExamType = "short_exam_1" | "short_exam_2" | "final_exam";
+export type ExamType = string;
 export type ExamStatus = "draft" | "scheduled" | "published" | "closed" | "archived";
 export type QuestionType = "multiple_choice" | "true_false" | "match" | "sequence";
 export type Difficulty = "easy" | "medium" | "hard";
@@ -103,11 +103,16 @@ const QUESTION_BANK_KEY = "rased_teacher_exam_question_bank_v1";
 const EXAMS_KEY = "rased_teacher_exams_v1";
 const EXAMS_CLOUD_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec";
 
-const EXAM_TYPE_LABELS: Record<ExamType, string> = {
+const LEGACY_EXAM_TYPE_LABELS: Record<string, string> = {
   short_exam_1: "الاختبار القصير الأول",
   short_exam_2: "الاختبار القصير الثاني",
   final_exam: "الاختبار النهائي",
 };
+const getExamTypeLabel = (type?: string) => LEGACY_EXAM_TYPE_LABELS[String(type || "")] || String(type || "اختبار");
+
+interface TeacherExamsManagerProps {
+  classOptions?: string[];
+}
 
 const STATUS_LABELS: Record<ExamStatus, string> = {
   draft: "مسودة",
@@ -263,7 +268,7 @@ function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?:
   return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tones[tone]}`}>{children}</span>;
 }
 
-export default function TeacherExamsManager() {
+export default function TeacherExamsManager({ classOptions = [] }: TeacherExamsManagerProps) {
   const [questions, setQuestions] = useLocalStorageState<TeacherExamBankQuestion[]>(QUESTION_BANK_KEY, []);
   const [exams, setExams] = useLocalStorageState<RasedExam[]>(EXAMS_KEY, []);
 
@@ -306,6 +311,8 @@ export default function TeacherExamsManager() {
   const [cloudMessage, setCloudMessage] = useState<string | null>(null);
   const [examResults, setExamResults] = useState<any[]>([]);
   const [isLoadingExamResults, setIsLoadingExamResults] = useState(false);
+  const [resultClassFilter, setResultClassFilter] = useState("all");
+  const [resultExamTypeFilter, setResultExamTypeFilter] = useState("all");
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     questionType: "multiple_choice" as QuestionType,
@@ -319,7 +326,7 @@ export default function TeacherExamsManager() {
   });
   const [draft, setDraft] = useState({
     title: "",
-    examType: "short_exam_1" as ExamType,
+    examType: "" as ExamType,
     subject: "",
     classIds: "",
     units: "",
@@ -347,6 +354,18 @@ export default function TeacherExamsManager() {
   const maximumGrade = selectedQuestions.reduce(
     (sum, q) => sum + (grades[q.id] ?? q.defaultGrade ?? 1),
     0,
+  );
+  const availableResultClasses = Array.from(new Set([
+    ...classOptions,
+    ...examResults.map((result) => String(result.className || "").trim()).filter(Boolean),
+  ]));
+  const availableResultExamTypes = Array.from(new Set([
+    ...exams.map((exam) => String(exam.examType || "").trim()).filter(Boolean),
+    ...examResults.map((result) => String(result.examType || "").trim()).filter(Boolean),
+  ]));
+  const filteredExamResults = examResults.filter((result) =>
+    (resultClassFilter === "all" || String(result.className || "") === resultClassFilter) &&
+    (resultExamTypeFilter === "all" || String(result.examType || "") === resultExamTypeFilter)
   );
 
   function addQuestion() {
@@ -509,14 +528,32 @@ export default function TeacherExamsManager() {
     setSection("exams");
   }
 
-  function exportQuestionBank() {
-    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `rased-question-bank-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function exportQuestionBank() {
+    try {
+      const data = JSON.stringify(questions, null, 2);
+      const fileName = `rased-question-bank-${new Date().toISOString().slice(0, 10)}.json`;
+      const blob = new Blob([data], { type: "application/json;charset=utf-8" });
+      const file = new File([blob], fileName, { type: "application/json" });
+      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean; share?: (data: ShareData) => Promise<void> };
+      if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
+        await nav.share({ title: "بنك أسئلة راصد", files: [file] });
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (error) {
+      if ((error as Error)?.name !== "AbortError") {
+        console.error("Failed to export question bank", error);
+        window.alert("تعذر تصدير بنك الأسئلة على هذا الجهاز.");
+      }
+    }
   }
 
   async function importQuestionBank(file?: File) {
@@ -556,9 +593,15 @@ export default function TeacherExamsManager() {
 
       <main className="mx-auto max-w-7xl p-4 sm:p-7">
         {cloudMessage && <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-black text-blue-800">{cloudMessage}</div>}
-        <nav className="mb-6 flex gap-2 overflow-x-auto pb-2">
+        <div className="mb-6 sm:hidden">
+          <label className="mb-2 block text-xs font-black text-slate-500">قسم الاختبارات</label>
+          <select value={section} onChange={(event) => setSection(event.target.value as typeof section)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-black text-slate-800 shadow-sm">
+            {nav.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </div>
+        <nav className="mb-6 hidden gap-2 sm:flex sm:flex-wrap">
           {nav.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setSection(id)} className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black ${section === id ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-600"}`}>
+            <button key={id} onClick={() => setSection(id)} className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black ${section === id ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-600"}`}>
               <Icon className="h-4 w-4" />{label}
             </button>
           ))}
@@ -572,7 +615,7 @@ export default function TeacherExamsManager() {
                 <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as "all" | Difficulty)} className="rounded-2xl border bg-white px-4 py-3 font-bold"><option value="all">كل المستويات</option><option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option></select>
                 <button onClick={() => setShowQuestionForm(true)} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-black text-white"><Plus className="h-5 w-5" /> إضافة سؤال</button>
                 <button onClick={syncGameQuestionsIntoBank} className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700"><Gamepad2 className="h-4 w-4" /> مزامنة أسئلة الألعاب</button>
-                <button onClick={exportQuestionBank} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Download className="h-4 w-4" /> تصدير</button>
+                <button onClick={() => void exportQuestionBank()} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Download className="h-4 w-4" /> تصدير</button>
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 font-bold"><Upload className="h-4 w-4" /> استيراد<input type="file" accept="application/json" className="hidden" onChange={(e) => importQuestionBank(e.target.files?.[0])} /></label>
               </div>
             </section>
@@ -621,9 +664,12 @@ export default function TeacherExamsManager() {
                 <h2 className="mb-4 text-lg font-black">1. بيانات الاختبار</h2>
                 <div className="grid gap-3 md:grid-cols-2">
                   <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="عنوان الاختبار" className="rounded-2xl border p-3 md:col-span-2" />
-                  <select value={draft.examType} onChange={(e) => setDraft({ ...draft, examType: e.target.value as ExamType })} className="rounded-2xl border bg-white p-3"><option value="short_exam_1">الاختبار القصير الأول</option><option value="short_exam_2">الاختبار القصير الثاني</option><option value="final_exam">الاختبار النهائي</option></select>
+                  <input value={draft.examType} onChange={(e) => setDraft({ ...draft, examType: e.target.value })} placeholder="نوع الاختبار، مثال: اختبار الوحدة الثانية" className="rounded-2xl border p-3" />
                   <input value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder="المادة" className="rounded-2xl border p-3" />
-                  <input value={draft.classIds} onChange={(e) => setDraft({ ...draft, classIds: e.target.value })} placeholder="الفصول، مفصولة بفاصلة" className="rounded-2xl border p-3" />
+                  <div className="rounded-2xl border p-3 md:col-span-2">
+                    <p className="mb-2 text-xs font-black text-slate-500">الفصول المستهدفة</p>
+                    {classOptions.length > 0 ? <div className="flex flex-wrap gap-2">{classOptions.map((className) => { const selected = draft.classIds.split(",").map((item) => item.trim()).includes(className); return <button key={className} type="button" onClick={() => { const current = draft.classIds.split(",").map((item) => item.trim()).filter(Boolean); const next = selected ? current.filter((item) => item !== className) : [...current, className]; setDraft({ ...draft, classIds: next.join(",") }); }} className={`rounded-xl border px-3 py-2 text-xs font-black ${selected ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-slate-50 text-slate-600"}`}>{className}</button>; })}</div> : <input value={draft.classIds} onChange={(e) => setDraft({ ...draft, classIds: e.target.value })} placeholder="الفصول، مفصولة بفاصلة" className="w-full rounded-xl bg-slate-50 p-3 outline-none" />}
+                  </div>
                   <input value={draft.units} onChange={(e) => setDraft({ ...draft, units: e.target.value })} placeholder="الوحدات" className="rounded-2xl border p-3" />
                   <input value={draft.lessons} onChange={(e) => setDraft({ ...draft, lessons: e.target.value })} placeholder="الدروس" className="rounded-2xl border p-3" />
                   <label className="rounded-2xl border px-3 py-2 text-xs font-bold text-slate-500">عدد المحاولات<input type="number" min="1" value={draft.maxAttempts} onChange={(e) => setDraft({ ...draft, maxAttempts: Number(e.target.value) })} className="block w-full pt-1 text-base text-slate-900 outline-none" /></label>
@@ -650,15 +696,27 @@ export default function TeacherExamsManager() {
 
             <aside className="h-fit rounded-3xl bg-slate-900 p-5 text-white lg:sticky lg:top-5">
               <h2 className="text-lg font-black">معاينة سريعة</h2>
-              <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-slate-400">العنوان</span><strong>{draft.title || "غير محدد"}</strong></div><div className="flex justify-between"><span className="text-slate-400">النوع</span><strong>{EXAM_TYPE_LABELS[draft.examType]}</strong></div><div className="flex justify-between"><span className="text-slate-400">الأسئلة</span><strong>{selectedQuestions.length}</strong></div><div className="flex justify-between border-t border-slate-700 pt-3"><span className="text-slate-300">الدرجة النهائية</span><strong className="text-xl text-emerald-400">{maximumGrade}</strong></div></div>
-              <div className="mt-6 grid gap-2"><button onClick={() => void saveExam("draft")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-black text-slate-900 disabled:opacity-40"><Save className="h-4 w-4" /> حفظ كمسودة</button><button onClick={() => void saveExam("published")} disabled={!draft.title || !selectedQuestions.length || isPublishingExam} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-black disabled:opacity-40"><Send className="h-4 w-4" /> {isPublishingExam ? "جاري الإرسال..." : "نشر وإرسال للطلاب"}</button><button onClick={() => void saveExam("scheduled")} disabled={!draft.title || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-700 px-4 py-3 font-black disabled:opacity-40"><CalendarClock className="h-4 w-4" /> جدولة</button></div>
+              <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-slate-400">العنوان</span><strong>{draft.title || "غير محدد"}</strong></div><div className="flex justify-between"><span className="text-slate-400">النوع</span><strong>{getExamTypeLabel(draft.examType)}</strong></div><div className="flex justify-between"><span className="text-slate-400">الأسئلة</span><strong>{selectedQuestions.length}</strong></div><div className="flex justify-between border-t border-slate-700 pt-3"><span className="text-slate-300">الدرجة النهائية</span><strong className="text-xl text-emerald-400">{maximumGrade}</strong></div></div>
+              <div className="mt-6 grid gap-2"><button onClick={() => void saveExam("draft")} disabled={!draft.title || !draft.examType.trim() || !draft.classIds.trim() || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 font-black text-slate-900 disabled:opacity-40"><Save className="h-4 w-4" /> حفظ كمسودة</button><button onClick={() => void saveExam("published")} disabled={!draft.title || !draft.examType.trim() || !draft.classIds.trim() || !selectedQuestions.length || isPublishingExam} className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-black disabled:opacity-40"><Send className="h-4 w-4" /> {isPublishingExam ? "جاري الإرسال..." : "نشر وإرسال للطلاب"}</button><button onClick={() => void saveExam("scheduled")} disabled={!draft.title || !draft.examType.trim() || !draft.classIds.trim() || !selectedQuestions.length} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-700 px-4 py-3 font-black disabled:opacity-40"><CalendarClock className="h-4 w-4" /> جدولة</button></div>
             </aside>
           </div>
         )}
 
-        {section === "exams" && <div className="space-y-3">{exams.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500">لا توجد اختبارات بعد.</div> : exams.map((exam) => <article key={exam.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex gap-2"><Badge tone={exam.status === "published" ? "green" : exam.status === "scheduled" ? "amber" : "slate"}>{STATUS_LABELS[exam.status]}</Badge><Badge tone="blue">{EXAM_TYPE_LABELS[exam.examType]}</Badge></div><h3 className="mt-3 text-lg font-black">{exam.title}</h3><p className="mt-1 text-sm text-slate-500">{exam.questionCount} سؤال · الدرجة النهائية {exam.maximumGrade} · {exam.classIds.join("، ")}</p></div><div className="flex gap-2">{(exam.status === "draft" || exam.status === "scheduled") && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">نشر وإرسال</button>}{exam.status === "published" && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">إعادة الإرسال</button>}<button onClick={() => setExams((items) => items.map((item) => item.id === exam.id ? { ...item, status: "archived", updatedAt: nowIso() } : item))} className="rounded-2xl bg-slate-100 p-3"><Archive className="h-5 w-5" /></button></div></div></article>)}</div>}
+        {section === "exams" && <div className="space-y-3">{exams.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500">لا توجد اختبارات بعد.</div> : exams.map((exam) => <article key={exam.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex gap-2"><Badge tone={exam.status === "published" ? "green" : exam.status === "scheduled" ? "amber" : "slate"}>{STATUS_LABELS[exam.status]}</Badge><Badge tone="blue">{getExamTypeLabel(exam.examType)}</Badge></div><h3 className="mt-3 text-lg font-black">{exam.title}</h3><p className="mt-1 text-sm text-slate-500">{exam.questionCount} سؤال · الدرجة النهائية {exam.maximumGrade} · {exam.classIds.join("، ")}</p></div><div className="flex gap-2">{(exam.status === "draft" || exam.status === "scheduled") && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">نشر وإرسال</button>}{exam.status === "published" && <button disabled={isPublishingExam} onClick={() => void publishExistingExam(exam)} className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">إعادة الإرسال</button>}<button onClick={() => setExams((items) => items.map((item) => item.id === exam.id ? { ...item, status: "archived", updatedAt: nowIso() } : item))} className="rounded-2xl bg-slate-100 p-3"><Archive className="h-5 w-5" /></button></div></div></article>)}</div>}
 
-        {section === "results" && <div className="space-y-4"><div className="flex items-center justify-between rounded-3xl bg-white p-5 shadow-sm"><div><h2 className="font-black text-slate-800">نتائج الاختبارات</h2><p className="mt-1 text-sm text-slate-500">النتائج المسلّمة من الطلاب عبر السحابة.</p></div><button onClick={() => void fetchExamResults()} disabled={isLoadingExamResults} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{isLoadingExamResults ? "جاري التحديث..." : "تحديث النتائج"}</button></div>{examResults.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500"><Users className="mx-auto mb-3 h-9 w-9" /><p>لا توجد نتائج مستلمة حتى الآن.</p></div> : examResults.map((result) => <div key={result.id} className="rounded-3xl bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black">{result.studentName || result.studentId}</h3><p className="mt-1 text-sm text-slate-500">{result.examTitle} · {result.className || "بدون فصل"} · المحاولة {result.attemptNumber}</p></div><div className="text-left"><strong className="text-xl text-emerald-600">{result.earnedGrade} / {result.maximumGrade}</strong><p className="text-xs font-bold text-slate-500">{result.percentage}%</p></div></div></div>)}</div>}
+        {section === "results" && <div className="space-y-4">
+          <div className="rounded-3xl bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="font-black text-slate-800">نتائج الاختبارات</h2><p className="mt-1 text-sm text-slate-500">اختر الفصل ونوع الاختبار لعرض نتائجه.</p></div>
+              <button onClick={() => void fetchExamResults()} disabled={isLoadingExamResults} className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{isLoadingExamResults ? "جاري التحديث..." : "تحديث النتائج"}</button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <select value={resultClassFilter} onChange={(e) => setResultClassFilter(e.target.value)} className="rounded-2xl border bg-white p-3 font-bold"><option value="all">كل الفصول</option>{availableResultClasses.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+              <select value={resultExamTypeFilter} onChange={(e) => setResultExamTypeFilter(e.target.value)} className="rounded-2xl border bg-white p-3 font-bold"><option value="all">كل أنواع الاختبارات</option>{availableResultExamTypes.map((item) => <option key={item} value={item}>{getExamTypeLabel(item)}</option>)}</select>
+            </div>
+          </div>
+          {filteredExamResults.length === 0 ? <div className="rounded-3xl border border-dashed bg-white p-10 text-center text-slate-500"><Users className="mx-auto mb-3 h-9 w-9" /><p>لا توجد نتائج مطابقة للتصنيف المحدد.</p></div> : Object.entries(filteredExamResults.reduce((groups: Record<string, any[]>, result) => { const key = String(result.className || "بدون فصل"); (groups[key] ||= []).push(result); return groups; }, {})).map(([className, classResults]) => <section key={className} className="rounded-3xl bg-white p-5 shadow-sm"><div className="mb-4 flex items-center justify-between"><h3 className="text-lg font-black text-blue-700">{className}</h3><Badge tone="blue">{classResults.length} نتيجة</Badge></div><div className="space-y-3">{classResults.map((result) => <div key={result.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 p-4"><div><h4 className="font-black">{result.studentName || result.studentId}</h4><p className="mt-1 text-xs text-slate-500">{result.examTitle} · {getExamTypeLabel(result.examType)} · المحاولة {result.attemptNumber}</p></div><div className="text-left"><strong className="text-xl text-emerald-600">{result.earnedGrade} / {result.maximumGrade}</strong><p className="text-xs font-bold text-slate-500">{result.percentage}%</p></div></div>)}</div></section>)}
+        </div>}
       </main>
     </div>
   );
