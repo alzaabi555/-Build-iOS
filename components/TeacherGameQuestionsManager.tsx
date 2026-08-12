@@ -39,6 +39,7 @@ export interface TeacherGameQuestion {
   schoolCode: string;
   teacherId: string;
   subject: string;
+  subjectId?: string;
   grade: string;
   classes: string[];
   semester?: '1' | '2';
@@ -65,6 +66,8 @@ export interface TeacherGameQuestion {
 }
 
 export interface PublishGameQuestionsPayload {
+  publishBatchId: string;
+  subjectId?: string;
   schoolCode: string;
   teacherId: string;
   subject: string;
@@ -116,6 +119,14 @@ const DIFFICULTY_OPTIONS: { id: GameDifficulty; labelKey: string }[] = [
 ];
 
 const createId = () => `gq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const createPublishBatchId = (schoolCode: string, teacherId: string) => {
+  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  const schoolPart = String(schoolCode || 'school').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16) || 'school';
+  const teacherPart = String(teacherId || 'teacher').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 16) || 'teacher';
+  return `gpb_${schoolPart}_${teacherPart}_${Date.now()}_${randomPart}`;
+};
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
 const getInitialQuestion = (
@@ -243,6 +254,7 @@ const normalizeTeacherGameQuestion = (
     schoolCode: String(raw?.schoolCode || schoolCode || ''),
     teacherId: String(raw?.teacherId || teacherId || ''),
     subject: String(raw?.subject || fallbackSubject || ''),
+    subjectId: raw?.subjectId ? String(raw.subjectId) : undefined,
     grade: String(raw?.grade || fallbackGrade || ''),
     classes: classes.length > 0 ? classes : fallbackClasses,
     semester: raw?.semester === '2' ? '2' : '1',
@@ -322,6 +334,7 @@ const sanitizeForStudent = (question: TeacherGameQuestion) => {
     schoolCode: question.schoolCode,
     teacherId: question.teacherId,
     subject: question.subject,
+    subjectId: question.subjectId,
     grade: question.grade,
     className: classes[0] || '',
     classes,
@@ -674,34 +687,53 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
     setQuestions(prev => prev.map(question => question.id === id ? { ...question, active: !question.active, updatedAt: new Date().toISOString() } : question));
   };
 
-  const buildPublishPayload = (): PublishGameQuestionsPayload => {
+  const buildPublishPayload = (publishBatchId: string, publishedAt: string): PublishGameQuestionsPayload => {
     const firstQuestion = validQuestions[0];
+    const batchSubject = firstQuestion?.subject || defaultSubject || '';
+    const mixedSubjects = validQuestions.some(question => String(question.subject || '').trim() !== String(batchSubject).trim());
+    if (mixedSubjects) throw new Error('PUBLISH_BATCH_MIXED_SUBJECTS');
+    const batchQuestions = validQuestions.map(question => ({
+      ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
+      publishBatchId,
+      visibleFrom: question.visibleFrom || publishedAt.slice(0, 10),
+      status: 'active' as const,
+      active: question.active !== false,
+      updatedAt: publishedAt
+    }));
     return {
+      publishBatchId,
+      subjectId: firstQuestion?.subjectId,
       schoolCode,
       teacherId,
-      subject: firstQuestion?.subject || defaultSubject || '',
+      subject: batchSubject,
       grade: firstQuestion?.grade || defaultGrade || '',
       classes: Array.from(new Set(validQuestions.flatMap(question => Array.isArray(question.classes) ? question.classes : []))),
-      questions: validQuestions.map(question => ({
-        ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
-        status: 'active',
-        active: question.active !== false
-      })),
-      publishedAt: new Date().toISOString()
+      questions: batchQuestions,
+      publishedAt
     };
   };
-
   const publishQuestions = async () => {
     if (validQuestions.length === 0) {
       showToast('warning', tr('gameNoValidQuestions'));
       return;
     }
-    const payload = buildPublishPayload();
+    const publishedAt = new Date().toISOString();
+    const publishBatchId = createPublishBatchId(schoolCode, teacherId);
+    let payload: PublishGameQuestionsPayload;
+    try { payload = buildPublishPayload(publishBatchId, publishedAt); }
+    catch (error) {
+      if (error instanceof Error && error.message === 'PUBLISH_BATCH_MIXED_SUBJECTS') {
+        showToast('warning', 'يجب أن تحتوي كل دفعة نشر على مادة واحدة فقط. انشر أسئلة كل مادة في دفعة مستقلة.');
+        return;
+      }
+      throw error;
+    }
     try {
       setIsPublishing(true);
       if (onPublish) await onPublish(payload);
-      else localStorage.setItem('rased_game_questions', JSON.stringify(validQuestions.map(sanitizeForStudent)));
+      else localStorage.setItem('rased_game_questions', JSON.stringify(payload.questions.map(sanitizeForStudent)));
       archivePreviousActiveQuestionsLocally(payload.questions);
+      setQuestions(payload.questions);
       showToast('success', tr('gamePublishSuccess'));
     } catch (error) {
       console.error(error);
