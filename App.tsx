@@ -53,7 +53,6 @@ import StudentGroups from './components/StudentGroups';
 import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager';
 import SeniorDashboard from './components/SeniorDashboard';
-import VoiceAssistant from './components/VoiceAssistant';
 import TeacherMailbox from './components/TeacherMailbox';
 import { useAndroidScheduleWidgetSync } from './hooks/useAndroidScheduleWidgetSync';
 
@@ -1225,7 +1224,6 @@ const handleToggleNotifications = () => {
       appSubtitle={t('appSubtitleMain') || 'النسخة المتقدمة'}
     >
       {renderContent()}
-      <VoiceAssistant onNavigate={handleNavigate} />
     </AppLayout>
   );
 };
