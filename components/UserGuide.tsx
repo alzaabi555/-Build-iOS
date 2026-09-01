@@ -342,6 +342,7 @@ const UserGuide: React.FC = () => {
   const [query, setQuery] = useState('');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isPrintAllMode, setIsPrintAllMode] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set(['start-first-setup']));
 
   const baseSections = useMemo<GuideSection[]>(() => [
@@ -857,18 +858,34 @@ const UserGuide: React.FC = () => {
   };
 
   const handleDownloadPDF = async () => {
-    const element = document.getElementById('guide-print-content');
-    if (!element) return;
-
     try {
       setIsExporting(true);
+      setIsPrintAllMode(true);
+
+      // Wait until React renders all sections and expands every topic.
+      await new Promise<void>(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+      await new Promise(resolve => window.setTimeout(resolve, 300));
+
+      const element = document.getElementById('guide-print-content');
+      if (!element) throw new Error('GUIDE_PRINT_CONTENT_NOT_FOUND');
+
       const worker = html2pdf().set({
-        margin: [7, 7, 7, 7],
+        margin: [8, 8, 8, 8],
         filename: `Rased_Teacher_Guide_${new Date().toISOString().slice(0, 10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.96 },
-        html2canvas: { scale: 1.7, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: Math.max(element.scrollWidth, 1200),
+          windowHeight: element.scrollHeight
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+        pagebreak: { mode: ['css', 'legacy'], before: '.guide-pdf-section' }
       }).from(element).toPdf();
 
       if (Capacitor.isNativePlatform()) {
@@ -892,13 +909,14 @@ const UserGuide: React.FC = () => {
       console.error('Guide PDF export error:', error);
       alert(t('guidePdfExportError'));
     } finally {
+      setIsPrintAllMode(false);
       setIsExporting(false);
     }
   };
 
   const renderTopic = (topic: GuideTopic, section: GuideSection) => {
     const Icon = section.icon;
-    const expanded = expandedTopics.has(topic.id) || Boolean(query.trim());
+    const expanded = isPrintAllMode || expandedTopics.has(topic.id) || Boolean(query.trim());
 
     return (
       <article key={topic.id} className="bg-bgCard border border-borderColor rounded-3xl shadow-sm overflow-hidden break-inside-avoid">
@@ -1029,7 +1047,7 @@ const UserGuide: React.FC = () => {
             </div>
           </div>
 
-          <div id="guide-print-content" className="max-w-7xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-28">
+          <div id="guide-print-content" className={`${isPrintAllMode ? 'guide-print-all bg-white text-slate-900' : ''} max-w-7xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-28`}>
             <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-indigo-700 text-white p-5 md:p-8 mb-5 md:mb-7 shadow-lg">
               <div className="absolute -top-20 -left-20 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
               <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-6 items-center">
@@ -1058,10 +1076,10 @@ const UserGuide: React.FC = () => {
               <div className="space-y-6">
                 {filteredSections.map(section => {
                   const SectionIcon = section.icon;
-                  const visible = query.trim() || activeSection === section.id;
+                  const visible = isPrintAllMode || query.trim() || activeSection === section.id;
                   if (!visible) return null;
                   return (
-                    <section id={`guide-section-${section.id}`} key={section.id} className="scroll-mt-24">
+                    <section id={`guide-section-${section.id}`} key={section.id} className={`scroll-mt-24 ${isPrintAllMode ? 'guide-pdf-section' : ''}`}>
                       <div className="bg-bgCard border border-borderColor rounded-3xl p-4 md:p-5 mb-3 shadow-sm">
                         <div className="flex items-start gap-3"><div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${section.accent}`}><SectionIcon size={22} /></div><div><h2 className="text-xl md:text-2xl font-black">{section.title}</h2><p className="text-xs md:text-sm font-bold text-textSecondary leading-6 mt-1">{section.description}</p></div></div>
                       </div>
