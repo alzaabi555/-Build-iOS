@@ -4,7 +4,7 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus,
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle,
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles, Send, Printer
+    Sparkles, Send, Printer, ArrowRightLeft
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
@@ -229,6 +229,8 @@ const StudentList: React.FC<StudentListProps> = ({
 
     const [newClassInput, setNewClassInput] = useState('');
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [movingStudent, setMovingStudent] = useState<Student | null>(null);
+    const [targetClassForMove, setTargetClassForMove] = useState('');
 
     const [newStudentName, setNewStudentName] = useState('');
     const [newStudentPhone, setNewStudentPhone] = useState('');
@@ -710,6 +712,54 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
+    const openMoveStudent = (student: Student) => {
+        const currentClass = getStudentClassValueForIdentity(student);
+        const firstOtherClass = safeClasses.find(className => className !== currentClass) || '';
+        setMovingStudent(student);
+        setTargetClassForMove(firstOtherClass);
+    };
+
+    const handleMoveStudentConfirm = () => {
+        if (!movingStudent) return;
+        const currentClass = getStudentClassValueForIdentity(movingStudent);
+        const targetClass = targetClassForMove.trim();
+        if (!targetClass || targetClass === currentClass) {
+            alert(language === 'ar' ? 'اختر فصلًا آخر لنقل الطالب إليه.' : 'Select a different class.');
+            return;
+        }
+        const duplicateInTarget = safeStudents.find(student => {
+            if (student.id === movingStudent.id) return false;
+            return makeStudentIdentityKey(student.name || '', getStudentClassValueForIdentity(student)) ===
+                makeStudentIdentityKey(movingStudent.name || '', targetClass);
+        });
+        if (duplicateInTarget) {
+            alert(
+                language === 'ar'
+                    ? `يوجد طالب بالاسم نفسه في الفصل ${targetClass}. لم يتم النقل حتى لا يتكرر السجل أو الكود.`
+                    : `A student with the same name already exists in ${targetClass}. Transfer was cancelled.`
+            );
+            return;
+        }
+        const rasedCode = getExistingRasedCodeFromStudent(movingStudent);
+        const movedStudent = {
+            ...movingStudent,
+            classes: [targetClass],
+            rasedId: rasedCode || (movingStudent as any).rasedId,
+            parentCode: rasedCode || (movingStudent as any).parentCode,
+            secretCode: rasedCode || (movingStudent as any).secretCode
+        } as Student;
+        if (!window.confirm(
+            language === 'ar'
+                ? `نقل الطالب ${movingStudent.name} من ${currentClass || 'الفصل الحالي'} إلى ${targetClass}؟\n\nسيبقى كود راصد وجميع الدرجات والحضور والسلوك محفوظة.`
+                : `Move ${movingStudent.name} from ${currentClass || 'current class'} to ${targetClass}? All records and the Rased code will be preserved.`
+        )) return;
+        onUpdateStudent(movedStudent);
+        setMovingStudent(null);
+        setTargetClassForMove('');
+        if (selectedClass === currentClass) setSelectedClass('all');
+        alert(language === 'ar' ? 'تم نقل الطالب مع الحفاظ على كود راصد وجميع السجلات.' : 'Student moved with all records preserved.');
+    };
+
     const handleEditStudentSave = () => {
         if (editingStudent) {
             const editedClass = getStudentClassValueForIdentity(editingStudent);
@@ -966,6 +1016,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                         { key: 'negative', label: t('studentsAlertAction'), icon: ThumbsDown, tone: 'danger', showOnMobile: true, voiceCommand: `سلوك سلبي ${student.name} تنبيه سلوكي ${student.name} افتح تنبيه ${student.name} خصم سلوك ${student.name}`, ariaLabel: `تنبيه سلوكي ${student.name}`, title: `تنبيه سلوكي ${student.name}`, danger: true, onClick: () => handleBehavior(student, 'negative') },
                                         { key: 'smart-report', label: t('studentsExcellenceAction'), icon: MessageCircle, tone: 'info', showOnMobile: false, voiceCommand: `تقرير تميز ${student.name} تقرير درجات ${student.name} واتساب ${student.name}`, ariaLabel: `تقرير الدرجات والتميز ${student.name}`, title: t('studentsExcellenceReportTitle'), onClick: () => handleSendSmartReport(student) },
                                         { key: 'negative-report', label: t('studentsWarningAction'), icon: Send, tone: 'warning', showOnMobile: false, voiceCommand: `تقرير سلوكي ${student.name} إنذار ${student.name} إرسال إنذار ${student.name}`, ariaLabel: `تقرير سلوكي إنذار ${student.name}`, title: t('studentsBehaviorWarningTitle'), onClick: () => handleSendNegativeReport(student) },
+                                        { key: 'move', label: language === 'ar' ? 'نقل' : 'Move', icon: ArrowRightLeft, tone: 'info', showOnMobile: true, ariaLabel: language === 'ar' ? `نقل الطالب ${student.name} إلى فصل آخر` : `Move ${student.name} to another class`, title: language === 'ar' ? 'نقل الطالب إلى فصل آخر' : 'Move student', onClick: () => openMoveStudent(student) },
                                         { key: 'edit', label: t('studentsEditAction'), icon: Edit2, tone: 'neutral', showOnMobile: false, voiceCommand: `تعديل بيانات ${student.name} تعديل الطالب ${student.name}`, ariaLabel: `تعديل بيانات ${student.name}`, title: t('editStudentData'), onClick: () => setEditingStudent(student) }
                                     ]}
                                 />
@@ -1014,7 +1065,54 @@ const StudentList: React.FC<StudentListProps> = ({
 
             <DrawerSheet isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary"><AlertCircle className="w-5 h-5 text-rose-500" />{t('behavioralAlert')}</h3><p className="text-xs font-bold mb-4 shrink-0 text-textSecondary">{t('chooseNoteType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi></p><div className="flex-1 overflow-y-auto custom-scrollbar px-1"><div className="grid grid-cols-2 gap-2 mb-4">{NEGATIVE_BEHAVIORS.map(b => <button key={b.id} onClick={() => confirmNegativeBehavior(b.original, b.points)} className="p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20"><span>{t(b.transKey)}</span><span className="text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600">{b.points}</span></button>)}</div></div><div className="pt-3 border-t shrink-0 mt-auto border-borderColor"><p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomNote')}</p><div className="flex gap-2"><input type="text" value={customNegativeReason} onChange={(e) => setCustomNegativeReason(e.target.value)} placeholder={t('otherReasonPlaceholder')} className="flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary" /><button onClick={() => { if (customNegativeReason.trim()) confirmNegativeBehavior(customNegativeReason, -1); }} className="px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600"><Plus size={14} /> {t('addBtnSmall')}</button></div></div></div></DrawerSheet>
 
-            <DrawerSheet isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} isRamadan={isRamadan} dir={dir}>{editingStudent && <div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-xl mb-6 shrink-0 text-textPrimary">{t('editStudentData')}</h3><div className="space-y-3 flex-1 overflow-y-auto px-1 custom-scrollbar"><input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" placeholder={t('namePlaceholderSimple')} /><select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({ ...editingStudent, classes: [e.target.value] })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary">{safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}</select><input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" placeholder={t('phoneNumberPlaceholder')} /><div className="flex gap-2 pt-2"><button onClick={() => setEditingStudent({ ...editingStudent, gender: 'male' })} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button><button onClick={() => setEditingStudent({ ...editingStudent, gender: 'female' })} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-500/10 border-pink-500/30 text-pink-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('femaleStudent')}</button></div></div><div className="flex gap-2 mt-4 shrink-0"><button onClick={handleEditStudentSave} className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors bg-primary text-white hover:bg-primary/80">{t('saveChangesBtn')}</button><button onClick={() => { if (confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); } }} className="px-4 py-3 border rounded-xl font-black text-sm transition-colors bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20"><Trash2 className="w-5 h-5" /></button></div></div>}</DrawerSheet>
+            <DrawerSheet isOpen={!!movingStudent} onClose={() => { setMovingStudent(null); setTargetClassForMove(''); }} isRamadan={isRamadan} dir={dir}>
+                {movingStudent && (
+                    <div className="flex flex-col h-full w-full pb-4">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-info/10 text-info border border-info/20 shrink-0">
+                            <ArrowRightLeft className="w-8 h-8" />
+                        </div>
+                        <h3 className="font-black text-xl text-center text-textPrimary">
+                            {language === 'ar' ? 'نقل الطالب إلى فصل آخر' : 'Move student to another class'}
+                        </h3>
+                        <p className="text-xs font-bold text-center text-textSecondary mt-2 mb-5 leading-6">
+                            {language === 'ar'
+                                ? 'يتم تحديث الفصل في سجل الطالب نفسه، لذلك يبقى كود راصد والدرجات والحضور والسلوك دون تغيير.'
+                                : 'The existing student record is updated, preserving the Rased code and all records.'}
+                        </p>
+                        <div className="rounded-2xl border border-borderColor bg-bgSoft p-4 mb-4">
+                            <p className="text-[10px] font-black text-textSecondary">{language === 'ar' ? 'الطالب' : 'Student'}</p>
+                            <p className="font-black text-textPrimary mt-1">{movingStudent.name}</p>
+                            <p className="text-xs font-bold text-textSecondary mt-2">
+                                {language === 'ar' ? 'الفصل الحالي:' : 'Current class:'} {getStudentClassValueForIdentity(movingStudent) || t('unspecified')}
+                            </p>
+                            <p className="text-xs font-bold text-primary mt-1 font-mono" dir="ltr">
+                                {getExistingRasedCodeFromStudent(movingStudent) || (movingStudent as any).rasedId || ''}
+                            </p>
+                        </div>
+                        <label className="text-xs font-black text-textSecondary mb-2">
+                            {language === 'ar' ? 'الفصل الجديد' : 'New class'}
+                        </label>
+                        <select value={targetClassForMove} onChange={event => setTargetClassForMove(event.target.value)} className="w-full p-4 rounded-xl font-black text-sm outline-none border bg-bgCard border-borderColor focus:border-primary text-textPrimary">
+                            <option value="" disabled>{language === 'ar' ? 'اختر الفصل الجديد' : 'Select new class'}</option>
+                            {safeClasses.filter(className => className !== getStudentClassValueForIdentity(movingStudent)).map(className => (
+                                <option key={className} value={className} className="bg-bgCard">{className}</option>
+                            ))}
+                        </select>
+                        {safeClasses.filter(className => className !== getStudentClassValueForIdentity(movingStudent)).length === 0 && (
+                            <div className="mt-3 rounded-xl border border-warning/20 bg-warning/10 p-3 text-xs font-bold text-textPrimary">
+                                {language === 'ar' ? 'لا يوجد فصل آخر متاح. أضف فصلًا جديدًا أولًا من قائمة إدارة الطلاب.' : 'No other class is available. Add a new class first.'}
+                            </div>
+                        )}
+                        <div className="mt-auto pt-5">
+                            <button type="button" onClick={handleMoveStudentConfirm} disabled={!targetClassForMove} className="w-full py-4 rounded-xl bg-primary text-white font-black text-sm shadow-lg disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <ArrowRightLeft size={18} />
+                                {language === 'ar' ? 'تأكيد نقل الطالب' : 'Confirm transfer'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </DrawerSheet>
+                        <DrawerSheet isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} isRamadan={isRamadan} dir={dir}>{editingStudent && <div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-xl mb-6 shrink-0 text-textPrimary">{t('editStudentData')}</h3><div className="space-y-3 flex-1 overflow-y-auto px-1 custom-scrollbar"><input type="text" value={editingStudent.name} onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" placeholder={t('namePlaceholderSimple')} /><select value={editingStudent.classes && editingStudent.classes.length > 0 ? editingStudent.classes[0] : ''} onChange={(e) => setEditingStudent({ ...editingStudent, classes: [e.target.value] })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary">{safeClasses.map(c => <option key={c} value={c} className="bg-bgCard">{c}</option>)}</select><input type="tel" value={editingStudent.parentPhone || ''} onChange={(e) => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" placeholder={t('phoneNumberPlaceholder')} /><div className="flex gap-2 pt-2"><button onClick={() => setEditingStudent({ ...editingStudent, gender: 'male' })} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'male' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('maleStudent')}</button><button onClick={() => setEditingStudent({ ...editingStudent, gender: 'female' })} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all border ${editingStudent.gender === 'female' ? 'bg-pink-500/10 border-pink-500/30 text-pink-500' : 'bg-transparent border-borderColor text-textSecondary'}`}>{t('femaleStudent')}</button></div></div><div className="flex gap-2 mt-4 shrink-0"><button onClick={handleEditStudentSave} className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg transition-colors bg-primary text-white hover:bg-primary/80">{t('saveChangesBtn')}</button><button onClick={() => { if (confirm(t('alertConfirmDeleteStudent'))) { onDeleteStudent(editingStudent.id); setEditingStudent(null); } }} className="px-4 py-3 border rounded-xl font-black text-sm transition-colors bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20"><Trash2 className="w-5 h-5" /></button></div></div>}</DrawerSheet>
 
             <DrawerSheet isOpen={!!randomWinner} onClose={() => setRandomWinner(null)} isRamadan={isRamadan} dir={dir}>{randomWinner && <div className="flex flex-col h-full w-full text-center items-center justify-center pb-8 animate-in zoom-in duration-300"><div className="mb-6 relative inline-block"><div className="w-24 h-24 rounded-full border-4 shadow-xl overflow-hidden mx-auto transition-colors border-purple-500/30 bg-purple-500/10"><StudentAvatar gender={randomWinner.gender} className="w-full h-full" /></div><div className={`absolute -top-3 ${dir === 'rtl' ? '-right-3' : '-left-3'} text-4xl animate-bounce`}>🎉</div><div className={`absolute -bottom-2 ${dir === 'rtl' ? '-left-2' : '-right-2'} text-4xl animate-bounce`} style={{ animationDelay: '0.2s' }}>✨</div></div><h2 className="text-2xl font-black mb-1 text-textPrimary">{randomWinner.name}</h2><p className="text-sm font-bold inline-block px-3 py-1 rounded-full mb-6 transition-colors bg-purple-500/10 text-purple-500">{randomWinner.classes[0]}</p><div className="flex gap-3 w-full"><button onClick={() => { handleBehavior(randomWinner, 'positive'); setRandomWinner(null); }} className="flex-1 py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-emerald-500 text-white hover:bg-emerald-600">{t('reinforceBtn')}</button></div></div>}</DrawerSheet>
 
