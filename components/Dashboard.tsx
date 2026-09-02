@@ -5,11 +5,10 @@ import {
     School, Download, Loader2, 
     PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
     X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
-    AlertTriangle, Palette, Award, Heart, Plus, Trash2, RefreshCcw,
+    AlertTriangle, Award, Heart, Plus, Trash2, RefreshCcw,
     BookOpen, MapPin
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../theme/ThemeProvider'; 
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
@@ -42,6 +41,8 @@ interface DashboardProps {
 }
 
 const BELL_SOUND_URL = alarmSound;
+const TERM_PLAN_STORAGE_KEY = 'rased_term_plan';
+const ASSESSMENT_PLAN_STORAGE_KEY = 'rased_assessment_plan';
 
 interface AssessmentMonth {
     id: string;
@@ -165,9 +166,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     onSemesterChange
 }) => {
     const { classes, setSelectedClass, t, dir } = useApp();
-    const { theme, setTheme } = useTheme();
-    
-    const fileInputRef = useRef<HTMLInputElement>(null);
+const fileInputRef = useRef<HTMLInputElement>(null);
     const stampInputRef = useRef<HTMLInputElement>(null); 
     const ministryLogoInputRef = useRef<HTMLInputElement>(null); 
     const modalScheduleFileInputRef = useRef<HTMLInputElement>(null);
@@ -180,7 +179,7 @@ const [showTermPlanModal, setShowTermPlanModal] = useState(false);
 
 const [termPlan, setTermPlan] = useState<TermWeekPlan[]>(() => {
     try {
-        const saved = localStorage.getItem('rased_term_plan');
+        const saved = localStorage.getItem(TERM_PLAN_STORAGE_KEY);
 
         if (saved) {
             const parsed = JSON.parse(saved);
@@ -240,7 +239,7 @@ const isTermPlanReady = Boolean(
 
     const [assessmentPlan, setAssessmentPlan] = useState<AssessmentMonth[]>(() => {
         try {
-            const saved = localStorage.getItem('rased_assessment_plan');
+            const saved = localStorage.getItem(ASSESSMENT_PLAN_STORAGE_KEY);
             if (saved) return JSON.parse(saved);
         } catch (e) { console.error(e); }
         
@@ -253,6 +252,15 @@ const isTermPlanReady = Boolean(
 
     const [showPlanSettingsModal, setShowPlanSettingsModal] = useState(false);
     const [tempPlan, setTempPlan] = useState<AssessmentMonth[]>([]);
+    // حفظ دائم للخطتين عند كل تغيير معتمد، بما في ذلك الإغلاق السريع للتطبيق.
+    useEffect(() => {
+        try { localStorage.setItem(TERM_PLAN_STORAGE_KEY, JSON.stringify(termPlan)); }
+        catch (error) { console.error('Failed to persist term plan', error); }
+    }, [termPlan]);
+    useEffect(() => {
+        try { localStorage.setItem(ASSESSMENT_PLAN_STORAGE_KEY, JSON.stringify(assessmentPlan)); }
+        catch (error) { console.error('Failed to persist assessment plan', error); }
+    }, [assessmentPlan]);
 
     useEffect(() => {
         const checkAnnouncements = async () => {
@@ -406,8 +414,9 @@ useEffect(() => {
     };
 
     const handleSavePlanSettings = () => {
-        setAssessmentPlan(tempPlan);
-        localStorage.setItem('rased_assessment_plan', JSON.stringify(tempPlan));
+        const committedPlan = JSON.parse(JSON.stringify(tempPlan)) as AssessmentMonth[];
+        setAssessmentPlan(committedPlan);
+        localStorage.setItem(ASSESSMENT_PLAN_STORAGE_KEY, JSON.stringify(committedPlan));
         setShowPlanSettingsModal(false);
     };
 
@@ -455,8 +464,9 @@ const validateTermPlan = (plan: TermWeekPlan[]) => {
 const handleSaveTermPlan = () => {
     if (!validateTermPlan(tempTermPlan)) return;
 
-    setTermPlan(tempTermPlan);
-    localStorage.setItem('rased_term_plan', JSON.stringify(tempTermPlan));
+    const committedPlan = JSON.parse(JSON.stringify(tempTermPlan)) as TermWeekPlan[];
+    setTermPlan(committedPlan);
+    localStorage.setItem(TERM_PLAN_STORAGE_KEY, JSON.stringify(committedPlan));
     setShowTermPlanModal(false);
 
     alert(t('alertTermPlanSaved'));
@@ -925,18 +935,6 @@ const EmptyActionCard = ({
             // 💉 الأزرار العلوية (ثيم، إعدادات، إشعارات) تم تصغيرها لتناسب الهواتف
             rightActions={
                 <div className="flex gap-1.5 md:gap-2 items-center" style={{ WebkitAppRegion: 'no-drag' } as any}>
-                    <button 
-                        onClick={() => {
-                            const themes = ['light', 'dark', 'glass'];
-                            const currentIndex = themes.indexOf(theme || 'light');
-                            const nextTheme = themes[(currentIndex + 1) % themes.length];
-                            setTheme(nextTheme as any);
-                        }} 
-                        className="w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all bg-bgSoft border-borderColor text-primary hover:bg-primary hover:text-white shadow-sm"
-                        title={t('themeSettings')}
-                    >
-                        <Palette size={16} />
-                    </button>
                     <div className="relative z-[50]">
                         <button onClick={() => setShowSettingsDropdown(!showSettingsDropdown)} className={`w-8 h-8 md:w-10 md:h-10 bg-bgSoft hover:bg-bgCard border border-borderColor text-textSecondary hover:text-textPrimary rounded-xl flex items-center justify-center transition-all shadow-sm`}>
                             <User size={16} />
@@ -948,11 +946,6 @@ const EmptyActionCard = ({
                                     <button onClick={() => { setShowEditModal(true); setShowSettingsDropdown(false); }} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
                                         <div className={`p-1.5 rounded-lg bg-primary/10`}><Edit3 size={16} className="text-primary"/></div>
                                         <span className="text-xs font-bold text-textPrimary">{t('editIdentity')}</span>
-                                    </button>
-
-                                    <button onClick={() => { scheduleFileInputRef.current?.click(); }} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} border-b border-borderColor transition-colors hover:bg-bgSoft`}>
-                                        <div className={`p-1.5 rounded-lg bg-success/10`}><Download size={16} className="text-success"/></div>
-                                        <span className="text-xs font-bold text-textPrimary">{isImportingSchedule ? '...' : t('importSchedule')}</span>
                                     </button>
 
                                     <button onClick={handleTestNotification} className={`flex items-center gap-3 px-4 py-3 w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} transition-colors hover:bg-bgSoft`}>
@@ -967,9 +960,6 @@ const EmptyActionCard = ({
                     <button onClick={onToggleNotifications} className={`w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all shadow-sm ${notificationsEnabled ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-bgSoft border-borderColor text-textSecondary hover:bg-bgCard hover:text-textPrimary'}`}>
                         {notificationsEnabled ? <Bell size={16} className="animate-pulse" /> : <BellOff size={16} />}
                     </button>
-                    
-                    {/* مخفي: لرفع الجدول */}
-                    <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
                 </div>
             }
         >
@@ -1822,14 +1812,22 @@ const EmptyActionCard = ({
                 
                 <div className={`flex justify-between items-center mb-4 pb-2 border-b shrink-0 border-borderColor`}>
                     <h3 className="font-black text-lg text-textPrimary">{t('manageSchedule')}</h3>
-                    <button 
-                        onClick={() => modalScheduleFileInputRef.current?.click()} 
-                        style={{ WebkitAppRegion: 'no-drag' } as any}
-                        className={`cursor-pointer relative z-50 flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-success/10 text-success hover:bg-success/20`}
-                    >
-                        <Download size={14}/> {isImportingPeriods ? '...' : t('importExcel')}
-                    </button>
-                    <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportPeriodTimes} accept=".xlsx,.xls" className="hidden" />
+                    <div className="flex flex-wrap items-center justify-end gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                        <button type="button" onClick={() => scheduleFileInputRef.current?.click()} disabled={isImportingSchedule}
+                            className="cursor-pointer relative z-50 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black transition-colors bg-info/10 text-info hover:bg-info/20 disabled:opacity-60"
+                            title="استيراد توزيع الحصص على أيام الأسبوع">
+                            {isImportingSchedule ? <Loader2 size={14} className="animate-spin" /> : <CalendarDays size={14} />}
+                            استيراد الجدول
+                        </button>
+                        <button type="button" onClick={() => modalScheduleFileInputRef.current?.click()} disabled={isImportingPeriods}
+                            className="cursor-pointer relative z-50 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black transition-colors bg-success/10 text-success hover:bg-success/20 disabled:opacity-60"
+                            title="استيراد أوقات بداية ونهاية الحصص">
+                            {isImportingPeriods ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                            استيراد التوقيت
+                        </button>
+                        <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedule} accept=".xlsx,.xls" className="hidden" />
+                        <input type="file" ref={modalScheduleFileInputRef} onChange={handleImportPeriodTimes} accept=".xlsx,.xls" className="hidden" />
+                    </div>
                 </div>
 
                 <div className={`flex p-1 rounded-xl mb-4 shrink-0 bg-bgSoft`}>
