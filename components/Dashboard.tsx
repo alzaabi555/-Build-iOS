@@ -6,12 +6,14 @@ import {
     PlayCircle, AlarmClock, ChevronLeft, User, Check, Camera,
     X, Calendar, BellOff, Save, CalendarDays, CheckCircle2,
     AlertTriangle, Award, Heart, Plus, Trash2, RefreshCcw,
-    BookOpen, MapPin
+    BookOpen, MapPin, FileSpreadsheet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import * as XLSX from 'xlsx';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import alarmSound from '../assets/alarm.mp3';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغلاف الشامل
@@ -415,8 +417,13 @@ useEffect(() => {
 
     const handleSavePlanSettings = () => {
         const committedPlan = JSON.parse(JSON.stringify(tempPlan)) as AssessmentMonth[];
+        const serializedPlan = JSON.stringify(committedPlan);
+        localStorage.setItem(ASSESSMENT_PLAN_STORAGE_KEY, serializedPlan);
+        if (localStorage.getItem(ASSESSMENT_PLAN_STORAGE_KEY) !== serializedPlan) {
+            alert('تعذر حفظ خطة التقويم المستمر على الجهاز.');
+            return;
+        }
         setAssessmentPlan(committedPlan);
-        localStorage.setItem(ASSESSMENT_PLAN_STORAGE_KEY, JSON.stringify(committedPlan));
         setShowPlanSettingsModal(false);
     };
 
@@ -465,8 +472,13 @@ const handleSaveTermPlan = () => {
     if (!validateTermPlan(tempTermPlan)) return;
 
     const committedPlan = JSON.parse(JSON.stringify(tempTermPlan)) as TermWeekPlan[];
+    const serializedPlan = JSON.stringify(committedPlan);
+    localStorage.setItem(TERM_PLAN_STORAGE_KEY, serializedPlan);
+    if (localStorage.getItem(TERM_PLAN_STORAGE_KEY) !== serializedPlan) {
+        alert('تعذر حفظ الخطة الفصلية على الجهاز.');
+        return;
+    }
     setTermPlan(committedPlan);
-    localStorage.setItem(TERM_PLAN_STORAGE_KEY, JSON.stringify(committedPlan));
     setShowTermPlanModal(false);
 
     alert(t('alertTermPlanSaved'));
@@ -501,6 +513,54 @@ const handleResetTermPlan = () => {
     }
 
     setTempTermPlan(createEmptyTermWeeks(18));
+};
+
+const handleDownloadTermPlanTemplate = async () => {
+    try {
+        const templateRows = [
+            ['رقم الأسبوع', 'اسم الأسبوع', 'تاريخ البداية', 'تاريخ النهاية', 'الوحدة', 'الدرس', 'الموضوع الافتراضي'],
+            [1, 'الأسبوع الأول', '2026-09-06', '2026-09-10', 'الوحدة الأولى', 'الدرس الأول', 'موضوع الدرس'],
+            [2, 'الأسبوع الثاني', '2026-09-13', '2026-09-17', 'الوحدة الأولى', 'الدرس الثاني', 'موضوع الدرس']
+        ];
+        const instructionsRows = [
+            ['تعليمات استخدام قالب الخطة الفصلية'],
+            ['1. لا تغيّر ترتيب الأعمدة أو أسماءها في الصف الأول.'],
+            ['2. استخدم التاريخ بصيغة YYYY-MM-DD مثل 2026-09-06.'],
+            ['3. اكتب كل أسبوع في صف مستقل.'],
+            ['4. يمكن ترك الوحدة أو الدرس أو الموضوع فارغًا واستكماله لاحقًا داخل التطبيق.'],
+            ['5. احفظ الملف بصيغة XLSX ثم استورده من نافذة الخطة الفصلية.']
+        ];
+        const workbook = XLSX.utils.book_new();
+        const planSheet = XLSX.utils.aoa_to_sheet(templateRows);
+        planSheet['!cols'] = [
+            { wch: 14 }, { wch: 22 }, { wch: 18 }, { wch: 18 },
+            { wch: 28 }, { wch: 28 }, { wch: 34 }
+        ];
+        const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsRows);
+        instructionsSheet['!cols'] = [{ wch: 90 }];
+        XLSX.utils.book_append_sheet(workbook, planSheet, 'الخطة الفصلية');
+        XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'تعليمات');
+        const fileName = 'Rased_Term_Plan_Template.xlsx';
+        if (Capacitor.isNativePlatform()) {
+            const base64Data = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+            const writtenFile = await Filesystem.writeFile({
+                path: fileName,
+                data: base64Data,
+                directory: Directory.Cache
+            });
+            await Share.share({
+                title: 'قالب الخطة الفصلية',
+                text: 'قالب Excel المعتمد لاستيراد الخطة الفصلية في راصد المعلم',
+                url: writtenFile.uri,
+                dialogTitle: 'حفظ أو مشاركة قالب الخطة الفصلية'
+            });
+        } else {
+            XLSX.writeFile(workbook, fileName);
+        }
+    } catch (error) {
+        console.error('Term plan template download failed', error);
+        alert('تعذر إنشاء قالب الخطة الفصلية.');
+    }
 };
 
 const handleImportTermPlanExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1498,11 +1558,20 @@ const EmptyActionCard = ({
                 </button>
 
                 <button
+                    type="button"
+                    onClick={handleDownloadTermPlanTemplate}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-info/10 text-info hover:bg-info/20"
+                    title="تحميل قالب Excel المعتمد للخطة الفصلية"
+                >
+                    <FileSpreadsheet size={14} />
+                    تحميل القالب
+                </button>
+                <button
                     onClick={() => termExcelInputRef.current?.click()}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors bg-success/10 text-success hover:bg-success/20"
                 >
                     <Download size={14} />
-                    Excel
+                    استيراد Excel
                 </button>
 
                 <input
