@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Download, Upload, Info, FileSpreadsheet, LayoutGrid } from 'lucide-react';
+import { Download, Upload, Info, FileSpreadsheet, LayoutGrid, Plus, Check, X, AlertCircle } from 'lucide-react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -18,9 +18,39 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [isAddingClass, setIsAddingClass] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  const [classError, setClassError] = useState('');
+  const [locallyAddedClasses, setLocallyAddedClasses] = useState<string[]>([]);
 
-  // 🌙 متغير لتحديد الثيم الحالي
-  const isRamadan = true;
+  const normalizedClassKey = (value: string) =>
+    String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase(language === 'ar' ? 'ar' : undefined);
+
+  const availableClasses = Array.from(new Map(
+    [...(Array.isArray(existingClasses) ? existingClasses : []), ...locallyAddedClasses]
+      .filter(Boolean)
+      .map(className => [normalizedClassKey(className), className.trim()])
+  ).values());
+
+  const handleAddClass = () => {
+    const className = newClassName.trim().replace(/\s+/g, ' ');
+    if (!className) {
+      setClassError(language === 'ar' ? 'اكتب اسم الفصل أولًا.' : 'Enter the class name first.');
+      return;
+    }
+    const existingClass = availableClasses.find(item => normalizedClassKey(item) === normalizedClassKey(className));
+    if (existingClass) {
+      setSelectedClass(existingClass);
+      setClassError(language === 'ar' ? 'هذا الفصل موجود مسبقًا وتم تحديده.' : 'This class already exists and has been selected.');
+      return;
+    }
+    onAddClass(className);
+    setLocallyAddedClasses(previous => [...previous, className]);
+    setSelectedClass(className);
+    setNewClassName('');
+    setClassError('');
+    setIsAddingClass(false);
+  };
 
   const handleDownloadTemplate = async () => {
     try {
@@ -132,94 +162,47 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
     }
   };
 
-  // 🌍 تطبيق الاتجاه والثيم على الحاوية
   return (
-    <div className={`p-4 md:p-6 flex flex-col gap-6 w-full h-full overflow-y-auto custom-scrollbar ${isRamadan ? 'text-white bg-transparent' : 'text-slate-800 bg-slate-50'} ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
-        
-        <button 
-            onClick={handleDownloadTemplate}
-            className={`w-full py-4 md:py-5 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm border-2 ${isRamadan ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border-amber-500/30' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'}`}
-        >
-            <Download className="w-5 h-5" />
-            {t('downloadExcelTemplateWithCivilId')}
-        </button>
-
-        <div className={`p-5 rounded-2xl border shadow-sm ${isRamadan ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'}`}>
-            <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-3 mb-4">
-                <h3 className={`font-black flex items-center gap-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>
-                    <LayoutGrid className={`w-5 h-5 ${isRamadan ? 'text-amber-400' : 'text-indigo-500'}`} />
-                    {t('assignStudentsToClass')}
-                </h3>
-                <button 
-                    onClick={() => {
-                        const newClass = prompt(t('classNameExample'));
-                        if (newClass && newClass.trim()) {
-                            onAddClass(newClass.trim());
-                            setSelectedClass(newClass.trim());
-                        }
-                    }}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isRamadan ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'}`}
-                >
-                    {t('newClassBtnPlus')}
-                </button>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scrollbar p-1">
-                {existingClasses.map(cls => (
-                    <button
-                        key={cls}
-                        onClick={() => setSelectedClass(cls)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
-                            selectedClass === cls 
-                            ? (isRamadan ? 'border-amber-500 bg-amber-500/20 text-amber-300 shadow-md scale-105' : 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm scale-105') 
-                            : (isRamadan ? 'border-white/10 bg-white/5 text-slate-300 hover:border-amber-200/50' : 'border-slate-100 bg-white text-slate-600 hover:border-indigo-200')
-                        }`}
-                    >
-                        {cls}
-                    </button>
-                ))}
-                {existingClasses.length === 0 && (
-                    <p className={`text-xs font-bold p-2 ${isRamadan ? 'text-slate-400' : 'text-slate-400'}`}>{t('alertSelectClassExcel')}</p>
-                )}
-            </div>
+    <div className={`p-4 md:p-6 flex flex-col gap-5 w-full h-full overflow-y-auto custom-scrollbar bg-bgMain text-textPrimary ${dir === 'rtl' ? 'text-right' : 'text-left'}`} dir={dir}>
+      <section className="rounded-3xl border border-borderColor bg-bgCard p-4 md:p-5 shadow-sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-11 h-11 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center shrink-0"><FileSpreadsheet className="w-5 h-5" /></div>
+          <div className="min-w-0"><h2 className="font-black text-base md:text-lg text-textPrimary">{t('importFromExcelMenu')}</h2><p className="text-xs font-bold leading-6 text-textSecondary mt-1">{t('excelTipBestResults')}</p></div>
         </div>
+        <button type="button" onClick={handleDownloadTemplate} className="w-full py-3.5 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm border bg-success/10 hover:bg-success/20 text-success border-success/20"><Download className="w-5 h-5" />{t('downloadExcelTemplateWithCivilId')}</button>
+      </section>
 
-        <div className={`border-2 border-dashed rounded-[2rem] p-8 text-center transition-all flex flex-col items-center justify-center min-h-[250px] ${selectedClass ? (isRamadan ? 'border-indigo-400/50 bg-indigo-900/20' : 'border-indigo-300 bg-indigo-50/30') : (isRamadan ? 'border-white/20 bg-white/5 opacity-60' : 'border-slate-300 bg-slate-50 opacity-60')}`}>
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border shadow-sm ${isRamadan ? 'bg-[#1e293b] text-indigo-400 border-indigo-500/30' : 'bg-indigo-100 text-indigo-500 border-indigo-200'}`}>
-                <FileSpreadsheet className="w-8 h-8" />
+      <section className="p-4 md:p-5 rounded-3xl border border-borderColor bg-bgCard shadow-sm">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+          <div><h3 className="font-black flex items-center gap-2 text-textPrimary"><LayoutGrid className="w-5 h-5 text-primary" />{t('assignStudentsToClass')}</h3><p className="text-[11px] font-bold text-textSecondary mt-1">{language === 'ar' ? 'اختر الفصل أولًا، أو أضف فصلًا جديدًا ثم تابع استيراد ملف Excel.' : 'Select a class, or add a new class, then import the Excel file.'}</p></div>
+          <button type="button" onClick={() => { setIsAddingClass(previous => !previous); setClassError(''); setNewClassName(''); }} className="text-xs font-black px-3 py-2.5 rounded-xl transition-colors text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 flex items-center justify-center gap-1.5 shrink-0">{isAddingClass ? <X size={15} /> : <Plus size={15} />}{isAddingClass ? (language === 'ar' ? 'إلغاء الإضافة' : 'Cancel') : t('newClassBtnPlus')}</button>
+        </div>
+        {isAddingClass && (
+          <div className="mb-4 p-3 md:p-4 rounded-2xl border border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-2">
+            <label className="block text-[11px] font-black text-textSecondary mb-2">{language === 'ar' ? 'اسم الفصل الجديد' : 'New class name'}</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input type="text" value={newClassName} onChange={event => { setNewClassName(event.target.value); if (classError) setClassError(''); }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); handleAddClass(); } }} autoFocus placeholder={t('classNameExample')} className="flex-1 min-w-0 h-12 rounded-xl border border-borderColor bg-bgCard px-4 text-sm font-black text-textPrimary placeholder:text-textSecondary outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />
+              <button type="button" onClick={handleAddClass} disabled={!newClassName.trim()} className="h-12 px-5 rounded-xl bg-primary text-white text-xs font-black shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all"><Check size={16} />{language === 'ar' ? 'إضافة وتحديد الفصل' : 'Add and select'}</button>
             </div>
-            <h3 className={`font-black text-lg mb-2 ${isRamadan ? 'text-white' : 'text-slate-800'}`}>{t('uploadExcelFileTitle')}</h3>
-            <p className={`text-xs font-bold mb-6 ${isRamadan ? 'text-indigo-200/70' : 'text-slate-500'}`}>
-                {!selectedClass ? t('mustSelectClassFirst') : `سيتم استيراد الطلاب إلى صف: ${selectedClass}`}
-            </p>
-            
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept=".xlsx, .xls" 
-                className="hidden" 
-                disabled={!selectedClass}
-            />
-            <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!selectedClass}
-                className={`px-8 py-3.5 rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 w-full md:w-auto mx-auto disabled:opacity-50 disabled:scale-100 ${isRamadan ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/50' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-            >
-                <Upload className="w-4 h-4" />
-                {t('chooseFileNow')}
-            </button>
+            {classError && <div className="mt-2 flex items-start gap-2 text-[11px] font-bold text-warning"><AlertCircle size={14} className="shrink-0 mt-0.5" /><span>{classError}</span></div>}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
+          {availableClasses.map(cls => <button type="button" key={cls} onClick={() => setSelectedClass(cls)} className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all border ${selectedClass === cls ? 'border-primary bg-primary text-white shadow-sm' : 'border-borderColor bg-bgSoft text-textSecondary hover:border-primary/30 hover:text-textPrimary'}`}>{cls}</button>)}
+          {availableClasses.length === 0 && !isAddingClass && <div className="w-full rounded-2xl border border-dashed border-borderColor bg-bgSoft p-4 text-center"><p className="text-xs font-bold text-textSecondary">{language === 'ar' ? 'لا توجد فصول. اضغط «إضافة فصل جديد» للبدء.' : 'No classes yet. Select Add New Class to begin.'}</p></div>}
         </div>
+      </section>
 
-        <div className={`border rounded-xl p-4 flex items-start gap-3 mt-auto shrink-0 ${isRamadan ? 'bg-amber-900/20 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-            <Info className={`w-5 h-5 shrink-0 mt-0.5 ${isRamadan ? 'text-amber-400' : 'text-amber-500'}`} />
-            <p className={`text-xs font-bold leading-relaxed ${isRamadan ? 'text-amber-200/90' : 'text-amber-800'}`}>
-                {t('excelTipBestResults')}
-            </p>
-        </div>
+      <section className={`border-2 border-dashed rounded-3xl p-6 md:p-8 text-center transition-all flex flex-col items-center justify-center min-h-[250px] ${selectedClass ? 'border-primary/30 bg-primary/5' : 'border-borderColor bg-bgSoft opacity-75'}`}>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border shadow-sm bg-bgCard text-primary border-primary/20"><Upload className="w-8 h-8" /></div>
+        <h3 className="font-black text-lg mb-2 text-textPrimary">{t('uploadExcelFileTitle')}</h3>
+        <p className="text-xs font-bold mb-6 text-textSecondary">{!selectedClass ? t('mustSelectClassFirst') : (language === 'ar' ? `سيتم استيراد الطلاب إلى الفصل: ${selectedClass}` : `Students will be imported to: ${selectedClass}`)}</p>
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".xlsx,.xls" className="hidden" disabled={!selectedClass} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!selectedClass} className="px-8 py-3.5 rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 w-full md:w-auto mx-auto disabled:opacity-50 disabled:scale-100 bg-primary hover:bg-primary/80 text-white"><Upload className="w-4 h-4" />{t('chooseFileNow')}</button>
+      </section>
 
+      <div className="border rounded-2xl p-4 flex items-start gap-3 mt-auto shrink-0 bg-warning/10 border-warning/20"><Info className="w-5 h-5 shrink-0 mt-0.5 text-warning" /><p className="text-xs font-bold leading-relaxed text-textPrimary">{t('excelTipBestResults')}</p></div>
     </div>
   );
 };
-
 export default ExcelImport;
