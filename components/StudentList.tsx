@@ -204,7 +204,8 @@ const StudentList: React.FC<StudentListProps> = ({
     onUpdateStudent,
     onDeleteStudent,
     currentSemester,
-    onDeleteClass
+    onDeleteClass,
+    onEditClass
 }) => {
     const { defaultStudentGender, setDefaultStudentGender, setStudents, teacherInfo, t, dir, language } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
@@ -228,6 +229,8 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showCardsModal, setShowCardsModal] = useState(false);
 
     const [newClassInput, setNewClassInput] = useState('');
+    const [editingClassName, setEditingClassName] = useState<string | null>(null);
+    const [editedClassName, setEditedClassName] = useState('');
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [movingStudent, setMovingStudent] = useState<Student | null>(null);
     const [targetClassForMove, setTargetClassForMove] = useState('');
@@ -712,6 +715,48 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
+    const openEditClassName = (className: string) => {
+        setEditingClassName(className);
+        setEditedClassName(className);
+    };
+
+    const cancelEditClassName = () => {
+        setEditingClassName(null);
+        setEditedClassName('');
+    };
+
+    const handleEditClassNameSave = () => {
+        if (!editingClassName || !onEditClass) return;
+        const oldName = editingClassName.trim();
+        const newName = editedClassName.trim().replace(/\s+/g, ' ');
+        if (!newName) {
+            alert(language === 'ar' ? 'اكتب اسم الفصل الجديد.' : 'Enter the new class name.');
+            return;
+        }
+        if (newName === oldName) {
+            cancelEditClassName();
+            return;
+        }
+        const duplicateClass = safeClasses.some(className =>
+            className !== oldName && normalizeClassForIdentity(className) === normalizeClassForIdentity(newName)
+        );
+        if (duplicateClass) {
+            alert(language === 'ar' ? 'يوجد فصل آخر بالاسم نفسه أو بصيغة مطابقة.' : 'Another class already uses the same name.');
+            return;
+        }
+        const studentsCount = safeStudents.filter(student => (student.classes || []).includes(oldName)).length;
+        if (!window.confirm(
+            language === 'ar'
+                ? `تغيير اسم الفصل من «${oldName}» إلى «${newName}»؟\n\nسيتم تحديث اسم الفصل للطلاب المرتبطين به (${studentsCount}) مع الحفاظ على أكواد راصد والدرجات والحضور والسلوك والنجوم والإشارات.`
+                : `Rename class “${oldName}” to “${newName}”? The class name will be updated for ${studentsCount} linked students while preserving all records.`
+        )) return;
+        onEditClass(oldName, newName);
+        if (selectedClass === oldName) setSelectedClass(newName);
+        if (newStudentClass === oldName) setNewStudentClass(newName);
+        cancelEditClassName();
+        alert(language === 'ar' ? 'تم تعديل اسم الفصل مع الحفاظ على سجلات الطلاب.' : 'Class renamed and student records preserved.');
+    };
+
     const openMoveStudent = (student: Student) => {
         const currentClass = getStudentClassValueForIdentity(student);
         const firstOtherClass = safeClasses.find(className => className !== currentClass) || '';
@@ -1059,7 +1104,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
             <DrawerSheet isOpen={showAddClassModal} onClose={() => setShowAddClassModal(false)} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg mb-4 shrink-0">{t('addNewClassTitle')}</h3><div className="flex-1"><input type="text" placeholder={t('classNameExample')} value={newClassInput} onChange={(e) => setNewClassInput(e.target.value)} className="w-full p-4 rounded-xl font-bold text-sm outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary" /></div><div className="mt-auto pt-4 shrink-0"><button onClick={handleAddClassSubmit} className="w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-colors bg-primary text-white hover:bg-primary/80">{t('addBtnSimple')}</button></div></div></DrawerSheet>
 
-            <DrawerSheet isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center"><h3 className="font-black text-xl mb-6 shrink-0">{t('classSettingsTitle')}</h3><div className="rounded-2xl p-4 mb-6 border shrink-0 bg-primary/10 border-primary/20"><div className="flex items-center justify-center gap-2 mb-3 text-primary"><Users className="w-4 h-4" /><span className="font-bold text-sm">{t('schoolTypeBatchChange')}</span></div><div className="flex gap-3 mb-2"><button onClick={() => handleBatchGenderUpdate('male')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? 'bg-bgCard border-blue-500 shadow-md text-blue-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👨‍🎓</span><span className="font-black text-sm">{t('boys')}</span></button><button onClick={() => handleBatchGenderUpdate('female')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? 'bg-bgCard border-pink-500 shadow-md text-pink-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👩‍🎓</span><span className="font-black text-sm">{t('girls')}</span></button></div><p className="text-[10px] font-bold text-primary">{t('iconUnificationNote')}</p></div><div className="w-full h-px mb-6 shrink-0 bg-borderColor" /><div className="flex justify-between items-center mb-2 px-2 shrink-0"><span className="text-xs font-bold text-textSecondary">{t('deleteClassInstruction')}</span><span className="text-[10px] font-bold text-rose-500">{t('deleteClassWarning')}</span></div><div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-2">{safeClasses.map(cls => <div key={cls} className="flex justify-between items-center p-3 rounded-xl border transition-colors bg-transparent border-borderColor"><span className="font-bold text-sm text-textPrimary">{cls}</span><div className="flex gap-2"><button onClick={() => { if (onDeleteClass && confirm(t('alertConfirmDeleteClass'))) onDeleteClass(cls); }} className="p-2 rounded-lg transition-colors text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"><Trash2 className="w-4 h-4" /></button></div></div>)}{safeClasses.length === 0 && <p className="text-xs text-textSecondary">{t('noClassesAdded')}</p>}</div></div></DrawerSheet>
+            <DrawerSheet isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center"><h3 className="font-black text-xl mb-6 shrink-0">{t('classSettingsTitle')}</h3><div className="rounded-2xl p-4 mb-6 border shrink-0 bg-primary/10 border-primary/20"><div className="flex items-center justify-center gap-2 mb-3 text-primary"><Users className="w-4 h-4" /><span className="font-bold text-sm">{t('schoolTypeBatchChange')}</span></div><div className="flex gap-3 mb-2"><button onClick={() => handleBatchGenderUpdate('male')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? 'bg-bgCard border-blue-500 shadow-md text-blue-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👨‍🎓</span><span className="font-black text-sm">{t('boys')}</span></button><button onClick={() => handleBatchGenderUpdate('female')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? 'bg-bgCard border-pink-500 shadow-md text-pink-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👩‍🎓</span><span className="font-black text-sm">{t('girls')}</span></button></div><p className="text-[10px] font-bold text-primary">{t('iconUnificationNote')}</p></div><div className="w-full h-px mb-6 shrink-0 bg-borderColor" /><div className="flex justify-between items-center mb-2 px-2 shrink-0"><span className="text-xs font-bold text-textSecondary">{t('deleteClassInstruction')}</span><span className="text-[10px] font-bold text-rose-500">{t('deleteClassWarning')}</span></div><div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-2">{safeClasses.map(cls => <div key={cls} className="p-3 rounded-xl border transition-colors bg-transparent border-borderColor">{editingClassName === cls ? <div className="space-y-2"><input type="text" autoFocus value={editedClassName} onChange={(e) => setEditedClassName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleEditClassNameSave(); if (e.key === 'Escape') cancelEditClassName(); }} className="w-full p-3 rounded-xl font-black text-sm outline-none border bg-bgCard border-primary text-textPrimary" aria-label={language === 'ar' ? `الاسم الجديد للفصل ${cls}` : `New name for ${cls}`} /><div className="flex gap-2"><button type="button" onClick={handleEditClassNameSave} disabled={!editedClassName.trim() || !onEditClass} className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"><CheckCircle2 size={15} />{language === 'ar' ? 'حفظ الاسم' : 'Save name'}</button><button type="button" onClick={cancelEditClassName} className="px-4 py-2.5 rounded-xl bg-bgSoft border border-borderColor text-textSecondary text-xs font-black active:scale-95 transition-all">{language === 'ar' ? 'إلغاء' : 'Cancel'}</button></div></div> : <div className="flex justify-between items-center gap-3"><span className="font-bold text-sm text-textPrimary">{cls}</span><div className="flex gap-2"><button type="button" onClick={() => openEditClassName(cls)} disabled={!onEditClass} className="p-2 rounded-lg transition-colors text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-40" title={language === 'ar' ? 'تعديل اسم الفصل' : 'Rename class'} aria-label={language === 'ar' ? `تعديل اسم الفصل ${cls}` : `Rename class ${cls}`}><Edit2 className="w-4 h-4" /></button><button onClick={() => { if (onDeleteClass && confirm(t('alertConfirmDeleteClass'))) onDeleteClass(cls); }} className="p-2 rounded-lg transition-colors text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"><Trash2 className="w-4 h-4" /></button></div></div>}</div>)}{safeClasses.length === 0 && <p className="text-xs text-textSecondary">{t('noClassesAdded')}</p>}</div></div></DrawerSheet>
 
             <DrawerSheet isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary"><CheckCircle2 className="w-5 h-5 text-emerald-500" />{t('positiveReinforcement')}</h3><p className="text-xs font-bold mb-4 shrink-0 text-textSecondary">{t('chooseExcellenceType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi></p><div className="flex-1 overflow-y-auto custom-scrollbar px-1"><div className="grid grid-cols-2 gap-2 mb-4">{POSITIVE_BEHAVIORS.map(b => <button key={b.id} onClick={() => confirmPositiveBehavior(b.original, b.points)} className="p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20"><span>{t(b.transKey)}</span><span className="text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600">+{b.points}</span></button>)}</div></div><div className="pt-3 border-t shrink-0 mt-auto border-borderColor"><p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p><div className="flex gap-2"><input type="text" value={customPositiveReason} onChange={(e) => setCustomPositiveReason(e.target.value)} placeholder={t('otherReasonPlaceholder')} className="flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary" /><button onClick={() => { if (customPositiveReason.trim()) confirmPositiveBehavior(customPositiveReason, 1); }} className="px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600"><Plus size={14} /> {t('addBtnSmall')}</button></div></div></div></DrawerSheet>
 
