@@ -972,6 +972,31 @@ const handleToggleNotifications = () => {
     });
   };
 
+  const handleEditClass = (oldName: string, newName: string) => {
+    const cleanOldName = String(oldName || '').trim();
+    const cleanNewName = String(newName || '').trim().replace(/\s+/g, ' ');
+    if (!cleanOldName || !cleanNewName || cleanOldName === cleanNewName) return;
+
+    setClasses(previousClasses =>
+      previousClasses.map(className =>
+        className === cleanOldName ? cleanNewName : className
+      )
+    );
+
+    setStudents(previousStudents =>
+      previousStudents.map(student => {
+        const studentClasses = Array.isArray(student.classes) ? student.classes : [];
+        if (!studentClasses.includes(cleanOldName)) return student;
+        return {
+          ...student,
+          classes: studentClasses.map(className =>
+            className === cleanOldName ? cleanNewName : className
+          )
+        };
+      })
+    );
+  };
+
   const renderStudentManagementContent = () => {
     if (studentManagementView === 'attendance') {
       return <AttendanceTracker students={students} classes={classes} setStudents={setStudents} />;
@@ -1000,6 +1025,7 @@ const handleToggleNotifications = () => {
         currentSemester={currentSemester}
         onSemesterChange={setCurrentSemester}
         onDeleteClass={(cn) => setClasses(p => p.filter(c => c !== cn))}
+        onEditClass={handleEditClass}
       />
     );
   };
