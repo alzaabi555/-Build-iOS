@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   Trash2,
@@ -403,6 +403,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const [localArchiveQuestions, setLocalArchiveQuestions] = useState<TeacherGameQuestion[]>([]);
   const [cloudArchiveQuestions, setCloudArchiveQuestions] = useState<TeacherGameQuestion[]>([]);
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const editorFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     try {
@@ -613,10 +614,39 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
     });
   };
 
-  const addQuestion = () => {
-    const normalizedCurrent = normalizeTeacherGameQuestion(currentQuestion, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+  const addQuestion = async (event?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
+    const formData = editorFormRef.current ? new FormData(editorFormRef.current) : null;
+    const readText = (name: string, fallback: string) => {
+      const value = formData?.get(name);
+      return value === null || value === undefined ? fallback : String(value);
+    };
+    const liveQuestion: TeacherGameQuestion = {
+      ...currentQuestion,
+      subject: readText('subject', currentQuestion.subject),
+      unit: readText('unit', currentQuestion.unit),
+      lesson: readText('lesson', currentQuestion.lesson),
+      question: readText('question', currentQuestion.question),
+      explanation: readText('explanation', currentQuestion.explanation),
+      skill: readText('skill', currentQuestion.skill || 'فهم'),
+      options: currentQuestion.questionType === 'multiple_choice'
+        ? currentQuestion.options.map((option, index) => readText(`option_${index}`, option))
+        : currentQuestion.options,
+      pairs: currentQuestion.questionType === 'matching'
+        ? (currentQuestion.pairs || []).map((pair, index) => ({ left: readText(`pair_left_${index}`, pair.left), right: readText(`pair_right_${index}`, pair.right) }))
+        : currentQuestion.pairs,
+      sequence: currentQuestion.questionType === 'sequence'
+        ? (currentQuestion.sequence || []).map((item, index) => readText(`sequence_${index}`, item))
+        : currentQuestion.sequence,
+      updatedAt: new Date().toISOString()
+    };
+    const normalizedCurrent = normalizeTeacherGameQuestion(liveQuestion, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
     const validation = validateQuestion(normalizedCurrent, tr);
     if (!validation.ok) {
+      setCurrentQuestion(liveQuestion);
       showToast('warning', validation.message || tr('gameReviewQuestionData'));
       return;
     }
@@ -819,6 +849,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                 {index + 1}
               </button>
               <input
+                name={`option_${index}`}
                 value={option}
                 onChange={event => updateOption(index, event.target.value)}
                 placeholder={`${tr('gameChoice')} ${index + 1}`}
@@ -853,8 +884,8 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
           <label className="text-xs font-black text-textPrimary">{tr('gameMatchingPairs')}</label>
           {(currentQuestion.pairs || []).map((pair, index) => (
             <div key={index} className="grid grid-cols-2 gap-2">
-              <input value={pair.left} onChange={event => updatePair(index, 'left', event.target.value)} placeholder={tr('gameTerm')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
-              <input value={pair.right} onChange={event => updatePair(index, 'right', event.target.value)} placeholder={tr('gameDefinition')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
+              <input name={`pair_left_${index}`} value={pair.left} onChange={event => updatePair(index, 'left', event.target.value)} placeholder={tr('gameTerm')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
+              <input name={`pair_right_${index}`} value={pair.right} onChange={event => updatePair(index, 'right', event.target.value)} placeholder={tr('gameDefinition')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
             </div>
           ))}
           <button type="button" onClick={() => setField('pairs', [...(currentQuestion.pairs || []), { left: '', right: '' }])} className="h-10 px-4 rounded-2xl bg-primary/10 text-primary border border-primary/20 text-xs font-black">
@@ -869,7 +900,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
         <div className="space-y-3">
           <label className="text-xs font-black text-textPrimary">{tr('gameCorrectSequence')}</label>
           {(currentQuestion.sequence || []).map((item, index) => (
-            <input key={index} value={item} onChange={event => updateSequence(index, event.target.value)} placeholder={`${tr('gameItem')} ${index + 1}`} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
+            <input key={index} name={`sequence_${index}`} value={item} onChange={event => updateSequence(index, event.target.value)} placeholder={`${tr('gameItem')} ${index + 1}`} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
           ))}
           <button type="button" onClick={() => setField('sequence', [...(currentQuestion.sequence || []), ''])} className="h-10 px-4 rounded-2xl bg-primary/10 text-primary border border-primary/20 text-xs font-black">
             {tr('gameAddItem')}
@@ -931,7 +962,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
               <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><p className="text-[10px] font-bold text-textSecondary mb-1">{tr('gameActiveQuestions')}</p><p className="text-2xl font-black text-warning">{questions.filter(question => question.active).length}</p></div>
             </section>
 
-            <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm space-y-4">
+            <form ref={editorFormRef} onSubmit={addQuestion} className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-black text-textPrimary flex items-center gap-2"><Plus className="w-4 h-4 text-primary" />{editingId ? tr('gameEditQuestion') : tr('gameAddNewQuestion')}</h2>
                 {editingId && <button type="button" onClick={resetForm} className="text-xs font-black text-danger">{tr('gameCancelEdit')}</button>}
@@ -940,7 +971,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-black text-textSecondary block mb-1">{tr('subjectCol')}</label>
-                  <input list="subject-options" value={currentQuestion.subject} onChange={event => setField('subject', event.target.value)} placeholder={tr('gameSubjectExample')} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
+                  <input name="subject" list="subject-options" value={currentQuestion.subject} onChange={event => setField('subject', event.target.value)} placeholder={tr('gameSubjectExample')} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
                   <datalist id="subject-options">{subjectOptions.map(subject => <option key={subject} value={subject} />)}</datalist>
                 </div>
                 <div>
@@ -963,8 +994,8 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('unitLabel')}</label><input value={currentQuestion.unit} onChange={event => setField('unit', event.target.value)} placeholder="مثال: {tr('unitLabel')} الثانية" className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" /></div>
-                <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('lessonLabel')}</label><input value={currentQuestion.lesson} onChange={event => setField('lesson', event.target.value)} placeholder={tr('gameLessonExample')} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" /></div>
+                <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('unitLabel')}</label><input name="unit" value={currentQuestion.unit} onChange={event => setField('unit', event.target.value)} placeholder="مثال: {tr('unitLabel')} الثانية" className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" /></div>
+                <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('lessonLabel')}</label><input name="lesson" value={currentQuestion.lesson} onChange={event => setField('lesson', event.target.value)} placeholder={tr('gameLessonExample')} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" /></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -978,18 +1009,18 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{compatibleGames.map(game => <button key={game.id} type="button" onClick={() => toggleGame(game.id)} className={`text-start rounded-2xl border p-3 ${currentQuestion.gameTypes.includes(game.id) ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-bgSoft border-borderColor text-textSecondary'}`}><p className="text-xs font-black">{tr(game.labelKey)}</p><p className="text-[9px] font-bold opacity-80 mt-0.5">{tr(game.hintKey)}</p></button>)}</div>
               </div>
 
-              <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('gameQuestionChallengeText')}</label><textarea value={currentQuestion.question} onChange={event => setField('question', event.target.value)} placeholder={tr('gameQuestionPlaceholder')} className="w-full min-h-[90px] rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold outline-none focus:border-primary resize-none" /></div>
+              <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('gameQuestionChallengeText')}</label><textarea name="question" value={currentQuestion.question} onChange={event => setField('question', event.target.value)} placeholder={tr('gameQuestionPlaceholder')} className="w-full min-h-[90px] rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold outline-none focus:border-primary resize-none" /></div>
 
               {renderQuestionSpecificFields()}
 
-              <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('gameExplanationForStudent')}</label><textarea value={currentQuestion.explanation} onChange={event => setField('explanation', event.target.value)} placeholder={tr('gameExplanationPlaceholder')} className="w-full min-h-[80px] rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold outline-none focus:border-primary resize-none" /></div>
+              <div><label className="text-[10px] font-black text-textSecondary block mb-1">{tr('gameExplanationForStudent')}</label><textarea name="explanation" value={currentQuestion.explanation} onChange={event => setField('explanation', event.target.value)} placeholder={tr('gameExplanationPlaceholder')} className="w-full min-h-[80px] rounded-2xl bg-bgSoft border border-borderColor p-3 text-sm font-bold outline-none focus:border-primary resize-none" /></div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input value={currentQuestion.skill || ''} onChange={event => setField('skill', event.target.value)} placeholder={tr('gameSkillPlaceholder')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
+                <input name="skill" value={currentQuestion.skill || ''} onChange={event => setField('skill', event.target.value)} placeholder={tr('gameSkillPlaceholder')} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-bold outline-none focus:border-primary" />
                 <button type="button" onClick={() => setField('active', !currentQuestion.active)} className={`h-11 rounded-2xl border font-black text-xs flex items-center justify-center gap-2 ${currentQuestion.active ? 'bg-success/10 border-success/20 text-success' : 'bg-bgSoft border-borderColor text-textSecondary'}`}>{currentQuestion.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}{currentQuestion.active ? tr('gameEnabledForStudents') : tr('gameDisabled')}</button>
-                <button type="button" onClick={addQuestion} className="h-11 rounded-2xl bg-primary text-white font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"><Save className="w-4 h-4" />{editingId ? tr('gameSaveEdit') : tr('gameAddQuestion')}</button>
+                <button type="submit" className="h-11 rounded-2xl bg-primary text-white font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"><Save className="w-4 h-4" />{editingId ? tr('gameSaveEdit') : tr('gameAddQuestion')}</button>
               </div>
-            </section>
+            </form>
 
             <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3 mb-4">
