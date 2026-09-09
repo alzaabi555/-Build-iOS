@@ -328,3 +328,5 @@ declare global {
 }
 
 export {};
+
+export type { TeacherPreparation, PreparationSession, PreparationSessionState } from './types/preparationTypes';
