@@ -296,6 +296,12 @@ export interface RasedExtendedStorageSnapshot {
   sentMessagesLocal: TeacherSentMessage[];
   gradingSettings: Record<string, unknown> | null;
   gameStorage: Record<string, unknown>;
+
+  /** مكتبة التحاضير المحلية. اختيارية للتوافق مع النسخ الاحتياطية القديمة. */
+  lessonPreparations?: unknown[];
+
+  /** آخر تحضير وحصة وخطوة وملاحظة سريعة في وضع التدريس. */
+  preparationSessionState?: Record<string, unknown> | null;
 }
 
 export interface RasedBackupPayload {
@@ -328,5 +334,3 @@ declare global {
 }
 
 export {};
-
-export type { TeacherPreparation, PreparationSession, PreparationSessionState } from './types/preparationTypes';
