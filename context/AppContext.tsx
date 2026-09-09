@@ -85,7 +85,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const RASED_DB_FILENAME = 'teacher_raseddatabasev2.json';
-export const RASED_BACKUP_SCHEMA_VERSION = 5;
+export const RASED_BACKUP_SCHEMA_VERSION = 6;
 export const RASED_APP_DATA_VERSION = '5.0.0';
 
 const CORE_STORAGE_KEYS = {
@@ -110,7 +110,10 @@ const EXTENDED_STORAGE_KEYS = {
   tasks: 'rased_teacher_tasks',
   libraryArchive: 'rased_library_archive',
   sentMessagesLocal: 'rased_teacher_sent_messages_local',
-  gradingSettings: 'rased_grading_settings'
+  gradingSettings: 'rased_grading_settings',
+  lessonPreparations: 'rased_teacher_lesson_preparations_v1',
+  preparationSessionState: 'rased_teacher_preparation_session_state_v1',
+  preparationPreRestoreBackup: 'rased_teacher_lesson_preparations_pre_restore_backup_v1'
 } as const;
 
 const GAME_STORAGE_EXACT_KEYS = ['rased_game_questions'] as const;
@@ -292,7 +295,15 @@ export const readRasedExtendedStorage = (): RasedExtendedStorageSnapshot => ({
   gradingSettings: normalizeExtendedGradingSettings(
     localStorage.getItem(EXTENDED_STORAGE_KEYS.gradingSettings)
   ),
-  gameStorage: collectGameStorage()
+  gameStorage: collectGameStorage(),
+  lessonPreparations: readStorageJson(
+    EXTENDED_STORAGE_KEYS.lessonPreparations,
+    []
+  ),
+  preparationSessionState: readStorageJson(
+    EXTENDED_STORAGE_KEYS.preparationSessionState,
+    null
+  )
 });
 
 export const writeRasedExtendedStorage = (
@@ -331,6 +342,31 @@ export const writeRasedExtendedStorage = (
     );
   }
 
+  if (Array.isArray(snapshot.lessonPreparations)) {
+    const existingPreparations = localStorage.getItem(
+      EXTENDED_STORAGE_KEYS.lessonPreparations
+    );
+    if (existingPreparations !== null) {
+      localStorage.setItem(
+        EXTENDED_STORAGE_KEYS.preparationPreRestoreBackup,
+        existingPreparations
+      );
+    }
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.lessonPreparations,
+      snapshot.lessonPreparations
+    );
+  }
+  if (
+    snapshot.preparationSessionState !== undefined &&
+    (snapshot.preparationSessionState === null ||
+      typeof snapshot.preparationSessionState === 'object')
+  ) {
+    writeStorageJson(
+      EXTENDED_STORAGE_KEYS.preparationSessionState,
+      snapshot.preparationSessionState
+    );
+  }
   if (snapshot.gameStorage && typeof snapshot.gameStorage === 'object') {
     Object.entries(snapshot.gameStorage).forEach(([key, value]) => {
       const isExactKey = GAME_STORAGE_EXACT_KEYS.includes(
@@ -678,7 +714,18 @@ const normalizeLegacyBackup = (
           ? legacyExtended.gameStorage
           : source.gameStorage && typeof source.gameStorage === 'object'
             ? source.gameStorage
-            : fallback.extendedStorage.gameStorage
+            : fallback.extendedStorage.gameStorage,
+      lessonPreparations: Array.isArray(legacyExtended.lessonPreparations)
+        ? legacyExtended.lessonPreparations
+        : Array.isArray(source.lessonPreparations)
+          ? source.lessonPreparations
+          : fallback.extendedStorage.lessonPreparations,
+      preparationSessionState:
+        legacyExtended.preparationSessionState !== undefined
+          ? legacyExtended.preparationSessionState
+          : source.preparationSessionState !== undefined
+            ? source.preparationSessionState
+            : fallback.extendedStorage.preparationSessionState
     }
   };
 };
