@@ -44,10 +44,10 @@ const SOUNDS = {
 
 const NEGATIVE_BEHAVIORS = [
     { id: '1', original: 'إزعاج في الحصة', transKey: 'behNeg1', points: -2 },
-    { id: '2', original: 'عدم حل الواجب', transKey: 'behNeg2', points: -2 },
-    { id: '3', original: 'نسيان الكتاب والدفتر', transKey: 'behNeg3', points: -1 },
-    { id: '4', original: 'تأخر عن الحصة', transKey: 'behNeg4', points: -1 },
-    { id: '5', original: 'سلوك غير لائق', transKey: 'behNeg5', points: -3 },
+    { id: '2', original: 'الاكل اثناء الحصة', transKey: 'behNeg2', points: -2 },
+    { id: '3', original: 'نسيان الكتاب والدفتر', transKey: 'behNeg3', points: -2 },
+    { id: '4', original: 'تأخر عن الحصة', transKey: 'behNeg4', points: -2 },
+    { id: '5', original: 'سلوك غير لائق', transKey: 'behNeg5', points: -5 },
     { id: '6', original: 'النوم في الفصل', transKey: 'behNeg6', points: -2 },
 ];
 
@@ -58,6 +58,12 @@ const POSITIVE_BEHAVIORS = [
     { id: 'p4', original: 'مساعدة الزملاء', transKey: 'behPos4', points: 2 },
     { id: 'p5', original: 'مشاركة صفية متميزة', transKey: 'behPos5', points: 5 },
     { id: 'p6', original: 'إبداع وتميز', transKey: 'behPos6', points: 3 },
+    { id: 'p7', original: 'نقاط الالعاب', transKey: 'behPos7', points: 10 },
+     { id: 'p8', original: 'نقاط الالعاب', transKey: 'behPos8', points: 20 },
+     { id: 'p9', original: 'نقاط الالعاب', transKey: 'behPos9', points: 30 },
+     { id: 'p10', original: 'نقاط الالعاب', transKey: 'behPos10', points: 40 },
+     { id: 'p11', original: 'نقاط الالعاب', transKey: 'behPos11', points: 50 },
+];
 ];
 
 
