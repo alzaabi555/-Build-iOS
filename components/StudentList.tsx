@@ -343,8 +343,8 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return nameMatch && matchesClass && matchesGrade;
-        });
-    }, [safeStudents, searchTerm, selectedClass, selectedGrade]);
+        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base', numeric: true }));
+    }, [safeStudents, searchTerm, selectedClass, selectedGrade, language]);
 
     const studentsForCodesExport = useMemo(() => {
         return safeStudents.filter(student => {
@@ -360,8 +360,8 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return matchesClass && matchesGrade;
-        });
-    }, [safeStudents, selectedClass, selectedGrade]);
+        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base', numeric: true }));
+    }, [safeStudents, selectedClass, selectedGrade, language]);
 
     const sanitizeFileName = (value: string) => {
         return String(value || 'students')
