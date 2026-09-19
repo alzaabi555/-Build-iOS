@@ -239,7 +239,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     score: safeNumber(raw.score, safeNumber(rawResult.score)),
     correct: safeNumber(raw.correct, safeNumber(rawResult.correct, safeNumber(raw.matched, safeNumber(rawResult.matched)))),
     wrong: safeNumber(raw.wrong, safeNumber(rawResult.wrong)),
-    completed: Boolean(raw.completed ?? rawResult.completed),
+    completed: raw.completed === true || String(raw.completed ?? rawResult.completed).toUpperCase() === 'TRUE',
     weakQuestionIds,
     playedAt: typeof raw.playedAt === 'string'
       ? raw.playedAt
@@ -348,12 +348,19 @@ const exportNonParticipantsAsCsv = (students: NonParticipantStudent[], headers: 
 const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = ({
   results,
   students = [],
+  teacherId = '',
+  schoolCode = '',
   className = '',
   readLocalStorageFallback = true,
   isLoading = false,
   onRefresh
 }) => {
-  const { t, dir, language, students: appStudents, setStudents, currentSemester, teacherInfo } = useApp();
+  const app = useApp() as any;
+  const { t, dir, language } = app;
+  const appStudents = Array.isArray(app?.students) ? app.students : [];
+  const updateAppStudents = typeof app?.setStudents === 'function' ? app.setStudents : null;
+  const currentSemester = app?.currentSemester || '1';
+  const teacherInfo = app?.teacherInfo || {};
   const tr = (key: string, values?: Record<string, string | number>) => {
     let text = String(t(key) || key);
     if (values) Object.entries(values).forEach(([name, value]) => { text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value)); });
@@ -379,12 +386,17 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const [isCloudLoading, setIsCloudLoading] = useState(false);
   const [cloudError, setCloudError] = useState('');
   const requestIdRef = useRef(0);
-  const effectiveSchoolCode = String(schoolCode || teacherInfo.school || '').trim();
-  const effectiveTeacherId = String(teacherId || teacherInfo.civilId || teacherInfo.name || '').trim();
+  const effectiveSchoolCode = String(schoolCode || teacherInfo?.schoolCode || teacherInfo?.school || '').trim();
+  const effectiveTeacherId = String(teacherId || teacherInfo?.id || teacherInfo?.civilId || teacherInfo?.name || '').trim();
   const cacheKey = `rased_teacher_cloud_game_results_cache_v2_${effectiveSchoolCode}_${effectiveTeacherId}`;
-  const sourceStudents = (students.length > 0 ? students : appStudents) as TeacherGameResultsStudent[];
+  const propStudents = Array.isArray(students) ? students : [];
+  const sourceStudents = (propStudents.length > 0 ? propStudents : appStudents) as TeacherGameResultsStudent[];
 
   const fetchCloudResults = async () => {
+    if (!effectiveSchoolCode && !effectiveTeacherId) {
+      setCloudError('تعذر تحديد المدرسة أو المعلم لجلب النتائج السحابية.');
+      return;
+    }
     const requestId = ++requestIdRef.current;
     setIsCloudLoading(true);
     setCloudError('');
@@ -401,7 +413,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
       const normalizedIncoming = incoming.map(normalizeResult).filter((item: TeacherGameResultLogEntry | null): item is TeacherGameResultLogEntry => Boolean(item));
       setCloudResults(previous => {
         const merged = normalizedIncoming.length > 0 ? mergeResultsById([previous, normalizedIncoming]) : previous;
-        if (merged.length > 0) localStorage.setItem(cacheKey, JSON.stringify(merged));
+        if (merged.length > 0 && typeof window !== 'undefined') {
+          try { window.localStorage.setItem(cacheKey, JSON.stringify(merged)); } catch { /* تجاهل امتلاء التخزين */ }
+        }
         return merged;
       });
     } catch (error) {
@@ -413,11 +427,13 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   };
 
   useEffect(() => {
-    try {
-      const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
-      if (Array.isArray(cached)) setCloudResults(mergeResultsById([cached]));
-    } catch { setCloudResults([]); }
-    fetchCloudResults();
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = JSON.parse(window.localStorage.getItem(cacheKey) || '[]');
+        if (Array.isArray(cached)) setCloudResults(mergeResultsById([cached]));
+      } catch { /* لا نمسح النتائج الحالية عند تلف ذاكرة قديمة */ }
+    }
+    void fetchCloudResults();
   }, [cacheKey]);
 
   const studentsMap = useMemo(() => {
@@ -619,8 +635,12 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
 
   const applyParticipationAwards = () => {
     if (participationPreview.eligible.length === 0) return;
+    if (!updateAppStudents) {
+      setCloudError('تعذر تحديث نقاط الطلاب لأن setStudents غير متاح في AppContext.');
+      return;
+    }
     const awards = new Map(participationPreview.eligible.map(item => [normalizeCode(item.result.studentId), item]));
-    setStudents(previous => previous.map(student => {
+    updateAppStudents((previous: any[]) => (Array.isArray(previous) ? previous : []).map(student => {
       const ids = [(student as any).id, (student as any).rasedId, (student as any).civilId, (student as any).secretCode, (student as any).parentCode].map(normalizeCode);
       const entry = ids.map(id => awards.get(id)).find(Boolean);
       if (!entry) return student;
