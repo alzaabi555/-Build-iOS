@@ -1,145 +1,34 @@
-import React, { forwardRef } from 'react';
-import { Award } from 'lucide-react';
-import { useApp } from '../context/AppContext'; // 🌍 استيراد محرك اللغات
+import React from 'react';
+import { Award, Crown, Sparkles } from 'lucide-react';
+import { CertificateSettings, CertificateFieldKey, DEFAULT_CERTIFICATE_SETTINGS } from '../services/certificateSettings';
 
-export interface CertificateProps {
-  studentName: string;
-  grade: string;
-  teacherName: string;
-  schoolName?: string;
-  subject?: string;
-  date?: string;
+interface Props {
+  studentName: string; grade?: string; teacherName?: string; schoolName?: string;
+  subject?: string; monthName?: string; points?: number; ministryLogo?: string;
+  schoolLogo?: string; stamp?: string; issueDate?: string; settings?: CertificateSettings;
 }
 
-const CertificateTemplate = forwardRef<HTMLDivElement, CertificateProps>(({
-  studentName,
-  grade,
-  teacherName,
-  schoolName,
-  subject,
-  date
-}, ref) => {
-  // 🌍 استدعاء دوال الترجمة والاتجاه
-  const { t, dir, language } = useApp();
-
-  // معالجة القيم الافتراضية هنا لكي تدعم الترجمة الديناميكية
-  const finalSchoolName = schoolName ?? t('defaultSchoolNameAlEbdaa');
-  const finalSubject = subject ?? t('defaultSubjectSocialStudies');
-  const finalDate = date ?? new Date().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
-
-  return (
-    <div 
-      ref={ref}
-      className={`w-[1122px] h-[793px] bg-white relative p-6 mx-auto overflow-hidden font-sans [-webkit-print-color-adjust:exact] print:shadow-none shadow-2xl ${dir === 'rtl' ? 'text-right' : 'text-left'}`}
-      dir={dir}
-    >
-      {/* الإطار الخارجي */}
-      <div className="w-full h-full border-[12px] border-double border-amber-400 p-2 relative z-10">
-        
-        {/* الإطار الداخلي */}
-        <div className="w-full h-full border-4 border-[#1e3a8a] bg-[#faf9f6] p-8 relative flex flex-col justify-between overflow-hidden">
-          
-          {/* العلامة المائية الشفافة */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-            <Award className="w-[600px] h-[600px] text-amber-900" />
-          </div>
-
-          {/* ================= الترويسة ================= */}
-          <div className="w-full grid grid-cols-3 items-start relative z-10">
-            {/* بيانات الوزارة */}
-            <div className={`${dir === 'rtl' ? 'text-right' : 'text-left'} space-y-1`}>
-              <h3 className="font-black text-[18px] text-[#1e3a8a]">{t('sultanateOfOman')}</h3>
-              <h3 className="font-bold text-[16px] text-[#1e3a8a]">{t('ministryOfEducation')}</h3>
-              <h3 className="font-bold text-[16px] text-[#1e3a8a]">{t('directorateNorthBatinah')}</h3>
-              <h3 className="font-bold text-[16px] text-amber-600">{finalSchoolName}</h3>
-            </div>
-
-            {/* الشعار السلطاني */}
-            <div className="flex justify-center">
-              <img 
-                src={require('../assets/pngegg (2).png')} 
-                alt="شعار سلطنة عمان" 
-                className="w-24 h-24 object-contain"
-              />
-            </div>
-
-            {/* بيانات الإصدار */}
-            <div className={`${dir === 'rtl' ? 'text-left border-r-2 pr-4' : 'text-right border-l-2 pl-4'} space-y-3 border-amber-400 justify-self-end w-full`}>
-              <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
-                <span className="font-bold text-[16px] text-gray-500">{t('dateLabel')}</span>
-                <span className="font-black text-[18px] text-[#1e3a8a]" dir="ltr">{finalDate}</span>
-              </div>
-              <div className={`flex items-center justify-${dir === 'rtl' ? 'end' : 'start'} gap-2`}>
-                <span className="font-bold text-[16px] text-gray-500">{t('subjectLabel').replace(':', '')}</span>
-                <span className="font-black text-[18px] text-[#1e3a8a]">{finalSubject}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ================= المحتوى الرئيسي ================= */}
-          <div className="flex flex-col items-center justify-center text-center w-full z-10 -mt-2">
-            
-            <h1 className="text-6xl font-black text-[#1e3a8a] mb-5">{t('certificateOfExcellence')}</h1>
-            
-            <div className="bg-amber-400 text-[#1e3a8a] px-8 py-2 rounded-full font-black text-xl mb-8 shadow-md">
-              {t('forKnightsOfMonth')}
-            </div>
-
-            <p className="text-xl font-bold text-gray-700 mb-4">
-              {t('proudToCrownKnight')}
-            </p>
-
-            <div className="relative w-2/3 py-4 border-y-2 border-amber-300 bg-white/50 backdrop-blur-sm shadow-sm mb-5 rounded-2xl">
-              <h2 className="text-5xl font-black text-[#1e3a8a] leading-tight">
-                {studentName}
-              </h2>
-            </div>
-
-            <p className="text-xl font-bold text-gray-700 leading-relaxed max-w-3xl">
-              {t('enrolledInClass')} <span className="text-amber-600 font-black text-2xl mx-2">({grade})</span>
-              {t('knightAppreciationText')}
-            </p>
-          </div>
-
-          {/* ================= التذييل والأختام ================= */}
-          <div className="w-full grid grid-cols-3 items-end relative z-10 pt-2 mt-auto">
-            
-            {/* توقيع المعلم */}
-            {/* استخدام justify-self-start سيجعله في اليمين للغة العربية، وفي اليسار للإنجليزية تلقائياً بفضل الـ CSS Grid + dir */}
-            <div className="text-center justify-self-start w-64">
-              <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('subjectTeacherLabel')}</h4>
-              <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
-              <h3 className="font-black text-lg text-gray-700">{teacherName}</h3>
-            </div>
-
-            {/* ختم المدرسة */}
-            <div className="flex justify-center translate-y-2">
-              <img 
-                src={require('../assets/School seal.png')} 
-                alt="ختم المدرسة" 
-                className="w-32 h-32 object-contain opacity-90 mix-blend-multiply"
-              />
-            </div>
-
-            {/* توقيع الإدارة */}
-            {/* استخدام justify-self-end سيجعله في اليسار للغة العربية، وفي اليمين للإنجليزية تلقائياً */}
-            <div className="text-center justify-self-end w-64">
-              <h4 className="font-bold text-lg text-[#1e3a8a] mb-4">{t('schoolPrincipalLabel')}</h4>
-              <div className="border-b-2 border-gray-400 mx-8 mb-2"></div>
-              <h3 className="font-black text-xl text-gray-400 italic">..........................</h3>
-            </div>
-
-          </div>
-
-          {/* زينة الزوايا (باقية كما هي لأنها متناظرة الأبعاد) */}
-          <div className="absolute top-2 right-2 w-16 h-16 border-t-4 border-r-4 border-[#1e3a8a]"></div>
-          <div className="absolute top-2 left-2 w-16 h-16 border-t-4 border-l-4 border-[#1e3a8a]"></div>
-          <div className="absolute bottom-2 right-2 w-16 h-16 border-b-4 border-r-4 border-[#1e3a8a]"></div>
-          <div className="absolute bottom-2 left-2 w-16 h-16 border-b-4 border-l-4 border-[#1e3a8a]"></div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
+const CertificateTemplate: React.FC<Props> = ({ studentName, grade='', teacherName='معلم المادة', schoolName='مدرسة الإبداع للبنين', subject='الدراسات الاجتماعية', monthName=new Intl.DateTimeFormat('ar-OM',{month:'long'}).format(new Date()), points=0, ministryLogo, schoolLogo, stamp, issueDate=new Intl.DateTimeFormat('ar-OM').format(new Date()), settings=DEFAULT_CERTIFICATE_SETTINGS }) => {
+  const value: Record<CertificateFieldKey,string> = {
+    title: settings.title, awardTitle: settings.awardTitle, studentName, bodyText: settings.bodyText.replace('{month}', monthName),
+    grade: grade || 'غير محدد', points: `${points} نقطة`, subject: subject || 'غير محددة', monthName: `فارس شهر ${monthName}`,
+    teacherName, schoolName, issueDate,
+  };
+  const field = (key: CertificateFieldKey, label?: string) => {
+    const s=settings.fields[key]; if(!s?.visible) return null;
+    return <div style={{position:'absolute',left:`${s.x}%`,top:`${s.y}%`,width:`${s.width}%`,transform:'translate(-50%,-50%)',fontSize:s.fontSize,color:s.color,textAlign:s.align,fontWeight:s.fontWeight,lineHeight:1.55,whiteSpace:key==='bodyText'?'normal':'nowrap'}}>{label && <div style={{fontSize:12,color:'#6c778a',marginBottom:3}}>{label}</div>}{value[key]}</div>;
+  };
+  const custom=settings.mode==='image' && settings.templateDataUrl;
+  return <div dir="rtl" style={{width:1123,height:794,position:'relative',overflow:'hidden',boxSizing:'border-box',background:'#fcfaf4',fontFamily:'Tajawal, Cairo, Arial, sans-serif'}}>
+    {custom ? <img src={settings.templateDataUrl} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'fill'}}/> : <>
+      <div style={{position:'absolute',inset:30,border:'4px solid #0f2f59',borderRadius:18}}/><div style={{position:'absolute',inset:42,border:'2px solid #d6a640',borderRadius:14}}/><div style={{position:'absolute',inset:56,border:'1px solid rgba(15,47,89,.55)',borderRadius:10}}/>
+      <div style={{position:'absolute',top:118,left:'50%',transform:'translateX(-50%)',width:92,height:92,borderRadius:'50%',background:'#0f2f59',border:'10px solid #d6a640',display:'grid',placeItems:'center'}}><Crown size={43} color="#f7e8b1" fill="#f7e8b1"/></div>
+      <div style={{position:'absolute',top:70,right:82,display:'flex',gap:12,alignItems:'center'}}>{ministryLogo?<img src={ministryLogo} alt="" style={{width:64,height:64,objectFit:'contain'}}/>:<Award size={58} color="#0f2f59"/>}<div><b>سلطنة عُمان</b><div>وزارة التربية والتعليم</div></div></div>
+    </>}
+    {field('title')}{field('awardTitle')}{field('monthName')}{field('studentName')}{field('bodyText')}
+    {field('grade','الفصل')}{field('points','الرصيد الشهري')}{field('subject','المادة')}{field('teacherName','معلم المادة')}{field('schoolName')}{field('issueDate')}
+    {settings.showStamp && <div style={{position:'absolute',left:'50%',bottom:32,transform:'translateX(-50%)',width:94,height:94,borderRadius:'50%',background:'#0f2f59',border:'6px solid #d6a640',display:'grid',placeItems:'center',color:'white',fontWeight:1000,textAlign:'center'}}>{stamp?<img src={stamp} alt="" style={{width:78,height:78,objectFit:'contain'}}/>:<span>راصد<br/><small style={{fontSize:10,color:'#f7e8b1'}}>تميز • عطاء • إنجاز</small></span>}</div>}
+    {schoolLogo && <img src={schoolLogo} alt="" style={{position:'absolute',top:64,left:82,width:58,height:58,objectFit:'contain'}}/>}
+  </div>;
+};
 export default CertificateTemplate;

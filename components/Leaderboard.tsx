@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Student } from '../types';
-import { Trophy, Crown, Sparkles, Search, Award, Download, X, Loader2, MinusCircle, History } from 'lucide-react'; 
+import { Trophy, Crown, Sparkles, Search, Award, Download, X, Loader2, MinusCircle, History, Settings, Upload, Trash2, RotateCcw, Save, FileImage, FileText } from 'lucide-react'; 
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { StudentRow } from './StudentRow';
@@ -14,6 +14,11 @@ import { Capacitor } from '@capacitor/core';
 import html2pdf from 'html2pdf.js';
 
 import CertificateTemplate from './CertificateTemplate';
+import { CertificateFieldKey, CertificateSettings as CertificateSettingsType, DEFAULT_CERTIFICATE_SETTINGS, loadCertificateSettings, saveCertificateSettings } from '../services/certificateSettings';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
+// @ts-ignore - Vite converts the worker file to a valid asset URL
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface LeaderboardProps {
     students: Student[];
@@ -64,6 +69,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
     const certificateRef = useRef<HTMLDivElement>(null);
     
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+    const [isCertificateSettingsOpen, setIsCertificateSettingsOpen] = useState(false);
+    const [certificateSettings, setCertificateSettingsState] = useState<CertificateSettingsType>(() => loadCertificateSettings());
+    const [tempCertificateSettings, setTempCertificateSettings] = useState<CertificateSettingsType>(() => loadCertificateSettings());
+    const [isProcessingCertificateTemplate, setIsProcessingCertificateTemplate] = useState(false);
+    const [certificateSettingsError, setCertificateSettingsError] = useState('');
+    const certificateImageInputRef = useRef<HTMLInputElement>(null);
+    const certificatePdfInputRef = useRef<HTMLInputElement>(null);
 
     const safeStudents = Array.isArray(students) ? students : [];
     const safeClasses = Array.isArray(classes) ? classes : [];
@@ -272,6 +284,90 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         }
     };
 
+    const openCertificateSettings = () => {
+        setTempCertificateSettings(certificateSettings);
+        setCertificateSettingsError('');
+        setIsCertificateSettingsOpen(true);
+    };
+    const updateCertificateField = (key: CertificateFieldKey, patch: Partial<CertificateSettingsType['fields'][CertificateFieldKey]>) => {
+        setTempCertificateSettings(previous => ({
+            ...previous,
+            fields: { ...previous.fields, [key]: { ...previous.fields[key], ...patch } }
+        }));
+    };
+    const readCertificateImage = (file: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+    const handleCertificateTemplateUpload = async (file?: File) => {
+        if (!file) return;
+        const lowerName = String(file.name || '').toLowerCase();
+        const isImage = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf' || lowerName.endsWith('.pdf');
+        if (!isImage && !isPdf) {
+            setCertificateSettingsError('نوع الملف غير مدعوم. استخدم PNG أو JPG أو WebP أو PDF.');
+            return;
+        }
+        if (file.size > 12 * 1024 * 1024) {
+            setCertificateSettingsError('حجم القالب كبير. الحد الأعلى المسموح به 12 ميجابايت.');
+            return;
+        }
+        setIsProcessingCertificateTemplate(true);
+        setCertificateSettingsError('');
+        try {
+            let templateDataUrl = '';
+            if (isPdf) {
+                const pdfData = new Uint8Array(await file.arrayBuffer());
+                if (pdfData.length < 5 || String.fromCharCode(...Array.from(pdfData.slice(0, 5))) !== '%PDF-') {
+                    throw new Error('INVALID_PDF_HEADER');
+                }
+                const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true });
+                const pdfDocument = await loadingTask.promise;
+                if (!pdfDocument || pdfDocument.numPages < 1) throw new Error('PDF_HAS_NO_PAGES');
+                const page = await pdfDocument.getPage(1);
+                const originalViewport = page.getViewport({ scale: 1 });
+                const targetWidth = 1800;
+                const renderScale = Math.max(1, Math.min(targetWidth / originalViewport.width, 3));
+                const viewport = page.getViewport({ scale: renderScale });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d', { alpha: false });
+                if (!context) throw new Error('CANVAS_CONTEXT_UNAVAILABLE');
+                canvas.width = Math.ceil(viewport.width);
+                canvas.height = Math.ceil(viewport.height);
+                context.fillStyle = '#FFFFFF';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: context, viewport, background: '#FFFFFF' }).promise;
+                templateDataUrl = canvas.toDataURL('image/jpeg', 0.94);
+                page.cleanup();
+                await pdfDocument.destroy();
+            } else {
+                templateDataUrl = await readCertificateImage(file);
+            }
+            if (!templateDataUrl.startsWith('data:image/')) throw new Error('INVALID_TEMPLATE_RESULT');
+            setTempCertificateSettings(previous => ({ ...previous, mode: 'image', templateDataUrl, templateFileName: file.name }));
+        } catch (error: any) {
+            console.error('Certificate template import failed:', error);
+            const message = String(error?.message || error || '');
+            if (message.includes('PasswordException')) setCertificateSettingsError('ملف PDF محمي بكلمة مرور ولا يمكن استخدامه قالبًا.');
+            else if (message.includes('INVALID_PDF_HEADER') || message.includes('InvalidPDFException')) setCertificateSettingsError('ملف PDF غير صالح أو تالف.');
+            else if (message.includes('PDF_HAS_NO_PAGES')) setCertificateSettingsError('ملف PDF لا يحتوي صفحات.');
+            else setCertificateSettingsError('تعذر قراءة قالب الشهادة. جرّب ملفًا آخر أو صورة عالية الدقة.');
+        } finally {
+            setIsProcessingCertificateTemplate(false);
+        }
+    };
+    const handleSaveCertificateSettings = () => {
+        try {
+            saveCertificateSettings(tempCertificateSettings);
+            setCertificateSettingsState(tempCertificateSettings);
+            setIsCertificateSettingsOpen(false);
+        } catch (error) {
+            console.error(error);
+            setCertificateSettingsError('تعذر حفظ إعدادات الشهادة على الجهاز.');
+        }
+    };
     const handleDownloadPDF = async () => {
         if (!certificateRef.current || !certificateStudent) return;
         setIsGeneratingPdf(true);
@@ -293,6 +389,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
         } catch (e) { alert(t('errorSavingPdf')); } finally { setIsGeneratingPdf(false); }
     };
 
+    const certificateFieldLabels: Record<CertificateFieldKey, string> = {
+        title: 'عنوان الشهادة', awardTitle: 'مسمى التكريم', studentName: 'اسم الطالب', bodyText: 'نص التكريم',
+        grade: 'الفصل', points: 'النقاط', subject: 'المادة', monthName: 'الشهر', teacherName: 'اسم المعلم',
+        schoolName: 'اسم المدرسة', issueDate: 'تاريخ الإصدار'
+    };
+
     return (
         <PageLayout
             title={getPageTitle()}
@@ -300,6 +402,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             
             rightActions={
                 <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' } as any}>
+                    <button
+                        type="button"
+                        aria-label="إعدادات شهادة التميز"
+                        title="إعدادات شهادة التميز"
+                        onClick={openCertificateSettings}
+                        className="flex items-center gap-1 border rounded-lg text-[10px] px-2 py-1 outline-none font-bold cursor-pointer transition-colors border-borderColor text-textSecondary hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                    >
+                        <Settings size={14} />
+                        <span className="hidden sm:inline">إعدادات الشهادة</span>
+                    </button>
                     <button
                         data-voice-command="فتح أرشيف الفرسان أرشيف الفرسان"
                         aria-label="فتح أرشيف الفرسان"
@@ -526,6 +638,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                                     teacherName={teacherInfo?.name || t('defaultTeacherNameLine')}
                                     schoolName={teacherInfo?.school}
                                     subject={teacherInfo?.subject}
+                                    monthName={monthName}
+                                    points={(rankedStudents.find(student => student.id === certificateStudent.id) as any)?.monthlyPoints || 0}
+                                    ministryLogo={teacherInfo?.ministryLogo}
+                                    stamp={teacherInfo?.stamp}
+                                    issueDate={new Intl.DateTimeFormat(language === 'ar' ? 'ar-OM' : 'en-US').format(new Date())}
+                                    settings={certificateSettings}
                                 />
                             </div>
                         </div>
@@ -546,7 +664,55 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                 )}
             </DrawerSheet>
 
-            <DrawerSheet isOpen={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} dir={dir} mode="right">
+            <DrawerSheet isOpen={isCertificateSettingsOpen} onClose={() => !isProcessingCertificateTemplate && setIsCertificateSettingsOpen(false)} dir={dir} mode="full">
+                <div className="flex flex-col h-full bg-bgCard">
+                    <div className="flex justify-between items-center p-4 border-b border-borderColor shrink-0">
+                        <div><h3 className="font-black text-lg text-textPrimary">إعدادات شهادة التميز</h3><p className="text-xs text-textSecondary mt-1">ارفع قالبًا زخرفيًا ثم اضبط النصوص ومواضعها قبل الطباعة.</p></div>
+                        <button onClick={() => setIsCertificateSettingsOpen(false)} className="p-2 rounded-xl bg-bgSoft text-textSecondary hover:text-danger"><X size={20}/></button>
+                    </div>
+                    <div className="flex-1 overflow-auto p-4 grid xl:grid-cols-[430px_1fr] gap-5">
+                        <div className="space-y-4">
+                            <section className="p-4 rounded-2xl border border-borderColor bg-bgSoft">
+                                <h4 className="font-black text-textPrimary mb-3">القالب الزخرفي</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button type="button" onClick={() => certificateImageInputRef.current?.click()} className="py-3 rounded-xl bg-primary text-white font-black flex gap-2 items-center justify-center"><FileImage size={18}/> رفع صورة</button>
+                                    <button type="button" onClick={() => certificatePdfInputRef.current?.click()} className="py-3 rounded-xl bg-indigo-600 text-white font-black flex gap-2 items-center justify-center"><FileText size={18}/> رفع PDF</button>
+                                </div>
+                                <input ref={certificateImageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={event => { const file = event.target.files?.[0]; handleCertificateTemplateUpload(file); event.currentTarget.value=''; }}/>
+                                <input ref={certificatePdfInputRef} hidden type="file" accept="application/pdf" onChange={event => { const file = event.target.files?.[0]; handleCertificateTemplateUpload(file); event.currentTarget.value=''; }}/>
+                                {isProcessingCertificateTemplate && <div className="mt-3 flex gap-2 items-center text-primary font-bold text-sm"><Loader2 className="animate-spin" size={18}/> جارٍ تجهيز القالب...</div>}
+                                {tempCertificateSettings.templateFileName && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-borderColor bg-bgCard p-3"><span className="truncate text-xs font-bold text-textSecondary">{tempCertificateSettings.templateFileName}</span><button onClick={() => setTempCertificateSettings(previous => ({...previous,mode:'builtin',templateDataUrl:undefined,templateFileName:undefined}))} className="p-2 rounded-lg bg-danger/10 text-danger"><Trash2 size={16}/></button></div>}
+                                <button type="button" onClick={() => setTempCertificateSettings(DEFAULT_CERTIFICATE_SETTINGS)} className="mt-3 w-full py-2.5 rounded-xl border border-borderColor bg-bgCard text-textPrimary font-bold flex gap-2 justify-center"><RotateCcw size={17}/> العودة للإعدادات الافتراضية</button>
+                            </section>
+                            <section className="p-4 rounded-2xl border border-borderColor space-y-3">
+                                <label className="text-xs font-black text-textSecondary">عنوان الشهادة</label><input value={tempCertificateSettings.title} onChange={e=>setTempCertificateSettings(v=>({...v,title:e.target.value}))} className="w-full p-3 rounded-xl bg-bgSoft border border-borderColor text-textPrimary"/>
+                                <label className="text-xs font-black text-textSecondary block">مسمى التكريم</label><input value={tempCertificateSettings.awardTitle} onChange={e=>setTempCertificateSettings(v=>({...v,awardTitle:e.target.value}))} className="w-full p-3 rounded-xl bg-bgSoft border border-borderColor text-textPrimary"/>
+                                <label className="text-xs font-black text-textSecondary block">نص التكريم</label><textarea rows={4} value={tempCertificateSettings.bodyText} onChange={e=>setTempCertificateSettings(v=>({...v,bodyText:e.target.value}))} className="w-full p-3 rounded-xl bg-bgSoft border border-borderColor text-textPrimary resize-none"/>
+                            </section>
+                            {Object.entries(tempCertificateSettings.fields).map(([fieldKey, fieldStyle]) => {
+                                const key = fieldKey as CertificateFieldKey; const style = fieldStyle as any;
+                                return <section key={key} className="p-3 rounded-2xl border border-borderColor bg-bgCard">
+                                    <div className="flex justify-between items-center"><b className="text-sm text-textPrimary">{certificateFieldLabels[key]}</b><label className="text-xs flex gap-2 items-center text-textSecondary"><input type="checkbox" checked={style.visible} onChange={e=>updateCertificateField(key,{visible:e.target.checked})}/> إظهار</label></div>
+                                    <div className="grid grid-cols-2 gap-3 mt-3 text-[11px] font-bold text-textSecondary">
+                                        <label>أفقي: {style.x}%<input type="range" min="0" max="100" value={style.x} onChange={e=>updateCertificateField(key,{x:+e.target.value})} className="w-full"/></label>
+                                        <label>رأسي: {style.y}%<input type="range" min="0" max="100" value={style.y} onChange={e=>updateCertificateField(key,{y:+e.target.value})} className="w-full"/></label>
+                                        <label>حجم الخط<input type="number" min="8" max="80" value={style.fontSize} onChange={e=>updateCertificateField(key,{fontSize:+e.target.value})} className="mt-1 w-full p-2 rounded-lg bg-bgSoft border border-borderColor text-textPrimary"/></label>
+                                        <label>اللون<input type="color" value={style.color} onChange={e=>updateCertificateField(key,{color:e.target.value})} className="mt-1 w-full h-9 rounded-lg"/></label>
+                                    </div>
+                                </section>;
+                            })}
+                            {certificateSettingsError && <p className="text-danger text-sm font-bold">{certificateSettingsError}</p>}
+                            <button onClick={handleSaveCertificateSettings} className="w-full py-4 rounded-xl bg-success text-white font-black flex gap-2 items-center justify-center shadow-lg"><Save size={20}/> حفظ إعدادات الشهادة</button>
+                        </div>
+                        <div className="rounded-2xl bg-slate-200 p-4 overflow-auto min-h-[600px] flex justify-center items-start">
+                            <div className="origin-top shrink-0" style={{transform:'scale(0.78)',width:1123,height:794}}>
+                                <CertificateTemplate studentName="الطالب النموذجي" grade="الصف الثامن" teacherName={teacherInfo?.name || 'معلم المادة'} schoolName={teacherInfo?.school || 'اسم المدرسة'} subject={teacherInfo?.subject || 'المادة'} monthName={monthName} points={120} ministryLogo={teacherInfo?.ministryLogo} stamp={teacherInfo?.stamp} settings={tempCertificateSettings}/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </DrawerSheet>
+                        <DrawerSheet isOpen={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} dir={dir} mode="right">
                 <div className="flex flex-col h-full bg-bgCard">
                     <div className="flex justify-between items-center p-4 bg-bgCard border-b border-borderColor shrink-0">
                         <div className="flex items-center gap-2">
