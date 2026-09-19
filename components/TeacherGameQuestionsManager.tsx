@@ -75,6 +75,7 @@ export interface PublishGameQuestionsPayload {
   classes: string[];
   questions: TeacherGameQuestion[];
   publishedAt: string;
+  activityDate: string;
 }
 
 interface TeacherGameQuestionsManagerProps {
@@ -390,6 +391,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const draftKey = `rased_teacher_game_questions_${schoolCode}_${teacherId}`;
   const activePublishedKey = `rased_teacher_game_questions_active_${schoolCode}_${teacherId}`;
   const archiveKey = `rased_teacher_game_questions_archive_${schoolCode}_${teacherId}`;
+  const publishedClearedKey = `rased_teacher_game_questions_editor_cleared_${schoolCode}_${teacherId}`;
 
   const [questions, setQuestions] = useState<TeacherGameQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<TeacherGameQuestion>(() =>
@@ -417,6 +419,10 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
         return;
       }
 
+      if (localStorage.getItem(publishedClearedKey) === 'true') {
+        setQuestions([]);
+        return;
+      }
       const activePublished = safeReadQuestions(activePublishedKey);
       setQuestions(
         activePublished
@@ -426,7 +432,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
     } catch {
       setQuestions([]);
     }
-  }, [draftKey, activePublishedKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
+  }, [draftKey, activePublishedKey, publishedClearedKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
 
   useEffect(() => {
     localStorage.setItem(draftKey, JSON.stringify(questions));
@@ -651,6 +657,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       return;
     }
     const cleanQuestion: TeacherGameQuestion = { ...normalizedCurrent, status: 'active', active: normalizedCurrent.active !== false };
+    localStorage.removeItem(publishedClearedKey);
     if (editingId) {
       setQuestions(prev => prev.map(question => question.id === editingId ? { ...cleanQuestion, updatedAt: new Date().toISOString() } : question));
       showToast('success', tr('gameQuestionUpdated'));
@@ -739,7 +746,8 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       grade: firstQuestion?.grade || defaultGrade || '',
       classes: Array.from(new Set(validQuestions.flatMap(question => Array.isArray(question.classes) ? question.classes : []))),
       questions: batchQuestions,
-      publishedAt
+      publishedAt,
+      activityDate: publishedAt.slice(0, 10)
     };
   };
   const publishQuestions = async () => {
@@ -763,8 +771,21 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       if (onPublish) await onPublish(payload);
       else localStorage.setItem('rased_game_questions', JSON.stringify(payload.questions.map(sanitizeForStudent)));
       archivePreviousActiveQuestionsLocally(payload.questions);
-      setQuestions(payload.questions);
-      showToast('success', tr('gamePublishSuccess'));
+      const now = new Date().toISOString();
+      const publishedArchive = payload.questions.map(question => ({
+        ...question,
+        active: false,
+        status: 'archived' as const,
+        archivedAt: now,
+        updatedAt: now
+      }));
+      saveLocalArchive([...publishedArchive, ...localArchiveQuestions]);
+      localStorage.setItem(publishedClearedKey, 'true');
+      localStorage.setItem(draftKey, JSON.stringify([]));
+      setQuestions([]);
+      resetForm();
+      setQuestionsView('archive');
+      showToast('success', 'تم نشر الدفعة ونقل نسخة منها إلى الأرشيف، وأصبح المحرر جاهزًا لدفعة جديدة.');
     } catch (error) {
       console.error(error);
       showToast('danger', tr('gamePublishError'));
