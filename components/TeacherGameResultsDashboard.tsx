@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   Trophy,
@@ -12,7 +12,9 @@ import {
   Gamepad2,
   Download,
   WifiOff,
-  CalendarDays
+  CalendarDays,
+  Gift,
+  CloudDownload
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -53,6 +55,12 @@ export interface TeacherGameResultLogEntry {
   subject?: string;
   unit?: string;
   lesson?: string;
+  publishBatchId?: string;
+  activityDate?: string;
+  attemptNumber?: number;
+  bestScore?: number;
+  isOfficialBest?: boolean;
+  taskId?: string;
   rawResult?: unknown;
 }
 
@@ -106,6 +114,26 @@ interface NonParticipantStudent {
   rawStudent: TeacherGameResultsStudent;
 }
 
+const GAME_RESULTS_CLOUD_URL = 'https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec';
+const PARTICIPATION_POINTS = 5;
+const omanDateKey = (value?: string | Date) => {
+  const date = value instanceof Date ? value : value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Muscat', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const get = (type: string) => parts.find(part => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+};
+const mergeResultsById = (lists: TeacherGameResultLogEntry[][]) => {
+  const map = new Map<string, TeacherGameResultLogEntry>();
+  lists.flat().forEach(item => {
+    const normalized = normalizeResult(item);
+    if (!normalized) return;
+    const key = normalized.id || `${normalized.studentId}|${normalized.publishBatchId || ''}|${normalized.gameType}|${normalized.playedAt}`;
+    const previous = map.get(key);
+    if (!previous || new Date(normalized.savedAt || normalized.playedAt).getTime() >= new Date(previous.savedAt || previous.playedAt).getTime()) map.set(key, normalized);
+  });
+  return Array.from(map.values()).sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+};
 const GAME_LABEL_KEYS: Record<string, string> = {
   snake_ladder: 'gameNameSnakeLadder',
   knowledge_race: 'gameNameKnowledgeRace',
@@ -225,6 +253,12 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     subject: typeof raw.subject === 'string' ? raw.subject : typeof rawResult.subject === 'string' ? rawResult.subject : undefined,
     unit: typeof raw.unit === 'string' ? raw.unit : typeof rawResult.unit === 'string' ? rawResult.unit : undefined,
     lesson: typeof raw.lesson === 'string' ? raw.lesson : typeof rawResult.lesson === 'string' ? rawResult.lesson : undefined,
+    publishBatchId: String(raw.publishBatchId || rawResult.publishBatchId || '').trim() || undefined,
+    activityDate: String(raw.activityDate || rawResult.activityDate || '').slice(0, 10) || undefined,
+    attemptNumber: safeNumber(raw.attemptNumber, safeNumber(rawResult.attemptNumber, 1)),
+    bestScore: safeNumber(raw.bestScore, safeNumber(rawResult.bestScore, safeNumber(raw.score, safeNumber(rawResult.score)))),
+    isOfficialBest: Boolean(raw.isOfficialBest ?? rawResult.isOfficialBest ?? true),
+    taskId: String(raw.taskId || rawResult.taskId || '').trim() || undefined,
     rawResult: raw.rawResult || raw
   };
 };
@@ -319,7 +353,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   isLoading = false,
   onRefresh
 }) => {
-  const { t, dir, language } = useApp();
+  const { t, dir, language, students: appStudents, setStudents, currentSemester, teacherInfo } = useApp();
   const tr = (key: string, values?: Record<string, string | number>) => {
     let text = String(t(key) || key);
     if (values) Object.entries(values).forEach(([name, value]) => { text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value)); });
@@ -339,20 +373,66 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const [refreshToken, setRefreshToken] = useState(0);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [showNonParticipants, setShowNonParticipants] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'all' | 'custom'>('today');
+  const [customDate, setCustomDate] = useState(omanDateKey());
+  const [cloudResults, setCloudResults] = useState<TeacherGameResultLogEntry[]>([]);
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
+  const [cloudError, setCloudError] = useState('');
+  const requestIdRef = useRef(0);
+  const effectiveSchoolCode = String(schoolCode || teacherInfo.school || '').trim();
+  const effectiveTeacherId = String(teacherId || teacherInfo.civilId || teacherInfo.name || '').trim();
+  const cacheKey = `rased_teacher_cloud_game_results_cache_v2_${effectiveSchoolCode}_${effectiveTeacherId}`;
+  const sourceStudents = (students.length > 0 ? students : appStudents) as TeacherGameResultsStudent[];
+
+  const fetchCloudResults = async () => {
+    const requestId = ++requestIdRef.current;
+    setIsCloudLoading(true);
+    setCloudError('');
+    try {
+      const response = await fetch(GAME_RESULTS_CLOUD_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getGameResults', schoolCode: effectiveSchoolCode, teacherId: effectiveTeacherId })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      if (requestId !== requestIdRef.current) return;
+      if (payload?.success === false || payload?.status === 'error') throw new Error(String(payload?.message || payload?.error || 'تعذر جلب النتائج'));
+      const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      const normalizedIncoming = incoming.map(normalizeResult).filter((item: TeacherGameResultLogEntry | null): item is TeacherGameResultLogEntry => Boolean(item));
+      setCloudResults(previous => {
+        const merged = normalizedIncoming.length > 0 ? mergeResultsById([previous, normalizedIncoming]) : previous;
+        if (merged.length > 0) localStorage.setItem(cacheKey, JSON.stringify(merged));
+        return merged;
+      });
+    } catch (error) {
+      if (requestId !== requestIdRef.current) return;
+      setCloudError(error instanceof Error ? error.message : 'تعذر تحديث النتائج. تم الاحتفاظ بآخر نسخة ناجحة.');
+    } finally {
+      if (requestId === requestIdRef.current) setIsCloudLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+      if (Array.isArray(cached)) setCloudResults(mergeResultsById([cached]));
+    } catch { setCloudResults([]); }
+    fetchCloudResults();
+  }, [cacheKey]);
 
   const studentsMap = useMemo(() => {
     const map = new Map<string, TeacherGameResultsStudent>();
-    students.forEach(student => {
+    sourceStudents.forEach(student => {
       const ids = [student.id, student.rasedId, student.civilId, student.secretCode, student.parentCode].map(normalizeCode).filter(Boolean);
       ids.forEach(id => map.set(id, student));
     });
     return map;
-  }, [students]);
+  }, [sourceStudents]);
 
   const normalizedStudents = useMemo<NonParticipantStudent[]>(() => {
     const seen = new Set<string>();
 
-    return students
+    return sourceStudents
       .map(student => {
         const studentId = getStudentCanonicalId(student);
         if (!studentId || seen.has(studentId)) return null;
@@ -368,16 +448,14 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         };
       })
       .filter((item): item is NonParticipantStudent => Boolean(item));
-  }, [students]);
+  }, [sourceStudents]);
 
   const allResults = useMemo(() => {
     void refreshToken;
-    const source = Array.isArray(results) ? results : readLocalStorageFallback ? readLocalResults() : [];
-    return source
-      .map(item => normalizeResult(item))
-      .filter((item): item is TeacherGameResultLogEntry => Boolean(item))
-      .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
-  }, [results, readLocalStorageFallback, refreshToken]);
+    const provided = Array.isArray(results) ? results : [];
+    const local = readLocalStorageFallback ? readLocalResults() : [];
+    return mergeResultsById([cloudResults, provided, local]);
+  }, [cloudResults, results, readLocalStorageFallback, refreshToken]);
 
   const gameTypes = useMemo(() => {
     return Array.from(new Set(allResults.map(result => result.gameType))).filter(Boolean);
@@ -405,11 +483,14 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         completionFilter === 'all' ||
         (completionFilter === 'completed' && result.completed) ||
         (completionFilter === 'not_completed' && !result.completed);
-      const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') === syncFilter;
-
-      return matchesGame && matchesClass && matchesSemester && matchesCompletion && matchesSync;
+const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') === syncFilter;
+      const resultDate = result.activityDate || omanDateKey(result.playedAt);
+      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+      const targetDate = dateFilter === 'today' ? omanDateKey() : dateFilter === 'yesterday' ? omanDateKey(yesterday) : dateFilter === 'custom' ? customDate : '';
+      const matchesDate = dateFilter === 'all' || resultDate === targetDate;
+      return matchesGame && matchesClass && matchesSemester && matchesCompletion && matchesSync && matchesDate;
     });
-  }, [allResults, studentsMap, gameFilter, classFilter, semesterFilter, completionFilter, syncFilter]);
+  }, [allResults, studentsMap, gameFilter, classFilter, semesterFilter, completionFilter, syncFilter, dateFilter, customDate]);
 
   const filteredResults = useMemo(() => {
     const normalizedQuery = normalizeText(query);
@@ -445,6 +526,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const nonParticipatingStudents = useMemo(() => {
     const participatingIds = new Set(
       filteredResultsWithoutQuery
+        .filter(result => result.completed && result.correct + result.wrong > 0)
         .map(result => normalizeCode(result.studentId))
         .filter(Boolean)
     );
@@ -491,10 +573,12 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         return;
       }
 
-      existing.totalScore += result.score;
-      existing.totalCorrect += result.correct;
-      existing.totalWrong += result.wrong;
-      existing.totalWeakQuestions += result.weakQuestionIds.length;
+      if (result.score > existing.totalScore) {
+        existing.totalScore = result.score;
+        existing.totalCorrect = result.correct;
+        existing.totalWrong = result.wrong;
+        existing.totalWeakQuestions = result.weakQuestionIds.length;
+      }
       existing.attempts += 1;
       existing.completedAttempts += result.completed ? 1 : 0;
       existing.games.push(result);
@@ -506,6 +590,61 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
 
     return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
   }, [filteredResults, studentsMap]);
+
+  const participationPreview = useMemo(() => {
+    const eligible: Array<{ result: TeacherGameResultLogEntry; student: any; awardId: string }> = [];
+    const alreadyAwarded: string[] = [];
+    const excluded: string[] = [];
+    const byBatchStudent = new Map<string, TeacherGameResultLogEntry>();
+    filteredResultsWithoutQuery.forEach(result => {
+      const raw = getRawObject(result.rawResult);
+      const isReview = Boolean(raw.isReview || raw.reviewMode || raw.source === 'review' || raw.context === 'review');
+      const batchId = String(result.publishBatchId || '').trim();
+      if (!result.completed || result.correct + result.wrong <= 0 || !batchId || isReview) { excluded.push(result.id); return; }
+      const activityDate = result.activityDate || omanDateKey(result.playedAt);
+      if (!activityDate || activityDate !== omanDateKey(result.playedAt)) { excluded.push(result.id); return; }
+      const key = `${normalizeCode(result.studentId)}|${batchId}`;
+      const previous = byBatchStudent.get(key);
+      if (!previous || result.score > previous.score) byBatchStudent.set(key, result);
+    });
+    byBatchStudent.forEach(result => {
+      const student = studentsMap.get(normalizeCode(result.studentId)) as any;
+      if (!student) { excluded.push(result.id); return; }
+      const awardId = `game-participation:${normalizeCode(result.studentId)}:${result.publishBatchId}`;
+      if ((student.behaviors || []).some((behavior: any) => behavior?.id === awardId)) alreadyAwarded.push(awardId);
+      else eligible.push({ result, student, awardId });
+    });
+    return { eligible, alreadyAwarded, excluded };
+  }, [filteredResultsWithoutQuery, studentsMap]);
+
+  const applyParticipationAwards = () => {
+    if (participationPreview.eligible.length === 0) return;
+    const awards = new Map(participationPreview.eligible.map(item => [normalizeCode(item.result.studentId), item]));
+    setStudents(previous => previous.map(student => {
+      const ids = [(student as any).id, (student as any).rasedId, (student as any).civilId, (student as any).secretCode, (student as any).parentCode].map(normalizeCode);
+      const entry = ids.map(id => awards.get(id)).find(Boolean);
+      if (!entry) return student;
+      const result = entry.result;
+      const activityDate = result.activityDate || omanDateKey(result.playedAt);
+      const behaviors = Array.isArray((student as any).behaviors) ? (student as any).behaviors : [];
+      if (behaviors.some((behavior: any) => behavior?.id === entry.awardId)) return student;
+      const behavior = {
+        id: entry.awardId,
+        date: `${activityDate}T12:00:00+04:00`,
+        type: 'positive' as const,
+        description: 'مشاركة في الألعاب التعليمية',
+        points: PARTICIPATION_POINTS,
+        semester: currentSemester,
+        source: 'educational_game',
+        publishBatchId: result.publishBatchId,
+        resultId: result.id,
+        gameType: result.gameType,
+        activityDate,
+        autoAwarded: true
+      };
+      return { ...student, behaviors: [behavior, ...behaviors] } as any;
+    }));
+  };
 
   const summary = useMemo(() => {
     const totalAttempts = filteredResults.length;
@@ -551,16 +690,14 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
             <button
               type="button"
               onClick={() => {
-                if (onRefresh) {
-                  onRefresh();
-                  return;
-                }
+                fetchCloudResults();
+                if (onRefresh) onRefresh();
                 setRefreshToken(prev => prev + 1);
               }}
               className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95"
             >
-              <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? tr('gameRefreshing') : tr('gameRefresh')}
+              <RotateCcw className={`w-4 h-4 ${isLoading || isCloudLoading ? 'animate-spin' : ''}`} />
+              {isLoading || isCloudLoading ? tr('gameRefreshing') : tr('gameRefresh')}
             </button>
             <button
               type="button"
@@ -575,6 +712,20 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         </div>
       </section>
 
+      {cloudError && <div className="mb-4 rounded-2xl border border-warning/20 bg-warning/10 p-3 text-xs font-black text-warning">{cloudError}، مع الاحتفاظ بآخر نسخة ناجحة.</div>}
+      <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center"><Gift className="w-5 h-5" /></div>
+            <div>
+              <h3 className="text-sm font-black text-textPrimary">نقاط مشاركة الألعاب</h3>
+              <p className="text-[11px] font-bold text-textSecondary mt-1">مؤهلون: {participationPreview.eligible.length} • منح سابقًا: {participationPreview.alreadyAwarded.length} • مستبعدون: {participationPreview.excluded.length}</p>
+              <p className="text-[10px] font-bold text-textMuted mt-1">تُمنح {PARTICIPATION_POINTS} نقاط مرة واحدة لكل طالب ولكل دفعة مكتملة في يوم النشاط نفسه.</p>
+            </div>
+          </div>
+          <button type="button" onClick={applyParticipationAwards} disabled={participationPreview.eligible.length === 0} className="h-11 px-4 rounded-2xl bg-success text-white font-black text-xs flex items-center justify-center gap-2 disabled:opacity-50"><Gift className="w-4 h-4" />اعتماد نقاط المستحقين</button>
+        </div>
+      </section>
       <section className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
         <div className="bg-bgCard border border-borderColor rounded-3xl p-3 shadow-sm">
           <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-2">
@@ -621,6 +772,13 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
       </section>
 
       <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+          <select value={dateFilter} onChange={event => setDateFilter(event.target.value as any)} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary">
+            <option value="today">نتائج اليوم</option><option value="yesterday">نتائج أمس</option><option value="custom">تاريخ محدد</option><option value="all">كل التواريخ</option>
+          </select>
+          {dateFilter === 'custom' && <input type="date" value={customDate} onChange={event => setCustomDate(event.target.value)} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary" />}
+          <div className="rounded-2xl bg-primary/5 border border-primary/15 px-3 flex items-center text-[10px] font-black text-primary"><CloudDownload className="w-4 h-4 ml-2" />{cloudResults.length} نتيجة محفوظة</div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_165px_165px_145px_150px_165px] gap-3">
           <label className="relative block">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary" />
