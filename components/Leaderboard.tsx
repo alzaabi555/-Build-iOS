@@ -96,7 +96,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     .reduce((acc, b) => acc + Number(b?.points || 0), 0);
                 return { ...student, monthlyPoints };
             }).filter(s => s.monthlyPoints > 0)
-              .sort((a, b) => b.monthlyPoints - a.monthlyPoints);
+              .sort((a, b) => (b.monthlyPoints - a.monthlyPoints) || String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base' }));
 
             if (studentsWithPoints.length === 0) return t('noPointsYet') || 'لا توجد نقاط بعد';
 
@@ -127,7 +127,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
             console.error("Ticker Error safely caught:", error);
             return t('noPointsYet') || "جاري تحديث البيانات...";
         }
-    }, [safeStudents, selectedClass, currentMonth, t]);
+    }, [safeStudents, selectedClass, currentMonth, t, language]);
 
     const rankedStudents = useMemo(() => {
         try {
@@ -154,12 +154,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ students, classes, onUpdateSt
                     .reduce((acc, b) => acc + Number(b?.points || 0), 0);
                 return { ...student, monthlyPoints };
             });
-            return withPoints.sort((a, b) => b.monthlyPoints - a.monthlyPoints);
+            return withPoints.sort((a, b) => (b.monthlyPoints - a.monthlyPoints) || String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base' }));
         } catch (error) {
             console.error("Ranking Error safely caught:", error);
             return [];
         }
-    }, [safeStudents, selectedClass, searchTerm, currentMonth]);
+    }, [safeStudents, selectedClass, searchTerm, currentMonth, language]);
 
     const topThree = rankedStudents.slice(0, 3);
     const restOfStudents = rankedStudents.slice(3);
