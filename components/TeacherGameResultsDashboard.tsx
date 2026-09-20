@@ -401,16 +401,32 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
     setIsCloudLoading(true);
     setCloudError('');
     try {
-      const response = await fetch(GAME_RESULTS_CLOUD_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'getGameResults', schoolCode: effectiveSchoolCode, teacherId: effectiveTeacherId })
+      const query = new URLSearchParams({
+        action: 'getGameResults',
+        schoolCode: effectiveSchoolCode,
+        teacherId: effectiveTeacherId,
+        _: String(Date.now())
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
+      const response = await fetch(`${GAME_RESULTS_CLOUD_URL}?${query.toString()}`, {
+        method: 'GET',
+        redirect: 'follow',
+        cache: 'no-store'
+      });
+      const responseText = await response.text();
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${responseText.slice(0, 160)}`);
+      let payload: any;
+      try {
+        payload = JSON.parse(responseText);
+      } catch {
+        throw new Error(`استجابة السحابة ليست JSON: ${responseText.slice(0, 160)}`);
+      }
       if (requestId !== requestIdRef.current) return;
       if (payload?.success === false || payload?.status === 'error') throw new Error(String(payload?.message || payload?.error || 'تعذر جلب النتائج'));
-      const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.results) ? payload.results : Array.isArray(payload?.gameResults) ? payload.gameResults : Array.isArray(payload) ? payload : [];
       const normalizedIncoming = incoming.map(normalizeResult).filter((item: TeacherGameResultLogEntry | null): item is TeacherGameResultLogEntry => Boolean(item));
+      if (normalizedIncoming.length === 0) {
+        setCloudError('اتصلت السحابة بنجاح، لكن لم تعد نتائج مطابقة لمعرف المدرسة والمعلم الحاليين.');
+      }
       setCloudResults(previous => {
         const merged = normalizedIncoming.length > 0 ? mergeResultsById([previous, normalizedIncoming]) : previous;
         if (merged.length > 0 && typeof window !== 'undefined') {
