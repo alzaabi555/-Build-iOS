@@ -123,20 +123,33 @@ const omanDateKey = (value?: string | Date) => {
   const get = (type: string) => parts.find(part => part.type === type)?.value || '';
   return `${get('year')}-${get('month')}-${get('day')}`;
 };
-const normalizeActivityDate = (value: unknown, playedAt?: string) => {
-  const text = String(value || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  if (text) {
-    const parsed = new Date(text);
+const toEnglishDigits = (value: unknown) => String(value || '').replace(/[٠-٩۰-۹]/g, digit => {
+  const ar = '٠١٢٣٤٥٦٧٨٩', fa = '۰۱۲۳۴۵۶۷۸۹';
+  const ai = ar.indexOf(digit); if (ai >= 0) return String(ai);
+  const fi = fa.indexOf(digit); return fi >= 0 ? String(fi) : digit;
+});
+const normalizeDateInputKey = (value: unknown) => {
+  const text = toEnglishDigits(value).trim().replace(/[/.]/g, '-');
+  let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+  match = text.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (match) return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+  return '';
+};
+const normalizeActivityDate = (activityDate: unknown, playedAt?: unknown, savedAt?: unknown) => {
+  const direct = normalizeDateInputKey(activityDate);
+  if (direct) return direct;
+  const activityText = toEnglishDigits(activityDate).trim();
+  // Important: never parse a partial value such as "Sun Sep 20" because JS assigns year 2001.
+  if (/\b\d{4}\b/.test(activityText)) {
+    const parsed = new Date(activityText);
     if (!Number.isNaN(parsed.getTime())) return omanDateKey(parsed);
   }
-  return omanDateKey(playedAt);
-};
-const normalizeClassFromCloud = (value: unknown) => {
-  const text = String(value || '').trim();
-  // Google Sheets may serialize class labels such as 8-5 as dates. Do not display those date strings as class names.
-  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s/i.test(text) || /GMT[+-]\d{4}/i.test(text)) return '';
-  return text;
+  for (const fallback of [playedAt, savedAt]) {
+    const parsed = new Date(String(fallback || ''));
+    if (!Number.isNaN(parsed.getTime())) return omanDateKey(parsed);
+  }
+  return '';
 };
 
 const mergeResultsById = (lists: TeacherGameResultLogEntry[][]) => {
@@ -248,7 +261,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     id,
     studentId,
     studentName: typeof raw.studentName === 'string' ? raw.studentName : typeof rawResult.studentName === 'string' ? rawResult.studentName : undefined,
-    className: normalizeClassFromCloud(raw.className || rawResult.className) || undefined,
+    className: typeof raw.className === 'string' ? raw.className : typeof rawResult.className === 'string' ? rawResult.className : undefined,
     grade: typeof raw.grade === 'string' ? raw.grade : typeof rawResult.grade === 'string' ? rawResult.grade : undefined,
     semester: getResultSemester(raw),
     gameType,
@@ -270,7 +283,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     unit: typeof raw.unit === 'string' ? raw.unit : typeof rawResult.unit === 'string' ? rawResult.unit : undefined,
     lesson: typeof raw.lesson === 'string' ? raw.lesson : typeof rawResult.lesson === 'string' ? rawResult.lesson : undefined,
     publishBatchId: String(raw.publishBatchId || rawResult.publishBatchId || '').trim() || undefined,
-    activityDate: normalizeActivityDate(raw.activityDate || rawResult.activityDate, typeof raw.playedAt === 'string' ? raw.playedAt : typeof rawResult.playedAt === 'string' ? rawResult.playedAt : undefined) || undefined,
+    activityDate: normalizeActivityDate(raw.activityDate || rawResult.activityDate, raw.playedAt || rawResult.playedAt || raw.savedAt, raw.savedAt || rawResult.savedAt) || undefined,
     attemptNumber: safeNumber(raw.attemptNumber, safeNumber(rawResult.attemptNumber, 1)),
     bestScore: safeNumber(raw.bestScore, safeNumber(rawResult.bestScore, safeNumber(raw.score, safeNumber(rawResult.score)))),
     isOfficialBest: Boolean(raw.isOfficialBest ?? rawResult.isOfficialBest ?? true),
@@ -415,18 +428,13 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
     try {
       const response = await fetch(GAME_RESULTS_CLOUD_URL, {
         method: 'POST',
-        redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'getGameResults', schoolCode: effectiveSchoolCode, teacherId: effectiveTeacherId })
       });
-      const responseText = await response.text();
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${responseText.slice(0, 160)}`);
-      let payload: any;
-      try { payload = JSON.parse(responseText); }
-      catch { throw new Error(`استجابة السحابة ليست JSON: ${responseText.slice(0, 160)}`); }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
       if (requestId !== requestIdRef.current) return;
       if (payload?.success === false || payload?.status === 'error') throw new Error(String(payload?.message || payload?.error || 'تعذر جلب النتائج'));
-      const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.results) ? payload.results : Array.isArray(payload?.gameResults) ? payload.gameResults : Array.isArray(payload) ? payload : [];
+      const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
       const normalizedIncoming = incoming.map(normalizeResult).filter((item: TeacherGameResultLogEntry | null): item is TeacherGameResultLogEntry => Boolean(item));
       setCloudResults(previous => {
         const merged = normalizedIncoming.length > 0 ? mergeResultsById([previous, normalizedIncoming]) : previous;
@@ -513,9 +521,9 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         (completionFilter === 'completed' && result.completed) ||
         (completionFilter === 'not_completed' && !result.completed);
 const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') === syncFilter;
-      const resultDate = normalizeActivityDate(result.activityDate, result.playedAt);
+      const resultDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-      const targetDate = dateFilter === 'today' ? omanDateKey() : dateFilter === 'yesterday' ? omanDateKey(yesterday) : dateFilter === 'custom' ? customDate : '';
+      const targetDate = dateFilter === 'today' ? omanDateKey() : dateFilter === 'yesterday' ? omanDateKey(yesterday) : dateFilter === 'custom' ? normalizeDateInputKey(customDate) : '';
       const matchesDate = dateFilter === 'all' || resultDate === targetDate;
       return matchesGame && matchesClass && matchesSemester && matchesCompletion && matchesSync && matchesDate;
     });
@@ -630,7 +638,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       const isReview = Boolean(raw.isReview || raw.reviewMode || raw.source === 'review' || raw.context === 'review');
       const batchId = String(result.publishBatchId || '').trim();
       if (!result.completed || result.correct + result.wrong <= 0 || !batchId || isReview) { excluded.push(result.id); return; }
-      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt);
+      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
       if (!activityDate || activityDate !== omanDateKey(result.playedAt)) { excluded.push(result.id); return; }
       const key = `${normalizeCode(result.studentId)}|${batchId}`;
       const previous = byBatchStudent.get(key);
@@ -655,7 +663,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       const entry = ids.map(id => awards.get(id)).find(Boolean);
       if (!entry) return student;
       const result = entry.result;
-      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt);
+      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
       const behaviors = Array.isArray((student as any).behaviors) ? (student as any).behaviors : [];
       if (behaviors.some((behavior: any) => behavior?.id === entry.awardId)) return student;
       const behavior = {
