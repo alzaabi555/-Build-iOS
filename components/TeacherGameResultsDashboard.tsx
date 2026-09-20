@@ -123,6 +123,22 @@ const omanDateKey = (value?: string | Date) => {
   const get = (type: string) => parts.find(part => part.type === type)?.value || '';
   return `${get('year')}-${get('month')}-${get('day')}`;
 };
+const normalizeActivityDate = (value: unknown, playedAt?: string) => {
+  const text = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  if (text) {
+    const parsed = new Date(text);
+    if (!Number.isNaN(parsed.getTime())) return omanDateKey(parsed);
+  }
+  return omanDateKey(playedAt);
+};
+const normalizeClassFromCloud = (value: unknown) => {
+  const text = String(value || '').trim();
+  // Google Sheets may serialize class labels such as 8-5 as dates. Do not display those date strings as class names.
+  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s/i.test(text) || /GMT[+-]\d{4}/i.test(text)) return '';
+  return text;
+};
+
 const mergeResultsById = (lists: TeacherGameResultLogEntry[][]) => {
   const map = new Map<string, TeacherGameResultLogEntry>();
   lists.flat().forEach(item => {
@@ -232,7 +248,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     id,
     studentId,
     studentName: typeof raw.studentName === 'string' ? raw.studentName : typeof rawResult.studentName === 'string' ? rawResult.studentName : undefined,
-    className: typeof raw.className === 'string' ? raw.className : typeof rawResult.className === 'string' ? rawResult.className : undefined,
+    className: normalizeClassFromCloud(raw.className || rawResult.className) || undefined,
     grade: typeof raw.grade === 'string' ? raw.grade : typeof rawResult.grade === 'string' ? rawResult.grade : undefined,
     semester: getResultSemester(raw),
     gameType,
@@ -254,7 +270,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
     unit: typeof raw.unit === 'string' ? raw.unit : typeof rawResult.unit === 'string' ? rawResult.unit : undefined,
     lesson: typeof raw.lesson === 'string' ? raw.lesson : typeof rawResult.lesson === 'string' ? rawResult.lesson : undefined,
     publishBatchId: String(raw.publishBatchId || rawResult.publishBatchId || '').trim() || undefined,
-    activityDate: String(raw.activityDate || rawResult.activityDate || '').slice(0, 10) || undefined,
+    activityDate: normalizeActivityDate(raw.activityDate || rawResult.activityDate, typeof raw.playedAt === 'string' ? raw.playedAt : typeof rawResult.playedAt === 'string' ? rawResult.playedAt : undefined) || undefined,
     attemptNumber: safeNumber(raw.attemptNumber, safeNumber(rawResult.attemptNumber, 1)),
     bestScore: safeNumber(raw.bestScore, safeNumber(rawResult.bestScore, safeNumber(raw.score, safeNumber(rawResult.score)))),
     isOfficialBest: Boolean(raw.isOfficialBest ?? rawResult.isOfficialBest ?? true),
@@ -380,7 +396,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const [refreshToken, setRefreshToken] = useState(0);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [showNonParticipants, setShowNonParticipants] = useState(true);
-  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'all' | 'custom'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'all' | 'custom'>('all');
   const [customDate, setCustomDate] = useState(omanDateKey());
   const [cloudResults, setCloudResults] = useState<TeacherGameResultLogEntry[]>([]);
   const [isCloudLoading, setIsCloudLoading] = useState(false);
@@ -393,45 +409,28 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const sourceStudents = (propStudents.length > 0 ? propStudents : appStudents) as TeacherGameResultsStudent[];
 
   const fetchCloudResults = async () => {
-    if (!effectiveSchoolCode && !effectiveTeacherId) {
-      setCloudError('تعذر تحديد المدرسة أو المعلم لجلب النتائج السحابية.');
-      return;
-    }
     const requestId = ++requestIdRef.current;
     setIsCloudLoading(true);
     setCloudError('');
     try {
-      const query = new URLSearchParams({
-        action: 'getGameResults',
-        schoolCode: effectiveSchoolCode,
-        teacherId: effectiveTeacherId,
-        _: String(Date.now())
-      });
-      const response = await fetch(`${GAME_RESULTS_CLOUD_URL}?${query.toString()}`, {
-        method: 'GET',
+      const response = await fetch(GAME_RESULTS_CLOUD_URL, {
+        method: 'POST',
         redirect: 'follow',
-        cache: 'no-store'
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getGameResults', schoolCode: effectiveSchoolCode, teacherId: effectiveTeacherId })
       });
       const responseText = await response.text();
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${responseText.slice(0, 160)}`);
       let payload: any;
-      try {
-        payload = JSON.parse(responseText);
-      } catch {
-        throw new Error(`استجابة السحابة ليست JSON: ${responseText.slice(0, 160)}`);
-      }
+      try { payload = JSON.parse(responseText); }
+      catch { throw new Error(`استجابة السحابة ليست JSON: ${responseText.slice(0, 160)}`); }
       if (requestId !== requestIdRef.current) return;
       if (payload?.success === false || payload?.status === 'error') throw new Error(String(payload?.message || payload?.error || 'تعذر جلب النتائج'));
       const incoming = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.results) ? payload.results : Array.isArray(payload?.gameResults) ? payload.gameResults : Array.isArray(payload) ? payload : [];
       const normalizedIncoming = incoming.map(normalizeResult).filter((item: TeacherGameResultLogEntry | null): item is TeacherGameResultLogEntry => Boolean(item));
-      if (normalizedIncoming.length === 0) {
-        setCloudError('اتصلت السحابة بنجاح، لكن لم تعد نتائج مطابقة لمعرف المدرسة والمعلم الحاليين.');
-      }
       setCloudResults(previous => {
         const merged = normalizedIncoming.length > 0 ? mergeResultsById([previous, normalizedIncoming]) : previous;
-        if (merged.length > 0 && typeof window !== 'undefined') {
-          try { window.localStorage.setItem(cacheKey, JSON.stringify(merged)); } catch { /* تجاهل امتلاء التخزين */ }
-        }
+        if (merged.length > 0) localStorage.setItem(cacheKey, JSON.stringify(merged));
         return merged;
       });
     } catch (error) {
@@ -443,13 +442,11 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = JSON.parse(window.localStorage.getItem(cacheKey) || '[]');
-        if (Array.isArray(cached)) setCloudResults(mergeResultsById([cached]));
-      } catch { /* لا نمسح النتائج الحالية عند تلف ذاكرة قديمة */ }
-    }
-    void fetchCloudResults();
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+      if (Array.isArray(cached)) setCloudResults(mergeResultsById([cached]));
+    } catch { setCloudResults([]); }
+    fetchCloudResults();
   }, [cacheKey]);
 
   const studentsMap = useMemo(() => {
@@ -516,7 +513,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
         (completionFilter === 'completed' && result.completed) ||
         (completionFilter === 'not_completed' && !result.completed);
 const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') === syncFilter;
-      const resultDate = result.activityDate || omanDateKey(result.playedAt);
+      const resultDate = normalizeActivityDate(result.activityDate, result.playedAt);
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
       const targetDate = dateFilter === 'today' ? omanDateKey() : dateFilter === 'yesterday' ? omanDateKey(yesterday) : dateFilter === 'custom' ? customDate : '';
       const matchesDate = dateFilter === 'all' || resultDate === targetDate;
@@ -633,7 +630,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       const isReview = Boolean(raw.isReview || raw.reviewMode || raw.source === 'review' || raw.context === 'review');
       const batchId = String(result.publishBatchId || '').trim();
       if (!result.completed || result.correct + result.wrong <= 0 || !batchId || isReview) { excluded.push(result.id); return; }
-      const activityDate = result.activityDate || omanDateKey(result.playedAt);
+      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt);
       if (!activityDate || activityDate !== omanDateKey(result.playedAt)) { excluded.push(result.id); return; }
       const key = `${normalizeCode(result.studentId)}|${batchId}`;
       const previous = byBatchStudent.get(key);
@@ -651,17 +648,14 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
 
   const applyParticipationAwards = () => {
     if (participationPreview.eligible.length === 0) return;
-    if (!updateAppStudents) {
-      setCloudError('تعذر تحديث نقاط الطلاب لأن setStudents غير متاح في AppContext.');
-      return;
-    }
+    if (!updateAppStudents) { setCloudError('تعذر تحديث نقاط الطلاب لأن setStudents غير متاح.'); return; }
     const awards = new Map(participationPreview.eligible.map(item => [normalizeCode(item.result.studentId), item]));
     updateAppStudents((previous: any[]) => (Array.isArray(previous) ? previous : []).map(student => {
       const ids = [(student as any).id, (student as any).rasedId, (student as any).civilId, (student as any).secretCode, (student as any).parentCode].map(normalizeCode);
       const entry = ids.map(id => awards.get(id)).find(Boolean);
       if (!entry) return student;
       const result = entry.result;
-      const activityDate = result.activityDate || omanDateKey(result.playedAt);
+      const activityDate = normalizeActivityDate(result.activityDate, result.playedAt);
       const behaviors = Array.isArray((student as any).behaviors) ? (student as any).behaviors : [];
       if (behaviors.some((behavior: any) => behavior?.id === entry.awardId)) return student;
       const behavior = {
@@ -813,7 +807,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
             <option value="today">نتائج اليوم</option><option value="yesterday">نتائج أمس</option><option value="custom">تاريخ محدد</option><option value="all">كل التواريخ</option>
           </select>
           {dateFilter === 'custom' && <input type="date" value={customDate} onChange={event => setCustomDate(event.target.value)} className="h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-xs font-black text-textPrimary" />}
-          <div className="rounded-2xl bg-primary/5 border border-primary/15 px-3 flex items-center text-[10px] font-black text-primary"><CloudDownload className="w-4 h-4 ml-2" />{cloudResults.length} نتيجة محفوظة</div>
+          <div className="rounded-2xl bg-primary/5 border border-primary/15 px-3 flex items-center text-[10px] font-black text-primary"><CloudDownload className="w-4 h-4 ml-2" />مستلمة: {cloudResults.length} • ظاهرة: {filteredResults.length}</div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_165px_165px_145px_150px_165px] gap-3">
           <label className="relative block">
