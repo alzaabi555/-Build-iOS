@@ -39,8 +39,8 @@ jobs:
       - name: Update Android Version
         run: |
           if [ -f "android/app/build.gradle" ]; then
-            sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 15/g' android/app/build.gradle
-            sed -i -E 's/versionName[[:space:]]+"[^"]*"/versionName "1.1.6"/g' android/app/build.gradle
+            sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 16/g' android/app/build.gradle
+            sed -i -E 's/versionName[[:space:]]+"[^"]*"/versionName "1.1.7"/g' android/app/build.gradle
 
             echo "Android version updated:"
             grep -E "versionCode|versionName" android/app/build.gradle
