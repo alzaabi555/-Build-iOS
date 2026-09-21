@@ -199,6 +199,35 @@ const mergeStudentKeepingOldCode = (existing: Student, incoming: Student): Stude
     } as Student;
 };
 
+const compareStudentsAlphabetically = (a: Student, b: Student, language: string) => {
+    const classCompare = normalizeClassForIdentity(getStudentClassValueForIdentity(a)).localeCompare(
+        normalizeClassForIdentity(getStudentClassValueForIdentity(b)),
+        'en',
+        { numeric: true, sensitivity: 'base' }
+    );
+    if (classCompare !== 0) return classCompare;
+    return String(a.name || '').localeCompare(
+        String(b.name || ''),
+        language === 'ar' ? 'ar' : 'en',
+        { sensitivity: 'base', numeric: true }
+    );
+};
+const getStudentStableKey = (student: Student | any) => String(
+    student?.rasedId || student?.rasedID || student?.secretCode || student?.parentCode ||
+    student?.civilID || student?.civilId || student?.id ||
+    makeStudentIdentityKey(student?.name || '', getStudentClassValueForIdentity(student))
+).trim().toUpperCase();
+const mergeCanonicalStudents = (contextStudents: Student[], propStudents: Student[], language: string) => {
+    const map = new Map<string, Student>();
+    [...contextStudents, ...propStudents].forEach(student => {
+        if (!student) return;
+        const key = getStudentStableKey(student);
+        const current = map.get(key);
+        map.set(key, current ? mergeStudentKeepingOldCode(current, student) : student);
+    });
+    return Array.from(map.values()).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+};
+
 const StudentList: React.FC<StudentListProps> = ({
     students = [],
     classes = [],
@@ -210,7 +239,7 @@ const StudentList: React.FC<StudentListProps> = ({
     onDeleteClass,
     onEditClass
 }) => {
-    const { defaultStudentGender, setDefaultStudentGender, setStudents, teacherInfo, t, dir, language } = useApp();
+    const { defaultStudentGender, setDefaultStudentGender, students: contextStudents, setStudents, teacherInfo, t, dir, language } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
 
     const [selectedGrade, setSelectedGrade] = useState<string>(() => sessionStorage.getItem('rased_grade') || 'all');
@@ -295,7 +324,22 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     const safeClasses = useMemo(() => Array.isArray(classes) ? classes : [], [classes]);
-    const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
+    // قائمة موحدة واحدة لكل التطبيق: ندمج بيانات props مع AppContext ثم نفرزها.
+    // بهذا تنعكس الإضافة والتعديل والترتيب على الحضور والدرجات وبقية الصفحات، وليس على صفحة الطلاب فقط.
+    const safeStudents = useMemo(() => mergeCanonicalStudents(
+        Array.isArray(contextStudents) ? contextStudents : [],
+        Array.isArray(students) ? students : [],
+        language
+    ), [contextStudents, students, language]);
+    useEffect(() => {
+        if (typeof setStudents !== 'function') return;
+        const current = Array.isArray(contextStudents) ? contextStudents : [];
+        const currentSignature = current.map(getStudentStableKey).join('|');
+        const canonicalSignature = safeStudents.map(getStudentStableKey).join('|');
+        if (currentSignature !== canonicalSignature || current.length !== safeStudents.length) {
+            setStudents(safeStudents);
+        }
+    }, [safeStudents, contextStudents, setStudents]);
 
     useEffect(() => {
         if (safeClasses.length > 0 && !newStudentClass) {
@@ -343,7 +387,7 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return nameMatch && matchesClass && matchesGrade;
-        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base', numeric: true }));
+        }).sort((a, b) => compareStudentsAlphabetically(a, b, language));
     }, [safeStudents, searchTerm, selectedClass, selectedGrade, language]);
 
     const studentsForCodesExport = useMemo(() => {
@@ -360,7 +404,7 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return matchesClass && matchesGrade;
-        }).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base', numeric: true }));
+        }).sort((a, b) => compareStudentsAlphabetically(a, b, language));
     }, [safeStudents, selectedClass, selectedGrade, language]);
 
     const sanitizeFileName = (value: string) => {
@@ -659,7 +703,7 @@ const StudentList: React.FC<StudentListProps> = ({
             return;
         }
 
-        const updatedStudents = students.map(student => {
+        const updatedStudents = safeStudents.map(student => {
             if (eligibleStudents.find(es => es.id === student.id)) {
                 const newBehavior = {
                     id: Math.random().toString(36).substr(2, 9),
