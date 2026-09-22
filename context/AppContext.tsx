@@ -116,6 +116,7 @@ const EXTENDED_STORAGE_KEYS = {
   preparationPreRestoreBackup: 'rased_teacher_lesson_preparations_pre_restore_backup_v1'
 } as const;
 
+const PREPARATIONS_CHANGED_EVENT = 'rased:preparations-changed';
 const GAME_STORAGE_EXACT_KEYS = ['rased_game_questions'] as const;
 const GAME_STORAGE_PREFIXES = [
   'rased_teacher_game_questions_',
@@ -734,6 +735,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [extendedStorageRevision, setExtendedStorageRevision] = useState(0);
   const [language, setLanguage] = useState<Language>(() => {
     const storedLanguage = localStorage.getItem(CORE_STORAGE_KEYS.language);
     return storedLanguage === 'en' ? 'en' : 'ar';
@@ -963,6 +965,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
+    const handlePreparationsChanged = () => {
+      setExtendedStorageRevision(previous => previous + 1);
+    };
+    window.addEventListener(PREPARATIONS_CHANGED_EVENT, handlePreparationsChanged);
+    return () => window.removeEventListener(PREPARATIONS_CHANGED_EVENT, handlePreparationsChanged);
+  }, []);
+
+  useEffect(() => {
     const loadData = async () => {
       try {
         let data: any = null;
@@ -1051,6 +1061,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (data) {
           const fallback = createBackupPayload();
           const normalized = normalizeLegacyBackup(data, fallback);
+
+          // The preparation page writes immediately to localStorage. On desktop/native,
+          // the database file may still contain an older snapshot until the debounced
+          // full backup is written. Prefer the explicit local preparation keys during
+          // normal startup so a deleted preparation does not return and a new one does
+          // not disappear. Cloud/manual restore still uses restoreBackupPayload and is
+          // intentionally not affected by this startup reconciliation.
+          const localPreparationsRaw = localStorage.getItem(
+            EXTENDED_STORAGE_KEYS.lessonPreparations
+          );
+          const localSessionRaw = localStorage.getItem(
+            EXTENDED_STORAGE_KEYS.preparationSessionState
+          );
+          if (localPreparationsRaw !== null) {
+            const localPreparations = safeJsonParse<unknown>(localPreparationsRaw, []);
+            if (Array.isArray(localPreparations)) {
+              normalized.extendedStorage.lessonPreparations = localPreparations;
+            }
+          }
+          if (localSessionRaw !== null) {
+            normalized.extendedStorage.preparationSessionState =
+              safeJsonParse<Record<string, unknown> | null>(localSessionRaw, null);
+          }
+
           const loadedTeacherInfo = normalized.teacherInfo as TeacherInfo;
           const activeSchoolName =
             loadedTeacherInfo?.school ||
@@ -1143,7 +1177,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     certificateSettings,
     defaultStudentGender,
     categorizations,
-    language
+    language,
+    extendedStorageRevision
   ]);
 
   const t = (key: keyof typeof translations['ar'] | string): string => {
