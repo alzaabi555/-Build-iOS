@@ -24,7 +24,10 @@ import {
   RotateCcw,
   Shuffle,
   Layers,
-  Wand2
+  Wand2,
+  Edit2,
+  GripVertical,
+  CalendarDays
 } from 'lucide-react';
 import { Drawer as DrawerSheet } from './ui/Drawer';
 import PageLayout from '../components/PageLayout';
@@ -67,6 +70,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   const [copyTargetClass, setCopyTargetClass] = useState<string>(selectedClass);
 
   const [showArchived, setShowArchived] = useState(false);
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
 
   const presentationRef = useRef<HTMLDivElement>(null);
 
@@ -149,12 +154,30 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
   const getShortName = (fullName: string) => {
     if (!fullName) return '';
-    const parts = fullName.trim().split(' ').filter(Boolean);
-    return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1]}`;
+    const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 4).join(' ');
   };
-
   const getGroupColor = (colorId: string) => {
     return groupColors.find(color => color.id === colorId) || groupColors[0];
+  };
+  const formatGroupExecutionDate = (value?: string) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const [year, month, day] = raw.split('-').map(Number);
+    if (!year || !month || !day) return '';
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    const weekday = new Intl.DateTimeFormat('ar-OM', { weekday: 'long' }).format(date);
+    return `يوم ${weekday} الموافق ${day}-${month}`;
+  };
+  const updateGroupExecutionDate = (groupId: string, executionDate: string) => {
+    setCategorizations((prev: any[]) => prev.map((cat: any) =>
+      cat.id !== activeCatId ? cat : {
+        ...cat,
+        groups: (cat.groups || []).map((group: any) =>
+          group.id === groupId ? { ...group, executionDate } : group
+        )
+      }
+    ));
   };
 
   const handleCreateCategorization = () => {
@@ -174,6 +197,11 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setShowArchived(false);
   };
 
+  const handleRenameCategorization = (id: string, currentTitle: string) => {
+    const nextTitle = window.prompt('اكتب الاسم الجديد للتقسيم:', currentTitle)?.trim();
+    if (!nextTitle || nextTitle === currentTitle) return;
+    setCategorizations((prev: any[]) => prev.map((cat: any) => cat.id === id ? { ...cat, title: nextTitle } : cat));
+  };
   const handleDeleteCategorization = (id: string) => {
     if (window.confirm(t('groupsConfirmDeleteCategorization'))) {
       setCategorizations(categorizations.filter((cat: any) => cat.id !== id));
@@ -223,7 +251,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
               name: newGroupName.trim(),
               color: selectedColor.id,
               studentIds: [],
-              isCompleted: false
+              isCompleted: false,
+              executionDate: ''
             }
           ]
         };
@@ -264,7 +293,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
         name: `${prefix} ${index + 1}`,
         color: color.id,
         studentIds,
-        isCompleted: false
+        isCompleted: false,
+        executionDate: ''
       };
     });
 
@@ -282,6 +312,24 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     setShowAutoModal(false);
   };
 
+  const handleRenameGroup = (groupId: string, currentName: string) => {
+    const nextName = window.prompt('اكتب الاسم الجديد للمجموعة:', currentName)?.trim();
+    if (!nextName || nextName === currentName) return;
+    setCategorizations((prev: any[]) => prev.map((cat: any) => cat.id !== activeCatId ? cat : { ...cat, groups: (cat.groups || []).map((group: any) => group.id === groupId ? { ...group, name: nextName } : group) }));
+  };
+  const moveGroup = (sourceId: string, targetId: string) => {
+    if (!activeCatId || sourceId === targetId) return;
+    setCategorizations((prev: any[]) => prev.map((cat: any) => {
+      if (cat.id !== activeCatId) return cat;
+      const groups = [...(cat.groups || [])];
+      const from = groups.findIndex((group: any) => group.id === sourceId);
+      const to = groups.findIndex((group: any) => group.id === targetId);
+      if (from < 0 || to < 0) return cat;
+      const [moved] = groups.splice(from, 1); groups.splice(to, 0, moved);
+      return { ...cat, groups };
+    }));
+  };
+  const handleGroupDrop = (targetId: string) => { if (draggedGroupId) moveGroup(draggedGroupId, targetId); setDraggedGroupId(null); setDragOverGroupId(null); };
   const handleDeleteGroup = (groupId: string) => {
     if (!window.confirm(t('confirmDeleteGroup'))) return;
 
@@ -711,7 +759,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
   };
 
   const getCardHeightByNames = (namesCount: number) => {
-    return Math.max(230, 96 + namesCount * 28 + 24);
+    return Math.max(246, 116 + namesCount * 24 + 24);
   };
 
   const groupNamesList = groups.map((group: any) => getNamesForGroup(group));
@@ -817,7 +865,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
 
     ctx.save();
     ctx.globalAlpha = 0.16;
-    fillRoundRect(ctx, x, y, cardWidth, 58, 26, color.solid);
+    fillRoundRect(ctx, x, y, cardWidth, 78, 26, color.solid);
     ctx.restore();
 
     drawLocalizedText(
@@ -845,12 +893,24 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
       }
     );
 
+    const formattedExecutionDate = formatGroupExecutionDate(group.executionDate);
+    drawLocalizedText(
+      ctx,
+      formattedExecutionDate || 'لم يحدد موعد التنفيذ',
+      x + cardWidth - 24,
+      y + 64,
+      {
+        font: '700 13px Arial, sans-serif',
+        color: formattedExecutionDate ? '#475569' : '#94a3b8',
+        maxWidth: cardWidth - 50
+      }
+    );
     if (names.length === 0) {
       drawLocalizedText(
         ctx,
         t('groupsNoStudentsInGroup'),
         x + cardWidth - 24,
-        y + 95,
+        y + 115,
         {
           font: '700 16px Arial, sans-serif',
           color: '#94a3b8',
@@ -861,8 +921,8 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
       return;
     }
 
-    const startY = y + 86;
-    const lineHeight = 28;
+    const startY = y + 106;
+    const lineHeight = 24;
     const maxNameWidth = cardWidth - 55;
 
     names.forEach((name: string, nameIndex: number) => {
@@ -872,7 +932,7 @@ const createGroupsCanvas = async (): Promise<HTMLCanvasElement> => {
         x + cardWidth - 24,
         startY + nameIndex * lineHeight,
         {
-          font: '700 17px Arial, sans-serif',
+          font: '700 14px Arial, sans-serif',
           color: '#334155',
           maxWidth: maxNameWidth
         }
@@ -1092,6 +1152,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(event) => { event.stopPropagation(); handleRenameCategorization(cat.id, cat.title); }} className="p-1.5 rounded-lg text-textSecondary hover:text-primary hover:bg-primary/10" title="تعديل اسم التقسيم"><Edit2 size={15} /></button>
                         {!cat.archivedAt ? (
                           <button
                             type="button"
@@ -1264,7 +1325,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       {unassignedStudents.map((student: any) => (
                         <span
                           key={student.id}
-                          className="px-3 py-2 rounded-xl text-xs font-black border bg-bgCard border-borderColor text-textPrimary shadow-sm"
+                          className="px-3 py-2 rounded-xl text-[10px] leading-5 font-black border bg-bgCard border-borderColor text-textPrimary shadow-sm"
                         >
                           {getShortName(student.name)}
                         </span>
@@ -1293,7 +1354,12 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                   return (
                     <div
                       key={group.id}
-                      className={`rounded-3xl border-2 overflow-hidden transition-all shadow-sm ${
+                      draggable
+                      onDragStart={(event) => { setDraggedGroupId(group.id); event.dataTransfer.effectAllowed = 'move'; }}
+                      onDragOver={(event) => { event.preventDefault(); setDragOverGroupId(group.id); }}
+                      onDrop={(event) => { event.preventDefault(); handleGroupDrop(group.id); }}
+                      onDragEnd={() => { setDraggedGroupId(null); setDragOverGroupId(null); }}
+                      className={`rounded-3xl border-2 overflow-hidden transition-all shadow-sm ${dragOverGroupId === group.id && draggedGroupId !== group.id ? 'ring-4 ring-primary/25' : ''} ${
                         isCompleted
                           ? 'bg-bgSoft border-success/40 opacity-80'
                           : `bg-bgCard ${color.border}`
@@ -1324,13 +1390,32 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                             </div>
                           </div>
 
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="p-2 rounded-xl text-textSecondary cursor-grab" title="اسحب لترتيب المجموعة"><GripVertical size={17} /></span>
+                            <button type="button" onClick={() => handleRenameGroup(group.id, group.name)} className="p-2 rounded-xl text-primary hover:bg-primary/10" title="تعديل اسم المجموعة"><Edit2 size={17} /></button>
                           <button
                             onClick={() => handleDeleteGroup(group.id)}
-                            className="p-2 rounded-xl text-danger hover:bg-danger/10 transition-colors shrink-0"
+                            className="p-2 rounded-xl text-danger hover:bg-danger/10 transition-colors"
                             title={t('deleteGroupBtn')}
                           >
                             <Trash2 size={17} />
                           </button>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 rounded-xl border border-borderColor/70 bg-bgCard/70 px-2.5 py-2">
+                          <CalendarDays size={14} className="text-primary shrink-0" />
+                          <input
+                            type="date"
+                            value={group.executionDate || ''}
+                            onChange={(event) => updateGroupExecutionDate(group.id, event.target.value)}
+                            onClick={(event) => event.stopPropagation()}
+                            className="min-w-0 flex-1 bg-transparent text-[11px] font-black text-textPrimary outline-none"
+                            title="تاريخ تنفيذ مهمة المجموعة"
+                            aria-label={`تاريخ تنفيذ مهمة ${group.name}`}
+                          />
+                          <span className="hidden lg:block text-[10px] font-bold text-textSecondary whitespace-nowrap">
+                            {formatGroupExecutionDate(group.executionDate) || 'اختر تاريخ التنفيذ'}
+                          </span>
                         </div>
                       </div>
 
@@ -1350,7 +1435,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                                     : 'bg-bgCard border-borderColor hover:border-primary text-textPrimary shadow-sm'
                                 }`}
                               >
-                                <span className="truncate">{getShortName(student.name)}</span>
+                                <span className="whitespace-normal break-words">{getShortName(student.name)}</span>
 
                                 {!isCompleted && (
                                   <button
@@ -1555,7 +1640,13 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
 
                   return (
                     <div key={group.id} className={`rounded-3xl border-2 bg-bgCard p-5 ${color.border}`}>
-                      <h2 className={`text-xl font-black mb-3 ${color.text}`}>{group.name}</h2>
+                      <div className="mb-3">
+                        <h2 className={`text-xl font-black ${color.text}`}>{group.name}</h2>
+                        <p className="mt-1 text-xs font-black text-textSecondary flex items-center gap-1.5">
+                          <CalendarDays size={14} className="text-primary" />
+                          {formatGroupExecutionDate(group.executionDate) || 'لم يحدد موعد التنفيذ'}
+                        </p>
+                      </div>
                       <div className="grid grid-cols-1 gap-2">
                         {groupStudents.length === 0 ? (
                           <div className="text-sm font-bold text-textSecondary">{t('noStudents')}</div>
@@ -1643,7 +1734,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <p className={`font-black text-sm truncate ${isSelected ? 'text-primary' : 'text-textPrimary'}`}>
+                          <p className={`font-black text-[11px] leading-5 whitespace-normal break-words ${isSelected ? 'text-primary' : 'text-textPrimary'}`}>
                             {getShortName(student.name)}
                           </p>
                         </div>
