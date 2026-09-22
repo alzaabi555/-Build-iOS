@@ -100,7 +100,7 @@ export function parsePreparationPackage(rawValue: unknown, sourceType: TeacherPr
   if (!title) issues.push({ level: 'error', path: 'lesson.title', message: 'عنوان الدرس غير موجود.' });
   const now = new Date().toISOString();
   const preparation: TeacherPreparation = {
-    id: id(),
+    id: clean(raw.id || raw.preparationId) || id(),
     format: clean(raw.format) || 'NOOR_COPILOT_LESSON_PACKAGE_V2',
     version: clean(raw.version) || '1.0',
     lesson: {
