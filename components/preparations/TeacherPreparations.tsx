@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle, BookMarked, CheckCircle2, ChevronLeft, ChevronRight, Circle,
   ClipboardPaste, Download, Edit3, Eye, FileJson, Play, Plus, Save, Search,
@@ -12,12 +13,9 @@ import type {
   TeacherPreparation
 } from '../../types/preparationTypes';
 import {
-  deletePreparation,
   loadPreparationSessionState,
   loadPreparations,
   savePreparationSessionState,
-  savePreparations,
-  upsertPreparation
 } from '../../services/preparationStorage';
 import { parsePreparationPackage, sanitizePreparationHtml } from '../../services/preparationImportValidator';
 
@@ -88,6 +86,34 @@ const escapeHtml = (value: string) => String(value || '').replace(/[&<>"']/g, ch
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char] || char));
 const safeName = (value: string) => value.replace(/[\\/:*?"<>|]/g, '_').trim() || 'preparation';
+const PREPARATIONS_STORAGE_KEY = 'rased_teacher_lesson_preparations_v1';
+const PREPARATIONS_EMERGENCY_BACKUP_KEY = 'rased_teacher_lesson_preparations_backup_v1';
+const readPreparationsDirectly = (): TeacherPreparation[] => {
+  try {
+    const raw = localStorage.getItem(PREPARATIONS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Failed to read preparations directly', error);
+    return [];
+  }
+};
+const persistPreparations = (items: TeacherPreparation[]) => {
+  const serialized = JSON.stringify(items);
+  const previous = localStorage.getItem(PREPARATIONS_STORAGE_KEY);
+  if (previous && previous !== serialized) {
+    localStorage.setItem(PREPARATIONS_EMERGENCY_BACKUP_KEY, previous);
+  }
+  localStorage.setItem(PREPARATIONS_STORAGE_KEY, serialized);
+  if (localStorage.getItem(PREPARATIONS_STORAGE_KEY) !== serialized) {
+    throw new Error('PREPARATIONS_STORAGE_WRITE_FAILED');
+  }
+};
+const mergePreparationIntoList = (items: TeacherPreparation[], preparation: TeacherPreparation, replaceId?: string) => {
+  const targetId = replaceId || preparation.id;
+  const withoutTarget = items.filter(item => item.id !== targetId && item.id !== preparation.id);
+  return [...withoutTarget, { ...preparation, id: replaceId || preparation.id }];
+};
 
 async function saveTextFile(text: string, fileName: string, mime = 'application/json;charset=utf-8') {
   const win = window as any;
@@ -135,7 +161,11 @@ function teachingSteps(session: PreparationSession): TeachingStep[] {
 }
 
 const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, schedule = [], periodTimes = [] }) => {
-  const [preparations, setPreparations] = useState<TeacherPreparation[]>(() => loadPreparations());
+  const [preparations, setPreparations] = useState<TeacherPreparation[]>(() => {
+    const fromDirectStorage = readPreparationsDirectly();
+    if (fromDirectStorage.length) return fromDirectStorage;
+    try { return loadPreparations(); } catch { return []; }
+  });
   const [dialog, setDialog] = useState<DialogMode>('none');
   const [selected, setSelected] = useState<TeacherPreparation | null>(null);
   const [sessionNumber, setSessionNumber] = useState(1);
@@ -151,7 +181,11 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try { savePreparations(preparations); } catch (error) { console.error(error); }
+    try {
+      persistPreparations(preparations);
+    } catch (error) {
+      console.error('Failed to persist preparations', error);
+    }
   }, [preparations]);
 
   const filtered = useMemo(() => {
@@ -187,7 +221,13 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
     const duplicate = preparations.find(item => item.lesson.title.trim() === pending.lesson.title.trim()
       && item.lesson.unit.trim() === pending.lesson.unit.trim() && item.lesson.grade.trim() === pending.lesson.grade.trim());
     const replaceId = duplicate && window.confirm(`يوجد تحضير محفوظ للدرس «${duplicate.lesson.title}». هل تريد استبداله؟`) ? duplicate.id : undefined;
-    const next = upsertPreparation({ ...pending, updatedAt: new Date().toISOString() }, replaceId);
+    const prepared = { ...pending, updatedAt: new Date().toISOString() };
+    const next = mergePreparationIntoList(preparations, prepared, replaceId);
+    try { persistPreparations(next); } catch (error) {
+      console.error(error);
+      alert('تعذر حفظ التحضير على الجهاز. لم يتم إغلاق نافذة الاستيراد.');
+      return;
+    }
     setPreparations(next);
     setPending(null);
     setIssues([]);
@@ -283,7 +323,14 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
       alert(result.issues.map(item => item.message).join('\n') || 'تعذر إنشاء التحضير اليدوي.');
       return;
     }
-    setPreparations(upsertPreparation(result.preparation));
+    const prepared = { ...result.preparation, updatedAt: new Date().toISOString() };
+    const next = mergePreparationIntoList(preparations, prepared);
+    try { persistPreparations(next); } catch (error) {
+      console.error(error);
+      alert('تعذر حفظ التحضير اليدوي على الجهاز.');
+      return;
+    }
+    setPreparations(next);
     setManual(emptyManual(teacherInfo?.subject || ''));
     setDialog('none');
     alert('تم حفظ التحضير اليدوي بصيغة متطابقة مع حزمة منصة نور.');
@@ -312,13 +359,27 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
   };
 
   const remove = (preparation: TeacherPreparation) => {
-    if (window.confirm(`حذف تحضير «${preparation.lesson.title}»؟`)) setPreparations(deletePreparation(preparation.id));
+    if (!window.confirm(`حذف تحضير «${preparation.lesson.title}»؟`)) return;
+    const next = preparations.filter(item => item.id !== preparation.id);
+    try { persistPreparations(next); } catch (error) {
+      console.error(error);
+      alert('تعذر حذف التحضير من التخزين المحلي.');
+      return;
+    }
+    setPreparations(next);
+    if (selected?.id === preparation.id) setSelected(null);
   };
 
   const updateNote = () => {
     if (!selected || !activeSession) return;
     const updated = { ...selected, sessions: selected.sessions.map(item => item.number === activeSession.number ? { ...item, notes: quickNote } : item), updatedAt: new Date().toISOString() };
-    setPreparations(upsertPreparation(updated));
+    const next = mergePreparationIntoList(preparations, updated, selected.id);
+    try { persistPreparations(next); } catch (error) {
+      console.error(error);
+      alert('تعذر حفظ ملاحظة الحصة.');
+      return;
+    }
+    setPreparations(next);
     setSelected(updated);
     alert('تم حفظ ملاحظة الحصة.');
   };
@@ -347,7 +408,7 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
       <div className="mt-4 flex flex-wrap gap-2"><button onClick={() => openTeaching(preparation)} className="flex-1 rounded-xl bg-success px-3 py-3 text-sm font-black text-white"><Play className="ml-2 inline" size={16}/>عرض الحصة</button><button onClick={() => openPreview(preparation)} className="rounded-xl bg-bgSoft px-4 py-3 text-sm font-black text-textPrimary"><Eye className="ml-2 inline" size={16}/>معاينة</button><button onClick={() => exportOne(preparation)} disabled={exporting} className="rounded-xl bg-bgSoft p-3 text-textPrimary disabled:opacity-40" title="تصدير هذا التحضير JSON"><FileJson size={18}/></button></div>
     </article>)}</div>}
 
-    {dialog !== 'none' && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-3"><div className={`max-h-[94dvh] w-full overflow-auto rounded-3xl border border-borderColor bg-bgMain shadow-2xl ${dialog === 'teaching' ? 'max-w-6xl' : 'max-w-5xl'}`}>
+    {dialog !== 'none' && typeof document !== 'undefined' && createPortal(<div className="fixed inset-0 z-[2147483000] flex items-center justify-center bg-slate-950/60 p-3"><div className={`max-h-[94dvh] w-full overflow-auto rounded-3xl border border-borderColor bg-bgMain shadow-2xl ${dialog === 'teaching' ? 'max-w-6xl' : 'max-w-5xl'}`}>
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-borderColor bg-bgCard p-4"><h2 className="text-lg font-black text-textPrimary">{dialog === 'import' ? 'استيراد ومعاينة الحزمة' : dialog === 'manual' ? 'التحضير اليدوي وفق خانات منصة نور' : dialog === 'preview' ? 'معاينة التحضير' : 'وضع التدريس'}</h2><button onClick={() => setDialog('none')} className="rounded-xl bg-bgSoft p-2 text-textPrimary"><X size={20}/></button></header>
 
       {dialog === 'import' && <div className="space-y-4 p-5"><input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={event => readFile(event.target.files?.[0])}/><button onClick={() => fileRef.current?.click()} className="w-full rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-center"><Upload className="mx-auto text-primary"/><b className="mt-2 block text-primary">اختيار ملف JSON</b></button><textarea value={pasteText} onChange={event => setPasteText(event.target.value)} rows={7} dir="ltr" className="w-full rounded-2xl border border-borderColor bg-bgCard p-3 font-mono text-xs"/><button onClick={() => { try { inspectRaw(JSON.parse(pasteText), 'json_paste'); } catch { setIssues([{level:'error',path:'json',message:'النص الملصق ليس JSON صالحًا.'}]); } }} className="rounded-xl bg-bgSoft px-4 py-3 font-black"><ClipboardPaste className="ml-2 inline" size={17}/>فحص النص</button>{issues.map((issue,index)=><div key={index} className={`rounded-xl p-3 font-bold ${issue.level==='error'?'bg-danger/10 text-danger':'bg-warning/10 text-textPrimary'}`}><AlertTriangle className="ml-2 inline" size={16}/>{issue.message}</div>)}{pending && <div className="rounded-2xl bg-bgCard p-4"><h3 className="font-black">{pending.lesson.title}</h3><p>{pending.sessions.length} حصص</p></div>}<button onClick={commitPending} disabled={!pending || issues.some(item=>item.level==='error')} className="w-full rounded-xl bg-primary py-3 font-black text-white disabled:opacity-40"><Save className="ml-2 inline"/>حفظ التحضير</button></div>}
@@ -357,7 +418,7 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
       {dialog === 'preview' && selected && activeSession && <div className="p-5"><SessionSelector preparation={selected} number={activeSession.number} onChange={setSessionNumber}/><SessionDetails session={activeSession}/></div>}
 
       {dialog === 'teaching' && selected && activeSession && <div className="p-4 md:p-6"><SessionSelector preparation={selected} number={activeSession.number} onChange={number => {setSessionNumber(number);setStepIndex(0);setCompletedSteps([]);setQuickNote('');}}/>{activeStep && <article className="min-h-[45vh] rounded-3xl border border-borderColor bg-bgCard p-6"><div className="mb-5 flex items-center justify-between"><div><span className="text-xs font-black text-primary">الخطوة {stepIndex+1} من {steps.length}</span><h4 className="text-2xl font-black">{activeStep.title}</h4></div><button onClick={()=>setCompletedSteps(previous=>previous.includes(activeStep.key)?previous.filter(key=>key!==activeStep.key):[...previous,activeStep.key])} className={`rounded-xl px-4 py-3 font-black ${completedSteps.includes(activeStep.key)?'bg-success text-white':'bg-bgSoft'}`}>{completedSteps.includes(activeStep.key)?<CheckCircle2 className="ml-2 inline"/>:<Circle className="ml-2 inline"/>}تم التنفيذ</button></div><div className="prose prose-lg max-w-none leading-9" dangerouslySetInnerHTML={{__html:sanitizePreparationHtml(activeStep.html)}}/></article>}<div className="mt-4 flex justify-between"><button onClick={()=>setStepIndex(i=>Math.max(0,i-1))} disabled={stepIndex===0} className="rounded-xl bg-bgCard px-5 py-3 font-black disabled:opacity-30"><ChevronRight className="ml-2 inline"/>السابق</button><button onClick={()=>setStepIndex(i=>Math.min(steps.length-1,i+1))} disabled={stepIndex>=steps.length-1} className="rounded-xl bg-primary px-5 py-3 font-black text-white disabled:opacity-30">التالي<ChevronLeft className="mr-2 inline"/></button></div><div className="mt-4 rounded-2xl bg-bgCard p-4"><textarea value={quickNote} onChange={event=>setQuickNote(event.target.value)} rows={3} className="w-full rounded-xl border border-borderColor bg-bgSoft p-3" placeholder="ملاحظة سريعة للحصة"/><button onClick={updateNote} className="mt-2 rounded-xl bg-bgSoft px-4 py-2 font-black"><Save className="ml-2 inline" size={16}/>حفظ الملاحظة</button></div></div>}
-    </div></div>}
+    </div></div>, document.body)}
   </div>;
 };
 
