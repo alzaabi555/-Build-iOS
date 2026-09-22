@@ -72,6 +72,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   const [showArchived, setShowArchived] = useState(false);
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [editingCategorization, setEditingCategorization] = useState<{ id: string; value: string } | null>(null);
+  const [editingGroup, setEditingGroup] = useState<{ id: string; value: string } | null>(null);
 
   const presentationRef = useRef<HTMLDivElement>(null);
 
@@ -152,10 +154,8 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
     return (activeCat.groups || []).filter((group: any) => group.isCompleted).length;
   }, [activeCat]);
 
-  const getShortName = (fullName: string) => {
-    if (!fullName) return '';
-    const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
-    return parts.slice(0, 4).join(' ');
+  const getStudentDisplayName = (fullName: string) => {
+    return String(fullName || '').trim().replace(/\s+/g, ' ');
   };
   const getGroupColor = (colorId: string) => {
     return groupColors.find(color => color.id === colorId) || groupColors[0];
@@ -198,9 +198,17 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleRenameCategorization = (id: string, currentTitle: string) => {
-    const nextTitle = window.prompt('اكتب الاسم الجديد للتقسيم:', currentTitle)?.trim();
-    if (!nextTitle || nextTitle === currentTitle) return;
-    setCategorizations((prev: any[]) => prev.map((cat: any) => cat.id === id ? { ...cat, title: nextTitle } : cat));
+    setEditingCategorization({ id, value: String(currentTitle || '') });
+  };
+
+  const saveCategorizationName = () => {
+    if (!editingCategorization) return;
+    const nextTitle = editingCategorization.value.trim().replace(/\s+/g, ' ');
+    if (!nextTitle) return;
+    setCategorizations((prev: any[]) => prev.map((cat: any) =>
+      cat.id === editingCategorization.id ? { ...cat, title: nextTitle } : cat
+    ));
+    setEditingCategorization(null);
   };
   const handleDeleteCategorization = (id: string) => {
     if (window.confirm(t('groupsConfirmDeleteCategorization'))) {
@@ -313,9 +321,22 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
   };
 
   const handleRenameGroup = (groupId: string, currentName: string) => {
-    const nextName = window.prompt('اكتب الاسم الجديد للمجموعة:', currentName)?.trim();
-    if (!nextName || nextName === currentName) return;
-    setCategorizations((prev: any[]) => prev.map((cat: any) => cat.id !== activeCatId ? cat : { ...cat, groups: (cat.groups || []).map((group: any) => group.id === groupId ? { ...group, name: nextName } : group) }));
+    setEditingGroup({ id: groupId, value: String(currentName || '') });
+  };
+
+  const saveGroupName = () => {
+    if (!editingGroup || !activeCatId) return;
+    const nextName = editingGroup.value.trim().replace(/\s+/g, ' ');
+    if (!nextName) return;
+    setCategorizations((prev: any[]) => prev.map((cat: any) =>
+      cat.id !== activeCatId ? cat : {
+        ...cat,
+        groups: (cat.groups || []).map((group: any) =>
+          group.id === editingGroup.id ? { ...group, name: nextName } : group
+        )
+      }
+    ));
+    setEditingGroup(null);
   };
   const moveGroup = (sourceId: string, targetId: string) => {
     if (!activeCatId || sourceId === targetId) return;
@@ -499,7 +520,7 @@ const StudentGroups: React.FC<StudentGroupsProps> = ({ onBack }) => {
 
   const getStudentNameById = (id: string) => {
     const student = students.find((item: any) => item.id === id);
-    return student ? getShortName(student.name) : '';
+    return student ? getStudentDisplayName(student.name) : '';
   };
 
   const sanitizeFileName = (value: string) => {
@@ -1321,14 +1342,12 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       {t('groupsAllAssignedInCategorization')}
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto custom-scrollbar">
-                      {unassignedStudents.map((student: any) => (
-                        <span
-                          key={student.id}
-                          className="px-3 py-2 rounded-xl text-[10px] leading-5 font-black border bg-bgCard border-borderColor text-textPrimary shadow-sm"
-                        >
-                          {getShortName(student.name)}
-                        </span>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 max-h-44 overflow-y-auto custom-scrollbar">
+                      {unassignedStudents.map((student: any, index: number) => (
+                        <div key={student.id} className="flex min-w-0 items-center gap-2 rounded-xl border border-borderColor bg-bgCard px-2.5 py-2 shadow-sm" title={getStudentDisplayName(student.name)}>
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[10px] font-black text-primary">{index + 1}</span>
+                          <span className="min-w-0 flex-1 whitespace-normal break-words text-[10px] leading-4 font-black text-textPrimary">{getStudentDisplayName(student.name)}</span>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1435,7 +1454,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                                     : 'bg-bgCard border-borderColor hover:border-primary text-textPrimary shadow-sm'
                                 }`}
                               >
-                                <span className="whitespace-normal break-words">{getShortName(student.name)}</span>
+                                <span className="min-w-0 flex-1 whitespace-normal break-words text-[10px] leading-4">{getStudentDisplayName(student.name)}</span>
 
                                 {!isCompleted && (
                                   <button
@@ -1472,6 +1491,34 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
         )}
       </div>
 
+      {editingCategorization && (
+        <DrawerSheet isOpen={true} onClose={() => setEditingCategorization(null)} dir={dir}>
+          <div className="flex h-full w-full flex-col">
+            <div className="border-b border-borderColor pb-4">
+              <h3 className="flex items-center gap-2 text-xl font-black text-textPrimary"><Edit2 className="text-primary" size={21} />تعديل اسم التقسيم</h3>
+              <p className="mt-1 text-xs font-bold text-textSecondary">اكتب الاسم الجديد ثم اضغط حفظ.</p>
+            </div>
+            <div className="flex-1 py-5">
+              <input autoFocus value={editingCategorization.value} onChange={(event) => setEditingCategorization({ ...editingCategorization, value: event.target.value })} onKeyDown={(event) => { if (event.key === 'Enter') saveCategorizationName(); if (event.key === 'Escape') setEditingCategorization(null); }} className="w-full rounded-xl border border-borderColor bg-bgSoft p-4 text-sm font-black text-textPrimary outline-none focus:border-primary" placeholder="اسم التقسيم" />
+            </div>
+            <button type="button" onClick={saveCategorizationName} disabled={!editingCategorization.value.trim()} className="w-full rounded-xl bg-primary py-4 text-sm font-black text-white disabled:opacity-50">حفظ الاسم</button>
+          </div>
+        </DrawerSheet>
+      )}
+      {editingGroup && (
+        <DrawerSheet isOpen={true} onClose={() => setEditingGroup(null)} dir={dir}>
+          <div className="flex h-full w-full flex-col">
+            <div className="border-b border-borderColor pb-4">
+              <h3 className="flex items-center gap-2 text-xl font-black text-textPrimary"><Edit2 className="text-primary" size={21} />تعديل اسم المجموعة</h3>
+              <p className="mt-1 text-xs font-bold text-textSecondary">سيبقى الطلاب واللون والترتيب وموعد التنفيذ كما هي.</p>
+            </div>
+            <div className="flex-1 py-5">
+              <input autoFocus value={editingGroup.value} onChange={(event) => setEditingGroup({ ...editingGroup, value: event.target.value })} onKeyDown={(event) => { if (event.key === 'Enter') saveGroupName(); if (event.key === 'Escape') setEditingGroup(null); }} className="w-full rounded-xl border border-borderColor bg-bgSoft p-4 text-sm font-black text-textPrimary outline-none focus:border-primary" placeholder="اسم المجموعة" />
+            </div>
+            <button type="button" onClick={saveGroupName} disabled={!editingGroup.value.trim()} className="w-full rounded-xl bg-primary py-4 text-sm font-black text-white disabled:opacity-50">حفظ الاسم</button>
+          </div>
+        </DrawerSheet>
+      )}
       {showAutoModal && (
         <DrawerSheet isOpen={showAutoModal} onClose={() => setShowAutoModal(false)} dir={dir}>
           <div className="flex flex-col h-full w-full">
@@ -1653,7 +1700,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                         ) : (
                           groupStudents.map((student: any) => (
                             <div key={student.id} className="p-3 rounded-2xl bg-bgSoft border border-borderColor font-black text-textPrimary">
-                              {getShortName(student.name)}
+                              {getStudentDisplayName(student.name)}
                             </div>
                           ))
                         )}
@@ -1700,7 +1747,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
             </div>
 
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-bgMain">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 pb-8">
                 {classStudents
                   .filter((student: any) => {
                     const isSelected = selectedStudentIds.has(student.id);
@@ -1719,7 +1766,7 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                       <div
                         key={student.id}
                         onClick={() => toggleStudentSelection(student.id)}
-                        className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all active:scale-95 ${
+                        className={`flex min-w-0 items-center px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.99] ${
                           isSelected
                             ? 'border-primary bg-primary/10 shadow-sm'
                             : 'border-borderColor bg-bgCard hover:border-primary/50 hover:bg-bgSoft'
@@ -1734,8 +1781,8 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <p className={`font-black text-[11px] leading-5 whitespace-normal break-words ${isSelected ? 'text-primary' : 'text-textPrimary'}`}>
-                            {getShortName(student.name)}
+                          <p className={`font-black text-[10px] md:text-[11px] leading-4 whitespace-normal break-words ${isSelected ? 'text-primary' : 'text-textPrimary'}`}>
+                            {getStudentDisplayName(student.name)}
                           </p>
                         </div>
                       </div>
