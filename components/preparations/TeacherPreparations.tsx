@@ -13,9 +13,12 @@ import type {
   TeacherPreparation
 } from '../../types/preparationTypes';
 import {
+  deletePreparation,
   loadPreparationSessionState,
   loadPreparations,
   savePreparationSessionState,
+  subscribeToPreparations,
+  upsertPreparation
 } from '../../services/preparationStorage';
 import { parsePreparationPackage, sanitizePreparationHtml } from '../../services/preparationImportValidator';
 
@@ -86,34 +89,6 @@ const escapeHtml = (value: string) => String(value || '').replace(/[&<>"']/g, ch
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char] || char));
 const safeName = (value: string) => value.replace(/[\\/:*?"<>|]/g, '_').trim() || 'preparation';
-const PREPARATIONS_STORAGE_KEY = 'rased_teacher_lesson_preparations_v1';
-const PREPARATIONS_EMERGENCY_BACKUP_KEY = 'rased_teacher_lesson_preparations_backup_v1';
-const readPreparationsDirectly = (): TeacherPreparation[] => {
-  try {
-    const raw = localStorage.getItem(PREPARATIONS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('Failed to read preparations directly', error);
-    return [];
-  }
-};
-const persistPreparations = (items: TeacherPreparation[]) => {
-  const serialized = JSON.stringify(items);
-  const previous = localStorage.getItem(PREPARATIONS_STORAGE_KEY);
-  if (previous && previous !== serialized) {
-    localStorage.setItem(PREPARATIONS_EMERGENCY_BACKUP_KEY, previous);
-  }
-  localStorage.setItem(PREPARATIONS_STORAGE_KEY, serialized);
-  if (localStorage.getItem(PREPARATIONS_STORAGE_KEY) !== serialized) {
-    throw new Error('PREPARATIONS_STORAGE_WRITE_FAILED');
-  }
-};
-const mergePreparationIntoList = (items: TeacherPreparation[], preparation: TeacherPreparation, replaceId?: string) => {
-  const targetId = replaceId || preparation.id;
-  const withoutTarget = items.filter(item => item.id !== targetId && item.id !== preparation.id);
-  return [...withoutTarget, { ...preparation, id: replaceId || preparation.id }];
-};
 
 async function saveTextFile(text: string, fileName: string, mime = 'application/json;charset=utf-8') {
   const win = window as any;
@@ -161,11 +136,7 @@ function teachingSteps(session: PreparationSession): TeachingStep[] {
 }
 
 const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, schedule = [], periodTimes = [] }) => {
-  const [preparations, setPreparations] = useState<TeacherPreparation[]>(() => {
-    const fromDirectStorage = readPreparationsDirectly();
-    if (fromDirectStorage.length) return fromDirectStorage;
-    try { return loadPreparations(); } catch { return []; }
-  });
+  const [preparations, setPreparations] = useState<TeacherPreparation[]>(() => loadPreparations());
   const [dialog, setDialog] = useState<DialogMode>('none');
   const [selected, setSelected] = useState<TeacherPreparation | null>(null);
   const [sessionNumber, setSessionNumber] = useState(1);
@@ -181,12 +152,9 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      persistPreparations(preparations);
-    } catch (error) {
-      console.error('Failed to persist preparations', error);
-    }
-  }, [preparations]);
+    setPreparations(loadPreparations());
+    return subscribeToPreparations(items => setPreparations(items));
+  }, []);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -221,14 +189,14 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
     const duplicate = preparations.find(item => item.lesson.title.trim() === pending.lesson.title.trim()
       && item.lesson.unit.trim() === pending.lesson.unit.trim() && item.lesson.grade.trim() === pending.lesson.grade.trim());
     const replaceId = duplicate && window.confirm(`يوجد تحضير محفوظ للدرس «${duplicate.lesson.title}». هل تريد استبداله؟`) ? duplicate.id : undefined;
-    const prepared = { ...pending, updatedAt: new Date().toISOString() };
-    const next = mergePreparationIntoList(preparations, prepared, replaceId);
-    try { persistPreparations(next); } catch (error) {
+    try {
+      const next = upsertPreparation({ ...pending, updatedAt: new Date().toISOString() }, replaceId);
+      setPreparations(next);
+    } catch (error) {
       console.error(error);
       alert('تعذر حفظ التحضير على الجهاز. لم يتم إغلاق نافذة الاستيراد.');
       return;
     }
-    setPreparations(next);
     setPending(null);
     setIssues([]);
     setPasteText('');
@@ -323,14 +291,13 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
       alert(result.issues.map(item => item.message).join('\n') || 'تعذر إنشاء التحضير اليدوي.');
       return;
     }
-    const prepared = { ...result.preparation, updatedAt: new Date().toISOString() };
-    const next = mergePreparationIntoList(preparations, prepared);
-    try { persistPreparations(next); } catch (error) {
+    try {
+      setPreparations(upsertPreparation(result.preparation));
+    } catch (error) {
       console.error(error);
       alert('تعذر حفظ التحضير اليدوي على الجهاز.');
       return;
     }
-    setPreparations(next);
     setManual(emptyManual(teacherInfo?.subject || ''));
     setDialog('none');
     alert('تم حفظ التحضير اليدوي بصيغة متطابقة مع حزمة منصة نور.');
@@ -360,26 +327,26 @@ const TeacherPreparations: React.FC<TeacherPreparationsProps> = ({ teacherInfo, 
 
   const remove = (preparation: TeacherPreparation) => {
     if (!window.confirm(`حذف تحضير «${preparation.lesson.title}»؟`)) return;
-    const next = preparations.filter(item => item.id !== preparation.id);
-    try { persistPreparations(next); } catch (error) {
+    try {
+      const next = deletePreparation(preparation.id);
+      setPreparations(next);
+      if (selected?.id === preparation.id) setSelected(null);
+    } catch (error) {
       console.error(error);
       alert('تعذر حذف التحضير من التخزين المحلي.');
-      return;
     }
-    setPreparations(next);
-    if (selected?.id === preparation.id) setSelected(null);
   };
 
   const updateNote = () => {
     if (!selected || !activeSession) return;
     const updated = { ...selected, sessions: selected.sessions.map(item => item.number === activeSession.number ? { ...item, notes: quickNote } : item), updatedAt: new Date().toISOString() };
-    const next = mergePreparationIntoList(preparations, updated, selected.id);
-    try { persistPreparations(next); } catch (error) {
+    try {
+      setPreparations(upsertPreparation(updated, selected.id));
+    } catch (error) {
       console.error(error);
       alert('تعذر حفظ ملاحظة الحصة.');
       return;
     }
-    setPreparations(next);
     setSelected(updated);
     alert('تم حفظ ملاحظة الحصة.');
   };
