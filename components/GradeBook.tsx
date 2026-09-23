@@ -3,7 +3,7 @@ import { Student, GradeRecord, AssessmentTool } from '../types';
 import { 
   Plus, X, Trash2, Settings, Check, Loader2, Edit2, 
   FileSpreadsheet, FileUp, Wand2, BarChart3, SlidersHorizontal, 
-  FileDown, PieChart, AlertTriangle, Download, Copy, Send, Filter 
+  FileDown, PieChart, AlertTriangle, Download, Copy, Send, Filter, GripVertical, ArrowUp, ArrowDown, Save 
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -134,6 +134,9 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const [newToolName, setNewToolName] = useState('');
   const [editingToolId, setEditingToolId] = useState<string | null>(null);
   const [editToolName, setEditToolName] = useState('');
+  const newToolInputRef = useRef<HTMLInputElement>(null);
+  const editToolInputRef = useRef<HTMLInputElement>(null);
+  const [draggedToolId, setDraggedToolId] = useState<string | null>(null);
   const [showDistModal, setShowDistModal] = useState(false);
   
   const [distTotal, setDistTotal] = useState<number>(gradingSettings.totalScore || 100);
@@ -162,9 +165,21 @@ const GradeBook: React.FC<GradeBookProps> = ({
   const cleanText = (text: string) => text ? String(text).trim() : '';
   const normalizeText = (text: string) => text ? String(text).trim().toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ـ]/g, '') : '';
   
+  const toEnglishDigits = (value: string) => String(value || '')
+    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  const sanitizeScoreInput = (value: string) => {
+    const english = toEnglishDigits(value).replace(/[^0-9.]/g, '');
+    const [whole, ...decimals] = english.split('.');
+    return decimals.length ? `${whole}.${decimals.join('')}` : whole;
+  };
+  const commitMobileInput = async () => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  };
   const extractNumericScore = (val: any): number | null => {
     if (val === undefined || val === null || val === '') return null;
-    const strVal = String(val).trim();
+    const strVal = toEnglishDigits(String(val).trim());
     const cleanNum = strVal.replace(/[^0-9.]/g, '');
     const num = Number(cleanNum);
     return isNaN(num) || cleanNum === '' ? null : num;
@@ -467,17 +482,43 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     }).catch(() => alert(t('alertCopyError')));
   };
 
-  const handleAddTool = () => {
-    if (newToolName.trim()) {
-      if (tools.some(t => t.name === newToolName.trim())) return alert(t('alertToolExists'));
-      const newTool: AssessmentTool = { id: Math.random().toString(36).substr(2, 9), name: newToolName.trim(), maxScore: 0 };
-      setAssessmentTools([...tools, newTool]);
-      setNewToolName('');
-      setIsAddingTool(false);
-      setActiveToolId(newTool.id);
-    }
+  const handleAddTool = async () => {
+    await commitMobileInput();
+    const latestName = String(newToolInputRef.current?.value ?? newToolName).trim();
+    if (!latestName) return;
+    if (tools.some(tool => normalizeText(tool.name) === normalizeText(latestName))) return alert(t('alertToolExists'));
+    const newTool: AssessmentTool = { id: Math.random().toString(36).substr(2, 9), name: latestName, maxScore: 0 };
+    setAssessmentTools([...tools.filter(tool => !tool.isFinal), newTool, ...tools.filter(tool => tool.isFinal)]);
+    setNewToolName(''); setIsAddingTool(false); setActiveToolId(newTool.id);
   };
-
+  const startEditingTool = (tool: AssessmentTool) => {
+    if (tool.isFinal) return;
+    setEditingToolId(tool.id); setEditToolName(tool.name);
+    requestAnimationFrame(() => editToolInputRef.current?.focus());
+  };
+  const handleSaveToolEdit = async () => {
+    await commitMobileInput();
+    const latestName = String(editToolInputRef.current?.value ?? editToolName).trim();
+    if (!editingToolId || !latestName) return;
+    if (tools.some(tool => tool.id !== editingToolId && normalizeText(tool.name) === normalizeText(latestName))) return alert(t('alertToolExists'));
+    setAssessmentTools(tools.map(tool => tool.id === editingToolId ? { ...tool, name: latestName } : tool));
+    setEditingToolId(null); setEditToolName('');
+  };
+  const moveAssessmentTool = (toolId: string, direction: -1 | 1) => {
+    const items = tools.filter(tool => !tool.isFinal); const finals = tools.filter(tool => tool.isFinal);
+    const index = items.findIndex(tool => tool.id === toolId); const target = index + direction;
+    if (index < 0 || target < 0 || target >= items.length) return;
+    const next = [...items]; [next[index], next[target]] = [next[target], next[index]];
+    setAssessmentTools([...next, ...finals]);
+  };
+  const dropAssessmentTool = (targetId: string) => {
+    if (!draggedToolId || draggedToolId === targetId) return;
+    const items = tools.filter(tool => !tool.isFinal); const finals = tools.filter(tool => tool.isFinal);
+    const from = items.findIndex(tool => tool.id === draggedToolId); const to = items.findIndex(tool => tool.id === targetId);
+    if (from < 0 || to < 0) { setDraggedToolId(null); return; }
+    const next = [...items]; const [moved] = next.splice(from, 1); next.splice(to, 0, moved);
+    setAssessmentTools([...next, ...finals]); setDraggedToolId(null);
+  };
   const handleDeleteTool = (id: string) => {
     if (confirm(t('confirmDeleteTool'))) {
       setAssessmentTools(tools.filter(t => t.id !== id));
@@ -493,13 +534,14 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     let finalToolIndex = newTools.findIndex(t => t.isFinal === true);
     if (finalToolIndex === -1) finalToolIndex = newTools.findIndex(t => t.name.trim() === distFinalName.trim());
     
+    let finalTool: AssessmentTool;
     if (finalToolIndex !== -1) {
-      newTools[finalToolIndex] = { ...newTools[finalToolIndex], name: distFinalName, maxScore: distFinalScore, isFinal: true };
+      finalTool = { ...newTools[finalToolIndex], name: distFinalName, maxScore: distFinalScore, isFinal: true };
+      newTools = newTools.filter((_, index) => index !== finalToolIndex);
     } else {
-      newTools.push({ id: Math.random().toString(36).substr(2, 9), name: distFinalName, maxScore: distFinalScore, isFinal: true });
+      finalTool = { id: Math.random().toString(36).substr(2, 9), name: distFinalName, maxScore: distFinalScore, isFinal: true };
     }
-    
-    setAssessmentTools(newTools);
+    setAssessmentTools([...newTools.filter(tool => !tool.isFinal), finalTool]);
     setShowDistModal(false);
     alert(t('alertDistributionSaved'));
   };
@@ -886,10 +928,13 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
             }
             trailingContent={
               <input
-                type="tel"
-                maxLength={3}
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9.]*"
+                dir="ltr"
+                maxLength={5}
                 value={currentGrade}
-                onChange={e => handleGradeChange(student.id, e.target.value)}
+                onChange={e => handleGradeChange(student.id, sanitizeScoreInput(e.target.value))}
                 placeholder="-"
                 data-voice-field={`درجة ${student.name}`}
                 aria-label={`درجة ${student.name}`}
@@ -950,37 +995,19 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
             <h3 className="font-black text-lg text-textPrimary">{t('assessmentToolsTitle')}</h3>
           </div>
           
-          {!isAddingTool ? (
-            <>
-              <button onClick={() => setIsAddingTool(true)} className={`w-full py-3.5 mb-4 rounded-xl font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 shrink-0 bg-primary hover:bg-primary/80 text-white`}>
-                <Plus className="w-4 h-4" /> {t('addNewTool')}
-              </button>
-              
-              <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar p-1">
-                {tools.length > 0 ? (
-                  tools.map(tool => (
-                    <div key={tool.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm group transition-colors bg-bgCard border-borderColor`}>
-                      <div className="flex items-center gap-2">
-                        {tool.isFinal && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold bg-warning/20 text-warning`}>{t('final')}</span>}
-                        <span className={`text-xs font-bold text-textPrimary`}>{tool.name}</span>
-                      </div>
-                      <div className="flex gap-1">
-                        {!tool.isFinal && <button onClick={() => handleDeleteTool(tool.id)} className={`p-1.5 rounded-lg transition-colors hover:bg-danger/20 text-danger`}><Trash2 className="w-3.5 h-3.5" /></button>}
-                      </div>
-                    </div>
-                  ))
-                ) : <p className={`text-xs py-4 font-bold text-textSecondary`}>{t('noToolsAdded')}</p>}
-              </div>
-            </>
-          ) : (
-            <div className="animate-in fade-in zoom-in duration-200 flex flex-col h-full">
-              <input autoFocus placeholder={t('toolNamePlaceholder')} value={newToolName} onChange={e => setNewToolName(e.target.value)} className={`w-full p-4 rounded-2xl mb-4 font-bold text-sm outline-none border transition-colors shrink-0 bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} />
-              <div className="flex gap-2 mt-auto pt-4 shrink-0">
-                <button onClick={() => setIsAddingTool(false)} className={`flex-1 py-3 font-bold text-xs rounded-xl transition-colors bg-bgSoft text-textSecondary hover:bg-bgCard`}>{t('closeBtn') || 'إلغاء'}</button>
-                <button onClick={handleAddTool} className={`flex-[2] py-3 font-black text-xs rounded-xl shadow-lg transition-colors bg-primary hover:bg-primary/80 text-white`}>{t('saveTool')}</button>
-              </div>
-            </div>
-          )}
+          <div className="shrink-0 rounded-2xl border border-borderColor bg-bgSoft p-3 mb-4">
+            {!isAddingTool ? <button onClick={() => { setIsAddingTool(true); requestAnimationFrame(() => newToolInputRef.current?.focus()); }} className="w-full py-3.5 rounded-xl font-black text-xs shadow-lg flex items-center justify-center gap-2 bg-primary text-white"><Plus className="w-4 h-4" />{t('addNewTool')}</button> : <div className="space-y-2"><input ref={newToolInputRef} autoFocus value={newToolName} onChange={e => setNewToolName(e.target.value)} onKeyDown={e => { if(e.key==='Enter'){e.preventDefault();handleAddTool();} }} placeholder={t('toolNamePlaceholder')} className="w-full p-3.5 rounded-xl font-bold text-sm border bg-bgCard border-borderColor text-textPrimary outline-none focus:border-primary"/><div className="flex gap-2"><button onClick={() => {setIsAddingTool(false);setNewToolName('');}} className="flex-1 py-3 rounded-xl bg-bgCard text-textSecondary font-bold">إلغاء</button><button onClick={handleAddTool} className="flex-[2] py-3 rounded-xl bg-primary text-white font-black flex items-center justify-center gap-2"><Save size={15}/>حفظ الأداة</button></div></div>}
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-1 space-y-2 pb-8">
+            {tools.length ? tools.map(tool => {
+              const ordinary = tools.filter(item => !item.isFinal); const position = ordinary.findIndex(item => item.id === tool.id);
+              if(editingToolId===tool.id) return <div key={tool.id} className="p-3 rounded-xl border bg-bgCard border-primary/30"><input ref={editToolInputRef} autoFocus value={editToolName} onChange={e=>setEditToolName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();handleSaveToolEdit();}}} className="w-full p-3 rounded-xl border bg-bgSoft border-borderColor text-textPrimary font-bold outline-none"/><div className="flex gap-2 mt-2"><button onClick={()=>{setEditingToolId(null);setEditToolName('');}} className="flex-1 py-2 rounded-lg bg-bgSoft font-bold">إلغاء</button><button onClick={handleSaveToolEdit} className="flex-1 py-2 rounded-lg bg-success text-white font-black">حفظ</button></div></div>;
+              return <div key={tool.id} draggable={!tool.isFinal} onDragStart={()=>!tool.isFinal&&setDraggedToolId(tool.id)} onDragOver={e=>!tool.isFinal&&e.preventDefault()} onDrop={()=>!tool.isFinal&&dropAssessmentTool(tool.id)} onDragEnd={()=>setDraggedToolId(null)} className="flex items-center gap-2 p-3 rounded-xl border bg-bgCard border-borderColor shadow-sm">
+                {!tool.isFinal?<GripVertical size={17} className="text-textSecondary cursor-grab"/>:<span className="w-[17px]"/>}<div className="flex-1 min-w-0">{tool.isFinal&&<span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-warning/20 text-warning ml-2">{t('final')}</span>}<span className="text-xs font-bold text-textPrimary whitespace-normal break-words">{tool.name}</span></div>
+                {!tool.isFinal&&<div className="flex gap-1"><button onClick={()=>moveAssessmentTool(tool.id,-1)} disabled={position===0} className="p-1.5 rounded-lg bg-bgSoft disabled:opacity-25"><ArrowUp size={14}/></button><button onClick={()=>moveAssessmentTool(tool.id,1)} disabled={position===ordinary.length-1} className="p-1.5 rounded-lg bg-bgSoft disabled:opacity-25"><ArrowDown size={14}/></button><button onClick={()=>startEditingTool(tool)} className="p-1.5 rounded-lg text-primary"><Edit2 size={15}/></button><button onClick={()=>handleDeleteTool(tool.id)} className="p-1.5 rounded-lg text-danger"><Trash2 size={15}/></button></div>}
+              </div>;
+            }):<p className="text-xs py-4 font-bold text-textSecondary">{t('noToolsAdded')}</p>}
+          </div>
         </div>
       </DrawerSheet>
 
@@ -1029,7 +1056,7 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
             <p className={`text-xs font-bold mb-6 inline-block px-3 py-1.5 rounded-lg bg-primary/10 text-primary`}>{bulkFillTool.name}</p>
             
             <div className="w-full mt-auto space-y-4 shrink-0">
-                <input type="number" autoFocus placeholder={t('score')} className={`w-full rounded-xl p-4 text-center text-xl font-black outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} value={bulkScore} onChange={e => setBulkScore(e.target.value)} />
+                <input type="text" inputMode="decimal" pattern="[0-9.]*" dir="ltr" autoFocus placeholder={t('score')} className={`w-full rounded-xl p-4 text-center text-xl font-black outline-none border transition-colors bg-bgCard border-borderColor focus:border-primary text-textPrimary placeholder:text-textSecondary`} value={bulkScore} onChange={e => setBulkScore(sanitizeScoreInput(e.target.value))} />
                 <button onClick={handleBulkFill} className={`w-full py-4 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all bg-primary hover:bg-primary/80 text-white`}>{t('applyBulkFill')}</button>
             </div>
           </div>
