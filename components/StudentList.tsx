@@ -4,7 +4,7 @@ import {
     Search, ThumbsUp, ThumbsDown, Edit2, Trash2, LayoutGrid, UserPlus,
     FileSpreadsheet, MoreVertical, Settings, Users, AlertCircle,
     Dices, Timer, Play, Pause, RotateCcw, CheckCircle2, MessageCircle, Plus,
-    Sparkles, Send, Printer, ArrowRightLeft
+    Sparkles, Send, Printer, ArrowRightLeft, GripVertical, ArrowUp, ArrowDown, Save
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
@@ -217,6 +217,29 @@ const getStudentStableKey = (student: Student | any) => String(
     student?.civilID || student?.civilId || student?.id ||
     makeStudentIdentityKey(student?.name || '', getStudentClassValueForIdentity(student))
 ).trim().toUpperCase();
+const orderStudentsForDisplay = (list: Student[], language: string) => {
+    const byClass = new Map<string, Student[]>();
+    list.forEach(student => {
+        const className = getStudentClassValueForIdentity(student) || '__NO_CLASS__';
+        const bucket = byClass.get(className) || [];
+        bucket.push(student);
+        byClass.set(className, bucket);
+    });
+    const ordered: Student[] = [];
+    Array.from(byClass.keys()).sort((a, b) => normalizeClassForIdentity(a).localeCompare(normalizeClassForIdentity(b), 'en', { numeric: true })).forEach(className => {
+        const classStudents = byClass.get(className) || [];
+        const saved = classStudents.filter(student => Number.isFinite(Number(student.sortOrder))).sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
+        const newcomers = classStudents.filter(student => !Number.isFinite(Number(student.sortOrder))).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+        if (!saved.length) { ordered.push(...newcomers); return; }
+        const merged = [...saved];
+        newcomers.forEach(student => {
+            const insertionIndex = merged.findIndex(current => String(current.name || '').localeCompare(String(student.name || ''), language === 'ar' ? 'ar' : 'en', { sensitivity: 'base', numeric: true }) > 0);
+            if (insertionIndex < 0) merged.push(student); else merged.splice(insertionIndex, 0, student);
+        });
+        ordered.push(...merged);
+    });
+    return ordered;
+};
 const mergeCanonicalStudents = (contextStudents: Student[], propStudents: Student[], language: string) => {
     const map = new Map<string, Student>();
     [...contextStudents, ...propStudents].forEach(student => {
@@ -225,7 +248,7 @@ const mergeCanonicalStudents = (contextStudents: Student[], propStudents: Studen
         const current = map.get(key);
         map.set(key, current ? mergeStudentKeepingOldCode(current, student) : student);
     });
-    return Array.from(map.values()).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+    return orderStudentsForDisplay(Array.from(map.values()), language);
 };
 
 const StudentList: React.FC<StudentListProps> = ({
@@ -266,6 +289,10 @@ const StudentList: React.FC<StudentListProps> = ({
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [movingStudent, setMovingStudent] = useState<Student | null>(null);
     const [targetClassForMove, setTargetClassForMove] = useState('');
+    const [showStudentOrder, setShowStudentOrder] = useState(false);
+    const [orderClassName, setOrderClassName] = useState('');
+    const [orderDraftIds, setOrderDraftIds] = useState<string[]>([]);
+    const [draggedOrderStudentId, setDraggedOrderStudentId] = useState<string | null>(null);
 
     const [newStudentName, setNewStudentName] = useState('');
     const [newStudentPhone, setNewStudentPhone] = useState('');
@@ -387,7 +414,7 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return nameMatch && matchesClass && matchesGrade;
-        }).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+        });
     }, [safeStudents, searchTerm, selectedClass, selectedGrade, language]);
 
     const studentsForCodesExport = useMemo(() => {
@@ -404,9 +431,35 @@ const StudentList: React.FC<StudentListProps> = ({
             }
 
             return matchesClass && matchesGrade;
-        }).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+        });
     }, [safeStudents, selectedClass, selectedGrade, language]);
 
+    const openStudentOrderManager = () => {
+        if (selectedClass === 'all') { alert(language === 'ar' ? 'اختر فصلًا محددًا أولًا لترتيب طلابه.' : 'Select a class first.'); return; }
+        const ids = safeStudents.filter(student => (student.classes || []).includes(selectedClass)).map(student => student.id);
+        setOrderClassName(selectedClass); setOrderDraftIds(ids); setShowStudentOrder(true); setShowMenu(false);
+    };
+    const moveOrderStudent = (studentId: string, direction: -1 | 1) => {
+        setOrderDraftIds(previous => { const index = previous.indexOf(studentId); const target = index + direction; if (index < 0 || target < 0 || target >= previous.length) return previous; const next = [...previous]; [next[index], next[target]] = [next[target], next[index]]; return next; });
+    };
+    const dropOrderStudent = (targetId: string) => {
+        if (!draggedOrderStudentId || draggedOrderStudentId === targetId) return;
+        setOrderDraftIds(previous => { const next = [...previous]; const from = next.indexOf(draggedOrderStudentId); const to = next.indexOf(targetId); if (from < 0 || to < 0) return previous; const [moved] = next.splice(from, 1); next.splice(to, 0, moved); return next; });
+        setDraggedOrderStudentId(null);
+    };
+    const saveStudentOrder = () => {
+        const classStudents = safeStudents.filter(student => (student.classes || []).includes(orderClassName));
+        const expectedIds = new Set(classStudents.map(student => student.id));
+        if (orderDraftIds.length !== expectedIds.size || orderDraftIds.some(id => !expectedIds.has(id))) { alert(language === 'ar' ? 'تعذر حفظ الترتيب بسبب اختلاف قائمة الطلاب. أغلق النافذة وأعد فتحها.' : 'Student list changed.'); return; }
+        const orderMap = new Map(orderDraftIds.map((id, index) => [id, index + 1]));
+        setStudents(safeStudents.map(student => (student.classes || []).includes(orderClassName) ? { ...student, sortOrder: orderMap.get(student.id) } : student));
+        setShowStudentOrder(false);
+        alert(language === 'ar' ? 'تم حفظ ترتيب الطلاب وسيظهر في الحضور والدرجات وبقية الصفحات.' : 'Student order saved.');
+    };
+    const resetStudentOrder = () => {
+        const classStudents = safeStudents.filter(student => (student.classes || []).includes(orderClassName)).sort((a, b) => compareStudentsAlphabetically(a, b, language));
+        setOrderDraftIds(classStudents.map(student => student.id));
+    };
     const sanitizeFileName = (value: string) => {
         return String(value || 'students')
             .replace(/[\\/:*?"<>|]/g, '_')
@@ -964,6 +1017,14 @@ const StudentList: React.FC<StudentListProps> = ({
                                         </button>
 
                                         <button
+                                            type="button"
+                                            onClick={openStudentOrderManager}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
+                                        >
+                                            <GripVertical className="w-4 h-4 text-primary" />
+                                            {language === 'ar' ? 'ترتيب طلاب الفصل' : 'Order class students'}
+                                        </button>
+                                        <button
                                             data-voice-command="إضافة طالب يدوي إضافة طالب جديد"
                                             onClick={() => { setShowManualAddModal(true); setShowMenu(false); }}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors w-full ${dir === 'rtl' ? 'text-right' : 'text-left'} text-xs font-bold hover:bg-bgSoft text-textPrimary`}
@@ -1128,6 +1189,15 @@ const StudentList: React.FC<StudentListProps> = ({
                 )}
             </div>
 
+            <DrawerSheet isOpen={showStudentOrder} onClose={() => setShowStudentOrder(false)} isRamadan={isRamadan} dir={dir} mode="full">
+                <div className="flex flex-col h-full w-full bg-bgMain">
+                    <div className="p-5 border-b border-borderColor bg-bgCard shrink-0"><h3 className="font-black text-xl text-textPrimary">ترتيب طلاب الفصل</h3><p className="text-xs font-bold text-textSecondary mt-1">{orderClassName} · {orderDraftIds.length} طالبًا</p></div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                        {orderDraftIds.map((studentId, index) => { const student = safeStudents.find(item => item.id === studentId); if (!student) return null; return <div key={studentId} draggable onDragStart={() => setDraggedOrderStudentId(studentId)} onDragOver={event => event.preventDefault()} onDrop={() => dropOrderStudent(studentId)} onDragEnd={() => setDraggedOrderStudentId(null)} className="flex items-center gap-2 rounded-2xl border border-borderColor bg-bgCard p-3 shadow-sm"><GripVertical size={18} className="text-textSecondary cursor-grab shrink-0" /><span className="w-8 h-8 rounded-xl bg-primary/10 text-primary font-black flex items-center justify-center shrink-0">{index + 1}</span><span className="flex-1 min-w-0 font-black text-sm text-textPrimary whitespace-normal break-words">{student.name}</span><button type="button" onClick={() => moveOrderStudent(studentId, -1)} disabled={index === 0} className="p-2 rounded-xl bg-bgSoft text-textPrimary disabled:opacity-30"><ArrowUp size={17} /></button><button type="button" onClick={() => moveOrderStudent(studentId, 1)} disabled={index === orderDraftIds.length - 1} className="p-2 rounded-xl bg-bgSoft text-textPrimary disabled:opacity-30"><ArrowDown size={17} /></button></div>; })}
+                    </div>
+                    <div className="p-4 border-t border-borderColor bg-bgCard flex flex-col sm:flex-row gap-2 shrink-0"><button type="button" onClick={resetStudentOrder} className="px-4 py-3 rounded-xl border border-borderColor bg-bgSoft text-textPrimary font-black">الترتيب التلقائي</button><button type="button" onClick={saveStudentOrder} className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-black flex items-center justify-center gap-2"><Save size={18} />حفظ الترتيب</button></div>
+                </div>
+            </DrawerSheet>
             <DrawerSheet isOpen={showCardsModal} onClose={() => setShowCardsModal(false)} isRamadan={isRamadan} dir={dir} mode="full">
                 <div className="flex flex-col h-full w-full bg-bgSoft">
                     <div className="flex justify-between items-center p-6 border-b border-borderColor bg-bgCard shrink-0 print:hidden">
