@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
+import { AppLauncher } from '@capacitor/app-launcher';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import ExcelImport from './ExcelImport';
 import { useApp } from '../context/AppContext';
@@ -625,7 +626,56 @@ const StudentList: React.FC<StudentListProps> = ({
         }
     };
 
-    const handleSendSmartReport = (student: Student) => {
+    const normalizeWhatsAppPhone = (value: string) => {
+        let cleanPhone = String(value || '').replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
+        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
+        return cleanPhone;
+    };
+
+    const openWhatsAppDeepLink = async (rawPhone: string, rawMessage: string) => {
+        const cleanPhone = normalizeWhatsAppPhone(rawPhone);
+        if (!cleanPhone) {
+            alert(t('alertNoParentPhone'));
+            return false;
+        }
+        const encodedMessage = encodeURIComponent(String(rawMessage || '').trim());
+        const deepLink = `whatsapp://send?phone=${cleanPhone}&text=${encodedMessage}`;
+        const webFallback = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+        try {
+            if ((window as any).electron?.openExternal) {
+                await (window as any).electron.openExternal(deepLink);
+                return true;
+            }
+            if (Capacitor.isNativePlatform()) {
+                const canOpen = await AppLauncher.canOpenUrl({ url: deepLink });
+                if (!canOpen.value) {
+                    alert(language === 'ar'
+                        ? 'تعذر العثور على تطبيق واتساب أو واتساب للأعمال على الجهاز.'
+                        : 'WhatsApp or WhatsApp Business was not found on this device.');
+                    return false;
+                }
+                const opened = await AppLauncher.openUrl({ url: deepLink });
+                if (opened.completed === false) throw new Error('WHATSAPP_DEEP_LINK_NOT_COMPLETED');
+                return true;
+            }
+            window.open(webFallback, '_blank', 'noopener,noreferrer');
+            return true;
+        } catch (error) {
+            console.error('Failed to open WhatsApp deep link:', error);
+            if (Capacitor.isNativePlatform()) {
+                alert(language === 'ar'
+                    ? 'تعذر فتح تطبيق واتساب مباشرة. تأكد من تثبيت التطبيق ثم أعد المحاولة.'
+                    : 'Could not open WhatsApp directly. Make sure the app is installed and try again.');
+                return false;
+            }
+            window.open(webFallback, '_blank', 'noopener,noreferrer');
+            return false;
+        }
+    };
+
+    const handleSendSmartReport = async (student: Student) => {
         if (!student.parentPhone) {
             alert(t('alertNoParentPhone'));
             return;
@@ -645,18 +695,7 @@ const StudentList: React.FC<StudentListProps> = ({
         const teacherTitle = teacherInfo?.gender === 'female' ? t('whatsappSmartTeacherFemale') : t('whatsappSmartTeacherMale');
 
         const message = `${t('whatsappSmartMsg1')} ${childTitle} (${student.name}) ${t('whatsappSmartMsg2')} ${childTitle} ${scoreText} (${totalScore}) ${t('whatsappSmartMsg3')} ${teacherInfo?.subject || '...'}${language === 'ar' ? '،' : ','} ${behaviorText}: "${topBehavior}"${t('whatsappSmartMsg4')} ${teacherTitle}: ${teacherInfo?.name || ''}`;
-        const msg = encodeURIComponent(message);
-        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
-        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
-
-        if ((window as any).electron) {
-            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`);
-        } else {
-            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
-            window.open(universalUrl, '_blank');
-        }
+        await openWhatsAppDeepLink(student.parentPhone, message);
     };
 
     const handleSendNegativeReport = async (student: Student) => {
@@ -680,18 +719,7 @@ const StudentList: React.FC<StudentListProps> = ({
         });
         message += t('whatsappNegMsg3');
 
-        const msg = encodeURIComponent(message);
-        let cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
-        if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
-        else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
-
-        if ((window as any).electron) {
-            (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`);
-        } else {
-            const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
-            window.open(universalUrl, '_blank');
-        }
+        await openWhatsAppDeepLink(student.parentPhone, message);
     };
 
     const confirmPositiveBehavior = (originalTitle: string, points: number) => {
