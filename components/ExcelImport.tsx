@@ -57,13 +57,13 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
       const wb = XLSX.utils.book_new();
       
       const wsData = [
-        ['الرقم المدني (Civil ID)', 'اسم الطالب (Student Name)', 'رقم هاتف ولي الأمر (Parent Phone)', 'النوع (Gender: male/female)'],
-        ['123456789', 'أحمد محمد', '98765432', 'male'],
-        ['987654321', 'فاطمة علي', '91234567', 'female']
+        ['اسم الطالب (Student Name)', 'رقم هاتف ولي الأمر (Parent Phone)', 'النوع (Gender: male/female)'],
+        ['أحمد بن سالم محمد الكندي', '98765432', 'male'],
+        ['فاطمة علي حسن البلوشية', '91234567', 'female']
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 20 }];
+      ws['!cols'] = [{ wch: 38 }, { wch: 28 }, { wch: 26 }];
       
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       const fileName = `Rased_Students_Template.xlsx`;
@@ -101,14 +101,32 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
           return;
       }
 
-      const headers = jsonData[0].map(h => String(h).toLowerCase());
-      const nameIndex = headers.findIndex(h => h.includes('اسم') || h.includes('name'));
-      const civilIdIndex = headers.findIndex(h => h.includes('مدني') || h.includes('civil') || h.includes('id'));
-      const phoneIndex = headers.findIndex(h => h.includes('هاتف') || h.includes('رقم') || h.includes('phone'));
-      const genderIndex = headers.findIndex(h => h.includes('نوع') || h.includes('جنس') || h.includes('gender'));
+      const normalizeHeader = (value: unknown) => String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/ـ/g, '')
+        .replace(/[^\u0600-\u06ffa-z0-9]/g, '');
+      const headers = jsonData[0].map(normalizeHeader);
+      const nameIndex = headers.findIndex(header =>
+        header.includes('اسمالطالب') || header.includes('studentname') ||
+        header === 'الاسم' || header === 'name'
+      );
+      const phoneIndex = headers.findIndex(header =>
+        header.includes('رقمهاتفوليالامر') || header.includes('هاتفوليالامر') ||
+        header.includes('parentphone') || header.includes('guardianphone') ||
+        header === 'الهاتف' || header === 'phone'
+      );
+      const genderIndex = headers.findIndex(header =>
+        header.includes('النوع') || header.includes('الجنس') || header.includes('gender')
+      );
 
-      if (nameIndex === -1) {
-          alert(t('alertNoValidDataExcel'));
+      if (nameIndex === -1 || phoneIndex === -1) {
+          alert(language === 'ar'
+            ? 'تعذر العثور على عمودي اسم الطالب ورقم هاتف ولي الأمر. استخدم القالب الجديد أو تأكد من عناوين الأعمدة.'
+            : 'Student Name and Parent Phone columns were not found. Use the new template or verify the headers.');
           return;
       }
 
@@ -121,8 +139,11 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
         const name = String(row[nameIndex]).trim();
         if (!name) continue;
 
-        const civilID = civilIdIndex !== -1 && row[civilIdIndex] ? String(row[civilIdIndex]).trim() : '';
-        const phone = phoneIndex !== -1 && row[phoneIndex] ? String(row[phoneIndex]).trim() : '';
+        const toEnglishDigits = (value: unknown) => String(value ?? '')
+          .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+          .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+        const phone = toEnglishDigits(row[phoneIndex]).replace(/[^0-9+]/g, '').trim();
+        if (!phone) continue;
         
         let gender: 'male' | 'female' = 'male'; 
         if (genderIndex !== -1 && row[genderIndex]) {
@@ -136,7 +157,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
           id: Math.random().toString(36).substr(2, 9),
           name: name,
           classes: [selectedClass],
-          parentCode: civilID,
+          parentCode: '',
           parentPhone: phone,
           gender: gender,
           attendance: [],
@@ -167,9 +188,9 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
       <section className="rounded-3xl border border-borderColor bg-bgCard p-4 md:p-5 shadow-sm">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-11 h-11 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center shrink-0"><FileSpreadsheet className="w-5 h-5" /></div>
-          <div className="min-w-0"><h2 className="font-black text-base md:text-lg text-textPrimary">{t('importFromExcelMenu')}</h2><p className="text-xs font-bold leading-6 text-textSecondary mt-1">{t('excelTipBestResults')}</p></div>
+          <div className="min-w-0"><h2 className="font-black text-base md:text-lg text-textPrimary">{t('importFromExcelMenu')}</h2><p className="text-xs font-bold leading-6 text-textSecondary mt-1">{language === 'ar' ? 'لأفضل النتائج، استخدم القالب الجاهز الذي يحتوي على اسم الطالب ورقم هاتف ولي الأمر والنوع فقط.' : 'Use the template containing Student Name, Parent Phone, and Gender only.'}</p></div>
         </div>
-        <button type="button" onClick={handleDownloadTemplate} className="w-full py-3.5 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm border bg-success/10 hover:bg-success/20 text-success border-success/20"><Download className="w-5 h-5" />{t('downloadExcelTemplateWithCivilId')}</button>
+        <button type="button" onClick={handleDownloadTemplate} className="w-full py-3.5 rounded-2xl font-black text-sm flex justify-center items-center gap-3 transition-colors shadow-sm border bg-success/10 hover:bg-success/20 text-success border-success/20"><Download className="w-5 h-5" />{language === 'ar' ? 'تحميل قالب Excel للطلاب' : 'Download Student Excel Template'}</button>
       </section>
 
       <section className="p-4 md:p-5 rounded-3xl border border-borderColor bg-bgCard shadow-sm">
@@ -201,7 +222,7 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!selectedClass} className="px-8 py-3.5 rounded-xl font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 w-full md:w-auto mx-auto disabled:opacity-50 disabled:scale-100 bg-primary hover:bg-primary/80 text-white"><Upload className="w-4 h-4" />{t('chooseFileNow')}</button>
       </section>
 
-      <div className="border rounded-2xl p-4 flex items-start gap-3 mt-auto shrink-0 bg-warning/10 border-warning/20"><Info className="w-5 h-5 shrink-0 mt-0.5 text-warning" /><p className="text-xs font-bold leading-relaxed text-textPrimary">{t('excelTipBestResults')}</p></div>
+      <div className="border rounded-2xl p-4 flex items-start gap-3 mt-auto shrink-0 bg-warning/10 border-warning/20"><Info className="w-5 h-5 shrink-0 mt-0.5 text-warning" /><p className="text-xs font-bold leading-relaxed text-textPrimary">{language === 'ar' ? 'القالب الجديد لا يستخدم الرقم المدني. الأعمدة المطلوبة: اسم الطالب، رقم هاتف ولي الأمر، والنوع (male/female).' : 'The new template does not use Civil ID. Required columns: Student Name, Parent Phone, and Gender.'}</p></div>
     </div>
   );
 };
