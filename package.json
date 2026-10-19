@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git+https://github.com/alzaabi555/desktop-build.git"
   },
- "scripts": {
+  "scripts": {
     "prebuild": "node -e \"require('fs').mkdirSync('www', {recursive: true})\"",
     "build": "npm run prebuild && npx esbuild index.tsx --bundle --outfile=www/index.js --format=esm --jsx=automatic --minify --target=es2020 --loader:.js=jsx --loader:.png=dataurl --loader:.mp3=file --define:process.env.NODE_ENV=\\\"'production'\\\" && npx tailwindcss -i ./theme/tokens.css -o ./www/index.css --minify && node ./copy-assets.js",
     "postinstall": "node scripts/copy-pdf-worker.cjs",
@@ -38,10 +38,11 @@
     "html2pdf.js": "^0.10.1",
     "pdfjs-dist": "3.11.174",
     "dompurify": "^3.0.8",
-     "canvg": "^4.0.1",
+    "canvg": "^4.0.1",
     "react-to-print": "^3.0.0",
     "electron-updater": "^6.1.7",
-    "electron-log": "^5.0.0"
+    "electron-log": "^5.0.0",
+    "@capacitor/app-launcher": "^6.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",
@@ -83,8 +84,8 @@
       "shortcutName": "راصد المعلم",
       "language": "1025",
       "displayLanguageSelector": false,
-      "installerSidebar":"assets/sidebar.bmp",
-      "uninstallerSidebar":"assets/sidebar.bmp",
+      "installerSidebar": "assets/sidebar.bmp",
+      "uninstallerSidebar": "assets/sidebar.bmp",
       "artifactName": "Rased-Setup.${ext}"
     },
     "appx": {
