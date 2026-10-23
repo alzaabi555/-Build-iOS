@@ -267,13 +267,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         if ((window as any).electron?.openExternal) {
           await (window as any).electron.openExternal(deepLink);
         } else if (Capacitor.isNativePlatform()) {
-          const availability = await AppLauncher.canOpenUrl({ url: deepLink });
-          if (!availability.value) {
-            alert(language === 'ar'
-              ? 'تعذر العثور على تطبيق واتساب أو واتساب للأعمال على الجهاز.'
-              : 'WhatsApp or WhatsApp Business was not found on this device.');
-            return;
-          }
+          // افتح الرابط العميق مباشرة. قد يعيد canOpenUrl قيمة false على Android
+          // رغم تثبيت واتساب بسبب قيود Package Visibility.
           const result = await AppLauncher.openUrl({ url: deepLink });
           if (result.completed === false) throw new Error('WHATSAPP_DEEP_LINK_NOT_COMPLETED');
         } else {
