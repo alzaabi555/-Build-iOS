@@ -1,0 +1,496 @@
+import React, { useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CloudCog,
+  Download,
+  Filter,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  UserCheck,
+  UserRoundX,
+  Users,
+} from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import {
+  inspectStudentsIdentity,
+  type IdentityResolutionResult,
+  type IdentityResolutionStatus,
+} from '../services/schoolIdentityService';
+
+type StatusFilter = 'all' | IdentityResolutionStatus | 'not_checked';
+
+type PreviewRow = {
+  localStudentId: string;
+  name: string;
+  className: string;
+  currentRasedId: string;
+  result?: IdentityResolutionResult;
+};
+
+const STATUS_META: Record<IdentityResolutionStatus | 'not_checked', {
+  label: string;
+  badge: string;
+  description: string;
+}> = {
+  matched: {
+    label: 'مطابق',
+    badge: 'bg-success/10 text-success border-success/20',
+    description: 'تم العثور على هوية مركزية مطابقة.',
+  },
+  created: {
+    label: 'مُنشأ',
+    badge: 'bg-primary/10 text-primary border-primary/20',
+    description: 'حالة غير متوقعة في وضع الفحص فقط.',
+  },
+  pending: {
+    label: 'بانتظار الترحيل',
+    badge: 'bg-warning/10 text-warning border-warning/20',
+    description: 'لا توجد هوية مركزية، ولم يتم إنشاء أي سجل.',
+  },
+  conflict: {
+    label: 'تعارض',
+    badge: 'bg-danger/10 text-danger border-danger/20',
+    description: 'وجدت الخدمة أكثر من مطابقة محتملة.',
+  },
+  invalid: {
+    label: 'بيانات غير مكتملة',
+    badge: 'bg-danger/10 text-danger border-danger/20',
+    description: 'الاسم أو الفصل غير متوفر بالصورة المطلوبة.',
+  },
+  not_checked: {
+    label: 'لم يُفحص',
+    badge: 'bg-bgSoft text-textSecondary border-borderColor',
+    description: 'لم تُرسل بيانات الطالب إلى خدمة الفحص بعد.',
+  },
+};
+
+const getClassName = (student: any): string =>
+  String(student?.classes?.[0] || student?.className || student?.class || '').trim();
+
+const getCurrentRasedId = (student: any): string =>
+  String(
+    student?.rasedId ||
+      student?.rasedID ||
+      student?.parentCode ||
+      student?.secretCode ||
+      '',
+  ).trim().toUpperCase();
+
+const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+const IdentityInspectionTool: React.FC = () => {
+  const { students, classes, teacherInfo } = useApp();
+  const schoolCode = String(
+    localStorage.getItem('rased_admin_school_code') ||
+      (teacherInfo as any)?.schoolCode ||
+      '',
+  ).trim();
+  const actorId = String(
+    teacherInfo?.civilId ||
+      localStorage.getItem('rased_teacher_civil_id') ||
+      '',
+  ).trim();
+
+  const [results, setResults] = useState<Record<string, IdentityResolutionResult>>({});
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [error, setError] = useState('');
+  const [lastCheckedAt, setLastCheckedAt] = useState('');
+  const [selectedClass, setSelectedClass] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [query, setQuery] = useState('');
+  const [batchSize, setBatchSize] = useState<25 | 50 | 100 | 'all'>(25);
+
+  const rows = useMemo<PreviewRow[]>(
+    () =>
+      students.map((student: any) => {
+        const localStudentId = String(student.localStudentId || student.id || '').trim();
+        return {
+          localStudentId,
+          name: String(student.name || '').trim(),
+          className: getClassName(student),
+          currentRasedId: getCurrentRasedId(student),
+          result: results[localStudentId],
+        };
+      }),
+    [students, results],
+  );
+
+  const counts = useMemo(() => {
+    const base: Record<IdentityResolutionStatus | 'not_checked', number> = {
+      matched: 0,
+      created: 0,
+      pending: 0,
+      conflict: 0,
+      invalid: 0,
+      not_checked: 0,
+    };
+    rows.forEach((row) => {
+      const status = row.result?.status || 'not_checked';
+      base[status] += 1;
+    });
+    return base;
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return rows.filter((row) => {
+      const status = row.result?.status || 'not_checked';
+      const classMatches = selectedClass === 'all' || row.className === selectedClass;
+      const statusMatches = statusFilter === 'all' || status === statusFilter;
+      const queryMatches =
+        !normalizedQuery ||
+        row.name.toLowerCase().includes(normalizedQuery) ||
+        row.currentRasedId.toLowerCase().includes(normalizedQuery) ||
+        row.localStudentId.toLowerCase().includes(normalizedQuery);
+      return classMatches && statusMatches && queryMatches;
+    });
+  }, [rows, query, selectedClass, statusFilter]);
+
+  const inspect = async () => {
+    setError('');
+    if (!schoolCode) {
+      setError('كود المدرسة غير متوفر في هذا الجهاز.');
+      return;
+    }
+    if (!actorId) {
+      setError('معرف المعلم غير متوفر. سجّل الرقم الخاص للمعلم أولًا.');
+      return;
+    }
+
+    const source = selectedClass === 'all'
+      ? students
+      : students.filter((student: any) => getClassName(student) === selectedClass);
+    const limited = batchSize === 'all' ? source : source.slice(0, batchSize);
+
+    if (!limited.length) {
+      setError('لا يوجد طلاب ضمن النطاق المحدد للفحص.');
+      return;
+    }
+
+    setIsInspecting(true);
+    try {
+      const response = await inspectStudentsIdentity({
+        schoolCode,
+        actorId,
+        students: limited as any[],
+      });
+      if (!response.ok) throw new Error(response.error || 'IDENTITY_INSPECTION_FAILED');
+
+      const next = { ...results };
+      (response.results || []).forEach((item) => {
+        if (item.localStudentId) next[item.localStudentId] = item;
+      });
+      setResults(next);
+      setLastCheckedAt(new Date().toISOString());
+    } catch (inspectionError) {
+      console.error('Identity inspection failed', inspectionError);
+      setError(
+        inspectionError instanceof Error
+          ? inspectionError.message
+          : 'تعذر الاتصال بخدمة الهوية المركزية.',
+      );
+    } finally {
+      setIsInspecting(false);
+    }
+  };
+
+  const clearPreview = () => {
+    setResults({});
+    setError('');
+    setLastCheckedAt('');
+  };
+
+  const exportReport = () => {
+    const header = [
+      'localStudentId',
+      'studentName',
+      'className',
+      'currentRasedId',
+      'status',
+      'matchMethod',
+      'centralStudentId',
+      'schoolId',
+      'centralRasedId',
+      'conflictId',
+      'error',
+    ];
+    const lines = rows.map((row) => [
+      row.localStudentId,
+      row.name,
+      row.className,
+      row.currentRasedId,
+      row.result?.status || 'not_checked',
+      row.result?.matchMethod || '',
+      row.result?.centralStudentId || '',
+      row.result?.schoolId || '',
+      row.result?.rasedId || '',
+      row.result?.conflictId || '',
+      row.result?.error || '',
+    ].map(csvCell).join(','));
+
+    const csv = `\uFEFF${header.map(csvCell).join(',')}\n${lines.join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `rased-identity-inspection-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const inspectedCount = rows.length - counts.not_checked;
+
+  return (
+    <section className="space-y-5" dir="rtl">
+      <div className="rounded-3xl border border-borderColor bg-bgCard p-5 md:p-7 shadow-card">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+              <ShieldCheck className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-textPrimary">فحص الهوية المدرسية</h2>
+              <p className="mt-1 max-w-3xl text-sm font-bold leading-7 text-textSecondary">
+                معاينة آمنة لحالة الطلاب في السجل المركزي. الأداة تعمل بوضع الفحص فقط ولا تنشئ
+                هوية جديدة ولا تغيّر أي كود RSD حالي.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-success/20 bg-success/10 px-4 py-3 text-sm font-black text-success">
+            وضع آمن: allowCreate = false
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <InfoBox label="المدرسة" value={teacherInfo?.school || 'غير محددة'} />
+          <InfoBox label="كود المدرسة" value={schoolCode || 'غير متوفر'} mono />
+          <InfoBox label="إجمالي الطلاب" value={String(students.length)} />
+          <InfoBox
+            label="آخر فحص"
+            value={lastCheckedAt ? new Date(lastCheckedAt).toLocaleString('ar-OM') : 'لم يُنفذ'}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <StatusCard icon={UserCheck} label="مطابق" count={counts.matched} tone="success" />
+        <StatusCard icon={Users} label="بانتظار الترحيل" count={counts.pending} tone="warning" />
+        <StatusCard icon={AlertTriangle} label="تعارض" count={counts.conflict} tone="danger" />
+        <StatusCard icon={UserRoundX} label="غير مكتمل" count={counts.invalid} tone="danger" />
+        <StatusCard icon={CloudCog} label="لم يُفحص" count={counts.not_checked} tone="muted" />
+      </div>
+
+      <div className="rounded-3xl border border-borderColor bg-bgCard p-4 md:p-5 shadow-sm">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <label className="space-y-2 xl:col-span-2">
+            <span className="text-xs font-black text-textSecondary">بحث</span>
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="اسم الطالب أو كود RSD"
+                className="h-11 w-full rounded-2xl border border-borderColor bg-bgSoft pr-10 pl-3 font-bold text-textPrimary outline-none focus:border-primary"
+              />
+            </div>
+          </label>
+
+          <SelectField label="الفصل" value={selectedClass} onChange={setSelectedClass}>
+            <option value="all">كل الفصول</option>
+            {classes.map((className) => <option key={className} value={className}>{className}</option>)}
+          </SelectField>
+
+          <SelectField label="الحالة" value={statusFilter} onChange={(value) => setStatusFilter(value as StatusFilter)}>
+            <option value="all">كل الحالات</option>
+            <option value="not_checked">لم يُفحص</option>
+            <option value="pending">بانتظار الترحيل</option>
+            <option value="matched">مطابق</option>
+            <option value="conflict">تعارض</option>
+            <option value="invalid">غير مكتمل</option>
+          </SelectField>
+
+          <SelectField label="حجم دفعة الفحص" value={String(batchSize)} onChange={(value) => setBatchSize(value === 'all' ? 'all' : Number(value) as 25 | 50 | 100)}>
+            <option value="25">25 طالبًا</option>
+            <option value="50">50 طالبًا</option>
+            <option value="100">100 طالب</option>
+            <option value="all">جميع الطلاب المحددين</option>
+          </SelectField>
+        </div>
+
+        {error && (
+          <div className="mt-4 flex items-start gap-2 rounded-2xl border border-danger/20 bg-danger/10 p-4 text-sm font-bold text-danger">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={inspect}
+            disabled={isInspecting || students.length === 0}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-black text-white shadow-sm transition active:scale-95 disabled:opacity-60"
+          >
+            {isInspecting ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+            {isInspecting ? 'جاري الفحص...' : 'بدء الفحص الآمن'}
+          </button>
+          <button
+            type="button"
+            onClick={exportReport}
+            disabled={!inspectedCount}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-borderColor bg-bgSoft px-5 font-black text-textPrimary transition active:scale-95 disabled:opacity-50"
+          >
+            <Download className="h-5 w-5" />
+            تصدير تقرير CSV
+          </button>
+          <button
+            type="button"
+            onClick={clearPreview}
+            disabled={!inspectedCount}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-5 font-black text-textSecondary transition hover:bg-bgSoft disabled:opacity-50"
+          >
+            مسح المعاينة
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-borderColor bg-bgCard shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-borderColor px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-black text-textPrimary">نتائج المعاينة</h3>
+            <p className="mt-1 text-xs font-bold text-textSecondary">
+              معروض {filteredRows.length} من أصل {rows.length} طالبًا، وتم فحص {inspectedCount}.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs font-black text-textSecondary">
+            <Filter className="h-4 w-4" />
+            لا يتم حفظ النتائج داخل سجل الطالب
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-[1050px] w-full text-right text-sm">
+            <thead className="bg-bgSoft text-xs font-black text-textSecondary">
+              <tr>
+                <th className="px-4 py-3">الطالب</th>
+                <th className="px-4 py-3">الفصل</th>
+                <th className="px-4 py-3">الكود الحالي</th>
+                <th className="px-4 py-3">حالة الفحص</th>
+                <th className="px-4 py-3">طريقة المطابقة</th>
+                <th className="px-4 py-3">المعرف المركزي</th>
+                <th className="px-4 py-3">الكود المركزي</th>
+                <th className="px-4 py-3">ملاحظة</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-borderColor">
+              {filteredRows.map((row) => {
+                const status = row.result?.status || 'not_checked';
+                const meta = STATUS_META[status];
+                return (
+                  <tr key={row.localStudentId} className="hover:bg-bgSoft/70">
+                    <td className="px-4 py-3">
+                      <div className="font-black text-textPrimary">{row.name || 'بلا اسم'}</div>
+                      <div className="mt-1 font-mono text-[11px] text-textSecondary">{row.localStudentId || 'بلا معرف محلي'}</div>
+                    </td>
+                    <td className="px-4 py-3 font-bold text-textPrimary">{row.className || 'غير محدد'}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-textPrimary">{row.currentRasedId || 'لا يوجد'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${meta.badge}`}>
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-bold text-textSecondary">
+                      {row.result?.matchMethod === 'trusted_identifier'
+                        ? 'معرف موثوق'
+                        : row.result?.matchMethod === 'transitional_name_class'
+                          ? 'الاسم والفصل مؤقتًا'
+                          : '—'}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs font-bold text-textPrimary">{row.result?.centralStudentId || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-bold text-textPrimary">{row.result?.rasedId || '—'}</td>
+                    <td className="px-4 py-3 text-xs font-bold leading-6 text-textSecondary">
+                      {row.result?.conflictId
+                        ? `رقم التعارض: ${row.result.conflictId}`
+                        : row.result?.error || meta.description}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!filteredRows.length && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center font-bold text-textSecondary">
+                    لا توجد نتائج مطابقة للفلاتر الحالية.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-3xl border border-warning/20 bg-warning/10 p-5 text-sm font-bold leading-7 text-textPrimary">
+        <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-warning" />
+        <p>
+          هذه الأداة لا تحتوي زر ترحيل أو إنشاء. ظهور حالة «بانتظار الترحيل» طبيعي ما دام جدول
+          StudentIdentities فارغًا. لن يتم اعتماد الإنشاء إلا بعد مراجعة تقرير المدرسة وحالات
+          التشابه والتعارض.
+        </p>
+      </div>
+    </section>
+  );
+};
+
+const InfoBox: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label, value, mono }) => (
+  <div className="rounded-2xl border border-borderColor bg-bgSoft p-4">
+    <div className="text-xs font-black text-textSecondary">{label}</div>
+    <div className={`mt-2 truncate font-black text-textPrimary ${mono ? 'font-mono' : ''}`} title={value}>
+      {value}
+    </div>
+  </div>
+);
+
+const StatusCard: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  count: number;
+  tone: 'success' | 'warning' | 'danger' | 'muted';
+}> = ({ icon: Icon, label, count, tone }) => {
+  const tones = {
+    success: 'border-success/20 bg-success/10 text-success',
+    warning: 'border-warning/20 bg-warning/10 text-warning',
+    danger: 'border-danger/20 bg-danger/10 text-danger',
+    muted: 'border-borderColor bg-bgCard text-textSecondary',
+  };
+  return (
+    <div className={`rounded-3xl border p-5 shadow-sm ${tones[tone]}`}>
+      <div className="flex items-center justify-between gap-3">
+        <Icon className="h-6 w-6" />
+        <span className="text-3xl font-black">{count}</span>
+      </div>
+      <div className="mt-3 text-sm font-black">{label}</div>
+    </div>
+  );
+};
+
+const SelectField: React.FC<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}> = ({ label, value, onChange, children }) => (
+  <label className="space-y-2">
+    <span className="text-xs font-black text-textSecondary">{label}</span>
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-11 w-full rounded-2xl border border-borderColor bg-bgSoft px-3 font-bold text-textPrimary outline-none focus:border-primary"
+    >
+      {children}
+    </select>
+  </label>
+);
+
+export default IdentityInspectionTool;
