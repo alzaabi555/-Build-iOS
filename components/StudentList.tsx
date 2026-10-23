@@ -649,13 +649,8 @@ const StudentList: React.FC<StudentListProps> = ({
                 return true;
             }
             if (Capacitor.isNativePlatform()) {
-                const canOpen = await AppLauncher.canOpenUrl({ url: deepLink });
-                if (!canOpen.value) {
-                    alert(language === 'ar'
-                        ? 'تعذر العثور على تطبيق واتساب أو واتساب للأعمال على الجهاز.'
-                        : 'WhatsApp or WhatsApp Business was not found on this device.');
-                    return false;
-                }
+                // افتح الرابط العميق مباشرة. قد يعيد canOpenUrl قيمة false على Android
+                // رغم تثبيت واتساب بسبب قيود Package Visibility.
                 const opened = await AppLauncher.openUrl({ url: deepLink });
                 if (opened.completed === false) throw new Error('WHATSAPP_DEEP_LINK_NOT_COMPLETED');
                 return true;
