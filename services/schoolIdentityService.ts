@@ -40,7 +40,7 @@ export interface BatchResolutionResponse {
 }
 
 // انقل هنا رابط /exec نفسه من النسخة الحالية من schoolIdentityService.ts.
-const SCHOOL_IDENTITY_URL = 'PASTE_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
+const SCHOOL_IDENTITY_URL = 'https://script.google.com/macros/s/AKfycbyG1DTqpZGgi0qmjswbttvBmP2j3Afhj0t303XM0N6M4P8LwNhpMx56u1fr0zpjzb3R/exec';
 const REQUEST_TIMEOUT_MS = 30000;
 
 const getServiceUrl = () => {
