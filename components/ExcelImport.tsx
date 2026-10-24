@@ -168,7 +168,26 @@ const ExcelImport: React.FC<ExcelImportProps> = ({ onImport, existingClasses, on
       }
 
       if (importedStudents.length > 0) {
-          onImport(importedStudents);
+          const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+          const actorId = String(localStorage.getItem('rased_teacher_civil_id') || 'teacher').trim();
+          try {
+            const response = await inspectStudentsIdentity({ schoolCode, actorId, students: importedStudents });
+            if (!response.ok) throw new Error(response.error || 'IDENTITY_INSPECTION_FAILED');
+            const byLocalId = new Map((response.results || []).map(item => [item.localStudentId, item]));
+            const now = new Date().toISOString();
+            onImport(importedStudents.map(student => {
+              const result = byLocalId.get(String(student.id || ''));
+              if (!result) return { ...student, localStudentId: student.id, identityStatus: 'pending', identityUpdatedAt: now, identitySource: 'local' };
+              if (result.status === 'matched' && result.centralStudentId && result.rasedId) {
+                return { ...student, localStudentId: student.id, centralStudentId: result.centralStudentId, schoolId: result.schoolId, schoolCode, centralRasedId: result.rasedId, rasedId: result.rasedId, parentCode: result.rasedId, legacyRasedIds: result.legacyRasedIds || [], identityStatus: 'matched', identityUpdatedAt: now, identitySource: 'central' };
+              }
+              return { ...student, localStudentId: student.id, rasedId: undefined, parentCode: undefined, identityStatus: result.status, identityConflictId: result.conflictId, identityUpdatedAt: now, identitySource: 'local' };
+            }));
+          } catch (identityError) {
+            console.warn('Central identity unavailable; students saved pending.', identityError);
+            const now = new Date().toISOString();
+            onImport(importedStudents.map(student => ({ ...student, localStudentId: student.id, rasedId: undefined, parentCode: undefined, identityStatus: 'pending', identityUpdatedAt: now, identitySource: 'local' })));
+          }
       } else {
           alert(t('alertNoValidDataExcel'));
       }
