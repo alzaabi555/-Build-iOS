@@ -15,6 +15,20 @@ export interface Student {
   examPapers?: ExamPaper[];
   rasedId?: string;
   parentCode?: string;
+
+  /** المعرف المحلي الثابت داخل نسخة المعلم. */
+  localStudentId?: string;
+  /** الهوية المركزية الثابتة للطالب داخل المدرسة. */
+  centralStudentId?: string;
+  schoolId?: string;
+  schoolCode?: string;
+  /** الكود المركزي، مع إبقاء rasedId المحلي الحالي خلال الانتقال. */
+  centralRasedId?: string;
+  legacyRasedIds?: string[];
+  identityStatus?: 'legacy' | 'pending' | 'matched' | 'created' | 'conflict' | 'invalid';
+  identityUpdatedAt?: string;
+  identityConflictId?: string;
+  identitySource?: 'local' | 'central' | 'legacy_alias' | 'migration';
 }
 
 export interface Group {
