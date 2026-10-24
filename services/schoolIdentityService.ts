@@ -40,7 +40,7 @@ export interface BatchResolutionResponse {
 }
 
 // انقل هنا رابط /exec نفسه من النسخة الحالية من schoolIdentityService.ts.
-const SCHOOL_IDENTITY_URL = 'https://script.google.com/macros/s/AKfycbyG1DTqpZGgi0qmjswbttvBmP2j3Afhj0t303XM0N6M4P8LwNhpMx56u1fr0zpjzb3R/exec';
+const SCHOOL_IDENTITY_URL = 'PASTE_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
 const REQUEST_TIMEOUT_MS = 30000;
 
 const getServiceUrl = () => {
@@ -159,5 +159,38 @@ export const syncStudentIdentityProfiles = async (params: {
       classes: Array.isArray(profile.classes) ? profile.classes : undefined,
       className: String(profile.className || '').trim(),
     })),
+  });
+};
+
+
+/** ترحيل فصل كامل بعد فحصه، بحد أقصى 60 طالبًا، مع إيقاف الدفعة كلها عند التعارض أو نقص البيانات. */
+export const migrateClassStudents = async (params: {
+  schoolCode: string;
+  actorId: string;
+  requestId: string;
+  className: string;
+  confirmationText: string;
+  students: IdentityStudentInput[];
+}): Promise<BatchResolutionResponse & { className?: string }> => {
+  const schoolCode = String(params.schoolCode || '').trim();
+  const actorId = String(params.actorId || '').trim();
+  const requestId = String(params.requestId || '').trim();
+  const className = String(params.className || '').trim();
+  const confirmationText = String(params.confirmationText || '').trim();
+  const students = Array.isArray(params.students) ? params.students : [];
+  if (!schoolCode) throw new Error('SCHOOL_CODE_REQUIRED');
+  if (!actorId) throw new Error('ACTOR_ID_REQUIRED');
+  if (!requestId) throw new Error('REQUEST_ID_REQUIRED');
+  if (!className) throw new Error('CLASS_NAME_REQUIRED');
+  if (confirmationText !== 'ترحيل الفصل') throw new Error('CLASS_MIGRATION_CONFIRMATION_REQUIRED');
+  if (students.length < 1 || students.length > 60) throw new Error('CLASS_SIZE_MUST_BE_1_TO_60');
+  return postJson({
+    action: 'migrateClassStudents',
+    schoolCode,
+    actorId,
+    requestId,
+    className,
+    confirmationText,
+    students: normalizeStudents(students),
   });
 };
