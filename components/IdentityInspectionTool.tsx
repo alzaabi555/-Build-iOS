@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import {
   inspectStudentsIdentity,
   migratePilotStudents,
+  migrateClassStudents,
   syncStudentIdentityProfiles,
   type IdentityResolutionResult,
   type IdentityResolutionStatus,
@@ -108,6 +109,9 @@ const IdentityInspectionTool: React.FC = () => {
   const [confirmationText, setConfirmationText] = useState('');
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationMessage, setMigrationMessage] = useState('');
+  const [classConfirmationText, setClassConfirmationText] = useState('');
+  const [isMigratingClass, setIsMigratingClass] = useState(false);
+  const [classMigrationMessage, setClassMigrationMessage] = useState('');
 
   const rows = useMemo<PreviewRow[]>(
     () =>
@@ -254,6 +258,91 @@ const IdentityInspectionTool: React.FC = () => {
   };
 
 
+  const selectedClassStudents = useMemo(
+    () => selectedClass === 'all'
+      ? []
+      : students.filter((student: any) => getClassName(student) === selectedClass),
+    [students, selectedClass],
+  );
+
+  const selectedClassReadiness = useMemo(() => {
+    const statuses = selectedClassStudents.map((student: any) => {
+      const localId = String(student.localStudentId || student.id || '').trim();
+      return results[localId]?.status || 'not_checked';
+    });
+    return {
+      total: statuses.length,
+      notChecked: statuses.filter((status) => status === 'not_checked').length,
+      pending: statuses.filter((status) => status === 'pending').length,
+      matched: statuses.filter((status) => status === 'matched' || status === 'created').length,
+      blockers: statuses.filter((status) => status === 'conflict' || status === 'invalid').length,
+    };
+  }, [selectedClassStudents, results]);
+
+  const migrateFullClass = async () => {
+    setError('');
+    setClassMigrationMessage('');
+    if (selectedClass === 'all') {
+      setError('اختر فصلًا محددًا قبل تنفيذ ترحيل الفصل الكامل.');
+      return;
+    }
+    if (!selectedClassStudents.length) {
+      setError('لا يوجد طلاب في الفصل المحدد.');
+      return;
+    }
+    if (selectedClassStudents.length > 60) {
+      setError('عدد طلاب الفصل أكبر من الحد الآمن 60 طالبًا.');
+      return;
+    }
+    if (selectedClassReadiness.notChecked > 0) {
+      setError('افحص جميع طلاب الفصل أولًا باختيار «جميع الطلاب المحددين».');
+      return;
+    }
+    if (selectedClassReadiness.blockers > 0) {
+      setError('توجد حالات تعارض أو بيانات غير مكتملة. عالجها قبل ترحيل الفصل.');
+      return;
+    }
+    if (classConfirmationText.trim() !== 'ترحيل الفصل') {
+      setError('اكتب عبارة «ترحيل الفصل» كما هي لتأكيد العملية.');
+      return;
+    }
+    setIsMigratingClass(true);
+    try {
+      const requestId = `class-${schoolCode}-${selectedClass}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const response = await migrateClassStudents({
+        schoolCode,
+        actorId,
+        requestId,
+        className: selectedClass,
+        confirmationText: classConfirmationText.trim(),
+        students: selectedClassStudents as any[],
+      });
+      if (!response.ok) {
+        const friendly = response.error === 'CLASS_PREFLIGHT_BLOCKED'
+          ? 'أوقفت الخدمة الدفعة لأن الفحص السحابي وجد تعارضًا أو بيانات ناقصة.'
+          : response.error === 'CLASS_DUPLICATE_CANDIDATES'
+            ? 'أوقفت الخدمة الدفعة لوجود اسم وفصل متطابقين داخل الفصل.'
+            : response.error || 'CLASS_MIGRATION_FAILED';
+        throw new Error(friendly);
+      }
+      const next = { ...results };
+      (response.results || []).forEach((item) => {
+        if (item.localStudentId) next[item.localStudentId] = item;
+      });
+      setResults(next);
+      await persistIdentityResults(response.results || []);
+      setClassConfirmationText('');
+      setClassMigrationMessage(
+        `نجح ترحيل الفصل ${selectedClass}. إجمالي ${selectedClassStudents.length} طالبًا، أُنشئ ${response.summary?.created || 0} وطابق ${response.summary?.matched || 0}. رقم العملية: ${response.migrationJobId || 'غير متوفر'}.`,
+      );
+    } catch (classMigrationError) {
+      console.error('Class identity migration failed', classMigrationError);
+      setError(classMigrationError instanceof Error ? classMigrationError.message : 'تعذر ترحيل الفصل.');
+    } finally {
+      setIsMigratingClass(false);
+    }
+  };
+
   const togglePilotStudent = (localStudentId: string) => {
     setMigrationMessage('');
     setSelectedPilotIds((current) => {
@@ -320,6 +409,8 @@ const IdentityInspectionTool: React.FC = () => {
     setSelectedPilotIds([]);
     setConfirmationText('');
     setMigrationMessage('');
+    setClassConfirmationText('');
+    setClassMigrationMessage('');
   };
 
   const exportReport = () => {
@@ -476,6 +567,60 @@ const IdentityInspectionTool: React.FC = () => {
         </div>
       </div>
 
+
+
+      <div className="rounded-3xl border border-primary/25 bg-primary/5 p-5 shadow-sm">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 className="font-black text-textPrimary">ترحيل فصل كامل</h3>
+              <p className="mt-1 text-sm font-bold leading-7 text-textSecondary">
+                اختر فصلًا من مرشح الفصل، ثم افحص جميع طلابه. تتوقف الدفعة كاملة قبل الإنشاء إذا ظهر تعارض أو نقص في البيانات.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs font-black sm:grid-cols-5">
+              <span className="rounded-xl bg-bgCard px-3 py-2">الإجمالي: {selectedClassReadiness.total}</span>
+              <span className="rounded-xl bg-bgCard px-3 py-2">لم يُفحص: {selectedClassReadiness.notChecked}</span>
+              <span className="rounded-xl bg-warning/10 px-3 py-2 text-warning">معلق: {selectedClassReadiness.pending}</span>
+              <span className="rounded-xl bg-success/10 px-3 py-2 text-success">مطابق: {selectedClassReadiness.matched}</span>
+              <span className="rounded-xl bg-danger/10 px-3 py-2 text-danger">مانع: {selectedClassReadiness.blockers}</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={classConfirmationText}
+              onChange={(event) => setClassConfirmationText(event.target.value)}
+              placeholder="اكتب: ترحيل الفصل"
+              disabled={selectedClass === 'all'}
+              className="h-11 flex-1 rounded-2xl border border-primary/25 bg-bgCard px-4 font-bold text-textPrimary outline-none focus:border-primary disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={migrateFullClass}
+              disabled={
+                isMigratingClass ||
+                selectedClass === 'all' ||
+                selectedClassReadiness.total < 1 ||
+                selectedClassReadiness.notChecked > 0 ||
+                selectedClassReadiness.blockers > 0 ||
+                classConfirmationText.trim() !== 'ترحيل الفصل'
+              }
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-black text-white disabled:opacity-50"
+            >
+              {isMigratingClass ? <Loader2 className="h-5 w-5 animate-spin" /> : <Users className="h-5 w-5" />}
+              تنفيذ ترحيل الفصل
+            </button>
+          </div>
+          {selectedClass === 'all' && (
+            <p className="text-xs font-black text-textSecondary">اختر فصلًا محددًا من قائمة الفصل لتفعيل هذه العملية.</p>
+          )}
+          {classMigrationMessage && (
+            <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm font-black text-success">
+              {classMigrationMessage}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="rounded-3xl border border-warning/30 bg-warning/10 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
