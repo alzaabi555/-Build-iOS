@@ -543,9 +543,11 @@ const migrateAndDedupeStudents = (
         );
     const existingCode = getExistingRasedCodeFromStudent(rawStudent);
     // الطالب المرتبط مركزيًا لا يمر مطلقًا عبر مولد RSD المحلي.
-    const rasedId = centralStudentId
+    const identityStatus = String(rawStudent.identityStatus || '').trim();
+    const mustNotGenerateLocalCode = Boolean(centralStudentId) || ['pending', 'conflict', 'invalid'].includes(identityStatus);
+    const rasedId = mustNotGenerateLocalCode
       ? existingCode || String(rawStudent.centralRasedId || '').trim()
-      : existingCode || generateRasedId(rawStudent.name || '', studentClass, schoolName);
+      : existingCode;
 
     const {
       civilID,
