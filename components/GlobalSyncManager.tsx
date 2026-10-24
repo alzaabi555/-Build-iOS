@@ -17,7 +17,7 @@ import PageLayout from '../components/PageLayout';
 import type { RasedBackupPayload } from '../types';
 
 const STUDENT_APP_URL =
-  'https://script.google.com/macros/s/AKfycbwh-prmIXvFJqLCl9Y7MreCm8TfJVchZCj8aFdO5qrjX-GnDcskEx00n8j8_NprxvoO/exec';
+  'https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec';
 const PARENT_APP_URL =
   'https://script.google.com/macros/s/AKfycbzKPPsQsM_dIttcYSxRLs6LQuvXhT6Qia5TwJ1Tw4ObQ-eZFZeJhV6epXXjxA9_SwWk/exec';
 const DEVICE_SYNC_URL =
