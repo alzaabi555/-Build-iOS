@@ -53,6 +53,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import StudentGroups from './components/StudentGroups';
 import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager';
+import IdentityInspectionTool from './components/IdentityInspectionTool';
 import SeniorDashboard from './components/SeniorDashboard';
 import TeacherMailbox from './components/TeacherMailbox';
 import TeacherPreparations from './components/preparations/TeacherPreparations';
@@ -382,7 +383,7 @@ const AppContent: React.FC = () => {
   const [gamesView, setGamesView] = useState<'questions' | 'results' | 'exams'>('questions');
   const [reportsView, setReportsView] = useState<'reports' | 'leaderboard'>('reports');
   const [adminView, setAdminView] = useState<'sync'>('sync');
-  const [helpView, setHelpView] = useState<'settings' | 'sync' | 'guide' | 'about'>('settings');
+  const [helpView, setHelpView] = useState<'settings' | 'sync' | 'identity' | 'guide' | 'about'>('settings');
   const [gameResults, setGameResults] = useState<TeacherGameResultLogEntry[]>([]);
   const [isLoadingGameResults, setIsLoadingGameResults] = useState(false);
   const [appVersion, setAppVersion] = useState('4.4.1');
@@ -645,6 +646,11 @@ const handleToggleNotifications = () => {
     }
     if (tab === 'sync' || tab === 'admin_sync') {
       setHelpView('sync');
+      setActiveTab('help_settings');
+      return;
+    }
+    if (tab === 'identity' || tab === 'identity_inspection') {
+      setHelpView('identity');
       setActiveTab('help_settings');
       return;
     }
@@ -1238,6 +1244,7 @@ const handleToggleNotifications = () => {
               [
                 { id: 'settings', label: t('tabSettings'), icon: SettingsIcon },
                 { id: 'sync', label: t('tabCentralSync'), icon: CloudSync },
+                { id: 'identity', label: 'فحص الهوية', icon: ShieldCheck },
                 { id: 'guide', label: t('tabUserGuide'), icon: BookOpen },
                 { id: 'about', label: t('tabAboutApp'), icon: Info }
               ],
@@ -1248,6 +1255,8 @@ const handleToggleNotifications = () => {
               <Settings />
             ) : helpView === 'sync' ? (
               <GlobalSyncManager />
+            ) : helpView === 'identity' ? (
+              <IdentityInspectionTool />
             ) : helpView === 'about' ? (
               <About />
             ) : (
