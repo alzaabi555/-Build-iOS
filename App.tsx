@@ -55,6 +55,7 @@ import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager';
 import IdentityInspectionTool from './components/IdentityInspectionTool';
 import IdentityAdminDashboard from './components/IdentityAdminDashboard';
+import { inspectStudentsIdentity } from './services/schoolIdentityService';
 import SeniorDashboard from './components/SeniorDashboard';
 import TeacherMailbox from './components/TeacherMailbox';
 import TeacherPreparations from './components/preparations/TeacherPreparations';
@@ -916,7 +917,7 @@ const handleToggleNotifications = () => {
     return nextStudents;
   };
 
-  const handleAddStudentManuallySafely = (
+  const handleAddStudentManuallySafely = async (
     name: string,
     className: string,
     parentPhone?: string,
@@ -957,10 +958,31 @@ const handleToggleNotifications = () => {
     }
 
     const incomingCode = String(existingCode || '').trim().toUpperCase();
-    const rasedId = incomingCode.startsWith('RSD-') ? incomingCode : generateStableRasedId(schoolIdentity, cleanName, cleanClass);
+    // لا ننشئ RSD محليًا للطلاب الجدد. الكود يأتي من خدمة الهوية فقط.
+    const rasedId = incomingCode.startsWith('RSD-') ? incomingCode : '';
 
+    const localId = `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    let identityPatch: any = {
+      localStudentId: localId,
+      identityStatus: rasedId ? 'legacy' : 'pending',
+      identityUpdatedAt: new Date().toISOString(),
+      identitySource: 'local'
+    };
+    try {
+      const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+      const actorId = String(teacherInfo?.civilId || localStorage.getItem('rased_teacher_civil_id') || 'teacher').trim();
+      const response = await inspectStudentsIdentity({ schoolCode, actorId, students: [{ localStudentId: localId, name: cleanName, classes: [cleanClass], rasedId: rasedId || undefined }] });
+      const result = response.results?.[0];
+      if (response.ok && result?.status === 'matched' && result.centralStudentId && result.rasedId) {
+        identityPatch = { localStudentId: localId, centralStudentId: result.centralStudentId, schoolId: result.schoolId, schoolCode, centralRasedId: result.rasedId, rasedId: result.rasedId, parentCode: result.rasedId, legacyRasedIds: result.legacyRasedIds || [], identityStatus: 'matched', identityUpdatedAt: new Date().toISOString(), identitySource: 'central' };
+      } else if (result) {
+        identityPatch = { ...identityPatch, identityStatus: result.status, identityConflictId: result.conflictId };
+      }
+    } catch (error) {
+      console.warn('Central identity lookup unavailable; student saved pending.', error);
+    }
     const newStudent: any = {
-      id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: localId,
       name: cleanName,
       classes: [cleanClass],
       attendance: [],
@@ -970,8 +992,9 @@ const handleToggleNotifications = () => {
       parentPhone,
       avatar,
       gender: gender || 'male',
-      rasedId,
-      parentCode: rasedId
+      rasedId: identityPatch.rasedId || rasedId || undefined,
+      parentCode: identityPatch.parentCode || rasedId || undefined,
+      ...identityPatch
     };
 
     setStudents(prev => upsertStudentByIdentity(prev, newStudent, schoolIdentity));
@@ -990,7 +1013,7 @@ const handleToggleNotifications = () => {
         // لا يولّد التطبيق كودًا محليًا للطالب المرتبط مركزيًا.
         const stableCode = centralStudentId
           ? existingCode || String(student?.centralRasedId || '').trim()
-          : existingCode || generateStableRasedId(schoolIdentity, studentName, studentClass);
+          : existingCode;
         const normalizedStudent = {
           ...student,
           id: student.id || `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -1000,8 +1023,11 @@ const handleToggleNotifications = () => {
           attendance: Array.isArray(student.attendance) ? student.attendance : [],
           behaviors: Array.isArray(student.behaviors) ? student.behaviors : [],
           grades: Array.isArray(student.grades) ? student.grades : [],
-          rasedId: stableCode,
-          parentCode: stableCode
+          rasedId: stableCode || undefined,
+          parentCode: stableCode || undefined,
+          identityStatus: student.identityStatus || (centralStudentId ? 'matched' : 'pending'),
+          identityUpdatedAt: student.identityUpdatedAt || new Date().toISOString(),
+          identitySource: student.identitySource || (centralStudentId ? 'central' : 'local')
         };
         nextStudents = upsertStudentByIdentity(nextStudents, normalizedStudent, schoolIdentity);
       });
