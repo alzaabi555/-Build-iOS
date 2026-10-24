@@ -16,6 +16,7 @@ import {
 import { useApp } from '../context/AppContext';
 import {
   inspectStudentsIdentity,
+  migratePilotStudents,
   type IdentityResolutionResult,
   type IdentityResolutionStatus,
 } from '../services/schoolIdentityService';
@@ -102,6 +103,10 @@ const IdentityInspectionTool: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [batchSize, setBatchSize] = useState<25 | 50 | 100 | 'all'>(25);
+  const [selectedPilotIds, setSelectedPilotIds] = useState<string[]>([]);
+  const [confirmationText, setConfirmationText] = useState('');
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationMessage, setMigrationMessage] = useState('');
 
   const rows = useMemo<PreviewRow[]>(
     () =>
@@ -197,10 +202,72 @@ const IdentityInspectionTool: React.FC = () => {
     }
   };
 
+
+  const togglePilotStudent = (localStudentId: string) => {
+    setMigrationMessage('');
+    setSelectedPilotIds((current) => {
+      if (current.includes(localStudentId)) return current.filter((id) => id !== localStudentId);
+      if (current.length >= 5) {
+        setError('الترحيل التجريبي محدود بخمسة طلاب فقط.');
+        return current;
+      }
+      setError('');
+      return [...current, localStudentId];
+    });
+  };
+
+  const migratePilot = async () => {
+    setError('');
+    setMigrationMessage('');
+    if (selectedPilotIds.length < 1 || selectedPilotIds.length > 5) {
+      setError('اختر من طالب واحد إلى خمسة طلاب بحالة «بانتظار الترحيل».');
+      return;
+    }
+    if (confirmationText.trim() !== 'ترحيل تجريبي') {
+      setError('اكتب عبارة «ترحيل تجريبي» كما هي لتأكيد العملية.');
+      return;
+    }
+    const selectedStudents = students.filter((student: any) =>
+      selectedPilotIds.includes(String(student.localStudentId || student.id || '').trim()),
+    );
+    if (selectedStudents.some((student: any) => results[String(student.localStudentId || student.id || '').trim()]?.status !== 'pending')) {
+      setError('يمكن اختيار الطلاب الذين ظهرت حالتهم «بانتظار الترحيل» فقط.');
+      return;
+    }
+    setIsMigrating(true);
+    try {
+      const requestId = `pilot-${schoolCode}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const response = await migratePilotStudents({
+        schoolCode,
+        actorId,
+        requestId,
+        confirmationText: confirmationText.trim(),
+        students: selectedStudents as any[],
+      });
+      if (!response.ok) throw new Error(response.error || 'PILOT_MIGRATION_FAILED');
+      const next = { ...results };
+      (response.results || []).forEach((item) => {
+        if (item.localStudentId) next[item.localStudentId] = item;
+      });
+      setResults(next);
+      setSelectedPilotIds([]);
+      setConfirmationText('');
+      setMigrationMessage(`نجح الترحيل التجريبي. رقم العملية: ${response.migrationJobId || 'غير متوفر'}. لم تتغير الأكواد المحلية الحالية.`);
+    } catch (migrationError) {
+      console.error('Pilot identity migration failed', migrationError);
+      setError(migrationError instanceof Error ? migrationError.message : 'تعذر تنفيذ الترحيل التجريبي.');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   const clearPreview = () => {
     setResults({});
     setError('');
     setLastCheckedAt('');
+    setSelectedPilotIds([]);
+    setConfirmationText('');
+    setMigrationMessage('');
   };
 
   const exportReport = () => {
@@ -357,6 +424,37 @@ const IdentityInspectionTool: React.FC = () => {
         </div>
       </div>
 
+
+      <div className="rounded-3xl border border-warning/30 bg-warning/10 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="font-black text-textPrimary">الترحيل التجريبي المحكوم</h3>
+            <p className="mt-1 text-sm font-bold leading-7 text-textSecondary">
+              اختر من طالب واحد إلى خمسة طلاب بحالة «بانتظار الترحيل». ستنشأ الهوية المركزية ويحفظ الكود القديم كاسم بديل، ولن يتغير كود الطالب داخل التطبيق.
+            </p>
+            <p className="mt-2 text-xs font-black text-warning">المحدد حاليًا: {selectedPilotIds.length} من 5</p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
+            <input
+              value={confirmationText}
+              onChange={(event) => setConfirmationText(event.target.value)}
+              placeholder="اكتب: ترحيل تجريبي"
+              className="h-11 flex-1 rounded-2xl border border-warning/30 bg-bgCard px-4 font-bold text-textPrimary outline-none focus:border-warning"
+            />
+            <button
+              type="button"
+              onClick={migratePilot}
+              disabled={isMigrating || selectedPilotIds.length < 1 || confirmationText.trim() !== 'ترحيل تجريبي'}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-warning px-5 font-black text-white disabled:opacity-50"
+            >
+              {isMigrating ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+              تنفيذ الترحيل التجريبي
+            </button>
+          </div>
+        </div>
+        {migrationMessage && <div className="mt-4 rounded-2xl border border-success/20 bg-success/10 p-4 text-sm font-black text-success">{migrationMessage}</div>}
+      </div>
+
       <div className="overflow-hidden rounded-3xl border border-borderColor bg-bgCard shadow-sm">
         <div className="flex flex-col gap-2 border-b border-borderColor px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -375,6 +473,7 @@ const IdentityInspectionTool: React.FC = () => {
           <table className="min-w-[1050px] w-full text-right text-sm">
             <thead className="bg-bgSoft text-xs font-black text-textSecondary">
               <tr>
+                <th className="px-4 py-3">اختيار</th>
                 <th className="px-4 py-3">الطالب</th>
                 <th className="px-4 py-3">الفصل</th>
                 <th className="px-4 py-3">الكود الحالي</th>
@@ -391,6 +490,16 @@ const IdentityInspectionTool: React.FC = () => {
                 const meta = STATUS_META[status];
                 return (
                   <tr key={row.localStudentId} className="hover:bg-bgSoft/70">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`اختيار ${row.name} للترحيل التجريبي`}
+                        checked={selectedPilotIds.includes(row.localStudentId)}
+                        disabled={status !== 'pending' || (!selectedPilotIds.includes(row.localStudentId) && selectedPilotIds.length >= 5)}
+                        onChange={() => togglePilotStudent(row.localStudentId)}
+                        className="h-5 w-5 accent-primary disabled:opacity-40"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-black text-textPrimary">{row.name || 'بلا اسم'}</div>
                       <div className="mt-1 font-mono text-[11px] text-textSecondary">{row.localStudentId || 'بلا معرف محلي'}</div>
@@ -421,7 +530,7 @@ const IdentityInspectionTool: React.FC = () => {
               })}
               {!filteredRows.length && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center font-bold text-textSecondary">
+                  <td colSpan={9} className="px-4 py-12 text-center font-bold text-textSecondary">
                     لا توجد نتائج مطابقة للفلاتر الحالية.
                   </td>
                 </tr>
