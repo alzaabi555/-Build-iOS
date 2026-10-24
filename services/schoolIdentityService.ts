@@ -1,5 +1,5 @@
 /**
- * Rased School Identity Client v1.1.0
+ * Rased School Identity Client v1.4.0
  * يدعم الفحص الآمن والترحيل التجريبي المحكوم لخمسة طلاب كحد أقصى.
  */
 export type IdentityResolutionStatus = 'matched' | 'created' | 'pending' | 'conflict' | 'invalid';
@@ -40,7 +40,7 @@ export interface BatchResolutionResponse {
 }
 
 // انقل هنا رابط /exec نفسه من النسخة الحالية من schoolIdentityService.ts.
-const SCHOOL_IDENTITY_URL = 'https://script.google.com/macros/s/AKfycbyG1DTqpZGgi0qmjswbttvBmP2j3Afhj0t303XM0N6M4P8LwNhpMx56u1fr0zpjzb3R/exec';
+const SCHOOL_IDENTITY_URL = 'PASTE_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
 const REQUEST_TIMEOUT_MS = 30000;
 
 const getServiceUrl = () => {
@@ -194,3 +194,13 @@ export const migrateClassStudents = async (params: {
     students: normalizeStudents(students),
   });
 };
+
+
+export interface AdminIdentityRow { centralStudentId:string; rasedId:string; studentName:string; className:string; status:string; legacyRasedIds:string[]; createdAt?:string; updatedAt?:string; }
+export const adminLogin = (schoolCode:string, actorId:string, adminCode:string) => postJson<any>({action:'adminLogin',schoolCode,actorId,adminCode});
+export const adminSummary = (schoolCode:string, adminToken:string) => postJson<any>({action:'adminSummary',schoolCode,adminToken});
+export const adminListIdentities = (schoolCode:string, adminToken:string, filters:Record<string,string>={}) => postJson<{ok:boolean;rows:AdminIdentityRow[];error?:string}>({action:'adminListIdentities',schoolCode,adminToken,...filters});
+export const adminListConflicts = (schoolCode:string, adminToken:string, status='open') => postJson<any>({action:'adminListConflicts',schoolCode,adminToken,status});
+export const adminListMigrations = (schoolCode:string, adminToken:string) => postJson<any>({action:'adminListMigrations',schoolCode,adminToken});
+export const adminListAudit = (schoolCode:string, adminToken:string, query='') => postJson<any>({action:'adminListAudit',schoolCode,adminToken,query});
+export const adminSetIdentityStatus = (schoolCode:string, adminToken:string, centralStudentId:string, status:'active'|'inactive') => postJson<any>({action:'adminSetIdentityStatus',schoolCode,adminToken,centralStudentId,status});
