@@ -40,7 +40,7 @@ export interface BatchResolutionResponse {
 }
 
 // انقل هنا رابط /exec نفسه من النسخة الحالية من schoolIdentityService.ts.
-const SCHOOL_IDENTITY_URL = 'https://script.google.com/macros/s/AKfycbyG1DTqpZGgi0qmjswbttvBmP2j3Afhj0t303XM0N6M4P8LwNhpMx56u1fr0zpjzb3R/exec';
+const SCHOOL_IDENTITY_URL = 'PASTE_GOOGLE_APPS_SCRIPT_EXEC_URL_HERE';
 const REQUEST_TIMEOUT_MS = 30000;
 
 const getServiceUrl = () => {
@@ -129,5 +129,35 @@ export const migratePilotStudents = async (params: {
     requestId,
     confirmationText,
     students: normalizeStudents(students),
+  });
+};
+
+/** تحديث وصفي فقط: الاسم والفصل، من دون تغيير الهوية أو أي كود. */
+export const syncStudentIdentityProfiles = async (params: {
+  schoolCode: string;
+  actorId: string;
+  profiles: Array<{
+    centralStudentId: string;
+    name: string;
+    classes?: string[];
+    className?: string;
+  }>;
+}): Promise<{ ok: boolean; updated?: number; unchanged?: number; notFound?: number; error?: string }> => {
+  const schoolCode = String(params.schoolCode || '').trim();
+  const actorId = String(params.actorId || '').trim();
+  const profiles = Array.isArray(params.profiles) ? params.profiles.slice(0, 100) : [];
+  if (!schoolCode) throw new Error('SCHOOL_CODE_REQUIRED');
+  if (!actorId) throw new Error('ACTOR_ID_REQUIRED');
+  if (!profiles.length) return { ok: true, updated: 0, unchanged: 0, notFound: 0 };
+  return postJson({
+    action: 'updateStudentIdentityProfiles',
+    schoolCode,
+    actorId,
+    profiles: profiles.map((profile) => ({
+      centralStudentId: String(profile.centralStudentId || '').trim(),
+      name: String(profile.name || '').trim(),
+      classes: Array.isArray(profile.classes) ? profile.classes : undefined,
+      className: String(profile.className || '').trim(),
+    })),
   });
 };
