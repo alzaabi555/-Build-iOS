@@ -30,28 +30,7 @@ const CLOUD_PAYLOAD_CHUNK_SIZE = 30000;
 type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
-interface StudentCloudResponse<T = unknown> {
-  success?: boolean;
-  status?: string;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-interface StudentGradeSyncDiagnostics {
-  version: string;
-  targetSheet: string;
-  receivedAt?: string;
-  incomingStudents: number;
-  studentsWithGrades: number;
-  incomingGrades: number;
-  added: number;
-  updated: number;
-  unchanged: number;
-  skippedNoIdentity: number;
-  beforeRows: number;
-  afterRows: number;
-}
+interface StudentGradeSyncDiagnostics { version:string; targetSheet:string; incomingStudents:number; incomingGrades:number; added:number; updated:number; unchanged:number; beforeRows:number; afterRows:number; linkedBySourceId?:number; linkedByLegacyFingerprint?:number; }
 
 
 interface CloudRecord {
@@ -207,31 +186,15 @@ const GlobalSyncManager: React.FC = () => {
     return response;
   };
 
-  const postStudentCloud = async (body: unknown) => {
-    const response = await fetch(STUDENT_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(body)
-    });
+  const postStudentCloudVerified = async (body: unknown): Promise<StudentGradeSyncDiagnostics> => {
+    const response = await fetch(STUDENT_APP_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(body) });
     const raw = await response.text();
-    let result: StudentCloudResponse<{
-      message?: string;
-      version?: string;
-      gradeSync?: StudentGradeSyncDiagnostics;
-    }>;
-    try {
-      result = JSON.parse(raw);
-    } catch {
-      throw new Error(`استجابة سحابة الطالب غير صالحة: ${raw.slice(0, 180)}`);
-    }
-    if (!response.ok || result.success !== true || result.status !== 'success') {
-      throw new Error(result.error || result.message || `HTTP ${response.status}`);
-    }
-    const version = String(result.data?.version || '');
-    const gradeSync = result.data?.gradeSync;
-    if (version !== '3.8.0' || !gradeSync) {
-      throw new Error(`تم الوصول إلى نشر قديم أو مشروع مختلف. الإصدار المتوقع 3.8.0 والمستلم ${version || 'غير معروف'}.`);
-    }
+    let result: any;
+    try { result = JSON.parse(raw); } catch { throw new Error(`استجابة سحابة الطالب غير صالحة: ${raw.slice(0,160)}`); }
+    if (!response.ok || result?.success !== true || result?.status !== 'success') throw new Error(result?.error || result?.message || `HTTP ${response.status}`);
+    const version = String(result?.data?.version || '');
+    const gradeSync = result?.data?.gradeSync as StudentGradeSyncDiagnostics | undefined;
+    if (version !== '3.9.0' || !gradeSync) throw new Error(`الإصدار المتوقع 3.9.0 والمستلم ${version || 'غير معروف'}.`);
     return gradeSync;
   };
 
@@ -258,30 +221,11 @@ const GlobalSyncManager: React.FC = () => {
       throw new Error('لا يوجد طلاب مرتبطون بالهوية المركزية وجاهزون للمزامنة.');
     }
 
-    const localIncomingGrades = publishableStudents.reduce(
-      (sum, student) => sum + (Array.isArray(student.grades) ? student.grades.length : 0),
-      0
-    );
-
-    const gradeSync = await postStudentCloud({
-      identitySchemaVersion: 1,
-      identityMode: 'central_with_legacy_aliases',
-      students: publishableStudents,
-      tasks,
-      resources: libraryArchive,
-      gameQuestions,
-      className: 'الكل'
-    });
-
-    if (gradeSync.incomingStudents !== publishableStudents.length) {
-      throw new Error(`السحابة استقبلت ${gradeSync.incomingStudents} طالبًا بدل ${publishableStudents.length}.`);
-    }
-    if (gradeSync.incomingGrades !== localIncomingGrades) {
-      throw new Error(`السحابة استقبلت ${gradeSync.incomingGrades} درجة بدل ${localIncomingGrades}.`);
-    }
-    setSyncMessage(
-      `نجحت مزامنة الطالب v${gradeSync.version}: ${gradeSync.updated} تحديث، ${gradeSync.added} إضافة، ${gradeSync.unchanged} دون تغيير.`
-    );
+    const localIncomingGrades = publishableStudents.reduce((sum, student) => sum + (Array.isArray(student.grades) ? student.grades.length : 0), 0);
+    const gradeSync = await postStudentCloudVerified({ identitySchemaVersion:1, identityMode:'central_with_legacy_aliases', students:publishableStudents, tasks, resources:libraryArchive, gameQuestions, className:'الكل' });
+    if (gradeSync.incomingStudents !== publishableStudents.length) throw new Error(`السحابة استقبلت ${gradeSync.incomingStudents} طالبًا بدل ${publishableStudents.length}.`);
+    if (gradeSync.incomingGrades !== localIncomingGrades) throw new Error(`السحابة استقبلت ${gradeSync.incomingGrades} درجة بدل ${localIncomingGrades}.`);
+    setSyncMessage(`نجحت مزامنة الطالب v${gradeSync.version}: ${gradeSync.updated} تحديث، ${gradeSync.added} إضافة، ${gradeSync.unchanged} دون تغيير.`);
   };
 
   const syncParentApp = async () => {
