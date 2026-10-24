@@ -54,6 +54,7 @@ import StudentGroups from './components/StudentGroups';
 import TeacherLibrary from './components/TeacherLibrary';
 import GlobalSyncManager from './components/GlobalSyncManager';
 import IdentityInspectionTool from './components/IdentityInspectionTool';
+import IdentityAdminDashboard from './components/IdentityAdminDashboard';
 import SeniorDashboard from './components/SeniorDashboard';
 import TeacherMailbox from './components/TeacherMailbox';
 import TeacherPreparations from './components/preparations/TeacherPreparations';
@@ -387,6 +388,7 @@ const AppContent: React.FC = () => {
   const [gameResults, setGameResults] = useState<TeacherGameResultLogEntry[]>([]);
   const [isLoadingGameResults, setIsLoadingGameResults] = useState(false);
   const [appVersion, setAppVersion] = useState('4.4.1');
+  const adminTapRef = useRef<{ count: number; startedAt: number }>({ count: 0, startedAt: 0 });
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const lockReady = localStorage.getItem('rased_teacher_lock_ready') === 'true';
@@ -1083,8 +1085,27 @@ const handleToggleNotifications = () => {
     );
   };
 
+  const handleHiddenAdminGesture = () => {
+    const now = Date.now();
+    const state = adminTapRef.current;
+    if (!state.startedAt || now - state.startedAt > 5000) {
+      adminTapRef.current = { count: 1, startedAt: now };
+      return;
+    }
+    const nextCount = state.count + 1;
+    if (nextCount >= 7) {
+      adminTapRef.current = { count: 0, startedAt: 0 };
+      setActiveTab('identity_admin');
+      return;
+    }
+    adminTapRef.current = { count: nextCount, startedAt: state.startedAt };
+  };
+
   const renderContent = () => {
     switch (activeTab) {
+      case 'identity_admin':
+        return <IdentityAdminDashboard onClose={() => setActiveTab('dashboard')} />;
+
       case 'dashboard':
         return (
           <Dashboard
@@ -1294,7 +1315,16 @@ const handleToggleNotifications = () => {
       onNavigate={handleNavigate}
       desktopNavItems={desktopNavItems}
       mobileNavItems={mobileNavItems}
-      Logo={<BrandLogo style={{ width: '100%', height: '100%', objectFit: 'contain' }} showText={false} />}
+      Logo={
+        <button
+          type="button"
+          onClick={handleHiddenAdminGesture}
+          aria-label="شعار راصد"
+          className="h-full w-full"
+        >
+          <BrandLogo style={{ width: '100%', height: '100%', objectFit: 'contain' }} showText={false} />
+        </button>
+      }
       appName={t('appNameMain') || 'راصد'}
       appSubtitle={t('appSubtitleMain') || 'النسخة المتقدمة'}
     >
