@@ -204,3 +204,16 @@ export const adminListConflicts = (schoolCode:string, adminToken:string, status=
 export const adminListMigrations = (schoolCode:string, adminToken:string) => postJson<any>({action:'adminListMigrations',schoolCode,adminToken});
 export const adminListAudit = (schoolCode:string, adminToken:string, query='') => postJson<any>({action:'adminListAudit',schoolCode,adminToken,query});
 export const adminSetIdentityStatus = (schoolCode:string, adminToken:string, centralStudentId:string, status:'active'|'inactive') => postJson<any>({action:'adminSetIdentityStatus',schoolCode,adminToken,centralStudentId,status});
+
+
+export interface CentralClassStudent {
+  centralStudentId: string;
+  schoolId: string;
+  schoolCode: string;
+  rasedId: string;
+  studentName: string;
+  className: string;
+  status: string;
+}
+export const getSchoolClasses = (schoolCode:string) => postJson<{ok:boolean;classes:string[];error?:string}>({action:'getSchoolClasses',schoolCode});
+export const getClassStudents = (schoolCode:string,className:string) => postJson<{ok:boolean;students:CentralClassStudent[];error?:string}>({action:'getClassStudents',schoolCode,className});
