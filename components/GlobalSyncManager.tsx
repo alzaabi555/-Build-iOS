@@ -125,6 +125,26 @@ const restoreFullBackupFromRecords = (
   return JSON.parse(serialized) as RasedBackupPayload;
 };
 
+const isCentralIdentityReady = (student: any) =>
+  Boolean(
+    student?.centralStudentId &&
+    student?.schoolId &&
+    student?.centralRasedId &&
+    ['matched', 'created'].includes(String(student?.identityStatus || ''))
+  );
+
+const toCentralIdentityEnvelope = (student: any) => ({
+  localStudentId: student.localStudentId || student.id || '',
+  centralStudentId: student.centralStudentId || '',
+  schoolId: student.schoolId || '',
+  schoolCode: student.schoolCode || '',
+  rasedId: student.rasedId || student.centralRasedId || '',
+  centralRasedId: student.centralRasedId || student.rasedId || '',
+  legacyRasedIds: Array.isArray(student.legacyRasedIds) ? student.legacyRasedIds : [],
+  identityStatus: student.identityStatus || '',
+  identityUpdatedAt: student.identityUpdatedAt || ''
+});
+
 const GlobalSyncManager: React.FC = () => {
   const {
     students,
@@ -178,8 +198,18 @@ const GlobalSyncManager: React.FC = () => {
       []
     );
 
+    const publishableStudents = students
+      .filter(isCentralIdentityReady)
+      .map(student => ({ ...student, ...toCentralIdentityEnvelope(student) }));
+
+    if (publishableStudents.length === 0) {
+      throw new Error('لا يوجد طلاب مرتبطون بالهوية المركزية وجاهزون للمزامنة.');
+    }
+
     await postJson(STUDENT_APP_URL, {
-      students,
+      identitySchemaVersion: 1,
+      identityMode: 'central_with_legacy_aliases',
+      students: publishableStudents,
       tasks,
       resources: libraryArchive,
       gameQuestions,
@@ -194,7 +224,7 @@ const GlobalSyncManager: React.FC = () => {
     const currentYear = today.getFullYear();
 
     const parentPayload = students
-      .filter(student => student.rasedId?.trim())
+      .filter(isCentralIdentityReady)
       .map(student => {
         const monthlyPoints = (student.behaviors || [])
           .filter(behavior => {
@@ -207,7 +237,7 @@ const GlobalSyncManager: React.FC = () => {
           .reduce((sum, behavior) => sum + Number(behavior.points || 0), 0);
 
         return {
-          rasedId: student.rasedId,
+          ...toCentralIdentityEnvelope(student),
           name: student.name,
           className: student.classes?.[0] || '',
           subject: teacherInfo?.subject || t('unspecified'),
@@ -223,7 +253,16 @@ const GlobalSyncManager: React.FC = () => {
       throw new Error(t('syncNoStudentRasedCode'));
     }
 
-    await postJson(PARENT_APP_URL, parentPayload);
+    if (parentPayload.length === 0) {
+      throw new Error('لا يوجد طلاب مرتبطون بالهوية المركزية وجاهزون للمزامنة.');
+    }
+
+    await postJson(PARENT_APP_URL, {
+      identitySchemaVersion: 1,
+      identityMode: 'central_with_legacy_aliases',
+      students: parentPayload,
+      timestamp: new Date().toISOString()
+    });
   };
 
   const syncAdminApp = async () => {
