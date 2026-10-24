@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import {
   inspectStudentsIdentity,
   migratePilotStudents,
+  syncStudentIdentityProfiles,
   type IdentityResolutionResult,
   type IdentityResolutionStatus,
 } from '../services/schoolIdentityService';
@@ -83,7 +84,7 @@ const getCurrentRasedId = (student: any): string =>
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
 const IdentityInspectionTool: React.FC = () => {
-  const { students, classes, teacherInfo } = useApp();
+  const { students, setStudents, classes, teacherInfo } = useApp();
   const schoolCode = String(
     localStorage.getItem('rased_admin_school_code') ||
       (teacherInfo as any)?.schoolCode ||
@@ -154,6 +155,55 @@ const IdentityInspectionTool: React.FC = () => {
     });
   }, [rows, query, selectedClass, statusFilter]);
 
+  const persistIdentityResults = async (items: IdentityResolutionResult[]) => {
+    const usable = items.filter((item) =>
+      Boolean(item.localStudentId && item.centralStudentId && item.schoolId && item.rasedId),
+    );
+    if (!usable.length) return;
+    const byLocalId = new Map(usable.map((item) => [item.localStudentId, item]));
+    const now = new Date().toISOString();
+
+    setStudents((currentStudents: any[]) => currentStudents.map((student: any) => {
+      const localId = String(student.localStudentId || student.id || '').trim();
+      const item = byLocalId.get(localId);
+      if (!item) return student;
+      const currentCode = getCurrentRasedId(student);
+      return {
+        ...student,
+        localStudentId: localId,
+        centralStudentId: item.centralStudentId,
+        schoolId: item.schoolId,
+        schoolCode,
+        centralRasedId: item.rasedId,
+        legacyRasedIds: Array.from(new Set([
+          ...(Array.isArray(student.legacyRasedIds) ? student.legacyRasedIds : []),
+          ...(item.legacyRasedIds || []),
+          ...(currentCode ? [currentCode] : []),
+        ])),
+        identityStatus: item.status === 'created' ? 'created' : 'matched',
+        identityUpdatedAt: now,
+        identityConflictId: undefined,
+        identitySource: item.status === 'created' ? 'migration' : 'central',
+        // لا نغيّر rasedId أو parentCode الحاليين في المرحلة الانتقالية.
+      };
+    }));
+
+    const sourceById = new Map(students.map((student: any) => [
+      String(student.localStudentId || student.id || '').trim(), student,
+    ]));
+    const profiles = usable.map((item) => {
+      const student: any = sourceById.get(item.localStudentId);
+      return {
+        centralStudentId: item.centralStudentId!,
+        name: String(student?.name || '').trim(),
+        classes: Array.isArray(student?.classes) ? student.classes : undefined,
+        className: getClassName(student),
+      };
+    });
+    const profileResponse = await syncStudentIdentityProfiles({ schoolCode, actorId, profiles });
+    if (!profileResponse.ok) throw new Error(profileResponse.error || 'PROFILE_SYNC_FAILED');
+  };
+
   const inspect = async () => {
     setError('');
     if (!schoolCode) {
@@ -189,6 +239,7 @@ const IdentityInspectionTool: React.FC = () => {
         if (item.localStudentId) next[item.localStudentId] = item;
       });
       setResults(next);
+      await persistIdentityResults(response.results || []);
       setLastCheckedAt(new Date().toISOString());
     } catch (inspectionError) {
       console.error('Identity inspection failed', inspectionError);
@@ -250,6 +301,7 @@ const IdentityInspectionTool: React.FC = () => {
         if (item.localStudentId) next[item.localStudentId] = item;
       });
       setResults(next);
+      await persistIdentityResults(response.results || []);
       setSelectedPilotIds([]);
       setConfirmationText('');
       setMigrationMessage(`نجح الترحيل التجريبي. رقم العملية: ${response.migrationJobId || 'غير متوفر'}. لم تتغير الأكواد المحلية الحالية.`);
