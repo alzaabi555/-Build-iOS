@@ -869,9 +869,12 @@ const handleToggleNotifications = () => {
 
   const upsertStudentByIdentity = (previousStudents: any[], incomingStudent: any, schoolIdentity: string) => {
     const incomingClass = getStudentClassForRased(incomingStudent);
+    const incomingCentralId = String(incomingStudent?.centralStudentId || '').trim();
     const incomingKey = makeStudentIdentityKeyForRased(schoolIdentity, incomingStudent?.name || '', incomingClass);
 
     const existingIndex = previousStudents.findIndex(student => {
+      const existingCentralId = String(student?.centralStudentId || '').trim();
+      if (incomingCentralId && existingCentralId) return incomingCentralId === existingCentralId;
       const existingKey = makeStudentIdentityKeyForRased(schoolIdentity, student?.name || '', getStudentClassForRased(student));
       return existingKey === incomingKey;
     });
@@ -888,6 +891,15 @@ const handleToggleNotifications = () => {
       rasedId: existingCode || incomingCode || incomingStudent.rasedId,
       parentCode: existingCode || incomingCode || incomingStudent.parentCode,
       id: existingStudent.id || incomingStudent.id,
+      localStudentId: existingStudent.localStudentId || existingStudent.id || incomingStudent.localStudentId || incomingStudent.id,
+      centralStudentId: existingStudent.centralStudentId || incomingStudent.centralStudentId,
+      centralRasedId: existingStudent.centralRasedId || incomingStudent.centralRasedId,
+      schoolId: existingStudent.schoolId || incomingStudent.schoolId,
+      schoolCode: existingStudent.schoolCode || incomingStudent.schoolCode,
+      legacyRasedIds: Array.from(new Set([...(existingStudent.legacyRasedIds || []), ...(incomingStudent.legacyRasedIds || [])])),
+      identityStatus: incomingStudent.identityStatus || existingStudent.identityStatus,
+      identityUpdatedAt: incomingStudent.identityUpdatedAt || existingStudent.identityUpdatedAt,
+      identitySource: incomingStudent.identitySource || existingStudent.identitySource,
       parentPhone: incomingStudent.parentPhone || existingStudent.parentPhone,
       gender: incomingStudent.gender || existingStudent.gender,
       avatar: incomingStudent.avatar || existingStudent.avatar,
@@ -972,10 +984,15 @@ const handleToggleNotifications = () => {
         const studentClass = getStudentClassForRased(student);
         if (!studentName || !studentClass) return;
         const existingCode = getExistingRasedCode(student);
-        const stableCode = existingCode || generateStableRasedId(schoolIdentity, studentName, studentClass);
+        const centralStudentId = String(student?.centralStudentId || '').trim();
+        // لا يولّد التطبيق كودًا محليًا للطالب المرتبط مركزيًا.
+        const stableCode = centralStudentId
+          ? existingCode || String(student?.centralRasedId || '').trim()
+          : existingCode || generateStableRasedId(schoolIdentity, studentName, studentClass);
         const normalizedStudent = {
           ...student,
           id: student.id || `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          localStudentId: student.localStudentId || student.id || `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           name: studentName,
           classes: Array.isArray(student.classes) && student.classes.length > 0 ? student.classes : [studentClass],
           attendance: Array.isArray(student.attendance) ? student.attendance : [],
