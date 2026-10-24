@@ -229,8 +229,8 @@ const GlobalSyncManager: React.FC = () => {
     }
     const version = String(result.data?.version || '');
     const gradeSync = result.data?.gradeSync;
-    if (version !== '3.7.0' || !gradeSync) {
-      throw new Error(`تم الوصول إلى نشر قديم أو مشروع مختلف. الإصدار المتوقع 3.7.0 والمستلم ${version || 'غير معروف'}.`);
+    if (version !== '3.8.0' || !gradeSync) {
+      throw new Error(`تم الوصول إلى نشر قديم أو مشروع مختلف. الإصدار المتوقع 3.8.0 والمستلم ${version || 'غير معروف'}.`);
     }
     return gradeSync;
   };
