@@ -85,7 +85,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const RASED_DB_FILENAME = 'teacher_raseddatabasev2.json';
-export const RASED_BACKUP_SCHEMA_VERSION = 6;
+export const RASED_BACKUP_SCHEMA_VERSION = 7;
 export const RASED_APP_DATA_VERSION = '5.0.0';
 
 const CORE_STORAGE_KEYS = {
@@ -533,15 +533,19 @@ const migrateAndDedupeStudents = (
     if (!rawStudent) return;
 
     const studentClass = getStudentClassValue(rawStudent) || 'غير محدد';
-    const identityKey = makeStudentIdentityKey(
-      schoolName,
-      rawStudent.name || '',
-      studentClass
-    );
+    const centralStudentId = String(rawStudent.centralStudentId || '').trim();
+    const identityKey = centralStudentId
+      ? `central_${centralStudentId}`
+      : makeStudentIdentityKey(
+          schoolName,
+          rawStudent.name || '',
+          studentClass
+        );
     const existingCode = getExistingRasedCodeFromStudent(rawStudent);
-    const rasedId =
-      existingCode ||
-      generateRasedId(rawStudent.name || '', studentClass, schoolName);
+    // الطالب المرتبط مركزيًا لا يمر مطلقًا عبر مولد RSD المحلي.
+    const rasedId = centralStudentId
+      ? existingCode || String(rawStudent.centralRasedId || '').trim()
+      : existingCode || generateRasedId(rawStudent.name || '', studentClass, schoolName);
 
     const {
       civilID,
@@ -555,6 +559,8 @@ const migrateAndDedupeStudents = (
     const normalizedStudent = {
       ...cleanStudent,
       id: cleanStudent.id || rawStudent.id || rasedId,
+      localStudentId: cleanStudent.localStudentId || cleanStudent.id || rawStudent.id || rasedId,
+      centralStudentId: centralStudentId || undefined,
       rasedId,
       name: rawStudent.name || '',
       classes:
@@ -587,6 +593,19 @@ const migrateAndDedupeStudents = (
       ...existing,
       ...normalizedStudent,
       rasedId: existing.rasedId || normalizedStudent.rasedId,
+      localStudentId: existing.localStudentId || normalizedStudent.localStudentId,
+      centralStudentId: existing.centralStudentId || normalizedStudent.centralStudentId,
+      centralRasedId: existing.centralRasedId || normalizedStudent.centralRasedId,
+      schoolId: existing.schoolId || normalizedStudent.schoolId,
+      schoolCode: existing.schoolCode || normalizedStudent.schoolCode,
+      legacyRasedIds: Array.from(new Set([
+        ...(existing.legacyRasedIds || []),
+        ...(normalizedStudent.legacyRasedIds || [])
+      ])),
+      identityStatus: normalizedStudent.identityStatus || existing.identityStatus,
+      identityUpdatedAt: normalizedStudent.identityUpdatedAt || existing.identityUpdatedAt,
+      identityConflictId: normalizedStudent.identityConflictId || existing.identityConflictId,
+      identitySource: normalizedStudent.identitySource || existing.identitySource,
       parentPhone:
         normalizedStudent.parentPhone || existing.parentPhone,
       gender: normalizedStudent.gender || existing.gender,
