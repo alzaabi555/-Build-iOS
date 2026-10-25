@@ -672,6 +672,13 @@ const handleToggleNotifications = () => {
       setActiveTab('help_settings');
       return;
     }
+    // في الهاتف لا يظهر شعار الرأس؛ لذلك تعمل الإيماءة السرية أيضًا
+    // عبر الضغط 7 مرات خلال 5 ثوانٍ على زر "المزيد" في شريط التنقل السفلي.
+    if (tab === 'help_settings') {
+      handleHiddenAdminGesture();
+      setActiveTab('help_settings');
+      return;
+    }
     setActiveTab(tab);
   };
   const renderHubTabs = <T extends string>(
