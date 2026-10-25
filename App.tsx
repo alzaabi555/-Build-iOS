@@ -672,13 +672,6 @@ const handleToggleNotifications = () => {
       setActiveTab('help_settings');
       return;
     }
-    // في الهاتف لا يظهر شعار الرأس؛ لذلك تعمل الإيماءة السرية أيضًا
-    // عبر الضغط 7 مرات خلال 5 ثوانٍ على زر "المزيد" في شريط التنقل السفلي.
-    if (tab === 'help_settings') {
-      handleHiddenAdminGesture();
-      setActiveTab('help_settings');
-      return;
-    }
     setActiveTab(tab);
   };
   const renderHubTabs = <T extends string>(
@@ -1311,6 +1304,21 @@ const handleToggleNotifications = () => {
       case 'help_settings':
         return (
           <div className="h-full min-h-0 overflow-y-auto overscroll-contain custom-scrollbar space-y-4 pb-24 pr-1">
+            {/* مدخل مشرف الهوية للهاتف فقط. زر المزيد يحتفظ بوظيفته الطبيعية بالكامل. */}
+            <div className="md:hidden flex items-center justify-between rounded-2xl border border-borderColor bg-bgCard px-4 py-3 shadow-sm">
+              <div className="text-right">
+                <p className="text-sm font-black text-textPrimary">المزيد</p>
+                <p className="text-[11px] font-bold text-textSecondary">الإعدادات والمزامنة والمساعدة</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleHiddenAdminGesture}
+                aria-label="شعار راصد"
+                className="h-11 w-11 shrink-0 rounded-xl border border-borderColor bg-bgSoft p-1.5 active:scale-95 transition-transform"
+              >
+                <BrandLogo style={{ width: '100%', height: '100%', objectFit: 'contain' }} showText={false} />
+              </button>
+            </div>
             {renderHubTabs(
               [
                 { id: 'settings', label: t('tabSettings'), icon: SettingsIcon },
