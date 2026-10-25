@@ -280,6 +280,9 @@ const StudentList: React.FC<StudentListProps> = ({
     const [showManualAddModal, setShowManualAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [isLoadingCentralClass, setIsLoadingCentralClass] = useState(false);
+    const [showCentralClassPicker, setShowCentralClassPicker] = useState(false);
+    const [centralClasses, setCentralClasses] = useState<string[]>([]);
+    const [selectedCentralClass, setSelectedCentralClass] = useState('');
 
     const addClassFromCentralRegistry = async () => {
         setShowMenu(false);
@@ -289,14 +292,31 @@ const StudentList: React.FC<StudentListProps> = ({
         try {
             const classResponse = await getSchoolClasses(schoolCode);
             if (!classResponse.ok) throw new Error(classResponse.error || 'تعذر جلب الفصول');
-            if (!classResponse.classes.length) { alert('لا توجد فصول مركزية متاحة.'); return; }
-            const choice = window.prompt(`اكتب اسم الفصل المطلوب كما يظهر أدناه:\n${classResponse.classes.join('، ')}`, classResponse.classes[0]);
-            if (!choice) return;
-            const className = choice.trim();
-            if (!classResponse.classes.includes(className)) { alert('الفصل المدخل غير موجود في السجل المركزي.'); return; }
+            const availableClasses = Array.from(
+                new Set((classResponse.classes || []).map(value => String(value || '').trim()).filter(Boolean))
+            ).sort((a, b) => a.localeCompare(b, 'ar', { numeric: true }));
+            if (!availableClasses.length) { alert('لا توجد فصول مركزية متاحة.'); return; }
+            setCentralClasses(availableClasses);
+            setSelectedCentralClass(availableClasses[0]);
+            setShowCentralClassPicker(true);
+        } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'تعذر جلب الفصول المركزية.');
+        } finally {
+            setIsLoadingCentralClass(false);
+        }
+    };
+
+    const importSelectedCentralClass = async () => {
+        const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+        const className = selectedCentralClass.trim();
+        if (!schoolCode || !className || !centralClasses.includes(className)) return;
+        setIsLoadingCentralClass(true);
+        try {
             const response = await getClassStudents(schoolCode, className);
             if (!response.ok) throw new Error(response.error || 'تعذر جلب طلاب الفصل');
             const now = new Date().toISOString();
+            let addedCount = 0;
             setStudents(current => {
                 const centralIds = new Set(current.map(student => String((student as any).centralStudentId || '')).filter(Boolean));
                 const additions: Student[] = response.students
@@ -311,14 +331,20 @@ const StudentList: React.FC<StudentListProps> = ({
                             gender: 'male', identityStatus: 'matched', identityUpdatedAt: now, identitySource: 'central'
                         } as Student;
                     });
+                addedCount = additions.length;
                 return [...current, ...additions];
             });
             if (!safeClasses.includes(className)) onAddClass(className);
-            alert(`تمت إضافة طلاب الفصل ${className} من السجل المركزي دون تكرار الطلاب المرتبطين مسبقًا.`);
+            setShowCentralClassPicker(false);
+            alert(addedCount > 0
+                ? `تمت إضافة ${addedCount} طالبًا من الفصل ${className} دون تكرار الطلاب المرتبطين مسبقًا.`
+                : `الفصل ${className} موجود، وجميع طلابه مرتبطون مسبقًا.`);
         } catch (error) {
             console.error(error);
             alert(error instanceof Error ? error.message : 'تعذر جلب الفصل المركزي.');
-        } finally { setIsLoadingCentralClass(false); }
+        } finally {
+            setIsLoadingCentralClass(false);
+        }
     };
 
     const [showAddClassModal, setShowAddClassModal] = useState(false);
@@ -1281,6 +1307,31 @@ const StudentList: React.FC<StudentListProps> = ({
                         <button onClick={() => window.print()} className="px-6 py-2.5 bg-primary text-white text-sm font-black rounded-xl shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center gap-2"><Printer size={18} /> {t('studentsStartPrinting')}</button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible"><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 print:grid-cols-2 print:gap-4 print:w-full print:bg-white">{filteredStudents.map(student => <div key={student.id} className="bg-bgCard print:bg-white border-2 border-dashed border-borderColor print:border-gray-400 p-5 rounded-2xl flex flex-col items-center text-center shadow-sm relative overflow-hidden"><div className="absolute inset-0 flex items-center justify-center opacity-[0.03] print:opacity-[0.05] pointer-events-none"><Sparkles className="w-32 h-32 text-primary print:text-black" /></div><div className="relative z-10 w-full"><h4 className="font-black text-lg text-textPrimary print:text-black mb-1 line-clamp-1">{student.name}</h4><span className="text-xs font-bold bg-bgSoft print:bg-gray-100 text-textSecondary print:text-gray-600 px-3 py-1 rounded-full">{t('classLabel')} {student.classes[0]}</span><span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[9px] font-black ${(student as any).identityStatus === 'matched' || (student as any).identityStatus === 'created' ? 'bg-success/10 text-success' : (student as any).identityStatus === 'conflict' || (student as any).identityStatus === 'invalid' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>{(student as any).identityStatus === 'matched' || (student as any).identityStatus === 'created' ? 'مرتبط مركزيًا' : (student as any).identityStatus === 'conflict' ? 'تعارض هوية' : (student as any).identityStatus === 'invalid' ? 'بيانات غير مكتملة' : 'بانتظار المطابقة'}</span><div className="mt-5 mb-4 p-4 bg-primary/5 print:bg-gray-50 border border-primary/20 print:border-gray-300 rounded-xl w-full"><p className="text-[10px] font-bold text-textSecondary print:text-gray-500 mb-1 uppercase tracking-wider">{t('secretCodeLabel')}</p><p className="font-mono text-xl md:text-2xl font-black text-primary print:text-black tracking-widest">{(student as any).rasedId || (student as any).parentCode || t('studentsGeneratingCode')}</p></div><p className="text-[9px] font-bold text-textSecondary/70 print:text-gray-500 leading-relaxed">{t('studentsSecretCodeInstructions')}</p></div></div>)}</div></div>
+                </div>
+            </DrawerSheet>
+
+            <DrawerSheet isOpen={showCentralClassPicker} onClose={() => !isLoadingCentralClass && setShowCentralClassPicker(false)} isRamadan={isRamadan} dir={dir} mode="side">
+                <div className="flex flex-col h-full w-full text-right pb-4">
+                    <h3 className="font-black text-lg mb-2 text-textPrimary">اختيار فصل من سجل المدرسة</h3>
+                    <p className="text-xs font-bold text-textSecondary mb-6">اختر الفصل من القائمة المركزية بدل كتابة اسمه يدويًا.</p>
+                    <label htmlFor="central-class-select" className="text-xs font-black text-textSecondary mb-2">الفصل</label>
+                    <select
+                        id="central-class-select"
+                        value={selectedCentralClass}
+                        onChange={(event) => setSelectedCentralClass(event.target.value)}
+                        disabled={isLoadingCentralClass}
+                        className="w-full p-4 rounded-xl font-black text-sm outline-none border bg-bgCard border-borderColor focus:border-primary text-textPrimary disabled:opacity-60"
+                    >
+                        {centralClasses.map(className => (
+                            <option key={className} value={className} className="bg-bgCard">{className}</option>
+                        ))}
+                    </select>
+                    <div className="mt-auto pt-6 flex gap-3">
+                        <button type="button" onClick={() => setShowCentralClassPicker(false)} disabled={isLoadingCentralClass} className="flex-1 py-4 rounded-xl font-black text-sm border border-borderColor text-textSecondary bg-bgSoft disabled:opacity-50">إلغاء</button>
+                        <button type="button" onClick={importSelectedCentralClass} disabled={isLoadingCentralClass || !selectedCentralClass} className="flex-[2] py-4 rounded-xl font-black text-sm shadow-lg bg-primary text-white disabled:opacity-50">
+                            {isLoadingCentralClass ? 'جاري جلب الطلاب...' : 'إضافة الفصل المحدد'}
+                        </button>
+                    </div>
                 </div>
             </DrawerSheet>
 
