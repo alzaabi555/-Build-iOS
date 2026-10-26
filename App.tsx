@@ -91,6 +91,8 @@ const sanitizeGameQuestionsForStudent = (questions: any[]) => {
     })
     .map(q => ({
       id: q.id,
+      sourceQuestionId: q.sourceQuestionId || q.id,
+      questionKey: q.questionKey || '',
       publishBatchId: q.publishBatchId || '',
       subjectId: q.subjectId || '',
       subject: q.subject,
@@ -458,6 +460,7 @@ const handleToggleNotifications = () => {
 
     const gamesPayload = {
       action: 'gameQuestions',
+      schemaVersion: payload.schemaVersion || '4.1.1',
       schoolCode: payload.schoolCode,
       teacherId: payload.teacherId,
       publishBatchId: payload.publishBatchId,
