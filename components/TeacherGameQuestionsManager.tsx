@@ -63,9 +63,14 @@ export interface TeacherGameQuestion {
   status?: 'active' | 'archived' | 'review' | string;
   publishBatchId?: string;
   archivedAt?: string;
+  /** المعرف المحلي الثابت للسؤال، لا يتغير عند تحرير السؤال نفسه. */
+  sourceQuestionId?: string;
+  /** مفتاح السجل السحابي: المدرسة + المعلم + دفعة النشر + معرف السؤال. */
+  questionKey?: string;
 }
 
 export interface PublishGameQuestionsPayload {
+  schemaVersion: '4.1.1';
   publishBatchId: string;
   subjectId?: string;
   schoolCode: string;
@@ -93,6 +98,8 @@ interface TeacherGameQuestionsManagerProps {
 type ToastState = { type: 'success' | 'warning' | 'danger'; message: string } | null;
 type QuestionValidation = { ok: boolean; message?: string };
 type QuestionsView = 'editor' | 'archive';
+
+export const TEACHER_GAME_QUESTIONS_SCHEMA_VERSION = '4.1.1';
 
 const TEACHER_GAME_QUESTIONS_CLOUD_URL =
   'https://script.google.com/macros/s/AKfycbwMYqSpnXvlMrL6po82-XePyAWBd9FMNCTgY7WlYaOH6pn1kTazLqxEfvremqsSk_dU/exec';
@@ -280,7 +287,9 @@ const normalizeTeacherGameQuestion = (
     updatedAt: String(raw?.updatedAt || now),
     status: raw?.status,
     publishBatchId: raw?.publishBatchId,
-    archivedAt: raw?.archivedAt
+    archivedAt: raw?.archivedAt,
+    sourceQuestionId: String(raw?.sourceQuestionId || raw?.id || ''),
+    questionKey: raw?.questionKey ? String(raw.questionKey) : undefined
   };
 };
 
@@ -332,6 +341,8 @@ const sanitizeForStudent = (question: TeacherGameQuestion) => {
 
   return {
     id: question.id,
+    sourceQuestionId: question.sourceQuestionId || question.id,
+    questionKey: question.questionKey || `${question.schoolCode}|${question.teacherId}|${question.publishBatchId || ''}|${question.sourceQuestionId || question.id}`,
     schoolCode: question.schoolCode,
     teacherId: question.teacherId,
     subject: question.subject,
@@ -684,6 +695,8 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
       {
         ...normalized,
         id: createId(),
+        sourceQuestionId: undefined,
+        questionKey: undefined,
         question: `${normalized.question || tr('gameQuestionFallback')} - ${tr('groupsCopySuffix')}`,
         active: true,
         status: 'active',
@@ -699,9 +712,12 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const restoreFromArchive = (question: TeacherGameQuestion) => {
     const now = new Date().toISOString();
     const normalized = normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
+    const restoredId = createId();
     const restored: TeacherGameQuestion = {
       ...normalized,
-      id: createId(),
+      id: restoredId,
+      sourceQuestionId: restoredId,
+      questionKey: undefined,
       active: true,
       status: 'active',
       archivedAt: undefined,
@@ -732,12 +748,15 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
     const batchQuestions = validQuestions.map(question => ({
       ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
       publishBatchId,
+      sourceQuestionId: question.sourceQuestionId || question.id,
+      questionKey: `${schoolCode}|${teacherId}|${publishBatchId}|${question.sourceQuestionId || question.id}`,
       visibleFrom: question.visibleFrom || publishedAt.slice(0, 10),
       status: 'active' as const,
       active: question.active !== false,
       updatedAt: publishedAt
     }));
     return {
+      schemaVersion: TEACHER_GAME_QUESTIONS_SCHEMA_VERSION,
       publishBatchId,
       subjectId: firstQuestion?.subjectId,
       schoolCode,
@@ -841,6 +860,8 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
           .map((question: any) => ({
             ...normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions),
             id: question.id || createId(),
+            sourceQuestionId: question.sourceQuestionId || question.id || undefined,
+            questionKey: undefined,
             schoolCode,
             teacherId,
             active: question.active !== false,
