@@ -39,6 +39,11 @@ export type TeacherGameType =
 export interface TeacherGameResultLogEntry {
   id: string;
   studentId: string;
+  centralStudentId?: string;
+  rasedId?: string;
+  centralRasedId?: string;
+  legacyStudentId?: string;
+  sourceGameResultId?: string;
   studentName?: string;
   className?: string;
   grade?: string;
@@ -69,6 +74,9 @@ export interface TeacherGameResultsStudent {
   name?: string;
   civilId?: string;
   rasedId?: string;
+  centralStudentId?: string;
+  centralRasedId?: string;
+  legacyRasedIds?: string[];
   secretCode?: string;
   parentCode?: string;
   grade?: string;
@@ -157,7 +165,7 @@ const mergeResultsById = (lists: TeacherGameResultLogEntry[][]) => {
   lists.flat().forEach(item => {
     const normalized = normalizeResult(item);
     if (!normalized) return;
-    const key = normalized.id || `${normalized.studentId}|${normalized.publishBatchId || ''}|${normalized.gameType}|${normalized.playedAt}`;
+    const key = normalized.sourceGameResultId || normalized.id || `${getResultCanonicalId(normalized)}|${normalized.publishBatchId || ''}|${normalized.gameType}|${normalized.playedAt}`;
     const previous = map.get(key);
     if (!previous || new Date(normalized.savedAt || normalized.playedAt).getTime() >= new Date(previous.savedAt || previous.playedAt).getTime()) map.set(key, normalized);
   });
@@ -217,8 +225,12 @@ const getRawObject = (value: unknown) => {
 };
 
 const getStudentCanonicalId = (student: TeacherGameResultsStudent) => {
-  return normalizeCode(student.rasedId || student.secretCode || student.parentCode || student.civilId || student.id);
+  return normalizeCode(student.centralStudentId || student.rasedId || student.centralRasedId || student.secretCode || student.parentCode || student.civilId || student.id);
 };
+
+const getResultCanonicalId = (result: TeacherGameResultLogEntry) => normalizeCode(
+  result.centralStudentId || result.studentId || result.rasedId || result.centralRasedId || result.legacyStudentId
+);
 
 const getStudentPrimaryClass = (student: TeacherGameResultsStudent) => {
   return student.className || student.classes?.[0] || '—';
@@ -229,12 +241,12 @@ const getStudentDisplayNameFromStudent = (student: TeacherGameResultsStudent) =>
 };
 
 const getStudentDisplayName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(normalizeCode(result.studentId));
+  const student = studentsMap.get(getResultCanonicalId(result)) || studentsMap.get(normalizeCode(result.studentId));
   return result.studentName || student?.name || result.studentId || 'طالب غير محدد';
 };
 
 const getStudentClassName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(normalizeCode(result.studentId));
+  const student = studentsMap.get(getResultCanonicalId(result)) || studentsMap.get(normalizeCode(result.studentId));
   return result.className || student?.className || student?.classes?.[0] || '—';
 };
 
@@ -249,7 +261,8 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
 
   const rawResult = getRawObject(raw.rawResult);
   const id = typeof raw.id === 'string' ? raw.id : `result_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const studentId = normalizeCode(raw.studentId || raw.rasedId || raw.parentCode || raw.civilID || raw.civilId || rawResult.studentId || rawResult.rasedId || 'default');
+  const centralStudentId = normalizeCode(raw.centralStudentId || rawResult.centralStudentId);
+  const studentId = normalizeCode(raw.studentId || raw.rasedId || raw.centralRasedId || raw.parentCode || raw.civilID || raw.civilId || rawResult.studentId || rawResult.rasedId || rawResult.centralRasedId || centralStudentId || 'default');
   const gameType = typeof raw.gameType === 'string' ? raw.gameType : typeof rawResult.gameType === 'string' ? rawResult.gameType : 'unknown_game';
   const weakQuestionIds = Array.isArray(raw.weakQuestionIds)
     ? raw.weakQuestionIds.filter((item): item is string => typeof item === 'string')
@@ -260,6 +273,11 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
   return {
     id,
     studentId,
+    centralStudentId: centralStudentId || undefined,
+    rasedId: normalizeCode(raw.rasedId || rawResult.rasedId) || undefined,
+    centralRasedId: normalizeCode(raw.centralRasedId || rawResult.centralRasedId) || undefined,
+    legacyStudentId: normalizeCode(raw.legacyStudentId || rawResult.legacyStudentId) || undefined,
+    sourceGameResultId: String(raw.sourceGameResultId || rawResult.sourceGameResultId || raw.id || '').trim() || undefined,
     studentName: typeof raw.studentName === 'string' ? raw.studentName : typeof rawResult.studentName === 'string' ? rawResult.studentName : undefined,
     className: typeof raw.className === 'string' ? raw.className : typeof rawResult.className === 'string' ? rawResult.className : undefined,
     grade: typeof raw.grade === 'string' ? raw.grade : typeof rawResult.grade === 'string' ? rawResult.grade : undefined,
@@ -460,7 +478,7 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
   const studentsMap = useMemo(() => {
     const map = new Map<string, TeacherGameResultsStudent>();
     sourceStudents.forEach(student => {
-      const ids = [student.id, student.rasedId, student.civilId, student.secretCode, student.parentCode].map(normalizeCode).filter(Boolean);
+      const ids = [student.centralStudentId, student.id, student.rasedId, student.centralRasedId, student.civilId, student.secretCode, student.parentCode, ...(student.legacyRasedIds || [])].map(normalizeCode).filter(Boolean);
       ids.forEach(id => map.set(id, student));
     });
     return map;
@@ -536,7 +554,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       const studentName = normalizeText(getStudentDisplayName(result, studentsMap));
       const studentClassName = normalizeText(getStudentClassName(result, studentsMap));
       const gameLabel = normalizeText(getGameLabel(result.gameType));
-      const studentId = normalizeText(result.studentId);
+      const studentId = normalizeText(`${result.studentId} ${result.centralStudentId || ''} ${result.rasedId || ''} ${result.centralRasedId || ''}`);
       const lesson = normalizeText(result.lesson);
       const subject = normalizeText(result.subject);
 
@@ -564,7 +582,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
     const participatingIds = new Set(
       filteredResultsWithoutQuery
         .filter(result => result.completed && result.correct + result.wrong > 0)
-        .map(result => normalizeCode(result.studentId))
+        .map(result => getResultCanonicalId(result))
         .filter(Boolean)
     );
 
@@ -587,7 +605,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
     const map = new Map<string, GroupedStudentResult>();
 
     filteredResults.forEach(result => {
-      const key = normalizeCode(result.studentId || result.id);
+      const key = getResultCanonicalId(result) || normalizeCode(result.id);
       const studentName = getStudentDisplayName(result, studentsMap);
       const studentClassName = getStudentClassName(result, studentsMap);
       const existing = map.get(key);
@@ -640,14 +658,14 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       if (!result.completed || result.correct + result.wrong <= 0 || !batchId || isReview) { excluded.push(result.id); return; }
       const activityDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
       if (!activityDate || activityDate !== omanDateKey(result.playedAt)) { excluded.push(result.id); return; }
-      const key = `${normalizeCode(result.studentId)}|${batchId}`;
+      const key = `${getResultCanonicalId(result)}|${batchId}`;
       const previous = byBatchStudent.get(key);
       if (!previous || result.score > previous.score) byBatchStudent.set(key, result);
     });
     byBatchStudent.forEach(result => {
-      const student = studentsMap.get(normalizeCode(result.studentId)) as any;
+      const student = studentsMap.get(getResultCanonicalId(result)) as any;
       if (!student) { excluded.push(result.id); return; }
-      const awardId = `game-participation:${normalizeCode(result.studentId)}:${result.publishBatchId}`;
+      const awardId = `game-participation:${getResultCanonicalId(result)}:${result.publishBatchId}`;
       if ((student.behaviors || []).some((behavior: any) => behavior?.id === awardId)) alreadyAwarded.push(awardId);
       else eligible.push({ result, student, awardId });
     });
@@ -657,9 +675,9 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
   const applyParticipationAwards = () => {
     if (participationPreview.eligible.length === 0) return;
     if (!updateAppStudents) { setCloudError('تعذر تحديث نقاط الطلاب لأن setStudents غير متاح.'); return; }
-    const awards = new Map(participationPreview.eligible.map(item => [normalizeCode(item.result.studentId), item]));
+    const awards = new Map(participationPreview.eligible.map(item => [getResultCanonicalId(item.result), item]));
     updateAppStudents((previous: any[]) => (Array.isArray(previous) ? previous : []).map(student => {
-      const ids = [(student as any).id, (student as any).rasedId, (student as any).civilId, (student as any).secretCode, (student as any).parentCode].map(normalizeCode);
+      const ids = [(student as any).centralStudentId, (student as any).id, (student as any).rasedId, (student as any).centralRasedId, (student as any).civilId, (student as any).secretCode, (student as any).parentCode, ...((student as any).legacyRasedIds || [])].map(normalizeCode);
       const entry = ids.map(id => awards.get(id)).find(Boolean);
       if (!entry) return student;
       const result = entry.result;
