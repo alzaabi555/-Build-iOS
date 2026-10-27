@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import TeacherStudentMessages from './TeacherStudentMessages';
 import {
   Mail,
   Inbox,
@@ -190,7 +191,7 @@ const EmptyState: React.FC<{ icon?: React.ElementType; title: string; text: stri
   </div>
 );
 
-const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherInfo, currentSemester }) => {
+const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], teacherInfo, currentSemester }) => {
   const { t, dir, language } = useApp();
   const [activeTab, setActiveTab] = useState<MailboxTab>('inbox');
   const [messages, setMessages] = useState<MailMessage[]>([]);
@@ -624,6 +625,25 @@ const TeacherMailbox: React.FC<TeacherMailboxProps> = ({ students = [], teacherI
           </div>
         </section>
       )}
+    </div>
+  );
+};
+
+const TeacherMailbox: React.FC<TeacherMailboxProps> = (props) => {
+  const { dir } = useApp();
+  const [mailboxAudience, setMailboxAudience] = useState<'parents' | 'students'>('parents');
+
+  return (
+    <div className="rased-teacher-light bg-bgMain text-textPrimary rounded-3xl" dir={dir}>
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-3xl border border-borderColor bg-bgCard p-2 shadow-sm">
+        <button type="button" onClick={() => setMailboxAudience('parents')} className={`h-12 rounded-2xl text-sm font-black transition-all ${mailboxAudience === 'parents' ? 'bg-primary text-white shadow-sm' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}>
+          رسائل أولياء الأمور
+        </button>
+        <button type="button" onClick={() => setMailboxAudience('students')} className={`h-12 rounded-2xl text-sm font-black transition-all ${mailboxAudience === 'students' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-bgSoft text-textSecondary hover:text-emerald-700'}`}>
+          رسائل الطلاب
+        </button>
+      </div>
+      {mailboxAudience === 'parents' ? <ParentMailboxContent {...props} /> : <TeacherStudentMessages />}
     </div>
   );
 };
