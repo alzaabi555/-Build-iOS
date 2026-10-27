@@ -10,6 +10,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMYqSpnXvlMr
 
 interface ArchiveItem {
   id: string;
+  sourceResourceId: string;
   title: string;
   link: string;
   type: string;
@@ -32,7 +33,17 @@ const TeacherLibrary: React.FC = () => {
   // 🧠 حالة الأرشيف (يتم جلبها وحفظها في الذاكرة المحلية)
   const [archive, setArchive] = useState<ArchiveItem[]>(() => {
     const saved = localStorage.getItem('rased_library_archive');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved) as Array<Partial<ArchiveItem>>;
+      return Array.isArray(parsed) ? parsed.map((item, index) => ({
+        ...item,
+        id: String(item.id || `legacy_resource_${index}`),
+        sourceResourceId: String(item.sourceResourceId || item.id || `legacy_resource_${index}`),
+      } as ArchiveItem)) : [];
+    } catch {
+      return [];
+    }
   });
 
   // تحديث الذاكرة المحلية عند تغير الأرشيف
@@ -75,15 +86,28 @@ const TeacherLibrary: React.FC = () => {
       else if (lowerLink.includes('.pdf') || lowerLink.includes('drive.google')) type = 'pdf';
 
       // 🧠 معالجة التحديد المتعدد لإرساله كنص
-      const targetClass = selectedClasses.length === classes.length ? (t('allClasses') || 'الكل') : selectedClasses.join(' , ');
+      const sourceResourceId = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      const targetClasses = selectedClasses.length === classes.length ? ['الكل'] : [...selectedClasses];
+      const targetClass = targetClasses.join(',');
+      const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+      const teacherId = String(localStorage.getItem('rased_teacher_civil_id') || '').trim();
 
       const payload = {
+        action: 'resources',
+        schemaVersion: '1.0.0',
+        schoolCode,
+        teacherId,
         resources: [{
-          title,
+          id: sourceResourceId,
+          sourceResourceId,
+          resourceKey: `${schoolCode}|${teacherId}|${sourceResourceId}`,
+          title: title.trim(),
           subject: teacherInfo?.subject || t('unspecified') || 'عام',
-          link,
+          link: link.trim(),
           type,
-          targetClass
+          targetClass,
+          targetClasses,
+          date: new Date().toISOString()
         }]
       };
 
@@ -98,9 +122,10 @@ const TeacherLibrary: React.FC = () => {
         
         // 💉 زراعة الرابط الجديد في الأرشيف المحلي
         const newItem: ArchiveItem = {
-            id: Math.random().toString(36).substr(2, 9),
-            title,
-            link,
+            id: sourceResourceId,
+            sourceResourceId,
+            title: title.trim(),
+            link: link.trim(),
             type,
             targetClass,
             date: new Date().toISOString()
