@@ -8,6 +8,12 @@ import PageLayout from '../components/PageLayout'; // 💉 استدعاء الغ
 
 export interface Task {
   id: string;
+  sourceTaskId: string;
+  taskKey: string;
+  schemaVersion: '1.0.0';
+  schoolCode: string;
+  teacherId: string;
+  targetClasses: string[];
   title: string;
   subject: string;
   targetClass: string;
@@ -27,7 +33,28 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
   // 🧠 حالة الأرشيف (المهام المحفوظة)
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('rased_teacher_tasks');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+      const teacherId = String(localStorage.getItem('rased_teacher_civil_id') || '').trim();
+      const parsed = JSON.parse(saved) as Array<Partial<Task>>;
+      return Array.isArray(parsed) ? parsed.map((task, index) => {
+        const sourceTaskId = String(task.sourceTaskId || task.id || `legacy_task_${index}`);
+        const targetClass = String(task.targetClass || '');
+        return {
+          ...task,
+          id: sourceTaskId,
+          sourceTaskId,
+          taskKey: String(task.taskKey || `${schoolCode}|${teacherId}|${sourceTaskId}`),
+          schemaVersion: '1.0.0',
+          schoolCode: String(task.schoolCode || schoolCode),
+          teacherId: String(task.teacherId || teacherId),
+          targetClasses: Array.isArray(task.targetClasses) ? task.targetClasses : targetClass.split(',').map(v => v.trim()).filter(Boolean),
+        } as Task;
+      }) : [];
+    } catch {
+      return [];
+    }
   });
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -68,8 +95,18 @@ const TeacherTasks: React.FC<TeacherTasksProps> = ({ teacherSubject }) => {
         ? (t('allClasses') || 'الكل') 
         : selectedClasses.join(' , ');
 
+    const sourceTaskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const schoolCode = String(localStorage.getItem('rased_admin_school_code') || '').trim();
+    const teacherId = String(localStorage.getItem('rased_teacher_civil_id') || '').trim();
+    const targetClasses = selectedClasses.length === safeClasses.length ? ['الكل'] : [...selectedClasses];
     const newTask: Task = {
-      id: `T-${Date.now()}`,
+      id: sourceTaskId,
+      sourceTaskId,
+      taskKey: `${schoolCode}|${teacherId}|${sourceTaskId}`,
+      schemaVersion: '1.0.0',
+      schoolCode,
+      teacherId,
+      targetClasses,
       title: newTaskTitle.trim(),
       subject: teacherSubject || t('unspecified') || 'عام',
       targetClass: finalTargetClass,
