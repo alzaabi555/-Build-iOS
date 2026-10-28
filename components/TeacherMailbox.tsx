@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import TeacherStudentMessages from './TeacherStudentMessages';
 import {
   Mail,
@@ -17,7 +17,10 @@ import {
   Sparkles,
   Clock,
   Archive,
-  Trash2
+  Trash2,
+  ChevronLeft,
+  CheckCheck,
+  Filter
 } from 'lucide-react';
 import { Student } from '../types';
 import { useApp } from '../context/AppContext';
@@ -206,6 +209,9 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   const [replyingToMsg, setReplyingToMsg] = useState<MailMessage | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [selectedParentKey, setSelectedParentKey] = useState('');
+  const [parentFilter, setParentFilter] = useState<'all' | 'unread'>('all');
+  const parentBottomRef = useRef<HTMLDivElement>(null);
 
   const hasTeacherContext = Boolean(teacherInfo?.school && teacherInfo?.subject);
   const hasStudents = Array.isArray(students) && students.length > 0;
@@ -500,6 +506,28 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
     }
   };
 
+  const getParentMessageKey = (msg: MailMessage, index = 0) => String(msg.rowNumber || msg.localId || msg.date || `${msg.rasedId || msg.civilID || 'message'}_${index}`);
+  const parentThreads = useMemo(() => {
+    const groups: Record<string, MailMessage[]> = {};
+    [...inboxMessages, ...sentMessages].forEach((msg, index) => {
+      const code = normalizeCode(msg.rasedId || msg.civilID || msg.parentCode || '');
+      const key = `${code}|${normalizeMailboxText(msg.subject || teacherInfo?.subject || '')}`;
+      (groups[key] ||= []).push({ ...msg, localId: msg.localId || getParentMessageKey(msg, index) });
+    });
+    return Object.values(groups).map(group => group.sort((a,b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime())).sort((a,b) => new Date(b.at(-1)?.date || 0).getTime() - new Date(a.at(-1)?.date || 0).getTime());
+  }, [inboxMessages, sentMessages, teacherInfo?.subject]);
+  const filteredParentThreads = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return parentThreads.filter(group => {
+      const unread = group.some(msg => !isTeacherSentMessage(msg) && String(msg.readByTeacher || '').toUpperCase() !== 'TRUE' && msg.status !== 'replied');
+      return (parentFilter === 'all' || unread) && (!q || group.some(msg => `${msg.studentName || ''} ${msg.rasedId || msg.civilID || ''} ${msg.subject || ''} ${msg.message || ''}`.toLowerCase().includes(q)));
+    });
+  }, [parentThreads, parentFilter, query]);
+  const selectedParentThread = parentThreads.find(group => getParentMessageKey(group[0]) === selectedParentKey) || parentThreads[0] || null;
+  useEffect(() => { if (selectedParentThread && !selectedParentKey) setSelectedParentKey(getParentMessageKey(selectedParentThread[0])); }, [parentThreads.length]);
+  useEffect(() => { parentBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedParentThread?.length]);
+  const parentUnreadCount = inboxMessages.filter(msg => String(msg.readByTeacher || '').toUpperCase() !== 'TRUE' && msg.status !== 'replied').length;
+
   const MailMessageCard = ({ msg, index }: { msg: MailMessage; index: number }) => {
     const teacherSent = isTeacherSentMessage(msg);
     const typeInfo = getTypeInfo(msg.messageType);
@@ -561,70 +589,19 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
     );
   };
 
+  if (activeTab === 'compose') {
+    return (
+      <div className="min-h-[620px] rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-sm" dir={dir}>
+        <header className="flex items-center justify-between border-b border-slate-200 p-4"><div><h2 className="font-black text-emerald-700">رسالة جديدة لولي الأمر</h2><p className="text-xs text-slate-500">اختر الطالب ثم حرر الرسالة</p></div><button onClick={()=>setActiveTab('inbox')} className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black"><ChevronLeft className="ml-1 inline h-4 w-4"/>المحادثات</button></header>
+        <div className="grid gap-4 p-4 lg:grid-cols-[340px_1fr]"><aside className="rounded-3xl bg-slate-50 p-3"><div className="mb-3 grid grid-cols-2 gap-2"><select value={selectedClassForSend} onChange={e=>setSelectedClassForSend(e.target.value)} className="rounded-2xl border bg-white p-3 text-sm font-black"><option value="all">جميع الفصول</option>{classOptions.map(c=><option key={c} value={c}>{formatClassLabel(c)}</option>)}</select><input value={studentQuery} onChange={e=>setStudentQuery(e.target.value)} className="rounded-2xl border px-3 text-sm font-bold" placeholder="بحث"/></div><div className="max-h-[500px] space-y-1 overflow-y-auto">{studentsForSend.map(student=>{const code=getStudentCode(student);const active=selectedStudentId===code||selectedStudentId===student.id;return <button key={student.id} onClick={()=>handleSelectStudent(student)} className={`w-full rounded-2xl p-3 text-right ${active?'bg-emerald-500 text-white':'bg-white hover:bg-emerald-50'}`}><p className="font-black">{student.name}</p><p className="text-[10px] opacity-70">{formatClassLabel(getStudentClassName(student))} · {code}</p></button>})}</div></aside><main className="rounded-3xl border border-slate-200 p-4"><h3 className="mb-1 text-xs font-black text-slate-500">المستلم</h3><p className="mb-4 text-lg font-black">{selectedStudent?.name||'اختر طالبًا'}</p><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">{MESSAGE_TYPES.map(type=>{const Icon=type.icon;return <button key={type.id} onClick={()=>handleChangeType(type.id)} className={`rounded-2xl border p-3 text-xs font-black ${messageType===type.id?'border-emerald-300 bg-emerald-50 text-emerald-700':'border-slate-200 bg-slate-50 text-slate-500'}`}><Icon className="mx-auto mb-1 h-4 w-4"/>{t(type.labelKey)}</button>})}</div><textarea value={teacherMessage} onChange={e=>setTeacherMessage(e.target.value)} rows={11} maxLength={2000} className="w-full resize-none rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold leading-7 outline-none focus:border-emerald-400"/><div className="mt-2 flex items-center justify-between"><span className="text-[10px] text-slate-400">{teacherMessage.length}/2000</span><button onClick={handleSendTeacherMessage} disabled={isSending||!selectedStudent||!teacherMessage.trim()} className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-white disabled:bg-slate-200">{isSending?'جارٍ الإرسال...':'إرسال لولي الأمر'}</button></div></main></div>
+      </div>
+    );
+  }
   return (
-    <div className="rased-teacher-light bg-bgMain text-textPrimary rounded-3xl" dir={dir}>
-      <section className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm relative overflow-hidden mb-4">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0"><Mail className="w-6 h-6" /></div>
-            <div>
-              <h2 className="text-lg font-black text-textPrimary mb-1">{t('mailboxTitle')}</h2>
-              <p className="text-[11px] font-bold text-textSecondary leading-6">{t('mailboxSubtitle')}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={fetchParentMessages} className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95"><RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />{t('mailboxRefresh')}</button>
-            <button type="button" onClick={() => setActiveTab('compose')} className="h-10 px-3 rounded-2xl bg-primary text-white font-black text-xs flex items-center gap-2 active:scale-95"><Send className="w-4 h-4" />{t('mailboxNewMessage')}</button>
-          </div>
-        </div>
-        {(!hasTeacherContext || !hasStudents) && (
-          <div className="relative z-10 mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-            {!hasTeacherContext && <div className="rounded-2xl bg-warning/10 border border-warning/20 text-warning p-3 text-[11px] font-bold leading-6">{t('mailboxMissingTeacherContext')}</div>}
-            {!hasStudents && <div className="rounded-2xl bg-bgSoft border border-borderColor text-textSecondary p-3 text-[11px] font-bold leading-6">{t('mailboxNoStudentsLoaded')}</div>}
-          </div>
-        )}
-      </section>
-
-      <section className="grid grid-cols-3 gap-2 bg-bgCard border border-borderColor rounded-3xl p-2 shadow-sm mb-4">
-        <button type="button" onClick={() => setActiveTab('inbox')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'inbox' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Inbox className="w-4 h-4" />{t('mailboxInbox')} <span className="text-[9px] font-black opacity-80">{inboxMessages.length}</span></button>
-        <button type="button" onClick={() => setActiveTab('sent')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'sent' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Archive className="w-4 h-4" />{t('mailboxSent')} <span className="text-[9px] font-black opacity-80">{sentMessages.length}</span></button>
-        <button type="button" onClick={() => setActiveTab('compose')} className={`h-11 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'compose' ? 'bg-primary text-white' : 'bg-bgSoft text-textSecondary hover:text-primary'}`}><Send className="w-4 h-4" />{t('mailboxCompose')}</button>
-      </section>
-
-      {activeTab === 'inbox' || activeTab === 'sent' ? (
-        <section className="space-y-3">
-          <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm"><label className="relative block"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('mailboxSearchPlaceholder')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label></div>
-          {isFetching && messages.length === 0 ? <EmptyState icon={Loader2} title={t('mailboxFetchingTitle')} text={t('mailboxFetchingText')} /> : visibleMessages.length === 0 ? <EmptyState icon={activeTab === 'inbox' ? Inbox : Archive} title={activeTab === 'inbox' ? t('mailboxNoInbox') : t('mailboxNoSent')} text={activeTab === 'inbox' ? t('mailboxNoInboxHint') : t('mailboxNoSentHint')} /> : visibleMessages.map((msg, index) => MailMessageCard({ msg, index }))}
-        </section>
-      ) : (
-        <section className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
-          <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
-            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><User className="w-4 h-4 text-primary" />{t('mailboxSelectStudent')}</h3>
-            <div className="mb-3">
-              <select value={selectedClassForSend} onChange={(e) => setSelectedClassForSend(e.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm font-black text-textPrimary focus:outline-none focus:border-primary/40">
-                <option value="all">{t('mailboxAllClasses')}</option>
-                {classOptions.map(className => <option key={className} value={className}>{formatClassLabel(className)}</option>)}
-              </select>
-            </div>
-            <label className="relative block mb-3"><Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-textSecondary`} /><input value={studentQuery} onChange={event => setStudentQuery(event.target.value)} placeholder={t('mailboxStudentSearch')} className={`w-full h-11 rounded-2xl bg-bgSoft border border-borderColor ${dir === 'rtl' ? 'pr-10 pl-3' : 'pl-10 pr-3'} text-sm font-bold text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary/40`} /></label>
-            <div className="space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
-              {studentsForSend.length === 0 ? <div className="rounded-2xl bg-bgSoft border border-borderColor p-4 text-center text-xs font-bold text-textSecondary">{t('mailboxNoStudentResults')}</div> : studentsForSend.map(student => {
-                const code = getStudentCode(student);
-                const active = selectedStudentId === code || selectedStudentId === student.id;
-                return <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className={`w-full rounded-2xl border p-3 text-start transition-all active:scale-[0.99] ${active ? 'bg-primary/10 border-primary/30' : 'bg-bgSoft border-borderColor hover:border-primary/20'}`}><p className="text-xs font-black text-textPrimary truncate">{student.name}</p><div className="flex flex-wrap items-center gap-1 mt-1"><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{formatClassLabel(getStudentClassName(student))}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{code || 'RSD'}</span></div></button>;
-              })}
-            </div>
-          </div>
-          <div className="bg-bgCard border border-borderColor rounded-3xl p-4 shadow-sm">
-            <h3 className="text-sm font-black text-textPrimary mb-3 flex items-center gap-2"><Send className="w-4 h-4 text-primary" />{t('mailboxSendToParent')}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">{MESSAGE_TYPES.map(type => { const active = messageType === type.id; const Icon = type.icon; return <button key={type.id} type="button" onClick={() => handleChangeType(type.id)} className={`rounded-2xl border p-3 text-xs font-black flex flex-col items-center gap-1 transition-all active:scale-95 ${active ? type.tone : 'bg-bgSoft border-borderColor text-textSecondary hover:text-primary'}`}><Icon className="w-4 h-4" />{t(type.labelKey)}</button>; })}</div>
-            <div className="rounded-2xl bg-bgSoft border border-borderColor p-3 mb-4"><p className="text-[10px] font-black text-textSecondary mb-1">{t('mailboxSelectedStudent')}</p>{selectedStudent ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-black text-textPrimary">{selectedStudent.name}</span><span className="text-[9px] font-black bg-bgCard border border-borderColor text-textSecondary px-2 py-0.5 rounded-full">{formatClassLabel(getStudentClassName(selectedStudent))}</span><span className="text-[9px] font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full" dir="ltr">{getStudentCode(selectedStudent)}</span></div> : <span className="text-xs font-bold text-danger">{t('mailboxNoStudentSelected')}</span>}</div>
-            <textarea value={teacherMessage} onChange={event => setTeacherMessage(event.target.value)} rows={9} placeholder={t('mailboxMessagePlaceholder')} className="w-full rounded-3xl bg-bgSoft border border-borderColor p-4 text-sm font-bold text-textPrimary leading-7 focus:outline-none focus:border-primary/40" />
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4"><p className="text-[10px] font-bold text-textSecondary leading-5">{t('mailboxCloudNotice')}</p><button type="button" onClick={handleSendTeacherMessage} disabled={isSending || !selectedStudent || !teacherMessage.trim()} className="h-12 px-5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50">{isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{t('mailboxSendButton')}</button></div>
-          </div>
-        </section>
-      )}
+    <div className="flex min-h-[620px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-sm" dir={dir}>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4"><div><div className="flex items-center gap-2 font-black text-emerald-700"><Mail className="h-5 w-5"/>رسائل أولياء الأمور{parentUnreadCount>0&&<span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] text-white">{parentUnreadCount}</span>}</div><p className="mt-1 text-xs font-bold text-slate-500">محادثات المتابعة المنزلية والتواصل التربوي</p></div><div className="flex gap-2"><button onClick={fetchParentMessages} className="rounded-2xl bg-slate-100 p-3"><RefreshCw className={`h-5 w-5 ${isFetching?'animate-spin':''}`}/></button><button onClick={()=>setActiveTab('compose')} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white">رسالة جديدة</button></div></header>
+      <div className="grid min-h-0 flex-1 md:grid-cols-[330px_1fr]"><aside className={`${selectedParentKey?'hidden md:flex':'flex'} min-h-0 flex-col border-l border-slate-200`}><div className="space-y-2 p-3"><div className="flex items-center rounded-2xl bg-slate-100 px-3"><Search className="h-4 w-4 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent py-3 text-sm font-bold outline-none" placeholder="اسم الطالب أو الرسالة"/></div><div className="grid grid-cols-2 gap-2"><button onClick={()=>setParentFilter('all')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='all'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>الكل</button><button onClick={()=>setParentFilter('unread')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='unread'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>غير المقروء</button></div></div><div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-4">{filteredParentThreads.length===0?<div className="p-8 text-center text-sm font-bold text-slate-400"><Inbox className="mx-auto mb-2 h-8 w-8"/>لا توجد محادثات</div>:filteredParentThreads.map(group=>{const first=group[0],last=group.at(-1)!;const unread=group.some(m=>!isTeacherSentMessage(m)&&String(m.readByTeacher||'').toUpperCase()!=='TRUE'&&m.status!=='replied');return <button key={getParentMessageKey(first)} onClick={()=>setSelectedParentKey(getParentMessageKey(first))} className={`w-full rounded-2xl p-3 text-right ${selectedParentThread&&getParentMessageKey(selectedParentThread[0])===getParentMessageKey(first)?'bg-emerald-50 ring-1 ring-emerald-200':'hover:bg-slate-50'}`}><div className="flex gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="truncate text-sm font-black">{first.studentName||'الطالب'}</p><span className="text-[9px] text-slate-400">{formatDateTime(last.date,language,'')}</span></div><p className="truncate text-[11px] font-bold text-emerald-700">{first.subject||teacherInfo?.subject}</p><p className="mt-1 truncate text-xs text-slate-500">{isTeacherSentMessage(last)?'أنت: ':''}{last.message}</p></div>{unread&&<span className="h-fit rounded-full bg-red-500 px-2 py-0.5 text-[9px] text-white">جديد</span>}</div></button>})}</div></aside>
+      <main className={`${selectedParentKey?'flex':'hidden md:flex'} min-h-0 flex-col bg-slate-50`}>{selectedParentThread?<><div className="flex items-center justify-between border-b border-slate-200 bg-white p-4"><div className="flex items-center gap-3"><button className="md:hidden" onClick={()=>setSelectedParentKey('')}><ChevronLeft className="h-5 w-5"/></button><div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div><h2 className="font-black">{selectedParentThread[0].studentName}</h2><p className="text-xs font-bold text-emerald-700">ولي الأمر · {selectedParentThread[0].subject||teacherInfo?.subject}</p></div></div><button onClick={()=>handleDeleteMessage(selectedParentThread[0])} className="rounded-xl bg-red-50 p-2 text-red-600"><Trash2 className="h-4 w-4"/></button></div><div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">{selectedParentThread.map((msg,index)=><React.Fragment key={getParentMessageKey(msg,index)}><div className={`flex ${isTeacherSentMessage(msg)?'justify-start':'justify-end'}`}><div className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-sm ${isTeacherSentMessage(msg)?'rounded-tr-md bg-emerald-500 text-white':'rounded-tl-md border border-slate-200 bg-white'}`}><p className="whitespace-pre-wrap text-sm font-bold leading-7">{msg.message}</p><p className={`mt-1 text-[9px] ${isTeacherSentMessage(msg)?'text-emerald-100':'text-slate-400'}`}>{formatDateTime(msg.date,language,'')}</p></div></div>{msg.teacherReply&&<div className="flex justify-start"><div className="max-w-[82%] rounded-3xl rounded-tr-md bg-emerald-500 px-4 py-3 text-white"><p className="text-sm font-bold leading-7">{msg.teacherReply}</p><p className="mt-1 text-[9px] text-emerald-100">{formatDateTime(msg.replyDate,language,'')}</p></div></div>}</React.Fragment>)}<div ref={parentBottomRef}/></div><div className="border-t border-slate-200 bg-white p-3"><div className="flex items-end gap-2"><textarea value={replyText} onChange={e=>setReplyText(e.target.value)} maxLength={1000} rows={2} className="min-h-14 flex-1 resize-none rounded-2xl border border-slate-200 p-3 text-sm font-bold outline-none focus:border-emerald-400" placeholder="اكتب ردًا لولي الأمر..."/><button onClick={()=>{const msg=[...selectedParentThread].reverse().find(m=>!isTeacherSentMessage(m));if(msg)void handleSendReply(msg);}} disabled={isSending||!replyText.trim()} className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500 text-white disabled:bg-slate-200"><Send className="h-5 w-5"/></button></div><p className="mt-1 text-left text-[9px] text-slate-400">{replyText.length}/1000</p></div></>:<div className="m-auto text-center text-slate-400"><MessageCircle className="mx-auto mb-3 h-12 w-12"/><p className="font-black">اختر محادثة من القائمة</p></div>}</main></div>
     </div>
   );
 };
