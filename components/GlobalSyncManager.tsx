@@ -153,6 +153,7 @@ const GlobalSyncManager: React.FC = () => {
     students,
     classes,
     teacherInfo,
+    currentSemester,
     assessmentTools,
     t,
     createBackupPayload,
@@ -194,7 +195,7 @@ const GlobalSyncManager: React.FC = () => {
     if (!response.ok || result?.success !== true || result?.status !== 'success') throw new Error(result?.error || result?.message || `HTTP ${response.status}`);
     const version = String(result?.data?.version || '');
     const gradeSync = result?.data?.gradeSync as StudentGradeSyncDiagnostics | undefined;
-    if (version !== '3.9.0' || !gradeSync) throw new Error(`الإصدار المتوقع 3.9.0 والمستلم ${version || 'غير معروف'}.`);
+    if (!version || !gradeSync) throw new Error(`استجابة المزامنة غير مكتملة، الإصدار المستلم ${version || 'غير معروف'}.`);
     return gradeSync;
   };
 
@@ -222,7 +223,16 @@ const GlobalSyncManager: React.FC = () => {
     }
 
     const localIncomingGrades = publishableStudents.reduce((sum, student) => sum + (Array.isArray(student.grades) ? student.grades.length : 0), 0);
-    const gradeSync = await postStudentCloudVerified({ identitySchemaVersion:1, identityMode:'central_with_legacy_aliases', students:publishableStudents, tasks, resources:libraryArchive, gameQuestions, className:'الكل' });
+    const teacherId = String(teacherInfo?.civilId || '').trim();
+    if (!teacherId) throw new Error('لا يمكن إنشاء روابط الطلاب دون الرقم المدني للمعلم.');
+    const subjectName = String(teacherInfo?.subject || 'عام').trim();
+    const subjectId = subjectName;
+    const studentTeacherLinks = publishableStudents.map(student => {
+      const className = String((student as any).className || (student as any).class || (student as any).classes?.[0] || '').trim();
+      const sourceLinkId = `link_${student.centralStudentId}_${teacherId}_${subjectName}_${className}_${currentSemester}`;
+      return { id:sourceLinkId, sourceLinkId, centralStudentId:student.centralStudentId, schoolId:student.schoolId || '', schoolCode:student.schoolCode || adminSchoolCode, teacherId, teacherName:teacherInfo?.name || 'المعلم', subjectId, subjectName, classId:className, className, semester:currentSemester };
+    });
+    const gradeSync = await postStudentCloudVerified({ identitySchemaVersion:1, identityMode:'central_with_legacy_aliases', schemaVersion:'1.0.0', schoolCode:adminSchoolCode, teacherId, subject:subjectName, semester:currentSemester, students:publishableStudents, studentTeacherLinks, tasks, resources:libraryArchive, gameQuestions, className:'الكل' });
     if (gradeSync.incomingStudents !== publishableStudents.length) throw new Error(`السحابة استقبلت ${gradeSync.incomingStudents} طالبًا بدل ${publishableStudents.length}.`);
     if (gradeSync.incomingGrades !== localIncomingGrades) throw new Error(`السحابة استقبلت ${gradeSync.incomingGrades} درجة بدل ${localIncomingGrades}.`);
     setSyncMessage(`نجحت مزامنة الطالب v${gradeSync.version}: ${gradeSync.updated} تحديث، ${gradeSync.added} إضافة، ${gradeSync.unchanged} دون تغيير.`);
