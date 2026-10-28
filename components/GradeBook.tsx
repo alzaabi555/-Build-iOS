@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { AppLauncher } from '@capacitor/app-launcher';
 import * as XLSX from 'xlsx';
 import { StudentAvatar } from './StudentAvatar';
 import { StudentRow } from './StudentRow';
@@ -579,7 +580,7 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     }
   };
 
-  const sendSummonMessage = () => {
+  const sendSummonMessage = async () => {
     if (!summonData) return;
     if (!summonData.student.parentPhone) {
         alert(t('alertNoParentPhone') || 'لا يوجد رقم هاتف مسجل لولي الأمر.');
@@ -587,22 +588,32 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     }
 
     const message = `استدعاء ولي أمر: \nنود إفادتكم بتدني مستوى الطالب/ة *${summonData.student.name}* في مادة *${teacherInfo?.subject || 'المادة'}*، حيث حصل على درجة *${summonData.score}* في *${summonData.category}*.\nنرجو المتابعة والتواصل مع المعلم لمصلحة الطالب.`;
-    
     const msg = encodeURIComponent(message);
     let cleanPhone = summonData.student.parentPhone.replace(/[^0-9]/g, '');
 
     if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
     if (cleanPhone.length === 8) cleanPhone = '968' + cleanPhone;
-    else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) cleanPhone = '968' + cleanPhone.substring(1);
-
-    if ((window as any).electron) { 
-        (window as any).electron.openExternal(`whatsapp://send?phone=${cleanPhone}&text=${msg}`); 
-    } else { 
-        const universalUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`; 
-        window.open(universalUrl, '_blank'); 
+    else if (cleanPhone.length === 9 && cleanPhone.startsWith('0')) {
+      cleanPhone = '968' + cleanPhone.substring(1);
     }
 
-    setSummonData(null);
+    const whatsappDeepLink = `whatsapp://send?phone=${cleanPhone}&text=${msg}`;
+    const whatsappWebUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
+
+    try {
+      if ((window as any).electron) {
+        await (window as any).electron.openExternal(whatsappDeepLink);
+      } else if (Capacitor.isNativePlatform()) {
+        await AppLauncher.openUrl({ url: whatsappDeepLink });
+      } else {
+        window.open(whatsappWebUrl, '_blank', 'noopener,noreferrer');
+      }
+
+      setSummonData(null);
+    } catch (error) {
+      console.error('Failed to open WhatsApp:', error);
+      alert('تعذر فتح تطبيق واتساب. تأكد من تثبيته على الجهاز ثم أعد المحاولة.');
+    }
   };
 
   const displayedStudents = showMissingGradesOnly 
