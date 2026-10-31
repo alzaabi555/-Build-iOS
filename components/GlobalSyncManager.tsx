@@ -214,13 +214,13 @@ const GlobalSyncManager: React.FC = () => {
       throw new Error(`استجابة سحابة ولي الأمر غير صالحة: ${raw.slice(0, 180)}`);
     }
     if (!response.ok) throw new Error(result?.message || `HTTP ${response.status}`);
-    if (String(result?.version || '') !== '4.8.5') {
-      throw new Error(`إصدار خادم ولي الأمر غير صحيح: ${result?.version || 'غير معروف'}، المطلوب 4.8.5.`);
+    if (String(result?.version || '') !== '4.8.6') {
+      throw new Error(`إصدار خادم ولي الأمر غير صحيح: ${result?.version || 'غير معروف'}، المطلوب 4.8.6.`);
     }
     if (result?.success !== true || result?.status !== 'success' || result.invalid > 0 || result.conflict > 0) {
       const details = (result?.errors || []).map(error => {
         const missing = error.missing?.length ? ` [${error.missing.join('، ')}]` : '';
-        return `${error.student || `السجل ${Number(error.index || 0) + 1}`}: ${error.status || error.message || 'خطأ'}${missing}`;
+        return `${error.student || `السجل ${Number(error.index || 0) + 1}`}: ${error.message || error.status || 'خطأ'}${missing}`;
       }).join(' | ');
       throw new Error(`${result?.message || 'فشلت مزامنة ولي الأمر'}${details ? ` - ${details}` : ''}`);
     }
