@@ -272,8 +272,18 @@ const GlobalSyncManager: React.FC = () => {
     const subjectName = String(teacherInfo?.subject || t('unspecified')).trim();
     const subjectId = String((teacherInfo as any)?.subjectId || subjectName).trim();
     const schoolName = String(teacherInfo?.school || t('unspecified')).trim();
-    const schoolId = String((teacherInfo as any)?.schoolId || '').trim();
-    const schoolCode = String((teacherInfo as any)?.schoolCode || adminSchoolCode || '').trim();
+    const firstCentralStudent = students.find(isCentralIdentityReady);
+    const schoolId = String(
+      (teacherInfo as any)?.schoolId ||
+      firstCentralStudent?.schoolId ||
+      ''
+    ).trim();
+    const schoolCode = String(
+      (teacherInfo as any)?.schoolCode ||
+      adminSchoolCode ||
+      firstCentralStudent?.schoolCode ||
+      ''
+    ).trim();
     const semester = String(currentSemester || '').trim();
 
     const missingTeacherContext = [
@@ -310,8 +320,8 @@ const GlobalSyncManager: React.FC = () => {
           teacherId,
           teacherName,
           schoolName,
-          schoolId,
-          schoolCode,
+          schoolId: String(student.schoolId || schoolId).trim(),
+          schoolCode: String(student.schoolCode || schoolCode).trim(),
           semester,
           totalPoints: monthlyPoints,
           behaviors: student.behaviors || [],
