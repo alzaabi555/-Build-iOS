@@ -1,4 +1,16 @@
 import React, { useEffect, useState } from 'react';
+
+const canonicalSubjectId = (subjectIdValue: unknown, subjectNameValue: unknown) => {
+  const rawId = String(subjectIdValue ?? '').trim();
+  const rawName = String(subjectNameValue ?? '').trim();
+  const normalized = (rawId || rawName).toLowerCase().replace(/\s+/g, '_');
+  const aliases: Record<string,string> = {
+    'الدراسات_الاجتماعية':'social_studies','الدراسات_الإجتماعية':'social_studies',
+    'الدراسات الاجتماعية':'social_studies','الدراسات الإجتماعية':'social_studies',
+    'الدراسات':'social_studies','social_studies':'social_studies'
+  };
+  return aliases[rawId] || aliases[rawName] || aliases[normalized] || rawId || rawName;
+};
 import {
   AlertCircle,
   Building,
@@ -31,7 +43,7 @@ type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
 interface StudentGradeSyncDiagnostics { version:string; targetSheet:string; incomingStudents:number; incomingGrades:number; added:number; updated:number; unchanged:number; beforeRows:number; afterRows:number; linkedBySourceId?:number; linkedByLegacyFingerprint?:number; }
-interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; linkedByExactSemesterKey?:number; linkedByLegacyBlankSemester?:number; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
+interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
 
 
 interface CloudRecord {
@@ -267,7 +279,7 @@ const GlobalSyncManager: React.FC = () => {
     const teacherId = String(teacherInfo?.civilId || '').trim();
     if (!teacherId) throw new Error('لا يمكن إنشاء روابط الطلاب دون الرقم المدني للمعلم.');
     const subjectName = String(teacherInfo?.subject || 'عام').trim();
-    const subjectId = subjectName;
+    const subjectId = canonicalSubjectId((teacherInfo as any)?.subjectId, subjectName);
     const studentTeacherLinks = publishableStudents.map(student => {
       const className = String((student as any).className || (student as any).class || (student as any).classes?.[0] || '').trim();
       const sourceLinkId = `link_${student.centralStudentId}_${teacherId}_${subjectName}_${className}_${currentSemester}`;
@@ -284,7 +296,7 @@ const GlobalSyncManager: React.FC = () => {
     const teacherId = String(teacherInfo?.civilId || '').trim();
     const teacherName = String(teacherInfo?.name || 'المعلم').trim();
     const subjectName = String(teacherInfo?.subject || t('unspecified')).trim();
-    const subjectId = String((teacherInfo as any)?.subjectId || subjectName).trim();
+    const subjectId = canonicalSubjectId((teacherInfo as any)?.subjectId, subjectName);
     const schoolName = String(teacherInfo?.school || t('unspecified')).trim();
     const firstCentralStudent = students.find(isCentralIdentityReady);
     const schoolId = String(
