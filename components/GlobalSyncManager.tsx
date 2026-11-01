@@ -31,7 +31,7 @@ type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
 interface StudentGradeSyncDiagnostics { version:string; targetSheet:string; incomingStudents:number; incomingGrades:number; added:number; updated:number; unchanged:number; beforeRows:number; afterRows:number; linkedBySourceId?:number; linkedByLegacyFingerprint?:number; }
-interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
+interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; linkedByExactSemesterKey?:number; linkedByLegacyBlankSemester?:number; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
 
 
 interface CloudRecord {
