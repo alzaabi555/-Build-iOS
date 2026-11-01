@@ -89,7 +89,7 @@ type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
 interface StudentGradeSyncDiagnostics { version:string; targetSheet:string; incomingStudents:number; incomingGrades:number; added:number; updated:number; unchanged:number; beforeRows:number; afterRows:number; linkedBySourceId?:number; linkedByLegacyFingerprint?:number; }
-interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
+interface ParentSubjectSyncDiagnostics { durationMs?:number; batchMode?:boolean; schoolSheetReadMs?:number; studentProcessingMs?:number; schoolSheetWriteMs?:number; masterIndexWriteMs?:number; status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
 
 
 interface CloudRecord {
@@ -259,11 +259,22 @@ const GlobalSyncManager: React.FC = () => {
   };
 
   const postParentCloudVerified = async (body: unknown): Promise<ParentSubjectSyncDiagnostics> => {
-    const response = await fetch(PARENT_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(body)
-    });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 120000);
+    let response: Response;
+    try {
+      response = await fetch(PARENT_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+    } catch (error: any) {
+      if (error?.name === 'AbortError') throw new Error('انتهت مهلة مزامنة ولي الأمر بعد دقيقتين. لا تُعد المحاولة قبل فحص تشخيص الخادم.');
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
     const raw = await response.text();
     let result: ParentSubjectSyncDiagnostics;
     try {
@@ -414,7 +425,7 @@ const GlobalSyncManager: React.FC = () => {
 
     const versionLabel = result.version ? ` v${result.version}` : '';
     setSyncMessage(
-      `نجحت مزامنة ولي الأمر${versionLabel}: ${result.added} إضافة، ${result.updated} تحديث، ${result.unchanged} دون تغيير.`
+      `نجحت مزامنة ولي الأمر${versionLabel}${result.batchMode ? ' بنظام Batch' : ''}: ${result.added} إضافة، ${result.updated} تحديث، ${result.unchanged} دون تغيير خلال ${Math.max(1, Math.round(Number(result.durationMs || 0) / 1000))} ثانية.`
     );
   };
 
