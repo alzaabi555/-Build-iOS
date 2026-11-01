@@ -31,7 +31,7 @@ type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
 
 interface StudentGradeSyncDiagnostics { version:string; targetSheet:string; incomingStudents:number; incomingGrades:number; added:number; updated:number; unchanged:number; beforeRows:number; afterRows:number; linkedBySourceId?:number; linkedByLegacyFingerprint?:number; }
-interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
+interface ParentSubjectSyncDiagnostics { status:string; success:boolean; version?:string; incoming:number; added:number; updated:number; unchanged:number; conflict:number; invalid:number; message?:string; errors?:Array<{ index?:number; student?:string; status?:string; missing?:string[]; message?:string }>; }
 
 
 interface CloudRecord {
@@ -214,9 +214,23 @@ const GlobalSyncManager: React.FC = () => {
       throw new Error(`استجابة سحابة ولي الأمر غير صالحة: ${raw.slice(0, 180)}`);
     }
     if (!response.ok) throw new Error(result?.message || `HTTP ${response.status}`);
-    if (String(result?.version || '') !== '4.8.6') {
-      throw new Error(`إصدار خادم ولي الأمر غير صحيح: ${result?.version || 'غير معروف'}، المطلوب 4.8.6.`);
+
+    // The server version is informational only. Compatibility is determined by
+    // the response contract and diagnostics, not by one hard-coded version.
+    const hasRequiredDiagnostics =
+      Number.isFinite(Number(result?.incoming)) &&
+      Number.isFinite(Number(result?.added)) &&
+      Number.isFinite(Number(result?.updated)) &&
+      Number.isFinite(Number(result?.unchanged)) &&
+      Number.isFinite(Number(result?.conflict)) &&
+      Number.isFinite(Number(result?.invalid));
+
+    if (!hasRequiredDiagnostics) {
+      throw new Error(
+        `استجابة مزامنة ولي الأمر غير مكتملة${result?.version ? ` (الإصدار ${result.version})` : ''}.`
+      );
     }
+
     if (result?.success !== true || result?.status !== 'success' || result.invalid > 0 || result.conflict > 0) {
       const details = (result?.errors || []).map(error => {
         const missing = error.missing?.length ? ` [${error.missing.join('، ')}]` : '';
@@ -350,8 +364,9 @@ const GlobalSyncManager: React.FC = () => {
       timestamp: new Date().toISOString()
     });
 
+    const versionLabel = result.version ? ` v${result.version}` : '';
     setSyncMessage(
-      `نجحت مزامنة ولي الأمر v${result.version}: ${result.added} إضافة، ${result.updated} تحديث، ${result.unchanged} دون تغيير.`
+      `نجحت مزامنة ولي الأمر${versionLabel}: ${result.added} إضافة، ${result.updated} تحديث، ${result.unchanged} دون تغيير.`
     );
   };
 
