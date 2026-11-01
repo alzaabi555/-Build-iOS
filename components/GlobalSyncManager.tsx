@@ -38,6 +38,52 @@ const ADMIN_APP_URL =
   'https://script.google.com/macros/s/AKfycbwZHhZ-RPWUpBGIlw0qTFPUmOPmq9WpcvW4WLklcjb_A9U3MW0luIXYPnHznI29ThpbMA/exec';
 
 const CLOUD_PAYLOAD_CHUNK_SIZE = 30000;
+const readFirstStoredValue = (keys: string[]) => {
+  for (const key of keys) {
+    const value = String(localStorage.getItem(key) || '').trim();
+    if (value) return value;
+  }
+  return '';
+};
+
+const resolveInternalSchoolCode = (teacherInfo: any, students: any[], stateCode = '') => {
+  const studentCode = students
+    .map(student => String(student?.schoolCode || '').trim())
+    .find(Boolean) || '';
+  return String(
+    teacherInfo?.schoolCode ||
+    teacherInfo?.SchoolCode ||
+    readFirstStoredValue([
+      'rased_school_code',
+      'rased_teacher_school_code',
+      'rased_admin_school_code',
+      'schoolCode',
+      'school_code'
+    ]) ||
+    stateCode ||
+    studentCode ||
+    ''
+  ).trim();
+};
+
+const resolveInternalSchoolId = (teacherInfo: any, students: any[]) => {
+  const studentId = students
+    .map(student => String(student?.schoolId || '').trim())
+    .find(Boolean) || '';
+  return String(
+    teacherInfo?.schoolId ||
+    teacherInfo?.SchoolID ||
+    readFirstStoredValue([
+      'rased_school_id',
+      'rased_teacher_school_id',
+      'schoolId',
+      'school_id'
+    ]) ||
+    studentId ||
+    ''
+  ).trim();
+};
+
 
 type SyncType = 'student' | 'parent' | 'backup' | 'restore' | 'admin';
 type SyncState = 'idle' | 'syncing' | 'success' | 'error';
@@ -178,9 +224,9 @@ const GlobalSyncManager: React.FC = () => {
   const [adminSchoolCode, setAdminSchoolCode] = useState('');
 
   useEffect(() => {
-    const savedCode = localStorage.getItem('rased_admin_school_code');
+    const savedCode = resolveInternalSchoolCode(teacherInfo, students);
     if (savedCode) setAdminSchoolCode(savedCode);
-  }, []);
+  }, [teacherInfo, students]);
 
   const showSuccess = (message: string) => {
     setSyncState('success');
@@ -283,9 +329,9 @@ const GlobalSyncManager: React.FC = () => {
     const studentTeacherLinks = publishableStudents.map(student => {
       const className = String((student as any).className || (student as any).class || (student as any).classes?.[0] || '').trim();
       const sourceLinkId = `link_${student.centralStudentId}_${teacherId}_${subjectName}_${className}_${currentSemester}`;
-      return { id:sourceLinkId, sourceLinkId, centralStudentId:student.centralStudentId, schoolId:student.schoolId || '', schoolCode:student.schoolCode || adminSchoolCode, teacherId, teacherName:teacherInfo?.name || 'المعلم', subjectId, subjectName, classId:className, className, semester:currentSemester };
+      return { id:sourceLinkId, sourceLinkId, centralStudentId:student.centralStudentId, schoolId:student.schoolId || '', schoolCode:student.schoolCode || resolveInternalSchoolCode(teacherInfo, students, adminSchoolCode), teacherId, teacherName:teacherInfo?.name || 'المعلم', subjectId, subjectName, classId:className, className, semester:currentSemester };
     });
-    const gradeSync = await postStudentCloudVerified({ identitySchemaVersion:1, identityMode:'central_with_legacy_aliases', schemaVersion:'1.0.0', schoolCode:adminSchoolCode, teacherId, subject:subjectName, semester:currentSemester, students:publishableStudents, studentTeacherLinks, tasks, resources:libraryArchive, gameQuestions, className:'الكل' });
+    const gradeSync = await postStudentCloudVerified({ identitySchemaVersion:1, identityMode:'central_with_legacy_aliases', schemaVersion:'1.0.0', schoolCode:resolveInternalSchoolCode(teacherInfo, students, adminSchoolCode), teacherId, subject:subjectName, semester:currentSemester, students:publishableStudents, studentTeacherLinks, tasks, resources:libraryArchive, gameQuestions, className:'الكل' });
     if (gradeSync.incomingStudents !== publishableStudents.length) throw new Error(`السحابة استقبلت ${gradeSync.incomingStudents} طالبًا بدل ${publishableStudents.length}.`);
     if (gradeSync.incomingGrades !== localIncomingGrades) throw new Error(`السحابة استقبلت ${gradeSync.incomingGrades} درجة بدل ${localIncomingGrades}.`);
     setSyncMessage(`نجحت مزامنة الطالب v${gradeSync.version}: ${gradeSync.updated} تحديث، ${gradeSync.added} إضافة، ${gradeSync.unchanged} دون تغيير.`);
@@ -298,18 +344,8 @@ const GlobalSyncManager: React.FC = () => {
     const subjectName = String(teacherInfo?.subject || t('unspecified')).trim();
     const subjectId = canonicalSubjectId((teacherInfo as any)?.subjectId, subjectName);
     const schoolName = String(teacherInfo?.school || t('unspecified')).trim();
-    const firstCentralStudent = students.find(isCentralIdentityReady);
-    const schoolId = String(
-      (teacherInfo as any)?.schoolId ||
-      firstCentralStudent?.schoolId ||
-      ''
-    ).trim();
-    const schoolCode = String(
-      (teacherInfo as any)?.schoolCode ||
-      adminSchoolCode ||
-      firstCentralStudent?.schoolCode ||
-      ''
-    ).trim();
+    const schoolId = resolveInternalSchoolId(teacherInfo, students);
+    const schoolCode = resolveInternalSchoolCode(teacherInfo, students, adminSchoolCode);
     const semester = String(currentSemester || '').trim();
 
     const missingTeacherContext = [
@@ -385,7 +421,7 @@ const GlobalSyncManager: React.FC = () => {
   const syncAdminApp = async () => {
     setSyncMessage(t('syncingAdminMsg'));
     const schoolCode = adminSchoolCode.trim();
-    localStorage.setItem('rased_admin_school_code', schoolCode);
+    if (schoolCode) { localStorage.setItem('rased_admin_school_code', schoolCode); localStorage.setItem('rased_school_code', schoolCode); }
     const today = new Date();
     const todayText = today.toLocaleDateString('en-CA');
     const absentStudents: string[] = [];
