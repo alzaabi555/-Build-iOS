@@ -9,7 +9,7 @@ const canonicalSubjectId = (subjectIdValue: unknown, subjectNameValue: unknown) 
     'الدراسات الاجتماعية':'social_studies','الدراسات الإجتماعية':'social_studies',
     'الدراسات':'social_studies','social_studies':'social_studies'
   };
-  return aliases[rawId] || aliases[rawName] || aliases[normalized] || rawId || rawName;
+  return aliases[rawId] || aliases[rawName] || aliases[normalized] || rawId || normalized;
 };
 import {
   AlertCircle,
