@@ -60,11 +60,11 @@ const POSITIVE_BEHAVIORS = [
     { id: 'p4', original: 'مساعدة الزملاء', transKey: 'behPos4', points: 2 },
     { id: 'p5', original: 'مشاركة صفية متميزة', transKey: 'behPos5', points: 5 },
     { id: 'p6', original: 'إبداع وتميز', transKey: 'behPos6', points: 3 },
-    { id: 'p7', original: 'نقاط الالعاب', transKey: 'behPos7', points: 10 },
-     { id: 'p8', original: 'نقاط الالعاب', transKey: 'behPos8', points: 20 },
-     { id: 'p9', original: 'نقاط الالعاب', transKey: 'behPos9', points: 30 },
-     { id: 'p10', original: 'نقاط الالعاب', transKey: 'behPos10', points: 40 },
-     { id: 'p11', original: 'نقاط الالعاب', transKey: 'behPos11', points: 50 },
+    { id: 'p7', original: 'مكافأة حل الألعاب التعليمية (10 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos7', points: 10 },
+     { id: 'p8', original: 'مكافأة حل الألعاب التعليمية (20 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos8', points: 20 },
+     { id: 'p9', original: 'مكافأة حل الألعاب التعليمية (30 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos9', points: 30 },
+     { id: 'p10', original: 'مكافأة حل الألعاب التعليمية (40 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos10', points: 40 },
+     { id: 'p11', original: 'مكافأة حل الألعاب التعليمية (50 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos11', points: 50 },
 ];
 // =========================================================================
 // 🔐 أدوات منع تكرار الطالب داخل StudentList
@@ -219,6 +219,36 @@ const getStudentStableKey = (student: Student | any) => String(
     student?.civilID || student?.civilId || student?.id ||
     makeStudentIdentityKey(student?.name || '', getStudentClassValueForIdentity(student))
 ).trim().toUpperCase();
+const getDrawStudentKey = (student: Student | any) => String(
+    student?.centralStudentId || student?.centralRasedId || student?.rasedId ||
+    student?.rasedID || student?.id ||
+    makeStudentIdentityKey(student?.name || '', getStudentClassValueForIdentity(student))
+).trim().toUpperCase();
+
+type FairDrawStudentStat = { selectionCount: number; lastSelectedAt: string };
+type FairDrawState = {
+    cycleId: number;
+    selectedInCycle: string[];
+    lastSelectedKey: string;
+    stats: Record<string, FairDrawStudentStat>;
+};
+const EMPTY_FAIR_DRAW_STATE: FairDrawState = { cycleId: 1, selectedInCycle: [], lastSelectedKey: '', stats: {} };
+const getFairDrawStorageKey = (grade: string, className: string) =>
+    `rased_fair_random_picker_v2:${grade || 'all'}:${className || 'all'}`;
+const readFairDrawState = (grade: string, className: string): FairDrawState => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(getFairDrawStorageKey(grade, className)) || 'null');
+        if (!parsed || !Array.isArray(parsed.selectedInCycle) || typeof parsed.stats !== 'object') return { ...EMPTY_FAIR_DRAW_STATE };
+        return {
+            cycleId: Math.max(1, Number(parsed.cycleId) || 1),
+            selectedInCycle: parsed.selectedInCycle.map(String),
+            lastSelectedKey: String(parsed.lastSelectedKey || ''),
+            stats: parsed.stats || {}
+        };
+    } catch {
+        return { ...EMPTY_FAIR_DRAW_STATE };
+    }
+};
 const orderStudentsForDisplay = (list: Student[], language: string) => {
     const byClass = new Map<string, Student[]>();
     list.forEach(student => {
@@ -377,7 +407,7 @@ const StudentList: React.FC<StudentListProps> = ({
     const [customNegativeReason, setCustomNegativeReason] = useState('');
 
     const [randomWinner, setRandomWinner] = useState<Student | null>(null);
-    const [pickedStudentIds, setPickedStudentIds] = useState<string[]>([]);
+    const [fairDrawState, setFairDrawState] = useState<FairDrawState>(() => readFairDrawState(selectedGrade, selectedClass));
 
     const [showTimerModal, setShowTimerModal] = useState(false);
     const [timerSeconds, setTimerSeconds] = useState(0);
@@ -445,7 +475,7 @@ const StudentList: React.FC<StudentListProps> = ({
     }, [safeClasses, newStudentClass]);
 
     useEffect(() => {
-        setPickedStudentIds([]);
+        setFairDrawState(readFairDrawState(selectedGrade, selectedClass));
     }, [selectedClass, selectedGrade]);
 
     useEffect(() => {
@@ -640,12 +670,10 @@ const StudentList: React.FC<StudentListProps> = ({
     const handleRandomPick = () => {
         const todayStr = new Date().toLocaleDateString('en-CA');
         const now = new Date();
-
         const eligibleStudents = filteredStudents.filter(student => {
             const attendanceRecord = student.attendance?.find(a => a.date === todayStr);
             const isAbsentOrTruant = attendanceRecord?.status === 'absent' || attendanceRecord?.status === 'truant';
             if (isAbsentOrTruant) return false;
-
             const hasNegativeToday = (student.behaviors || []).some(b => {
                 const bDate = new Date(b.date);
                 return b.type === 'negative' &&
@@ -653,36 +681,68 @@ const StudentList: React.FC<StudentListProps> = ({
                     bDate.getMonth() === now.getMonth() &&
                     bDate.getFullYear() === now.getFullYear();
             });
-            if (hasNegativeToday) return false;
-
-            return true;
+            return !hasNegativeToday;
         });
-
         if (eligibleStudents.length === 0) {
             alert(t('alertNoPresentStudentsForDraw'));
             return;
         }
 
-        let candidates = eligibleStudents.filter(s => !pickedStudentIds.includes(s.id));
-
+        const eligibleKeys = new Set(eligibleStudents.map(getDrawStudentKey));
+        let workingState: FairDrawState = {
+            ...fairDrawState,
+            selectedInCycle: fairDrawState.selectedInCycle.filter(key => eligibleKeys.has(key)),
+            stats: { ...fairDrawState.stats }
+        };
+        let candidates = eligibleStudents.filter(student => !workingState.selectedInCycle.includes(getDrawStudentKey(student)));
         if (candidates.length === 0) {
-            if (confirm(t('alertAllPresentSelected'))) {
-                setPickedStudentIds([]);
-                candidates = eligibleStudents;
-            } else {
-                return;
-            }
+            workingState = {
+                ...workingState,
+                cycleId: workingState.cycleId + 1,
+                selectedInCycle: []
+            };
+            candidates = eligibleStudents;
         }
 
-        const randomIndex = Math.floor(Math.random() * candidates.length);
-        const winner = candidates[randomIndex];
+        // الأقل اختيارًا أولًا، ثم الأقدم في آخر اختيار، والعشوائية فقط بين المتساوين تمامًا.
+        const minimumCount = Math.min(...candidates.map(student => workingState.stats[getDrawStudentKey(student)]?.selectionCount || 0));
+        let balancedCandidates = candidates.filter(student => (workingState.stats[getDrawStudentKey(student)]?.selectionCount || 0) === minimumCount);
+        if (balancedCandidates.length > 1) {
+            const oldestTime = Math.min(...balancedCandidates.map(student => {
+                const value = workingState.stats[getDrawStudentKey(student)]?.lastSelectedAt;
+                return value ? new Date(value).getTime() : 0;
+            }));
+            balancedCandidates = balancedCandidates.filter(student => {
+                const value = workingState.stats[getDrawStudentKey(student)]?.lastSelectedAt;
+                return (value ? new Date(value).getTime() : 0) === oldestTime;
+            });
+        }
+        if (balancedCandidates.length > 1 && workingState.lastSelectedKey) {
+            const withoutImmediateRepeat = balancedCandidates.filter(student => getDrawStudentKey(student) !== workingState.lastSelectedKey);
+            if (withoutImmediateRepeat.length) balancedCandidates = withoutImmediateRepeat;
+        }
 
-        setPickedStudentIds(prev => [...prev, winner.id]);
+        const winner = balancedCandidates[Math.floor(Math.random() * balancedCandidates.length)];
+        const winnerKey = getDrawStudentKey(winner);
+        const currentStat = workingState.stats[winnerKey] || { selectionCount: 0, lastSelectedAt: '' };
+        const nextState: FairDrawState = {
+            ...workingState,
+            selectedInCycle: [...workingState.selectedInCycle, winnerKey],
+            lastSelectedKey: winnerKey,
+            stats: {
+                ...workingState.stats,
+                [winnerKey]: {
+                    selectionCount: currentStat.selectionCount + 1,
+                    lastSelectedAt: now.toISOString()
+                }
+            }
+        };
+        setFairDrawState(nextState);
+        localStorage.setItem(getFairDrawStorageKey(selectedGrade, selectedClass), JSON.stringify(nextState));
         setRandomWinner(winner);
         playSound('positive');
         setShowMenu(false);
     };
-
     const handleBehavior = (student: Student, type: BehaviorType) => {
         setSelectedStudentForBehavior(student);
         setCustomPositiveReason('');
@@ -1350,7 +1410,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
             <DrawerSheet isOpen={showManageClasses} onClose={() => setShowManageClasses(false)} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center"><h3 className="font-black text-xl mb-6 shrink-0">{t('classSettingsTitle')}</h3><div className="rounded-2xl p-4 mb-6 border shrink-0 bg-primary/10 border-primary/20"><div className="flex items-center justify-center gap-2 mb-3 text-primary"><Users className="w-4 h-4" /><span className="font-bold text-sm">{t('schoolTypeBatchChange')}</span></div><div className="flex gap-3 mb-2"><button onClick={() => handleBatchGenderUpdate('male')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'male' ? 'bg-bgCard border-blue-500 shadow-md text-blue-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👨‍🎓</span><span className="font-black text-sm">{t('boys')}</span></button><button onClick={() => handleBatchGenderUpdate('female')} className={`flex-1 py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${defaultStudentGender === 'female' ? 'bg-bgCard border-pink-500 shadow-md text-pink-500' : 'bg-bgSoft border-borderColor hover:bg-bgCard text-textSecondary'}`}><span className="text-xl">👩‍🎓</span><span className="font-black text-sm">{t('girls')}</span></button></div><p className="text-[10px] font-bold text-primary">{t('iconUnificationNote')}</p></div><div className="w-full h-px mb-6 shrink-0 bg-borderColor" /><div className="flex justify-between items-center mb-2 px-2 shrink-0"><span className="text-xs font-bold text-textSecondary">{t('deleteClassInstruction')}</span><span className="text-[10px] font-bold text-rose-500">{t('deleteClassWarning')}</span></div><div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-2">{safeClasses.map(cls => <div key={cls} className="p-3 rounded-xl border transition-colors bg-transparent border-borderColor">{editingClassName === cls ? <div className="space-y-2"><input type="text" autoFocus value={editedClassName} onChange={(e) => setEditedClassName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleEditClassNameSave(); if (e.key === 'Escape') cancelEditClassName(); }} className="w-full p-3 rounded-xl font-black text-sm outline-none border bg-bgCard border-primary text-textPrimary" aria-label={language === 'ar' ? `الاسم الجديد للفصل ${cls}` : `New name for ${cls}`} /><div className="flex gap-2"><button type="button" onClick={handleEditClassNameSave} disabled={!editedClassName.trim() || !onEditClass} className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-black disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"><CheckCircle2 size={15} />{language === 'ar' ? 'حفظ الاسم' : 'Save name'}</button><button type="button" onClick={cancelEditClassName} className="px-4 py-2.5 rounded-xl bg-bgSoft border border-borderColor text-textSecondary text-xs font-black active:scale-95 transition-all">{language === 'ar' ? 'إلغاء' : 'Cancel'}</button></div></div> : <div className="flex justify-between items-center gap-3"><span className="font-bold text-sm text-textPrimary">{cls}</span><div className="flex gap-2"><button type="button" onClick={() => openEditClassName(cls)} disabled={!onEditClass} className="p-2 rounded-lg transition-colors text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-40" title={language === 'ar' ? 'تعديل اسم الفصل' : 'Rename class'} aria-label={language === 'ar' ? `تعديل اسم الفصل ${cls}` : `Rename class ${cls}`}><Edit2 className="w-4 h-4" /></button><button onClick={() => { if (onDeleteClass && confirm(t('alertConfirmDeleteClass'))) onDeleteClass(cls); }} className="p-2 rounded-lg transition-colors text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"><Trash2 className="w-4 h-4" /></button></div></div>}</div>)}{safeClasses.length === 0 && <p className="text-xs text-textSecondary">{t('noClassesAdded')}</p>}</div></div></DrawerSheet>
 
-            <DrawerSheet isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary"><CheckCircle2 className="w-5 h-5 text-emerald-500" />{t('positiveReinforcement')}</h3><p className="text-xs font-bold mb-4 shrink-0 text-textSecondary">{t('chooseExcellenceType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi></p><div className="flex-1 overflow-y-auto custom-scrollbar px-1"><div className="grid grid-cols-2 gap-2 mb-4">{POSITIVE_BEHAVIORS.map(b => <button key={b.id} onClick={() => confirmPositiveBehavior(b.original, b.points)} className="p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20"><span>{t(b.transKey)}</span><span className="text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600">+{b.points}</span></button>)}</div></div><div className="pt-3 border-t shrink-0 mt-auto border-borderColor"><p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p><div className="flex gap-2"><input type="text" value={customPositiveReason} onChange={(e) => setCustomPositiveReason(e.target.value)} placeholder={t('otherReasonPlaceholder')} className="flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary" /><button onClick={() => { if (customPositiveReason.trim()) confirmPositiveBehavior(customPositiveReason, 1); }} className="px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600"><Plus size={14} /> {t('addBtnSmall')}</button></div></div></div></DrawerSheet>
+            <DrawerSheet isOpen={showPositiveModal} onClose={() => { setShowPositiveModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary"><CheckCircle2 className="w-5 h-5 text-emerald-500" />{t('positiveReinforcement')}</h3><p className="text-xs font-bold mb-4 shrink-0 text-textSecondary">{t('chooseExcellenceType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi></p><div className="flex-1 overflow-y-auto custom-scrollbar px-1"><div className="grid grid-cols-2 gap-2 mb-4">{POSITIVE_BEHAVIORS.map(b => <button key={b.id} onClick={() => confirmPositiveBehavior(b.original, b.points)} className="p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20"><span>{(b as any).displayLabel || t(b.transKey)}</span><span className="text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-emerald-600">+{b.points}</span></button>)}</div></div><div className="pt-3 border-t shrink-0 mt-auto border-borderColor"><p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomBehavior')}</p><div className="flex gap-2"><input type="text" value={customPositiveReason} onChange={(e) => setCustomPositiveReason(e.target.value)} placeholder={t('otherReasonPlaceholder')} className="flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-emerald-500 text-textPrimary" /><button onClick={() => { if (customPositiveReason.trim()) confirmPositiveBehavior(customPositiveReason, 1); }} className="px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-emerald-500 text-white hover:bg-emerald-600"><Plus size={14} /> {t('addBtnSmall')}</button></div></div></div></DrawerSheet>
 
             <DrawerSheet isOpen={showNegativeModal} onClose={() => { setShowNegativeModal(false); setSelectedStudentForBehavior(null); }} isRamadan={isRamadan} dir={dir}><div className="flex flex-col h-full w-full text-center pb-4"><h3 className="font-black text-lg flex items-center justify-center gap-2 mb-4 shrink-0 text-textPrimary"><AlertCircle className="w-5 h-5 text-rose-500" />{t('behavioralAlert')}</h3><p className="text-xs font-bold mb-4 shrink-0 text-textSecondary">{t('chooseNoteType')} <bdi className="text-primary">{selectedStudentForBehavior?.name}</bdi></p><div className="flex-1 overflow-y-auto custom-scrollbar px-1"><div className="grid grid-cols-2 gap-2 mb-4">{NEGATIVE_BEHAVIORS.map(b => <button key={b.id} onClick={() => confirmNegativeBehavior(b.original, b.points)} className="p-3 border rounded-xl text-xs font-bold active:scale-95 transition-all flex flex-col items-center gap-1 bg-rose-500/10 border-rose-500/30 text-rose-600 hover:bg-rose-500/20"><span>{t(b.transKey)}</span><span className="text-[10px] px-2 py-0.5 rounded-full shadow-sm bg-bgCard text-rose-600">{b.points}</span></button>)}</div></div><div className="pt-3 border-t shrink-0 mt-auto border-borderColor"><p className={`text-[10px] font-bold mb-2 ${dir === 'rtl' ? 'text-right' : 'text-left'} text-textSecondary`}>{t('orAddCustomNote')}</p><div className="flex gap-2"><input type="text" value={customNegativeReason} onChange={(e) => setCustomNegativeReason(e.target.value)} placeholder={t('otherReasonPlaceholder')} className="flex-1 border rounded-lg px-3 py-2 text-xs font-bold outline-none transition-colors bg-bgCard border-borderColor focus:border-rose-500 text-textPrimary" /><button onClick={() => { if (customNegativeReason.trim()) confirmNegativeBehavior(customNegativeReason, -1); }} className="px-4 py-2 rounded-lg text-xs font-bold active:scale-95 flex items-center gap-1 transition-colors bg-rose-500 text-white hover:bg-rose-600"><Plus size={14} /> {t('addBtnSmall')}</button></div></div></div></DrawerSheet>
 
