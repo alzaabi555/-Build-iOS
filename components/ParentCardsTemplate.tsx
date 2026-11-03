@@ -16,11 +16,19 @@ const ParentCardsTemplate: React.FC<ParentCardsTemplateProps> = ({ students, sch
     ? students
     : students.filter((s: any) => s.classes && s.classes.includes(selectedClass));
 
-  // 🔑 تعديل الفلترة لتبحث عن الكود السري (rasedId أو secretCode) بدلاً من parentCode
-  const validStudents = targetStudents.filter((s: any) => 
-    (s.rasedId && s.rasedId.trim() !== '') || 
-    (s.secretCode && s.secretCode.trim() !== '') ||
-    (s.parentCode && s.parentCode.trim() !== '') // كحل احتياطي للنسخ القديمة
+  const normalizeCode = (value: unknown) => String(value ?? '').trim();
+  const getLegacyCode = (student: any) =>
+    normalizeCode(student?.rasedId) ||
+    normalizeCode(student?.secretCode) ||
+    normalizeCode(student?.parentCode) ||
+    '-';
+  const getUnifiedCode = (student: any) =>
+    normalizeCode(student?.centralRasedId) ||
+    normalizeCode(student?.CentralRasedID) ||
+    '';
+  // تُعرض البطاقة إذا توفر الكود السابق أو الكود الموحد، دون إنشاء أي كود محلياً.
+  const validStudents = targetStudents.filter((student: any) =>
+    getLegacyCode(student) !== '-' || getUnifiedCode(student) !== ''
   );
 
   if (validStudents.length === 0) {
@@ -76,19 +84,23 @@ const ParentCardsTemplate: React.FC<ParentCardsTemplateProps> = ({ students, sch
                   </div>
                 </div>
 
-                {/* 🔑 الكود السري بدلاً من الرقم المدني */}
-                <div className="bg-white rounded-xl p-2 flex items-center justify-between shadow-inner border border-slate-100 shrink-0 mb-1 mt-1">
+                {/* الكود السابق خلال المرحلة الانتقالية */}
+                <div className="bg-white rounded-xl p-1.5 flex items-center justify-between shadow-inner border border-amber-200 shrink-0 mt-1">
                   <div className="flex items-center gap-1">
-                    <div className="bg-blue-50 p-1 rounded-md shrink-0">
-                      {/* 🔑 تم استخدام أيقونة المفتاح */}
-                      <Key className="w-3.5 h-3.5 text-[#1e3a8a]" />
+                    <div className="bg-amber-50 p-1 rounded-md shrink-0">
+                      <Key className="w-3.5 h-3.5 text-amber-700" />
                     </div>
-                    {/* 🔑 تم التغيير من "الرقم المدني" إلى "الكود السري" */}
-                    <span className="text-[8px] font-black text-slate-600">الكود السري</span>
+                    <span className="text-[8px] font-black text-amber-700">الكود السابق</span>
                   </div>
-                  <span className="font-mono font-black text-[13px] text-[#1e3a8a] tracking-widest bg-slate-50 px-1.5 py-0.5 rounded shrink-0">
-                    {/* 🔑 يطبع الكود السري بأولوية */}
-                    {student.rasedId || student.secretCode || student.parentCode}
+                  <span className="font-mono font-black text-[11px] text-amber-900 tracking-wider bg-amber-50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap" dir="ltr">
+                    {getLegacyCode(student)}
+                  </span>
+                </div>
+                {/* الكود الموحد الصادر من خدمة الهوية المركزية */}
+                <div className="bg-emerald-50 rounded-xl p-1.5 flex items-center justify-between shadow-inner border border-emerald-300 shrink-0 mb-1">
+                  <span className="text-[8px] font-black text-emerald-700">الكود الموحد</span>
+                  <span className="font-mono font-black text-[12px] text-emerald-900 tracking-wider bg-white px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap" dir="ltr">
+                    {getUnifiedCode(student) || 'قيد الإصدار'}
                   </span>
                 </div>
 

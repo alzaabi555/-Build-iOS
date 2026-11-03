@@ -1089,7 +1089,18 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
 const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selectedClass }: any) => {
   const { t, dir } = useApp();
   const safeStudents = (Array.isArray(students) ? students : []).filter((student: any) => selectedClass === 'all' || (Array.isArray(student.classes) && student.classes.includes(selectedClass)));
-  const getCode = (student: any) => student?.rasedId || student?.parentCode || student?.secretCode || student?.civilID || student?.civilId || '-';
+  const normalizeCode = (value: unknown) => String(value ?? '').trim();
+  // الكود السابق يبقى فعالاً خلال المرحلة الانتقالية، ولا يتم توليد أي كود داخل قالب الطباعة.
+  const getLegacyCode = (student: any) =>
+    normalizeCode(student?.rasedId) ||
+    normalizeCode(student?.parentCode) ||
+    normalizeCode(student?.secretCode) ||
+    '-';
+  // الكود الموحد مصدره خدمة الهوية المركزية فقط.
+  const getUnifiedCode = (student: any) =>
+    normalizeCode(student?.centralRasedId) ||
+    normalizeCode(student?.CentralRasedID) ||
+    '';
   return (
     <div className="w-full bg-white text-black p-8" dir={dir}>
       <div className="grid grid-cols-2 gap-5">
@@ -1103,8 +1114,25 @@ const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selec
               <div className="space-y-4">
                 <div><p className="text-xs font-bold text-gray-500">{t('studentNameLabel')}</p><p className="text-xl font-black text-slate-900 mt-1">{student.name}</p></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3"><p className="text-xs font-bold text-gray-500">{t('classLabelShort')}</p><p className="font-black text-slate-900 mt-1">{Array.isArray(student.classes) ? student.classes[0] : '-'}</p></div>
-                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3"><p className="text-xs font-bold text-amber-700">{t('secretCodeLabel')}</p><p className="font-black text-xl text-amber-900 mt-1 tracking-wider" dir="ltr">{getCode(student)}</p></div>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                    <p className="text-xs font-bold text-gray-500">{t('classLabelShort')}</p>
+                    <p className="font-black text-slate-900 mt-1">{Array.isArray(student.classes) ? student.classes[0] : '-'}</p>
+                  </div>
+                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-xs font-bold text-amber-700">الكود السابق</p>
+                    <p className="font-mono font-black text-lg text-amber-900 mt-1 tracking-wider whitespace-nowrap" dir="ltr">{getLegacyCode(student)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 border-2 border-emerald-300 p-3 mt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-emerald-700">الكود الموحد</p>
+                      <p className="text-[9px] font-bold text-emerald-600 mt-0.5">المعتمد للدخول إلى منظومة راصد</p>
+                    </div>
+                    <p className="font-mono font-black text-xl text-emerald-900 tracking-wider whitespace-nowrap text-left" dir="ltr">
+                      {getUnifiedCode(student) || 'قيد الإصدار'}
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="border-t border-slate-200 pt-4 mt-5 text-xs font-bold text-slate-600 flex justify-between gap-3"><span>{schoolName || t('schoolFallback')}</span><span>{teacherName || t('mailboxDefaultTeacher')}</span></div>
