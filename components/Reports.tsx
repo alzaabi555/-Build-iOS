@@ -356,10 +356,15 @@ const PrintPreviewModal: React.FC<{
             const pageWorker = html2pdf().set(pageOptions).from(sheet).toCanvas();
             const canvas = await pageWorker.get('canvas');
             if (!pdf) {
-              // Reuse the bundled jsPDF constructor; no new dependency or import.
-              const initializedPdf = await pageWorker.toPdf().get('pdf');
-              const PdfConstructor = initializedPdf.constructor;
-              pdf = new PdfConstructor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+              // Use the actual jsPDF instance; its .constructor is not the jsPDF factory.
+              pdf = await pageWorker.toPdf().get('pdf');
+              // Replace html2pdf's automatically sliced pages with one blank A4 page.
+              const generatedPages = pdf.internal.getNumberOfPages();
+              pdf.addPage('a4', 'portrait');
+              for (let page = generatedPages; page >= 1; page -= 1) {
+                pdf.deletePage(page);
+              }
+              pdf.setPage(1);
             } else {
               pdf.addPage('a4', 'portrait');
             }
