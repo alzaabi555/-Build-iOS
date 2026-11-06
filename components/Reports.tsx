@@ -315,6 +315,83 @@ const PrintPreviewModal: React.FC<{
     };
 
     try {
+      // Parent cards only: render each A4 sheet separately, never slice a long canvas.
+      const parentCardsDocument = element.querySelector('[data-parent-cards-document="true"]');
+      if (parentCardsDocument) {
+        const pages = Array.from(parentCardsDocument.querySelectorAll<HTMLElement>('[data-parent-cards-page="true"]'));
+        if (pages.length === 0) return;
+        await document.fonts.ready;
+
+        const exportHost = document.createElement('div');
+        exportHost.style.cssText = 'position:absolute;left:-100000px;top:0;width:210mm;margin:0;padding:0;background:#fff;pointer-events:none;';
+        exportHost.dir = dir;
+        exportHost.style.fontFamily = 'Tajawal, sans-serif';
+        document.body.appendChild(exportHost);
+
+        try {
+          let pdf: any = null;
+          for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+            const sheet = pages[pageIndex].cloneNode(true) as HTMLElement;
+            sheet.style.margin = '0';
+            sheet.style.breakAfter = 'auto';
+            sheet.style.pageBreakAfter = 'auto';
+            exportHost.replaceChildren(sheet);
+
+            await Promise.all(Array.from(sheet.querySelectorAll('img')).map(async (image) => {
+              if (!image.complete) {
+                await new Promise<void>((resolve) => {
+                  image.addEventListener('load', () => resolve(), { once: true });
+                  image.addEventListener('error', () => resolve(), { once: true });
+                });
+              }
+              if (image.decode) await image.decode().catch(() => undefined);
+            }));
+
+            const pageOptions = {
+              ...opt,
+              html2canvas: { ...opt.html2canvas, windowWidth: 794, scrollX: 0, scrollY: 0 },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+              pagebreak: { mode: [] }
+            };
+            const pageWorker = html2pdf().set(pageOptions).from(sheet).toCanvas();
+            const canvas = await pageWorker.get('canvas');
+            if (!pdf) {
+              // Reuse the bundled jsPDF constructor; no new dependency or import.
+              const initializedPdf = await pageWorker.toPdf().get('pdf');
+              const PdfConstructor = initializedPdf.constructor;
+              pdf = new PdfConstructor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+            } else {
+              pdf.addPage('a4', 'portrait');
+            }
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+            pdf.addImage(
+              canvas.toDataURL('image/jpeg', 0.98), 'JPEG',
+              (pageWidth - canvas.width * ratio) / 2,
+              (pageHeight - canvas.height * ratio) / 2,
+              canvas.width * ratio, canvas.height * ratio
+            );
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+          if (Capacitor.isNativePlatform()) {
+            const pdfBase64 = pdf.output('datauristring');
+            const result = await Filesystem.writeFile({
+              path: opt.filename,
+              data: pdfBase64.split(',')[1],
+              directory: Directory.Cache
+            });
+            await Share.share({ title: title, url: result.uri, dialogTitle: t('shareReport') });
+          } else {
+            await pdf.save(opt.filename);
+          }
+        } finally {
+          exportHost.remove();
+        }
+        return;
+      }
+
       const worker = html2pdf().set(opt).from(element).toPdf();
       if (Capacitor.isNativePlatform()) {
         const pdfBase64 = await worker.output('datauristring');
@@ -1101,11 +1178,27 @@ const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selec
     normalizeCode(student?.centralRasedId) ||
     normalizeCode(student?.CentralRasedID) ||
     '';
+  const cardsPerPage = 4;
+  const pages = Array.from(
+    { length: Math.ceil(safeStudents.length / cardsPerPage) },
+    (_, index) => safeStudents.slice(index * cardsPerPage, (index + 1) * cardsPerPage)
+  );
   return (
-    <div className="w-full bg-white text-black p-8" dir={dir}>
-      <div className="grid grid-cols-2 gap-5">
-        {safeStudents.map((student: any, index: number) => (
-          <div key={student.id || index} className="avoid-break rounded-3xl border-2 border-amber-400 overflow-hidden bg-white shadow-sm min-h-[92mm] flex flex-col">
+    <div className="w-full bg-white text-black" dir={dir} data-parent-cards-document="true">
+      {pages.map((pageStudents, pageIndex) => (
+        <section
+          key={pageIndex}
+          data-parent-cards-page="true"
+          style={{
+            width: '210mm', height: '297mm', padding: '10mm',
+            boxSizing: 'border-box', backgroundColor: '#ffffff',
+            display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gridTemplateRows: 'repeat(2, minmax(0, 1fr))', gap: '5mm',
+            flexShrink: 0, breakInside: 'avoid', pageBreakInside: 'avoid'
+          }}
+        >
+        {pageStudents.map((student: any, index: number) => (
+          <div key={student.id || index} className="avoid-break rounded-3xl border-2 border-amber-400 overflow-hidden bg-white shadow-sm flex flex-col" style={{ minWidth: 0, minHeight: 0, height: '100%', boxSizing: 'border-box', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <div className="bg-gradient-to-l from-amber-500 to-amber-400 text-white px-5 py-4 flex items-center justify-between">
               <div><h2 className="text-xl font-black">{t('parentCardTitle')}</h2><p className="text-xs font-bold opacity-90">{t('parentCardSubtitle')}</p></div>
               <CreditCard className="w-9 h-9" />
@@ -1139,7 +1232,8 @@ const ParentCardsWithoutQrTemplate = ({ students, schoolName, teacherName, selec
             </div>
           </div>
         ))}
-      </div>
+        </section>
+      ))}
     </div>
   );
 };
