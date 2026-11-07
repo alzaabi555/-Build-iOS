@@ -325,6 +325,61 @@ function bytesToBase64(bytes: Uint8Array): string {
   return window.btoa(binary);
 }
 
+const bankCategory = (value: unknown) => String(value ?? "").trim().replace(/\s+/g, " ");
+const bankCollator = new Intl.Collator("ar", { numeric: true, sensitivity: "base" });
+const arabicOrdinals: Record<string, number> = {
+  اول: 1, اولى: 1, ثاني: 2, ثانية: 2, ثالث: 3, ثالثة: 3,
+  رابع: 4, رابعة: 4, خامس: 5, خامسة: 5, سادس: 6, سادسة: 6,
+  سابع: 7, سابعة: 7, ثامن: 8, ثامنة: 8, تاسع: 9, تاسعة: 9,
+  عاشر: 10, عاشرة: 10,
+};
+function curriculumNumber(value: string): number | undefined {
+  const normalized = value.replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[أإآ]/g, "ا").replace(/[\u064B-\u065F\u0670]/g, "");
+  const number = normalized.match(/\d+/);
+  if (number) return Number(number[0]);
+  const tokens = normalized.split(/[\s:،.\-–]+/);
+  for (const token of tokens) {
+    const ordinal = arabicOrdinals[token.replace(/^ال/, "")];
+    if (ordinal !== undefined) return ordinal;
+  }
+  return undefined;
+}
+function compareBankCategory(a: unknown, b: unknown, curriculum = false): number {
+  const left = bankCategory(a), right = bankCategory(b);
+  if (!left || !right) return left ? -1 : right ? 1 : 0;
+  if (curriculum) {
+    const x = curriculumNumber(left), y = curriculumNumber(right);
+    if (x !== undefined && y !== undefined && x !== y) return x - y;
+  }
+  return bankCollator.compare(left, right);
+}
+function sortBankQuestions<T extends { subject?: string; unit?: string; lesson?: string; id: string; createdAt?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => compareBankCategory(a.subject, b.subject)
+    || compareBankCategory(a.unit, b.unit, true)
+    || compareBankCategory(a.lesson, b.lesson, true)
+    || String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))
+    || bankCollator.compare(a.id, b.id));
+}
+function groupBankQuestions(items: TeacherExamBankQuestion[]) {
+  const subjects = new Map<string, Map<string, Map<string, TeacherExamBankQuestion[]>>>();
+  sortBankQuestions(items).forEach(question => {
+    const subject = bankCategory(question.subject), unit = bankCategory(question.unit), lesson = bankCategory(question.lesson);
+    if (!subjects.has(subject)) subjects.set(subject, new Map());
+    const units = subjects.get(subject)!;
+    if (!units.has(unit)) units.set(unit, new Map());
+    const lessons = units.get(unit)!;
+    if (!lessons.has(lesson)) lessons.set(lesson, []);
+    lessons.get(lesson)!.push(question);
+  });
+  return Array.from(subjects, ([subject, units]) => ({ subject,
+    units: Array.from(units, ([unit, lessons]) => ({ unit,
+      lessons: Array.from(lessons, ([lesson, questions]) => ({ lesson, questions }))
+    }))
+  }));
+}
+
 function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "slate" | "blue" | "green" | "amber" | "red" }) {
   const tones = {
     slate: "bg-slate-100 text-slate-700",
@@ -371,6 +426,10 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
   }, []);
   const [section, setSection] = useState<"bank" | "create" | "exams" | "results">("bank");
   const [search, setSearch] = useState("");
+  const [bankSubject, setBankSubject] = useState<string | null>(null);
+  const [bankUnit, setBankUnit] = useState<string | null>(null);
+  const [bankLesson, setBankLesson] = useState<string | null>(null);
+  const [exportScope, setExportScope] = useState<"all" | "filtered" | "selected">("all");
   const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [grades, setGrades] = useState<Record<string, number>>({});
@@ -415,14 +474,36 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
     [classOptions, students, questions.length],
   );
 
-  const filteredQuestions = useMemo(() => questions.filter((q) => {
+  const bankSubjects = useMemo(() => Array.from(new Set(questions.filter(q => !q.archived)
+    .map(q => bankCategory(q.subject)))).sort((a, b) => compareBankCategory(a, b)), [questions]);
+  const bankUnits = useMemo(() => Array.from(new Set(questions.filter(q => !q.archived
+    && (bankSubject === null || bankCategory(q.subject) === bankSubject))
+    .map(q => bankCategory(q.unit)))).sort((a, b) => compareBankCategory(a, b, true)), [questions, bankSubject]);
+  const bankLessons = useMemo(() => Array.from(new Set(questions.filter(q => !q.archived
+    && (bankSubject === null || bankCategory(q.subject) === bankSubject)
+    && (bankUnit === null || bankCategory(q.unit) === bankUnit))
+    .map(q => bankCategory(q.lesson)))).sort((a, b) => compareBankCategory(a, b, true)), [questions, bankSubject, bankUnit]);
+  const filteredQuestions = useMemo(() => sortBankQuestions(questions.filter((q) => {
     const text = `${q.question} ${q.subject ?? ""} ${q.unit ?? ""} ${q.lesson ?? ""}`.toLowerCase();
-    return !q.archived && text.includes(search.toLowerCase()) && (difficulty === "all" || q.difficulty === difficulty);
-  }), [questions, search, difficulty]);
-
-  const selectedQuestions = selectedIds
+    return !q.archived && text.includes(search.trim().toLowerCase()) && (difficulty === "all" || q.difficulty === difficulty)
+      && (bankSubject === null || bankCategory(q.subject) === bankSubject)
+      && (bankUnit === null || bankCategory(q.unit) === bankUnit)
+      && (bankLesson === null || bankCategory(q.lesson) === bankLesson);
+  })), [questions, search, difficulty, bankSubject, bankUnit, bankLesson]);
+  const filteredGroups = useMemo(() => groupBankQuestions(filteredQuestions), [filteredQuestions]);
+  const selectedQuestions = sortBankQuestions(selectedIds
     .map((id) => questions.find((q) => q.id === id))
-    .filter(Boolean) as TeacherExamBankQuestion[];
+    .filter((q): q is TeacherExamBankQuestion => Boolean(q)));
+  const exportQuestions = sortBankQuestions(exportScope === "filtered" ? filteredQuestions
+    : exportScope === "selected" ? selectedQuestions : questions);
+  function toggleLessonQuestions(items: TeacherExamBankQuestion[]) {
+    setSelectedIds(current => {
+      const ids = new Set(items.map(q => q.id));
+      return items.every(q => current.includes(q.id))
+        ? current.filter(id => !ids.has(id))
+        : Array.from(new Set([...current, ...ids]));
+    });
+  }
 
   const maximumGrade = selectedQuestions.reduce(
     (sum, q) => sum + (grades[q.id] ?? q.defaultGrade ?? 1),
@@ -656,7 +737,7 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
       await saveOrShareExport(
         `rased-question-bank-${new Date().toISOString().slice(0, 10)}.json`,
         "application/json;charset=utf-8",
-        JSON.stringify(questions, null, 2),
+        JSON.stringify(exportQuestions, null, 2),
       );
     } catch (error) {
       if ((error as Error)?.name !== "AbortError") {
@@ -668,7 +749,15 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
 
   async function exportQuestionBankWord() {
     try {
-      const questionSections = questions.map((question, index) => {
+      let questionNumber = 0;
+      const questionSections = groupBankQuestions(exportQuestions).map(subjectGroup =>
+        `<h2 style="color:#1d4ed8;page-break-after:avoid">المادة: ${escapeWordHtml(subjectGroup.subject || "غير مصنف")}</h2>` +
+        subjectGroup.units.map(unitGroup =>
+          `<h2 style="background:#eff6ff;padding:10px;page-break-after:avoid">الوحدة: ${escapeWordHtml(unitGroup.unit || "غير مصنفة")}</h2>` +
+          unitGroup.lessons.map(lessonGroup =>
+            `<h3 style="color:#047857;page-break-after:avoid">الدرس: ${escapeWordHtml(lessonGroup.lesson || "غير مصنف")} — ${lessonGroup.questions.length} سؤال</h3>` +
+            lessonGroup.questions.map((question) => {
+        const index = questionNumber++;
         const options = (question.options || []).map((option, optionIndex) => {
           const isCorrect = optionIndex === question.correctAnswerIndex;
           return `<li${isCorrect ? ' style="font-weight:bold;color:#047857"' : ''}>${escapeWordHtml(option)}${isCorrect ? " ✓" : ""}</li>`;
@@ -678,11 +767,16 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
           <p><b>المادة:</b> ${escapeWordHtml(question.subject || "غير مصنف")} | <b>الوحدة:</b> ${escapeWordHtml(question.unit || "")} | <b>الدرس:</b> ${escapeWordHtml(question.lesson || "")}</p>
           ${options ? `<ol>${options}</ol>` : ""}
           ${question.correctAnswerText ? `<p><b>الإجابة الصحيحة:</b> ${escapeWordHtml(question.correctAnswerText)}</p>` : ""}
+          ${question.correctOrderedItems?.length ? `<p><b>الترتيب الصحيح:</b></p><ol>${question.correctOrderedItems.map(item => `<li>${escapeWordHtml(item)}</li>`).join("")}</ol>` : ""}
+          ${question.correctMatchedPairs ? `<p><b>أزواج المطابقة:</b></p><ul>${Object.entries(question.correctMatchedPairs).map(([left, right]) => `<li>${escapeWordHtml(left)} ← ${escapeWordHtml(right)}</li>`).join("")}</ul>` : ""}
           ${question.explanation ? `<p><b>التفسير:</b> ${escapeWordHtml(question.explanation)}</p>` : ""}
           <p><b>الدرجة الافتراضية:</b> ${question.defaultGrade ?? 1}</p>
         </section>`;
-      }).join("");
-      const wordHtml = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>بنك أسئلة راصد</title><style>body{font-family:Arial,sans-serif;direction:rtl;line-height:1.7;margin:36px}h1{color:#1d4ed8}h3{color:#0f172a}section{border-bottom:1px solid #cbd5e1;padding-bottom:12px}li{margin:5px 0}</style></head><body><h1>بنك أسئلة راصد</h1><p>عدد الأسئلة: ${questions.length}</p>${questionSections}</body></html>`;
+      }).join("")
+          ).join("")
+        ).join("")
+      ).join("");
+      const wordHtml = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>بنك أسئلة راصد</title><style>body{font-family:Arial,sans-serif;direction:rtl;line-height:1.7;margin:36px}h1{color:#1d4ed8}h3{color:#0f172a}section{border-bottom:1px solid #cbd5e1;padding-bottom:12px}li{margin:5px 0}</style></head><body><h1>بنك أسئلة راصد</h1><p>عدد الأسئلة: ${exportQuestions.length}</p>${questionSections}</body></html>`;
       await saveOrShareExport(
         `rased-question-bank-${new Date().toISOString().slice(0, 10)}.doc`,
         "application/msword;charset=utf-8",
@@ -761,6 +855,19 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
               </div>
             </section>
 
+            <section className="rounded-3xl bg-white p-4 shadow-sm space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-sm font-bold">المادة<select value={JSON.stringify(bankSubject)} onChange={e => { setBankSubject(JSON.parse(e.target.value)); setBankUnit(null); setBankLesson(null); }} className="mt-1 w-full rounded-xl border bg-white p-3"><option value="null">كل المواد</option>{bankSubjects.map(value => <option key={value} value={JSON.stringify(value)}>{value || "غير مصنف"}</option>)}</select></label>
+                <label className="text-sm font-bold">الوحدة<select value={JSON.stringify(bankUnit)} onChange={e => { setBankUnit(JSON.parse(e.target.value)); setBankLesson(null); }} className="mt-1 w-full rounded-xl border bg-white p-3"><option value="null">كل الوحدات</option>{bankUnits.map(value => <option key={value} value={JSON.stringify(value)}>{value || "غير مصنفة"}</option>)}</select></label>
+                <label className="text-sm font-bold">الدرس<select value={JSON.stringify(bankLesson)} onChange={e => setBankLesson(JSON.parse(e.target.value))} className="mt-1 w-full rounded-xl border bg-white p-3"><option value="null">كل الدروس</option>{bankLessons.map(value => <option key={value} value={JSON.stringify(value)}>{value || "غير مصنف"}</option>)}</select></label>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p aria-live="polite">المعروض: {filteredQuestions.length} سؤال · المختار للاختبار: {selectedQuestions.length}</p>
+                <button type="button" onClick={() => { setBankSubject(null); setBankUnit(null); setBankLesson(null); setSearch(""); setDifficulty("all"); }} className="rounded-xl bg-slate-100 px-3 py-2 font-bold">إلغاء التصفية</button>
+                <label className="flex items-center gap-2 font-bold">نطاق تصدير JSON وWord<select value={exportScope} onChange={e => setExportScope(e.target.value as typeof exportScope)} className="rounded-xl border bg-white p-2"><option value="all">البنك كاملًا ({questions.length})</option><option value="filtered">الأسئلة المعروضة ({filteredQuestions.length})</option><option value="selected">الأسئلة المختارة ({selectedQuestions.length})</option></select></label>
+              </div>
+            </section>
+
             {showQuestionForm && (
               <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center justify-between"><h2 className="font-black">سؤال جديد</h2><button onClick={() => setShowQuestionForm(false)}><X className="h-5 w-5" /></button></div>
@@ -778,22 +885,35 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
               </section>
             )}
 
-            <div className="grid gap-3">
-              {filteredQuestions.map((q) => {
+            {filteredQuestions.length === 0 && <div className="rounded-3xl border border-dashed bg-white p-8 text-center text-slate-500">لا توجد أسئلة مطابقة. غيّر المرشحات أو ألغِ التصفية.</div>}
+            <div className="space-y-5">
+              {filteredGroups.map(subjectGroup => <section key={subjectGroup.subject} className="space-y-4">
+                <h2 className="text-xl font-black text-blue-800">المادة: {subjectGroup.subject || "غير مصنف"}</h2>
+                {subjectGroup.units.map(unitGroup => <section key={unitGroup.unit} className="rounded-3xl border border-blue-100 bg-blue-50/40 p-4 space-y-4">
+                  <h3 className="text-lg font-black text-blue-700">الوحدة: {unitGroup.unit || "غير مصنفة"} <span className="text-sm">({unitGroup.lessons.reduce((sum, lesson) => sum + lesson.questions.length, 0)} سؤال)</span></h3>
+                  {unitGroup.lessons.map(lessonGroup => <details key={lessonGroup.lesson} open className="rounded-2xl border bg-white p-3">
+                    <summary className="cursor-pointer font-black text-emerald-800">الدرس: {lessonGroup.lesson || "غير مصنف"} — {lessonGroup.questions.length} سؤال · المختار {lessonGroup.questions.filter(q => selectedIds.includes(q.id)).length}</summary>
+                    <button type="button" onClick={() => toggleLessonQuestions(lessonGroup.questions)} className="my-3 rounded-xl bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">{lessonGroup.questions.every(q => selectedIds.includes(q.id)) ? "إلغاء اختيار أسئلة هذا الدرس" : "اختيار جميع أسئلة هذا الدرس"}</button>
+                    <div className="grid gap-3">
+                      {lessonGroup.questions.map(q => {
                 const selected = selectedIds.includes(q.id);
                 return (
                   <button key={q.id} onClick={() => setSelectedIds((current) => selected ? current.filter((id) => id !== q.id) : [...current, q.id])} className={`rounded-3xl border p-5 text-right ${selected ? "border-blue-400 bg-blue-50" : "border-transparent bg-white"}`}>
                     <div className="flex items-start gap-3">
                       <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border ${selected ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300"}`}>{selected && <CheckCircle2 className="h-4 w-4" />}</div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2"><Badge tone="blue">{q.subject ?? "غير مصنف"}</Badge><Badge>{q.questionType === "multiple_choice" ? "اختيار من متعدد" : "صح أو خطأ"}</Badge>{q.difficulty && <Badge tone={q.difficulty === "easy" ? "green" : q.difficulty === "hard" ? "red" : "amber"}>{DIFFICULTY_LABELS[q.difficulty]}</Badge>}</div>
+                        <div className="flex flex-wrap items-center gap-2"><Badge tone="blue">{q.subject ?? "غير مصنف"}</Badge><Badge>{{ multiple_choice: "اختيار من متعدد", true_false: "صح أو خطأ", match: "مطابقة", sequence: "ترتيب" }[q.questionType]}</Badge>{q.difficulty && <Badge tone={q.difficulty === "easy" ? "green" : q.difficulty === "hard" ? "red" : "amber"}>{DIFFICULTY_LABELS[q.difficulty]}</Badge>}</div>
                         <h3 className="mt-3 font-black leading-7">{q.question}</h3>
                         <p className="mt-2 text-xs text-slate-500">الدرجة الافتراضية: {q.defaultGrade ?? 1} · استُخدم في {q.usedInExamIds.length} اختبار</p>
                       </div>
                     </div>
                   </button>
                 );
-              })}
+                      })}
+                    </div>
+                  </details>)}
+                </section>)}
+              </section>)}
             </div>
           </div>
         )}
@@ -831,7 +951,7 @@ export default function TeacherExamsManager({ classOptions = [], students = [] }
 
               <section className="rounded-3xl bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-black">2. الأسئلة ودرجاتها</h2><button onClick={() => setSection("bank")} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold">اختيار من البنك</button></div>
-                {selectedQuestions.length === 0 ? <div className="rounded-3xl border border-dashed p-8 text-center text-slate-500"><ListChecks className="mx-auto mb-3 h-8 w-8" />لم تختر أسئلة بعد.</div> : <div className="space-y-3">{selectedQuestions.map((q, index) => <div key={q.id} className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center"><div className="flex-1"><span className="text-xs font-black text-blue-600">السؤال {index + 1}</span><p className="mt-1 font-bold">{q.question}</p></div><label className="flex items-center gap-2 rounded-xl bg-slate-100 px-3"><span className="text-sm font-black">الدرجة</span><input type="number" min="0.25" step="0.25" value={grades[q.id] ?? q.defaultGrade ?? 1} onChange={(e) => setGrades({ ...grades, [q.id]: Math.max(0.25, Number(e.target.value)) })} className="w-20 bg-transparent py-3 text-center font-black outline-none" /></label><button onClick={() => setSelectedIds((ids) => ids.filter((id) => id !== q.id))} className="rounded-xl p-3 text-red-600"><X className="h-5 w-5" /></button></div>)}</div>}
+                {selectedQuestions.length === 0 ? <div className="rounded-3xl border border-dashed p-8 text-center text-slate-500"><ListChecks className="mx-auto mb-3 h-8 w-8" />لم تختر أسئلة بعد.</div> : <div className="space-y-3">{selectedQuestions.map((q, index) => <div key={q.id} className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center"><div className="flex-1"><span className="text-xs font-black text-blue-600">السؤال {index + 1}</span><p className="mt-1 text-xs text-slate-500">{q.subject || "غير مصنف"} · {q.unit || "وحدة غير مصنفة"} · {q.lesson || "درس غير مصنف"}</p><p className="mt-1 font-bold">{q.question}</p></div><label className="flex items-center gap-2 rounded-xl bg-slate-100 px-3"><span className="text-sm font-black">الدرجة</span><input type="number" min="0.25" step="0.25" value={grades[q.id] ?? q.defaultGrade ?? 1} onChange={(e) => setGrades({ ...grades, [q.id]: Math.max(0.25, Number(e.target.value)) })} className="w-20 bg-transparent py-3 text-center font-black outline-none" /></label><button onClick={() => setSelectedIds((ids) => ids.filter((id) => id !== q.id))} className="rounded-xl p-3 text-red-600"><X className="h-5 w-5" /></button></div>)}</div>}
               </section>
             </div>
 
