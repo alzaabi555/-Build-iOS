@@ -61,6 +61,7 @@ export interface TeacherGameResultLogEntry {
   bestScore?: number;
   isOfficialBest?: boolean;
   taskId?: string;
+  identityAliases?: string[];
   rawResult?: unknown;
 }
 
@@ -71,8 +72,11 @@ export interface TeacherGameResultsStudent {
   rasedId?: string;
   secretCode?: string;
   parentCode?: string;
+  centralStudentId?: string;
   centralRasedId?: string;
   CentralRasedID?: string;
+  civilID?: string;
+  legacyRasedIds?: string[];
   grade?: string;
   classes?: string[];
   className?: string;
@@ -180,7 +184,7 @@ const SYNC_LABEL_KEYS: Record<string, string> = {
   synced: 'gameSyncSynced'
 };
 
-const normalizeCode = (value?: unknown) => toEnglishDigits(value).trim().toUpperCase();
+const normalizeCode = (value?: unknown) => toEnglishDigits(value).replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '').trim().toUpperCase();
 const normalizeText = (value?: unknown) => String(value || '').trim().replace(/[أإآ]/g, 'ا').replace(/\s+/g, ' ').toLowerCase();
 
 const normalizeClassName = (value?: unknown) => {
@@ -212,32 +216,76 @@ const formatDateTime = (value: string | undefined, locale: string, fallback: str
 const safeNumber = (value: unknown, fallback = 0) => {
   if (value === null || value === undefined || typeof value === 'boolean') return fallback;
   const text = toEnglishDigits(value).trim();
-  if (!text) return fallback;
-  const number = Number(text);
+  const number = text ? Number(text) : NaN;
   return Number.isFinite(number) ? number : fallback;
 };
 const explicitTrue = (value: unknown) => value === true || value === 1
   || ['true', '1', 'yes'].includes(String(value ?? '').trim().toLowerCase());
-const studentAliases = (student: TeacherGameResultsStudent): string[] => Array.from(new Set([
-  student.id, student.rasedId, student.centralRasedId, student.CentralRasedID,
-  student.civilId, student.secretCode, student.parentCode
-].map(normalizeCode).filter(Boolean)));
+const getRawObject = (value: unknown): Record<string, unknown> => {
+  if (typeof value === 'string') {
+    try { const parsed = JSON.parse(value); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}; }
+    catch { return {}; }
+  }
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+};
+const identityList = (value: unknown): unknown[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parsed; } catch { /* plain code */ }
+    return value.trim() ? [value] : [];
+  }
+  return [];
+};
+// Identity only: never collect result.id/taskId/schoolId/teacherId as student identifiers.
+const studentIdentityAliases = (value: unknown): string[] => {
+  const raw = getRawObject(value);
+  return Array.from(new Set([
+    raw.id, raw.studentId, raw.centralStudentId, raw.rasedId, raw.centralRasedId,
+    raw.CentralRasedID, raw.civilId, raw.civilID, raw.secretCode, raw.parentCode,
+    ...identityList(raw.legacyRasedIds)
+  ].filter(item => typeof item === 'string' || typeof item === 'number')
+    .map(normalizeCode).filter(code => code && !['DEFAULT', 'NULL', 'UNDEFINED'].includes(code))));
+};
+const resultIdentityAliases = (value: unknown): string[] => {
+  const aliases = new Set<string>();
+  let raw = getRawObject(value);
+  for (let depth = 0; depth < 5 && Object.keys(raw).length; depth += 1) {
+    const { id: ignoredResultId, ...identityFields } = raw;
+    studentIdentityAliases(identityFields).forEach(code => aliases.add(code));
+    identityList(raw.identityAliases).forEach(code => {
+      const normalized = normalizeCode(code);
+      if (normalized && !['DEFAULT', 'NULL', 'UNDEFINED'].includes(normalized)) aliases.add(normalized);
+    });
+    raw = getRawObject(raw.rawResult);
+  }
+  return Array.from(aliases);
+};
+const createStudentIdentityIndex = (items: any[]) => {
+  const index = new Map<string, Set<any>>();
+  items.forEach(student => studentIdentityAliases(student).forEach(code => {
+    if (!index.has(code)) index.set(code, new Set());
+    index.get(code)!.add(student);
+  }));
+  return index;
+};
+const resolveResultStudent = (result: unknown, index: Map<string, Set<any>>) => {
+  const aliases = resultIdentityAliases(result);
+  const matches = new Set<any>();
+  aliases.forEach(code => index.get(code)?.forEach(student => matches.add(student)));
+  return { student: matches.size === 1 ? Array.from(matches)[0] : undefined,
+    conflict: matches.size > 1, aliases };
+};
 const participationAwardExists = (student: any, result: TeacherGameResultLogEntry, awardId: string) => {
-  const aliases = Array.from(new Set([...studentAliases(student), normalizeCode(result.studentId)]));
+  const aliases = Array.from(new Set([...studentIdentityAliases(student), ...resultIdentityAliases(result)]));
   const behaviors = Array.isArray(student.behaviors) ? student.behaviors : [];
   return behaviors.some((behavior: any) => behavior?.id === awardId
-    || aliases.some(id => behavior?.id === `game-participation:${id}:${result.publishBatchId}`)
-    || (behavior?.source === 'educational_game'
-      && String(behavior?.publishBatchId || '').trim() === String(result.publishBatchId || '').trim()));
-};
-
-const getRawObject = (value: unknown) => {
-  if (!value || typeof value !== 'object') return {} as Record<string, unknown>;
-  return value as Record<string, unknown>;
+    || aliases.some(code => behavior?.id === `game-participation:${code}:${result.publishBatchId}`)
+    || (behavior?.source === 'educational_game' && Boolean(result.publishBatchId)
+      && String(behavior?.publishBatchId || '').trim() === String(result.publishBatchId).trim()));
 };
 
 const getStudentCanonicalId = (student: TeacherGameResultsStudent) => {
-  return normalizeCode(student.rasedId || student.centralRasedId || student.CentralRasedID || student.secretCode || student.parentCode || student.civilId || student.id);
+  return normalizeCode(student.rasedId || student.centralRasedId || student.CentralRasedID || student.centralStudentId || student.secretCode || student.parentCode || student.civilId || student.id);
 };
 
 const getStudentPrimaryClass = (student: TeacherGameResultsStudent) => {
@@ -249,12 +297,14 @@ const getStudentDisplayNameFromStudent = (student: TeacherGameResultsStudent) =>
 };
 
 const getStudentDisplayName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(normalizeCode(result.studentId));
+  const candidates = new Set(resultIdentityAliases(result).map(code => studentsMap.get(code)).filter(Boolean));
+  const student = candidates.size === 1 ? Array.from(candidates)[0] : undefined;
   return result.studentName || student?.name || result.studentId || 'طالب غير محدد';
 };
 
 const getStudentClassName = (result: TeacherGameResultLogEntry, studentsMap: Map<string, TeacherGameResultsStudent>) => {
-  const student = studentsMap.get(normalizeCode(result.studentId));
+  const candidates = new Set(resultIdentityAliases(result).map(code => studentsMap.get(code)).filter(Boolean));
+  const student = candidates.size === 1 ? Array.from(candidates)[0] : undefined;
   return result.className || student?.className || student?.classes?.[0] || '—';
 };
 
@@ -269,7 +319,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
 
   const rawResult = getRawObject(raw.rawResult);
   const id = typeof raw.id === 'string' ? raw.id : `result_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const studentId = normalizeCode(raw.studentId || raw.centralRasedId || raw.CentralRasedID || raw.rasedId || raw.parentCode || raw.civilID || raw.civilId || rawResult.studentId || rawResult.centralRasedId || rawResult.CentralRasedID || rawResult.rasedId || 'default');
+  const studentId = normalizeCode(raw.studentId || raw.centralStudentId || raw.rasedId || raw.centralRasedId || raw.parentCode || raw.civilID || raw.civilId || rawResult.studentId || rawResult.centralStudentId || rawResult.rasedId || rawResult.centralRasedId || 'default');
   const gameType = typeof raw.gameType === 'string' ? raw.gameType : typeof rawResult.gameType === 'string' ? rawResult.gameType : 'unknown_game';
   const weakQuestionIds = Array.isArray(raw.weakQuestionIds)
     ? raw.weakQuestionIds.filter((item): item is string => typeof item === 'string')
@@ -280,6 +330,7 @@ const normalizeResult = (value: unknown): TeacherGameResultLogEntry | null => {
   return {
     id,
     studentId,
+    identityAliases: resultIdentityAliases(raw),
     studentName: typeof raw.studentName === 'string' ? raw.studentName : typeof rawResult.studentName === 'string' ? rawResult.studentName : undefined,
     className: typeof raw.className === 'string' ? raw.className : typeof rawResult.className === 'string' ? rawResult.className : undefined,
     grade: typeof raw.grade === 'string' ? raw.grade : typeof rawResult.grade === 'string' ? rawResult.grade : undefined,
@@ -479,14 +530,25 @@ const TeacherGameResultsDashboard: React.FC<TeacherGameResultsDashboardProps> = 
     fetchCloudResults();
   }, [cacheKey]);
 
+  const identityStudents = useMemo(() => {
+    const records = new Map<string, any>();
+    [...sourceStudents, ...appStudents].forEach((student: any, position: number) => {
+      const key = normalizeCode(student.id) || `missing-local-id-${position}`;
+      const previous = records.get(key);
+      const aliases = Array.from(new Set([...(previous?.legacyRasedIds || []),
+        ...studentIdentityAliases(previous), ...studentIdentityAliases(student)]));
+      records.set(key, { ...previous, ...student, legacyRasedIds: aliases });
+    });
+    return Array.from(records.values());
+  }, [sourceStudents, appStudents]);
+  const studentIdentityIndex = useMemo(() => createStudentIdentityIndex(identityStudents), [identityStudents]);
   const studentsMap = useMemo(() => {
     const map = new Map<string, TeacherGameResultsStudent>();
-    sourceStudents.forEach(student => {
-      const ids = studentAliases(student);
-      ids.forEach(id => map.set(id, student));
+    studentIdentityIndex.forEach((matches, code) => {
+      if (matches.size === 1) map.set(code, Array.from(matches)[0]);
     });
     return map;
-  }, [sourceStudents]);
+  }, [studentIdentityIndex]);
 
   const normalizedStudents = useMemo<NonParticipantStudent[]>(() => {
     const seen = new Set<string>();
@@ -586,7 +648,7 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
     const participatingIds = new Set(
       filteredResultsWithoutQuery
         .filter(result => result.completed && result.correct + result.wrong > 0)
-        .map(result => { const student = studentsMap.get(normalizeCode(result.studentId)); return student ? getStudentCanonicalId(student) : normalizeCode(result.studentId); })
+        .map(result => { const resolved = resolveResultStudent(result, studentIdentityIndex); return resolved.student ? getStudentCanonicalId(resolved.student) : normalizeCode(result.studentId); })
         .filter(Boolean)
     );
 
@@ -603,14 +665,14 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
         );
       })
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'ar'));
-  }, [eligibleStudents, filteredResultsWithoutQuery, query, studentsMap]);
+  }, [eligibleStudents, filteredResultsWithoutQuery, query, studentIdentityIndex]);
 
   const groupedResults = useMemo<GroupedStudentResult[]>(() => {
     const map = new Map<string, GroupedStudentResult>();
 
     filteredResults.forEach(result => {
-      const matchedStudent = studentsMap.get(normalizeCode(result.studentId));
-      const key = matchedStudent ? getStudentCanonicalId(matchedStudent) : normalizeCode(result.studentId || result.id);
+      const resolved = resolveResultStudent(result, studentIdentityIndex);
+      const key = resolved.student ? getStudentCanonicalId(resolved.student) : normalizeCode(result.studentId || result.id);
       const studentName = getStudentDisplayName(result, studentsMap);
       const studentClassName = getStudentClassName(result, studentsMap);
       const existing = map.get(key);
@@ -649,22 +711,12 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
     });
 
     return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
-  }, [filteredResults, studentsMap]);
-
-  const participationStudentsMap = useMemo(() => {
-    const map = new Map(studentsMap);
-    appStudents.forEach((student: any) => {
-      const aliases = studentAliases(student);
-      const displayed = aliases.map(id => map.get(id)).find(Boolean);
-      [...aliases, ...(displayed ? studentAliases(displayed) : [])].forEach(id => map.set(id, student));
-    });
-    return map;
-  }, [studentsMap, appStudents]);
+  }, [filteredResults, studentsMap, studentIdentityIndex]);
 
   const participationPreview = useMemo(() => {
     const eligible: Array<{ result: TeacherGameResultLogEntry; student: any; awardId: string }> = [];
     const alreadyAwarded: string[] = [];
-    const excluded: Array<{ result: TeacherGameResultLogEntry; reason: string }> = [];
+    const excluded: Array<{ result: TeacherGameResultLogEntry; reason: string; aliases: string[] }> = [];
     const byBatchStudent = new Map<string, { result: TeacherGameResultLogEntry; student: any }>();
     filteredResultsWithoutQuery.forEach(result => {
       const raw = getRawObject(result.rawResult);
@@ -672,17 +724,18 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       const isReview = [raw.isReview, raw.reviewMode, nested.isReview, nested.reviewMode].some(explicitTrue)
         || [raw.source, raw.context, nested.source, nested.context].some(value => String(value || '').trim().toLowerCase() === 'review');
       const batchId = String(result.publishBatchId || '').trim();
+      const resolved = resolveResultStudent(result, studentIdentityIndex);
       let reason = '';
       if (isReview) reason = 'محاولة مراجعة وليست مشاركة جديدة';
       else if (!result.completed) reason = 'لم تصل علامة اكتمال المحاولة';
       else if (result.correct + result.wrong <= 0) reason = 'لا يوجد عدد إجابات صالح في النتيجة';
       else if (!batchId) reason = 'معرّف دفعة الأسئلة غير موجود';
-      const student = participationStudentsMap.get(normalizeCode(result.studentId));
-      if (!reason && !student) reason = 'تعذر ربط معرّف النتيجة بطالب في القائمة';
-      if (!reason && !normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt)) reason = 'تاريخ النتيجة غير صالح';
-      if (reason) { excluded.push({ result, reason }); return; }
-      // Delayed arrival or a different activity day is not proof of review or prior payment.
-      const key = JSON.stringify([getStudentCanonicalId(student!), batchId]);
+      else if (resolved.conflict) reason = 'تعارض المعرّفات: النتيجة تطابق أكثر من طالب؛ يلزم تصحيح سجلات الطلاب';
+      else if (!resolved.student) reason = 'لم يطابق أي معرّف في النتيجة سجل طالب محلي';
+      else if (!normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt)) reason = 'تاريخ النتيجة غير صالح';
+      if (reason) { excluded.push({ result, reason, aliases: resolved.aliases }); return; }
+      const student = resolved.student;
+      const key = JSON.stringify([normalizeCode(student.id) || getStudentCanonicalId(student), batchId]);
       const previous = byBatchStudent.get(key);
       if (!previous || result.score > previous.result.score) byBatchStudent.set(key, { result, student });
     });
@@ -692,43 +745,37 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
       else eligible.push({ result, student, awardId });
     });
     return { eligible, alreadyAwarded, excluded };
-  }, [filteredResultsWithoutQuery, participationStudentsMap]);
+  }, [filteredResultsWithoutQuery, studentIdentityIndex]);
 
   const applyParticipationAwards = () => {
-    if (participationPreview.eligible.length === 0) return;
+    if (!participationPreview.eligible.length) return;
     if (!updateAppStudents) { setCloudError('تعذر تحديث نقاط الطلاب لأن setStudents غير متاح.'); return; }
-    // Capture every eligible batch. Never collapse all batches into one Map entry per student.
     const awards = participationPreview.eligible;
-    updateAppStudents((previous: any[]) => (Array.isArray(previous) ? previous : []).map(student => {
-      const aliases = new Set(studentAliases(student));
-      const entries = awards.filter(entry => studentAliases(entry.student).some(id => aliases.has(id))
-        || aliases.has(normalizeCode(entry.result.studentId)));
-      if (entries.length === 0) return student;
-      let behaviors = Array.isArray(student.behaviors) ? student.behaviors : [];
-      let changed = false;
-      entries.forEach(entry => {
-        if (participationAwardExists({ ...student, behaviors }, entry.result, entry.awardId)) return;
-        const result = entry.result;
-        const activityDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
-        const behavior = {
-          id: entry.awardId,
-          date: `${activityDate}T12:00:00+04:00`,
-          type: 'positive' as const,
-          description: 'مشاركة في الألعاب التعليمية',
-          points: PARTICIPATION_POINTS,
-          semester: result.semester || currentSemester,
-          source: 'educational_game',
-          publishBatchId: result.publishBatchId,
-          resultId: result.id,
-          gameType: result.gameType,
-          activityDate,
-          autoAwarded: true
-        };
-        behaviors = [behavior, ...behaviors];
-        changed = true;
+    updateAppStudents((previous: any[]) => {
+      const current = Array.isArray(previous) ? previous : [];
+      const currentIndex = createStudentIdentityIndex(current);
+      const assignments = awards.map(entry => ({ entry, resolved: resolveResultStudent(entry.result, currentIndex) }));
+      return current.map(student => {
+        let behaviors = Array.isArray(student.behaviors) ? student.behaviors : [];
+        let changed = false;
+        assignments.forEach(({ entry, resolved }) => {
+          if (resolved.conflict || resolved.student !== student) return;
+          const result = entry.result;
+          const awardId = `game-participation:${getStudentCanonicalId(student)}:${result.publishBatchId}`;
+          if (participationAwardExists({ ...student, behaviors }, result, awardId)) return;
+          const activityDate = normalizeActivityDate(result.activityDate, result.playedAt, result.savedAt);
+          behaviors = [{
+            id: awardId, date: `${activityDate}T12:00:00+04:00`, type: 'positive' as const,
+            description: 'مشاركة في الألعاب التعليمية', points: PARTICIPATION_POINTS,
+            semester: result.semester || currentSemester, source: 'educational_game',
+            publishBatchId: result.publishBatchId, resultId: result.id,
+            gameType: result.gameType, activityDate, autoAwarded: true
+          }, ...behaviors];
+          changed = true;
+        });
+        return changed ? { ...student, behaviors } : student;
       });
-      return changed ? { ...student, behaviors } : student;
-    }));
+    });
   };
 
   const summary = useMemo(() => {
@@ -804,19 +851,21 @@ const matchesSync = syncFilter === 'all' || (result.syncStatus || 'local_only') 
             <div className="w-11 h-11 rounded-2xl bg-success/10 text-success border border-success/20 flex items-center justify-center"><Gift className="w-5 h-5" /></div>
             <div>
               <h3 className="text-sm font-black text-textPrimary">نقاط مشاركة الألعاب</h3>
-              <p className="text-[11px] font-bold text-textSecondary mt-1">استحقاقات جاهزة: {participationPreview.eligible.length} • استحقاقات مُنحت سابقًا: {participationPreview.alreadyAwarded.length} • محاولات تحتاج مراجعة: {participationPreview.excluded.length}</p>
-              <p className="text-[10px] font-bold text-textMuted mt-1">تُمنح {PARTICIPATION_POINTS} نقاط مرة واحدة لكل طالب ولكل دفعة مكتملة غير مخصصة للمراجعة. لا يؤدي تأخر وصول النتيجة أو اختلاف يوم النشاط عن يوم الحل وحده إلى إسقاط الاستحقاق. الأعداد تخص المرشحات الحالية، والاستحقاقات ليست عدد طلاب فريدًا.</p>
+              <p className="text-[11px] font-bold text-textSecondary mt-1">استحقاقات جاهزة: {participationPreview.eligible.length} • مُنحت سابقًا: {participationPreview.alreadyAwarded.length} • محاولات تحتاج مراجعة: {participationPreview.excluded.length}</p>
+              <p className="text-[10px] font-bold text-textMuted mt-1">تُمنح {PARTICIPATION_POINTS} نقاط مرة واحدة لكل طالب ولكل دفعة مكتملة غير مخصصة للمراجعة. اختلاف يوم الحل عن يوم النشاط لا يُسقط الاستحقاق وحده. الأعداد تخص المرشحات الحالية، وقد يكون للطالب عدة استحقاقات.</p>
             </div>
           </div>
           <button type="button" onClick={applyParticipationAwards} disabled={participationPreview.eligible.length === 0} className="h-11 px-4 rounded-2xl bg-success text-white font-black text-xs flex items-center justify-center gap-2 disabled:opacity-50"><Gift className="w-4 h-4" />اعتماد نقاط المستحقين</button>
         </div>
         {participationPreview.excluded.length > 0 && <details className="mt-4 rounded-2xl border border-warning/20 bg-warning/5 p-3">
-          <summary className="cursor-pointer text-xs font-black text-warning">عرض أسباب تعذر احتساب بعض المحاولات ({participationPreview.excluded.length})</summary>
-          <div className="mt-3 max-h-72 overflow-auto space-y-2">
-            {participationPreview.excluded.map(({ result, reason }, index) => <div key={`${result.id}-${index}`} className="rounded-xl bg-bgCard p-3 text-xs">
+          <summary className="cursor-pointer text-xs font-black text-warning">عرض أسباب تعذر الاحتساب ({participationPreview.excluded.length})</summary>
+          <p className="mt-2 text-xs text-textSecondary">سجلات الطلاب المتاحة للمطابقة: {identityStudents.length}</p>
+          <div className="mt-3 max-h-80 overflow-auto space-y-2">
+            {participationPreview.excluded.map(({ result, reason, aliases }, index) => <div key={`${result.id}-${index}`} className="rounded-xl bg-bgCard p-3 text-xs">
               <p className="font-black">{getStudentDisplayName(result, studentsMap)} — {getStudentClassName(result, studentsMap)}</p>
               <p className="mt-1 text-warning">{reason}</p>
-              <p className="mt-1 text-textSecondary">{getGameLabel(result.gameType)} · الدفعة: {result.publishBatchId || 'غير موجودة'} · {formatDateTime(result.playedAt, locale, unknownLabel)}</p>
+              <p className="mt-1 text-textSecondary break-all" dir="ltr">{aliases.join(' | ') || 'No student identifiers'}</p>
+              <p className="mt-1 text-textSecondary">{getGameLabel(result.gameType)} · الدفعة: {result.publishBatchId || 'غير موجودة'}</p>
             </div>)}
           </div>
         </details>}
