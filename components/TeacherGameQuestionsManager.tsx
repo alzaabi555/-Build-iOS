@@ -370,6 +370,47 @@ const formatDateTime = (value: string | undefined, locale: string, fallback: str
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
+// Keep every distinct question; a late/stale response must not replace a newer copy.
+const archiveTimestamp = (question: TeacherGameQuestion) => Math.max(
+  ...[question.updatedAt, question.archivedAt, question.createdAt].map(value => {
+    const time = value ? Date.parse(value) : NaN;
+    return Number.isFinite(time) ? time : 0;
+  })
+);
+
+const mergeArchiveQuestions = (...groups: TeacherGameQuestion[][]): TeacherGameQuestion[] => {
+  const map = new Map<string, TeacherGameQuestion>();
+  groups.forEach(group => group.forEach(question => {
+    if (!question?.id || (question.questionType as string) === 'hints') return;
+    const existing = map.get(question.id);
+    if (!existing || archiveTimestamp(question) >= archiveTimestamp(existing)) {
+      map.set(question.id, question);
+    }
+  }));
+  return Array.from(map.values()).sort((a, b) => archiveTimestamp(b) - archiveTimestamp(a));
+};
+
+const archiveCategory = (value: string | undefined) => String(value || '').trim().replace(/\s+/g, ' ');
+
+const groupArchiveQuestions = (questions: TeacherGameQuestion[], locale: string) => {
+  const units = new Map<string, Map<string, TeacherGameQuestion[]>>();
+  questions.forEach(question => {
+    const unit = archiveCategory(question.unit);
+    const lesson = archiveCategory(question.lesson);
+    if (!units.has(unit)) units.set(unit, new Map());
+    const lessons = units.get(unit)!;
+    if (!lessons.has(lesson)) lessons.set(lesson, []);
+    lessons.get(lesson)!.push(question);
+  });
+  const compare = (a: string, b: string) => a.localeCompare(b, locale, { numeric: true });
+  return Array.from(units, ([unit, lessons]) => ({
+    unit,
+    count: Array.from(lessons.values()).reduce((total, items) => total + items.length, 0),
+    lessons: Array.from(lessons, ([lesson, items]) => ({ lesson, questions: items }))
+      .sort((a, b) => compare(a.lesson, b.lesson))
+  })).sort((a, b) => compare(a.unit, b.unit));
+};
+
 
 const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = ({
   schoolCode,
@@ -403,9 +444,25 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   const [previewStudentPayload, setPreviewStudentPayload] = useState(false);
   const [questionsView, setQuestionsView] = useState<QuestionsView>('editor');
   const [localArchiveQuestions, setLocalArchiveQuestions] = useState<TeacherGameQuestion[]>([]);
-  const [cloudArchiveQuestions, setCloudArchiveQuestions] = useState<TeacherGameQuestion[]>([]);
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const [archiveUnit, setArchiveUnit] = useState<string | null>(null);
+  const [archiveLesson, setArchiveLesson] = useState<string | null>(null);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [archiveSyncError, setArchiveSyncError] = useState('');
+  const archiveCacheRef = useRef<{ key: string; questions: TeacherGameQuestion[] }>({ key: archiveKey, questions: [] });
+  const archiveRequestRef = useRef(0);
   const editorFormRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    setArchiveUnit(null);
+    setArchiveLesson(null);
+    setArchiveSearch('');
+    setArchiveSyncError('');
+    setIsLoadingArchive(false);
+    // Ignore responses belonging to an old teacher/school or an unmounted component.
+    archiveRequestRef.current += 1;
+    return () => { archiveRequestRef.current += 1; };
+  }, [archiveKey]);
 
   useEffect(() => {
     try {
@@ -435,34 +492,32 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   }, [draftKey, activePublishedKey, publishedClearedKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
 
   useEffect(() => {
-    localStorage.setItem(draftKey, JSON.stringify(questions));
-  }, [draftKey, questions]);
-
-  useEffect(() => {
     const archiveFromKey = safeReadQuestions(archiveKey);
     const activePublished = safeReadQuestions(activePublishedKey);
     const drafts = safeReadQuestions(draftKey);
 
-    const archivedLike = [...activePublished, ...drafts].filter((question: any) => {
+    const archivedLike = drafts.filter((question: any) => {
       const status = String(question?.status || '').toLowerCase();
       return status === 'archived' || status === 'review' || question?.active === false || question?.archivedAt;
     });
 
-    const map = new Map<string, TeacherGameQuestion>();
-
-    [...archiveFromKey, ...archivedLike]
+    // Recover a library copy of every locally published question, without disabling
+    // or changing the active student-facing batch.
+    const publishedCopies = activePublished
       .filter((question: any) => question && question.questionType !== 'hints')
-      .map((question: any) => normalizeTeacherGameQuestion(question, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
-      .forEach(question => map.set(question.id, question));
-
-    const nextLocalArchive = Array.from(map.values()).sort(
-      (a, b) => new Date(b.archivedAt || b.updatedAt || b.createdAt || 0).getTime() -
-        new Date(a.archivedAt || a.updatedAt || a.createdAt || 0).getTime()
-    );
-
-    setLocalArchiveQuestions(nextLocalArchive);
-    localStorage.setItem(archiveKey, JSON.stringify(nextLocalArchive));
+      .map((question: any) => ({
+        ...question,
+        active: false,
+        status: 'archived',
+        archivedAt: question.archivedAt || question.updatedAt || question.createdAt
+      }));
+    saveLocalArchive([...archiveFromKey, ...publishedCopies, ...archivedLike]);
   }, [archiveKey, activePublishedKey, draftKey, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions]);
+
+  // Read legacy archived drafts above before the editor's initial save.
+  useEffect(() => {
+    localStorage.setItem(draftKey, JSON.stringify(questions));
+  }, [draftKey, questions]);
 
   const compatibleGames = useMemo(
     () => GAME_OPTIONS.filter(game => game.accepts.includes(currentQuestion.questionType)),
@@ -471,16 +526,25 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
 
   const validQuestions = useMemo(() => questions.filter(question => validateQuestion(question, tr).ok), [questions]);
 
-  const archiveQuestions = useMemo(() => {
-    const map = new Map<string, TeacherGameQuestion>();
-    [...cloudArchiveQuestions, ...localArchiveQuestions].forEach(item => {
-      if (!item?.id || item.questionType === 'hints') return;
-      map.set(item.id, item);
-    });
-    return Array.from(map.values()).sort(
-      (a, b) => new Date(b.archivedAt || b.updatedAt || b.createdAt || 0).getTime() - new Date(a.archivedAt || a.updatedAt || a.createdAt || 0).getTime()
+  const archiveQuestions = localArchiveQuestions;
+  const archiveGroups = useMemo(() => groupArchiveQuestions(archiveQuestions, locale), [archiveQuestions, locale]);
+  const archiveLessonOptions = useMemo(() => Array.from(new Set(
+    archiveQuestions
+      .filter(question => archiveUnit === null || archiveCategory(question.unit) === archiveUnit)
+      .map(question => archiveCategory(question.lesson))
+  )).sort((a, b) => a.localeCompare(b, locale, { numeric: true })), [archiveQuestions, archiveUnit, locale]);
+  const filteredArchiveQuestions = useMemo(() => {
+    const search = archiveSearch.trim().toLocaleLowerCase(locale);
+    return archiveQuestions.filter(question =>
+      (archiveUnit === null || archiveCategory(question.unit) === archiveUnit) &&
+      (archiveLesson === null || archiveCategory(question.lesson) === archiveLesson) &&
+      (!search || [question.question, question.unit, question.lesson, question.subject, question.grade, ...question.classes]
+        .join(' ').toLocaleLowerCase(locale).includes(search))
     );
-  }, [cloudArchiveQuestions, localArchiveQuestions]);
+  }, [archiveQuestions, archiveUnit, archiveLesson, archiveSearch, locale]);
+  const filteredArchiveGroups = useMemo(
+    () => groupArchiveQuestions(filteredArchiveQuestions, locale), [filteredArchiveQuestions, locale]
+  );
 
   const setField = <K extends keyof TeacherGameQuestion>(key: K, value: TeacherGameQuestion[K]) => {
     setCurrentQuestion(prev => ({ ...prev, [key]: value, updatedAt: new Date().toISOString() }));
@@ -492,17 +556,18 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
   };
 
   const saveLocalArchive = (items: TeacherGameQuestion[]) => {
-    const map = new Map<string, TeacherGameQuestion>();
-    items.forEach((item: any) => {
-      if (!item?.id || item.questionType === 'hints') return;
-      const normalized = normalizeTeacherGameQuestion(item, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions);
-      map.set(normalized.id, normalized);
-    });
-    const nextArchive = Array.from(map.values()).sort(
-      (a, b) => new Date(b.archivedAt || b.updatedAt || b.createdAt || 0).getTime() - new Date(a.archivedAt || a.updatedAt || a.createdAt || 0).getTime()
+    const normalizeArchive = (list: TeacherGameQuestion[]) => list
+      .filter((item: any) => item && item.questionType !== 'hints')
+      .map(item => normalizeTeacherGameQuestion(item, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions));
+    const cached = archiveCacheRef.current.key === archiveKey ? archiveCacheRef.current.questions : [];
+    // Read the latest persisted/ref values, not a stale React state captured by
+    // an earlier publish or cloud request. Never truncate the archive.
+    const nextArchive = mergeArchiveQuestions(
+      normalizeArchive(safeReadQuestions(archiveKey)), cached, normalizeArchive(items)
     );
-    setLocalArchiveQuestions(nextArchive);
     localStorage.setItem(archiveKey, JSON.stringify(nextArchive));
+    archiveCacheRef.current = { key: archiveKey, questions: nextArchive };
+    setLocalArchiveQuestions(nextArchive);
   };
 
   const archivePreviousActiveQuestionsLocally = (nextActiveQuestions: TeacherGameQuestion[]) => {
@@ -523,36 +588,54 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
         updatedAt: now
       }));
 
-    if (archivedPrevious.length > 0) saveLocalArchive([...archivedPrevious, ...localArchiveQuestions]);
+    if (archivedPrevious.length > 0) saveLocalArchive(archivedPrevious);
     localStorage.setItem(activePublishedKey, JSON.stringify(normalizedNextActiveQuestions));
   };
 
   const fetchCloudArchiveQuestions = async () => {
+    const requestId = ++archiveRequestRef.current;
     setIsLoadingArchive(true);
+    setArchiveSyncError('');
     try {
       const response = await fetch(TEACHER_GAME_QUESTIONS_CLOUD_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'getTeacherGameQuestions', schoolCode, teacherId, status: 'archived' })
       });
+      if (!response.ok) throw new Error(`Archive HTTP ${response.status}`);
       const result = await response.json();
-      const list = Array.isArray(result?.data) ? result.data : [];
+      if (result?.success === false || result?.status === 'error' || !Array.isArray(result?.data)) {
+        throw new Error('Invalid archive response');
+      }
+      const list = result.data;
       const normalizedCloudArchive = list
         .filter((q: any) => q && q.questionType !== 'hints')
         .map((q: any) => normalizeTeacherGameQuestion(q, schoolCode, teacherId, defaultSubject, defaultGrade, classOptions))
         .map(q => ({ ...q, active: false, status: q.status || 'archived' }));
 
-      setCloudArchiveQuestions(normalizedCloudArchive);
-      saveLocalArchive([...normalizedCloudArchive, ...localArchiveQuestions]);
+      if (requestId !== archiveRequestRef.current) return;
+      saveLocalArchive(normalizedCloudArchive);
+      // Do not silently report a partial server response as the complete archive.
+      if (result.hasMore === true || (Number.isFinite(Number(result.total)) && Number(result.total) > list.length)) {
+        setArchiveSyncError(language === 'ar'
+          ? 'أعادت السحابة جزءًا من الأرشيف فقط. عُرضت جميع الأسئلة المتاحة محليًا والمستلمة؛ يلزم مراجعة خدمة السحابة لاسترجاع البقية.'
+          : 'The cloud returned only part of the archive. All cached and received questions are shown; the cloud service must be checked to retrieve the rest.');
+      }
     } catch (error) {
+      if (requestId !== archiveRequestRef.current) return;
       console.error('Failed to fetch archived game questions', error);
-      setCloudArchiveQuestions([]);
+      setArchiveSyncError(language === 'ar'
+        ? 'تعذر تحديث الأرشيف من السحابة. الأسئلة المحفوظة محليًا ما زالت معروضة ولم تُحذف.'
+        : 'Could not refresh the cloud archive. Locally saved questions are still displayed and have not been deleted.');
       showToast('warning', tr('gameArchiveCloudError'));
     } finally {
-      setIsLoadingArchive(false);
+      if (requestId === archiveRequestRef.current) setIsLoadingArchive(false);
     }
   };
 
   const openArchiveView = () => {
+    setArchiveUnit(null);
+    setArchiveLesson(null);
+    setArchiveSearch('');
     setQuestionsView('archive');
     fetchCloudArchiveQuestions();
   };
@@ -779,11 +862,14 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
         archivedAt: now,
         updatedAt: now
       }));
-      saveLocalArchive([...publishedArchive, ...localArchiveQuestions]);
+      saveLocalArchive(publishedArchive);
       localStorage.setItem(publishedClearedKey, 'true');
       localStorage.setItem(draftKey, JSON.stringify([]));
       setQuestions([]);
       resetForm();
+      setArchiveUnit(null);
+      setArchiveLesson(null);
+      setArchiveSearch('');
       setQuestionsView('archive');
       showToast('success', 'تم نشر الدفعة ونقل نسخة منها إلى الأرشيف، وأصبح المحرر جاهزًا لدفعة جديدة.');
     } catch (error) {
@@ -1095,19 +1181,55 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                 <h2 className="text-base font-black text-textPrimary flex items-center gap-2"><Archive className="w-4 h-4 text-primary" />{tr('gameArchiveTitle')}</h2>
                 <p className="text-[10px] font-bold text-textSecondary mt-1">{tr('gameArchiveSubtitle')}</p>
               </div>
-              <button type="button" onClick={fetchCloudArchiveQuestions} className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95">
+              <button type="button" onClick={fetchCloudArchiveQuestions} disabled={isLoadingArchive} className="h-10 px-3 rounded-2xl bg-bgSoft border border-borderColor text-textSecondary hover:text-primary font-black text-xs flex items-center gap-2 active:scale-95 disabled:opacity-50">
                 <RotateCcw className={`w-4 h-4 ${isLoadingArchive ? 'animate-spin' : ''}`} />
                 {isLoadingArchive ? tr('gameRefreshing') : tr('gameRefresh')}
               </button>
             </div>
 
+            {archiveSyncError && <p role="status" className="mb-4 rounded-2xl border border-warning/20 bg-warning/10 p-3 text-xs font-bold text-warning">{archiveSyncError}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <label className="text-xs font-bold text-textSecondary">
+                <span className="block mb-1">{tr('unitLabel')}</span>
+                <select aria-label={tr('unitLabel')} value={JSON.stringify(archiveUnit)} onChange={event => { setArchiveUnit(JSON.parse(event.target.value)); setArchiveLesson(null); }} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm text-textPrimary">
+                  <option value="null">{language === 'ar' ? 'جميع الوحدات' : 'All units'}</option>
+                  {archiveGroups.map(group => <option key={group.unit} value={JSON.stringify(group.unit)}>{group.unit || tr('gameUnknownUnit')} ({group.count})</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-textSecondary">
+                <span className="block mb-1">{tr('lessonLabel')}</span>
+                <select aria-label={tr('lessonLabel')} value={JSON.stringify(archiveLesson)} onChange={event => setArchiveLesson(JSON.parse(event.target.value))} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm text-textPrimary">
+                  <option value="null">{language === 'ar' ? 'جميع الدروس' : 'All lessons'}</option>
+                  {archiveLessonOptions.map(lesson => <option key={lesson} value={JSON.stringify(lesson)}>{lesson || tr('gameUnknownLesson')}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-textSecondary">
+                <span className="block mb-1">{language === 'ar' ? 'بحث في الأرشيف' : 'Search archive'}</span>
+                <input type="search" value={archiveSearch} onChange={event => setArchiveSearch(event.target.value)} className="w-full h-11 rounded-2xl bg-bgSoft border border-borderColor px-3 text-sm text-textPrimary" />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 text-xs font-bold text-textSecondary">
+              <p aria-live="polite">{language === 'ar'
+                ? `عرض ${filteredArchiveQuestions.length} من ${archiveQuestions.length} سؤالًا مؤرشفًا · ${filteredArchiveGroups.length} وحدة · ${filteredArchiveGroups.reduce((sum, group) => sum + group.lessons.length, 0)} درس`
+                : `Showing ${filteredArchiveQuestions.length} of ${archiveQuestions.length} archived questions · ${filteredArchiveGroups.length} units · ${filteredArchiveGroups.reduce((sum, group) => sum + group.lessons.length, 0)} lessons`}</p>
+              {(archiveUnit !== null || archiveLesson !== null || archiveSearch) && <button type="button" onClick={() => { setArchiveUnit(null); setArchiveLesson(null); setArchiveSearch(''); }} className="min-h-[44px] px-3 rounded-xl bg-primary/10 text-primary">{language === 'ar' ? 'عرض جميع الأسئلة' : 'Show all questions'}</button>}
+            </div>
+
             {archiveQuestions.length === 0 ? (
               <div className="text-center py-10 bg-bgSoft border border-borderColor rounded-3xl border-dashed"><Archive className="w-10 h-10 text-textMuted mx-auto mb-3" /><p className="text-xs font-black text-textPrimary">{tr('gameNoArchivedQuestions')}</p><p className="text-[10px] font-bold text-textSecondary mt-1">بعد نشر دفعة جديدة ستنتقل الأسئلة السابقة إلى {tr('groupsArchive')} تلقائيًا.</p></div>
+            ) : filteredArchiveQuestions.length === 0 ? (
+              <p className="p-6 text-center text-sm font-bold text-textSecondary">{language === 'ar' ? 'لا توجد أسئلة مطابقة. غيّر التصفية أو اضغط «عرض جميع الأسئلة».' : 'No matching questions. Change the filters or select “Show all questions”.'}</p>
             ) : (
-              <div className="space-y-2.5">
-                {archiveQuestions.map(question => (
-                  <div key={question.id} className="bg-bgSoft border border-borderColor rounded-2xl p-3">
-                    <div className="flex items-start justify-between gap-3">
+              <div className="space-y-6" data-question-archive="true">
+                {filteredArchiveGroups.map(unitGroup => (
+                  <section key={unitGroup.unit} className="border border-borderColor rounded-2xl p-3 md:p-4 space-y-4" data-archive-unit={unitGroup.unit}>
+                    <h3 className="text-base font-black text-primary break-words">{tr('unitLabel')}: {unitGroup.unit || tr('gameUnknownUnit')} <span className="text-xs font-bold text-textSecondary">({unitGroup.count})</span></h3>
+                    {unitGroup.lessons.map(lessonGroup => (
+                      <section key={lessonGroup.lesson} className="space-y-2.5" data-archive-lesson={lessonGroup.lesson}>
+                        <h4 className="text-sm font-black text-textPrimary break-words">{tr('lessonLabel')}: {lessonGroup.lesson || tr('gameUnknownLesson')} <span className="text-xs font-bold text-textSecondary">({lessonGroup.questions.length})</span></h4>
+                        {lessonGroup.questions.map(question => (
+                  <div key={question.id} data-archived-question={question.id} className="bg-bgSoft border border-borderColor rounded-2xl p-3">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{question.subject || tr('gameUnknownSubject')}</span>
@@ -1116,7 +1238,7 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                           <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20">{getQuestionTypeLabel(question.questionType)}</span>
                           <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/20">{tr('gameArchived')}</span>
                         </div>
-                        <p className="text-sm font-black text-textPrimary line-clamp-2">{question.question || tr('gameQuestionWithoutText')}</p>
+                        <p className="text-sm font-black text-textPrimary whitespace-pre-wrap break-words">{question.question || tr('gameQuestionWithoutText')}</p>
                         <div className="flex flex-wrap gap-2 mt-2 text-[9px] font-bold text-textSecondary">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{tr('gameArchivedAt')}:  {formatDateTime(question.archivedAt, locale, unknownLabel)}</span>
                           <span>{tr('classesCountLabel')}:  {asStringArray(question.classes).join(language === 'ar' ? '، ' : ', ') || unknownLabel}</span>
@@ -1124,10 +1246,14 @@ const TeacherGameQuestionsManager: React.FC<TeacherGameQuestionsManagerProps> = 
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button type="button" onClick={() => restoreFromArchive(question)} className="h-9 px-3 rounded-xl bg-success/10 border border-success/20 text-success text-xs font-black">{tr('groupsRestoreAction')}</button>
-                        <button type="button" onClick={() => duplicateQuestion(question)} className="w-9 h-9 rounded-xl bg-bgCard border border-borderColor flex items-center justify-center text-info"><Copy className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => duplicateQuestion(question)} aria-label={language === 'ar' ? 'نسخ السؤال' : 'Copy question'} className="w-9 h-9 rounded-xl bg-bgCard border border-borderColor flex items-center justify-center text-info"><Copy className="w-4 h-4" /></button>
                       </div>
                     </div>
                   </div>
+                        ))}
+                      </section>
+                    ))}
+                  </section>
                 ))}
               </div>
             )}
