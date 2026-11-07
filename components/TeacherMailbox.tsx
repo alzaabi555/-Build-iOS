@@ -37,6 +37,12 @@ interface TeacherMailboxProps {
 }
 
 interface MailMessage {
+  id?: string | number;
+  messageId?: string | number;
+  localCreatedAt?: number;
+  deleted?: boolean | string;
+  isDeleted?: boolean | string;
+  deletedByTeacher?: boolean | string;
   rowNumber?: number;
   row?: number;
   messageRow?: number;
@@ -160,6 +166,57 @@ const isUnknownMailboxSubject = (value: unknown) => {
   return !normalized || normalized === 'غير محدد' || normalized === 'undefined' || normalized === 'null';
 };
 
+const messageRow = (msg: MailMessage) => String(msg.rowNumber || msg.messageRow || msg.row || '').trim();
+const messageRecipient = (msg: MailMessage) => normalizeCode(msg.rasedId || msg.civilID || msg.parentCode || '');
+const messageDateTime = (msg: MailMessage) => {
+  const timestamp = Date.parse(String(msg.date || ''));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+const sameMailboxMessage = (left: MailMessage, right: MailMessage) => {
+  const leftId = String(left.messageId ?? left.id ?? '').trim();
+  const rightId = String(right.messageId ?? right.id ?? '').trim();
+  const sameScope = normalizeMailboxText(left.schoolName) === normalizeMailboxText(right.schoolName)
+    && normalizeMailboxText(left.subject) === normalizeMailboxText(right.subject)
+    && (!left.semester || !right.semester || String(left.semester) === String(right.semester));
+  if (!sameScope) return false;
+  if (leftId && rightId) return leftId === rightId;
+  if (left.localId && right.localId && left.localId === right.localId) return true;
+  if (messageRecipient(left) !== messageRecipient(right)
+    || String(left.message || '').trim() !== String(right.message || '').trim()
+    || isTeacherSentMessage(left) !== isTeacherSentMessage(right)) return false;
+  const leftTime = messageDateTime(left), rightTime = messageDateTime(right);
+  // Rows can move after a sheet row is deleted. A row number alone is never an identity.
+  if (left.localId?.startsWith('local_sent_') && right.localId?.startsWith('local_sent_')
+    && left.localId !== right.localId) return false;
+  if (leftTime && rightTime) return leftTime === rightTime
+    || Boolean(messageRow(left) && messageRow(left) === messageRow(right) && Math.abs(leftTime - rightTime) <= 10000);
+  return Boolean(messageRow(left) && messageRow(left) === messageRow(right));
+};
+const mailboxTrue = (value: unknown) => value === true || value === 1
+  || ['true', '1', 'yes'].includes(String(value ?? '').trim().toLowerCase());
+const isDeletedMailboxMessage = (msg: MailMessage) => mailboxTrue(msg.deleted)
+  || mailboxTrue(msg.isDeleted) || mailboxTrue(msg.deletedByTeacher)
+  || ['deleted', 'teacher_deleted', 'deleted_by_teacher'].includes(String(msg.status || '').toLowerCase());
+const DELETED_STORAGE_KEY = 'rased_teacher_parent_message_tombstones_v1';
+const readDeletedMessages = (): MailMessage[] => {
+  try {
+    const value = JSON.parse(localStorage.getItem(DELETED_STORAGE_KEY) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
+};
+const persistDeletedMessages = (items: MailMessage[]) => {
+  try { localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(items)); }
+  catch (error) { console.error('Unable to persist mailbox deletions:', error); }
+};
+const inMailboxScope = (msg: MailMessage, school: string, subject: string, semester: string) =>
+  normalizeMailboxText(msg.schoolName) === normalizeMailboxText(school)
+  && normalizeMailboxText(msg.subject) === normalizeMailboxText(subject)
+  && (!msg.semester || String(msg.semester) === semester);
+const reconcileSentCache = (cached: MailMessage[], snapshot: MailMessage[], school: string, subject: string, semester: string, startedAt: number) =>
+  cached.filter(msg => !inMailboxScope(msg, school, subject, semester)
+    || (msg.localCreatedAt || 0) > startedAt
+    || snapshot.some(cloud => sameMailboxMessage(msg, cloud)));
+
 const interpolate = (template: string, replacements: Record<string, string>) => {
   return Object.entries(replacements).reduce(
     (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, 'g'), value),
@@ -200,6 +257,11 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [localSentMessages, setLocalSentMessages] = useState<MailMessage[]>(readStoredSentMessages);
   const [isFetching, setIsFetching] = useState(false);
+  const [syncError, setSyncError] = useState('');
+  const [deletingMessages, setDeletingMessages] = useState<string[]>([]);
+  const deletedMessagesRef = useRef<MailMessage[]>(readDeletedMessages());
+  const fetchRequestRef = useRef(0);
+  const isLocallyDeleted = (msg: MailMessage) => deletedMessagesRef.current.some(item => sameMailboxMessage(item, msg));
   const [query, setQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
   const [selectedClassForSend, setSelectedClassForSend] = useState('all');
@@ -259,6 +321,7 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   const scopedMessages = useMemo(() => {
     const teacherSubject = normalizeMailboxText(teacherInfo?.subject || '');
     return messages.filter(msg => {
+      if (isDeletedMailboxMessage(msg) || isLocallyDeleted(msg)) return false;
       const messageSubject = normalizeMailboxText(msg.subject || '');
       if (!teacherSubject || messageSubject === teacherSubject) return true;
       if (isUnknownMailboxSubject(messageSubject)) {
@@ -269,16 +332,13 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   }, [messages, teacherInfo?.subject, teacherStudentCodes]);
   const inboxMessages = useMemo(() => scopedMessages.filter(msg => !isTeacherSentMessage(msg)), [scopedMessages]);
   const sentMessages = useMemo(() => {
-    const cloudSent = scopedMessages.filter(msg => isTeacherSentMessage(msg));
-    const cloudRows = new Set(cloudSent.map(msg => String(msg.rowNumber || '')).filter(Boolean));
-    const cloudFallbackKeys = new Set(cloudSent.map(msg => `${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`));
-    const localOnly = localSentMessages.filter(msg => {
-      const rowKey = String(msg.rowNumber || '');
-      if (rowKey && cloudRows.has(rowKey)) return false;
-      return !cloudFallbackKeys.has(`${String(msg.message || '').trim()}_${normalizeCode(msg.rasedId || msg.civilID || '')}`);
-    });
-    return [...localOnly, ...cloudSent].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-  }, [scopedMessages, localSentMessages]);
+    const cloudSent = scopedMessages.filter(isTeacherSentMessage);
+    const localOnly = localSentMessages.filter(msg =>
+      inMailboxScope(msg, teacherInfo?.school || '', teacherInfo?.subject || '', currentSemester)
+      && !isDeletedMailboxMessage(msg) && !isLocallyDeleted(msg)
+      && !cloudSent.some(cloud => sameMailboxMessage(msg, cloud)));
+    return [...localOnly, ...cloudSent].sort((a, b) => messageDateTime(b) - messageDateTime(a));
+  }, [scopedMessages, localSentMessages, teacherInfo?.school, teacherInfo?.subject, currentSemester]);
 
   const visibleMessages = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -295,33 +355,64 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   }, [activeTab, inboxMessages, sentMessages, query]);
 
   const fetchParentMessages = async () => {
+    const requestId = ++fetchRequestRef.current;
+    const startedAt = Date.now();
     setIsFetching(true);
+    setSyncError('');
     try {
       const school = teacherInfo?.school || '';
       const subject = teacherInfo?.subject || '';
-      const params = new URLSearchParams({ action: 'getMessages', t: String(Date.now()) });
+      const params = new URLSearchParams({ action: 'getMessages', t: String(startedAt) });
       if (school) params.set('school', school);
       params.set('semester', currentSemester);
       const response = await fetch(`${GOOGLE_WEB_APP_URL}?${params.toString()}`, { cache: 'no-store', redirect: 'follow' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
-      if (result.status === 'success') {
-        const list = Array.isArray(result.messages) ? result.messages : [];
-        setMessages(list.sort((a: MailMessage, b: MailMessage) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
+      if (requestId !== fetchRequestRef.current) return;
+      if ((result.status !== 'success' && result.success !== true) || !Array.isArray(result.messages)) {
+        throw new Error(result.message || 'استجابة المراسلات غير صالحة؛ تم الاحتفاظ بالنسخة المحلية.');
       }
+      const rawList: MailMessage[] = result.messages;
+      const list = rawList.filter(msg => !isDeletedMailboxMessage(msg) && !isLocallyDeleted(msg));
+      const partial = mailboxTrue(result.hasMore) || Boolean(result.nextPageToken || result.nextCursor)
+        || (Number.isFinite(Number(result.total)) && Number(result.total) > rawList.length);
+      setMessages(previous => {
+        // Preserve messages successfully sent after this fetch started.
+        const fresh = previous.filter(msg => (msg.localCreatedAt || 0) > startedAt
+          && !isLocallyDeleted(msg) && !list.some(cloud => sameMailboxMessage(msg, cloud)));
+        const retained = partial ? previous.filter(msg => !isLocallyDeleted(msg)
+          && !rawList.some(cloud => isDeletedMailboxMessage(cloud) && sameMailboxMessage(msg, cloud))
+          && !list.some(cloud => sameMailboxMessage(msg, cloud))) : fresh;
+        return [...retained, ...list].sort((a, b) => messageDateTime(b) - messageDateTime(a));
+      });
+      setLocalSentMessages(previous => {
+        const clean = previous.filter(msg => !isLocallyDeleted(msg)
+          && !rawList.some(cloud => isDeletedMailboxMessage(cloud) && sameMailboxMessage(msg, cloud)));
+        const next = partial ? clean : reconcileSentCache(clean, list, school, subject, currentSemester, startedAt);
+        persistSentMessages(next);
+        return next;
+      });
+      if (partial) setSyncError('وصلت قائمة جزئية من السحابة؛ لم تُحذف الرسائل المحلية لمجرد غيابها عن هذه الصفحة.');
     } catch (error) {
+      if (requestId !== fetchRequestRef.current) return;
       console.error('Error fetching parent messages:', error);
+      setSyncError(error instanceof Error ? error.message : 'تعذر تحديث المراسلات؛ تم الاحتفاظ بالرسائل المحلية.');
     } finally {
-      setIsFetching(false);
+      if (requestId === fetchRequestRef.current) setIsFetching(false);
     }
   };
 
   useEffect(() => {
+    setMessages([]);
+    setSelectedParentKey('');
     fetchParentMessages();
+    return () => { fetchRequestRef.current += 1; };
   }, [teacherInfo?.school, teacherInfo?.subject, currentSemester]);
 
   useEffect(() => {
     const restoreAndRefresh = () => {
-      setLocalSentMessages(readStoredSentMessages());
+      deletedMessagesRef.current = readDeletedMessages();
+      setLocalSentMessages(readStoredSentMessages().filter(msg => !isLocallyDeleted(msg)));
       fetchParentMessages();
     };
     const onVisibilityChange = () => {
@@ -343,39 +434,51 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
       body: JSON.stringify(payload)
     });
     const result = await response.json();
-    if (result.status !== 'success' && result.success !== true) {
+    if (!response.ok || (result.status !== 'success' && result.success !== true)) {
       throw new Error(result.message || 'Cloud message request failed');
     }
     return result;
   };
 
   const handleDeleteMessage = async (msg: MailMessage) => {
-    const confirmed = window.confirm(t('mailboxConfirmDelete'));
-    if (!confirmed) return;
-
-    const rowNumber = String(msg.rowNumber || msg.messageRow || msg.row || '');
-    if (!rowNumber) {
-      setLocalSentMessages(prev => prev.filter(item => item !== msg));
-      setMessages(prev => prev.filter(item => item !== msg));
-      return;
-    }
-
+    const deleteKey = JSON.stringify([msg.messageId || msg.id || '', msg.localId || '', messageRow(msg), messageRecipient(msg), msg.date || '']);
+    if (deletingMessages.includes(deleteKey)) return;
+    if (!window.confirm(t('mailboxConfirmDelete'))) return;
+    setDeletingMessages(previous => [...previous, deleteKey]);
     try {
-      await fetch(GOOGLE_WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'deleteMessage',
-          rowNumber,
-          deletedBy: 'teacher',
+      const rowNumber = messageRow(msg);
+      if (rowNumber) {
+        await sendCloudMessage({
+          action: 'deleteMessage', rowNumber, deletedBy: 'teacher',
           schoolName: msg.schoolName || teacherInfo?.school || '',
           subject: msg.subject || teacherInfo?.subject || ''
-        })
+        });
+      }
+      // A conversation contains copies, so reference equality (item !== msg) cannot remove it.
+      const copies = [msg, ...messages.filter(item => sameMailboxMessage(item, msg)),
+        ...localSentMessages.filter(item => sameMailboxMessage(item, msg))];
+      const deleted = [...readDeletedMessages()];
+      copies.forEach(item => { if (!deleted.some(existing => sameMailboxMessage(existing, item))) deleted.push(item); });
+      deletedMessagesRef.current = deleted;
+      persistDeletedMessages(deleted);
+      fetchRequestRef.current += 1; // Invalidate responses captured before deletion.
+      setIsFetching(false);
+      const keep = (item: MailMessage) => !deleted.some(target => sameMailboxMessage(target, item));
+      setMessages(previous => previous.filter(keep));
+      setLocalSentMessages(previous => {
+        const next = previous.filter(keep);
+        persistSentMessages(next);
+        return next;
       });
-      setMessages(prev => prev.filter(item => item !== msg));
-      setLocalSentMessages(prev => prev.filter(item => item !== msg));
+      // Persist immediately, before a focus/visibility refresh can restore the old record.
+      persistSentMessages(readStoredSentMessages().filter(keep));
+      setReplyingToMsg(previous => previous && sameMailboxMessage(previous, msg) ? null : previous);
+      if (!rowNumber) setSyncError('حُذفت النسخة المحلية. لا يوجد رقم صف للرسالة، لذلك لم يُرسل طلب حذفها من السحابة.');
     } catch (error) {
       console.error('Error deleting message:', error);
       alert(t('mailboxDeleteError'));
+    } finally {
+      setDeletingMessages(previous => previous.filter(key => key !== deleteKey));
     }
   };
 
@@ -464,6 +567,7 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
       }
       const localRecord: MailMessage = {
         localId: `local_sent_${Date.now()}`,
+        localCreatedAt: Date.now(),
         date: new Date().toISOString(),
         rasedId,
         civilID: rasedId,
@@ -482,7 +586,7 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
         grade
       };
       const savedRecord: MailMessage = cloudResult.messageData
-        ? { ...localRecord, ...cloudResult.messageData, localId: localRecord.localId }
+        ? { ...localRecord, ...cloudResult.messageData, localId: localRecord.localId, localCreatedAt: localRecord.localCreatedAt }
         : localRecord;
       const nextLocalSent = [savedRecord, ...readStoredSentMessages().filter(item => item.localId !== localRecord.localId)].slice(0, 200);
       persistSentMessages(nextLocalSent);
@@ -600,8 +704,9 @@ const ParentMailboxContent: React.FC<TeacherMailboxProps> = ({ students = [], te
   return (
     <div className="flex min-h-[620px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-sm" dir={dir}>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4"><div><div className="flex items-center gap-2 font-black text-emerald-700"><Mail className="h-5 w-5"/>رسائل أولياء الأمور{parentUnreadCount>0&&<span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] text-white">{parentUnreadCount}</span>}</div><p className="mt-1 text-xs font-bold text-slate-500">محادثات المتابعة المنزلية والتواصل التربوي</p></div><div className="flex gap-2"><button onClick={fetchParentMessages} className="rounded-2xl bg-slate-100 p-3"><RefreshCw className={`h-5 w-5 ${isFetching?'animate-spin':''}`}/></button><button onClick={()=>setActiveTab('compose')} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white">رسالة جديدة</button></div></header>
-      <div className="grid min-h-0 flex-1 md:grid-cols-[330px_1fr]"><aside className={`${selectedParentKey?'hidden md:flex':'flex'} min-h-0 flex-col border-l border-slate-200`}><div className="space-y-2 p-3"><div className="flex items-center rounded-2xl bg-slate-100 px-3"><Search className="h-4 w-4 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent py-3 text-sm font-bold outline-none" placeholder="اسم الطالب أو الرسالة"/></div><div className="grid grid-cols-2 gap-2"><button onClick={()=>setParentFilter('all')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='all'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>الكل</button><button onClick={()=>setParentFilter('unread')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='unread'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>غير المقروء</button></div></div><div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-4">{filteredParentThreads.length===0?<div className="p-8 text-center text-sm font-bold text-slate-400"><Inbox className="mx-auto mb-2 h-8 w-8"/>لا توجد محادثات</div>:filteredParentThreads.map(group=>{const first=group[0],last=group.at(-1)!;const unread=group.some(m=>!isTeacherSentMessage(m)&&String(m.readByTeacher||'').toUpperCase()!=='TRUE'&&m.status!=='replied');return <button key={getParentMessageKey(first)} onClick={()=>setSelectedParentKey(getParentMessageKey(first))} className={`w-full rounded-2xl p-3 text-right ${selectedParentThread&&getParentMessageKey(selectedParentThread[0])===getParentMessageKey(first)?'bg-emerald-50 ring-1 ring-emerald-200':'hover:bg-slate-50'}`}><div className="flex gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="truncate text-sm font-black">{first.studentName||'الطالب'}</p><span className="text-[9px] text-slate-400">{formatDateTime(last.date,language,'')}</span></div><p className="truncate text-[11px] font-bold text-emerald-700">{first.subject||teacherInfo?.subject}</p><p className="mt-1 truncate text-xs text-slate-500">{isTeacherSentMessage(last)?'أنت: ':''}{last.message}</p></div>{unread&&<span className="h-fit rounded-full bg-red-500 px-2 py-0.5 text-[9px] text-white">جديد</span>}</div></button>})}</div></aside>
-      <main className={`${selectedParentKey?'flex':'hidden md:flex'} min-h-0 flex-col bg-slate-50`}>{selectedParentThread?<><div className="flex items-center justify-between border-b border-slate-200 bg-white p-4"><div className="flex items-center gap-3"><button className="md:hidden" onClick={()=>setSelectedParentKey('')}><ChevronLeft className="h-5 w-5"/></button><div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div><h2 className="font-black">{selectedParentThread[0].studentName}</h2><p className="text-xs font-bold text-emerald-700">ولي الأمر · {selectedParentThread[0].subject||teacherInfo?.subject}</p></div></div><button onClick={()=>handleDeleteMessage(selectedParentThread[0])} className="rounded-xl bg-red-50 p-2 text-red-600"><Trash2 className="h-4 w-4"/></button></div><div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">{selectedParentThread.map((msg,index)=><React.Fragment key={getParentMessageKey(msg,index)}><div className={`flex ${isTeacherSentMessage(msg)?'justify-start':'justify-end'}`}><div className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-sm ${isTeacherSentMessage(msg)?'rounded-tr-md bg-emerald-500 text-white':'rounded-tl-md border border-slate-200 bg-white'}`}><p className="whitespace-pre-wrap text-sm font-bold leading-7">{msg.message}</p><p className={`mt-1 text-[9px] ${isTeacherSentMessage(msg)?'text-emerald-100':'text-slate-400'}`}>{formatDateTime(msg.date,language,'')}</p></div></div>{msg.teacherReply&&<div className="flex justify-start"><div className="max-w-[82%] rounded-3xl rounded-tr-md bg-emerald-500 px-4 py-3 text-white"><p className="text-sm font-bold leading-7">{msg.teacherReply}</p><p className="mt-1 text-[9px] text-emerald-100">{formatDateTime(msg.replyDate,language,'')}</p></div></div>}</React.Fragment>)}<div ref={parentBottomRef}/></div><div className="border-t border-slate-200 bg-white p-3"><div className="flex items-end gap-2"><textarea value={replyText} onChange={e=>setReplyText(e.target.value)} maxLength={1000} rows={2} className="min-h-14 flex-1 resize-none rounded-2xl border border-slate-200 p-3 text-sm font-bold outline-none focus:border-emerald-400" placeholder="اكتب ردًا لولي الأمر..."/><button onClick={()=>{const msg=[...selectedParentThread].reverse().find(m=>!isTeacherSentMessage(m));if(msg)void handleSendReply(msg);}} disabled={isSending||!replyText.trim()} className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500 text-white disabled:bg-slate-200"><Send className="h-5 w-5"/></button></div><p className="mt-1 text-left text-[9px] text-slate-400">{replyText.length}/1000</p></div></>:<div className="m-auto text-center text-slate-400"><MessageCircle className="mx-auto mb-3 h-12 w-12"/><p className="font-black">اختر محادثة من القائمة</p></div>}</main></div>
+      {syncError && <div role="status" className="mx-4 mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">{syncError}</div>}
+    <div className="grid min-h-0 flex-1 md:grid-cols-[330px_1fr]"><aside className={`${selectedParentKey?'hidden md:flex':'flex'} min-h-0 flex-col border-l border-slate-200`}><div className="space-y-2 p-3"><div className="flex items-center rounded-2xl bg-slate-100 px-3"><Search className="h-4 w-4 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent py-3 text-sm font-bold outline-none" placeholder="اسم الطالب أو الرسالة"/></div><div className="grid grid-cols-2 gap-2"><button onClick={()=>setParentFilter('all')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='all'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>الكل</button><button onClick={()=>setParentFilter('unread')} className={`rounded-xl py-2 text-xs font-black ${parentFilter==='unread'?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}>غير المقروء</button></div></div><div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-4">{filteredParentThreads.length===0?<div className="p-8 text-center text-sm font-bold text-slate-400"><Inbox className="mx-auto mb-2 h-8 w-8"/>لا توجد محادثات</div>:filteredParentThreads.map(group=>{const first=group[0],last=group.at(-1)!;const unread=group.some(m=>!isTeacherSentMessage(m)&&String(m.readByTeacher||'').toUpperCase()!=='TRUE'&&m.status!=='replied');return <button key={getParentMessageKey(first)} onClick={()=>setSelectedParentKey(getParentMessageKey(first))} className={`w-full rounded-2xl p-3 text-right ${selectedParentThread&&getParentMessageKey(selectedParentThread[0])===getParentMessageKey(first)?'bg-emerald-50 ring-1 ring-emerald-200':'hover:bg-slate-50'}`}><div className="flex gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="truncate text-sm font-black">{first.studentName||'الطالب'}</p><span className="text-[9px] text-slate-400">{formatDateTime(last.date,language,'')}</span></div><p className="truncate text-[11px] font-bold text-emerald-700">{first.subject||teacherInfo?.subject}</p><p className="mt-1 truncate text-xs text-slate-500">{isTeacherSentMessage(last)?'أنت: ':''}{last.message}</p></div>{unread&&<span className="h-fit rounded-full bg-red-500 px-2 py-0.5 text-[9px] text-white">جديد</span>}</div></button>})}</div></aside>
+      <main className={`${selectedParentKey?'flex':'hidden md:flex'} min-h-0 flex-col bg-slate-50`}>{selectedParentThread?<><div className="flex items-center justify-between border-b border-slate-200 bg-white p-4"><div className="flex items-center gap-3"><button className="md:hidden" onClick={()=>setSelectedParentKey('')}><ChevronLeft className="h-5 w-5"/></button><div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div><h2 className="font-black">{selectedParentThread[0].studentName}</h2><p className="text-xs font-bold text-emerald-700">ولي الأمر · {selectedParentThread[0].subject||teacherInfo?.subject}</p></div></div><button onClick={()=>handleDeleteMessage(selectedParentThread[0])} className="rounded-xl bg-red-50 p-2 text-red-600"><Trash2 className="h-4 w-4"/></button></div><div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">{selectedParentThread.map((msg,index)=><React.Fragment key={getParentMessageKey(msg,index)}><div className={`flex ${isTeacherSentMessage(msg)?'justify-start':'justify-end'}`}><div className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-sm ${isTeacherSentMessage(msg)?'rounded-tr-md bg-emerald-500 text-white':'rounded-tl-md border border-slate-200 bg-white'}`}><div className="mb-1 flex justify-end"><button type="button" disabled={deletingMessages.length > 0} onClick={() => void handleDeleteMessage(msg)} aria-label={t('mailboxDelete')} title={t('mailboxDelete')} className="rounded-lg p-1 opacity-75 hover:opacity-100 disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button></div><p className="whitespace-pre-wrap text-sm font-bold leading-7">{msg.message}</p><p className={`mt-1 text-[9px] ${isTeacherSentMessage(msg)?'text-emerald-100':'text-slate-400'}`}>{formatDateTime(msg.date,language,'')}</p></div></div>{msg.teacherReply&&<div className="flex justify-start"><div className="max-w-[82%] rounded-3xl rounded-tr-md bg-emerald-500 px-4 py-3 text-white"><p className="text-sm font-bold leading-7">{msg.teacherReply}</p><p className="mt-1 text-[9px] text-emerald-100">{formatDateTime(msg.replyDate,language,'')}</p></div></div>}</React.Fragment>)}<div ref={parentBottomRef}/></div><div className="border-t border-slate-200 bg-white p-3"><div className="flex items-end gap-2"><textarea value={replyText} onChange={e=>setReplyText(e.target.value)} maxLength={1000} rows={2} className="min-h-14 flex-1 resize-none rounded-2xl border border-slate-200 p-3 text-sm font-bold outline-none focus:border-emerald-400" placeholder="اكتب ردًا لولي الأمر..."/><button onClick={()=>{const msg=[...selectedParentThread].reverse().find(m=>!isTeacherSentMessage(m));if(msg)void handleSendReply(msg);}} disabled={isSending||!replyText.trim()} className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500 text-white disabled:bg-slate-200"><Send className="h-5 w-5"/></button></div><p className="mt-1 text-left text-[9px] text-slate-400">{replyText.length}/1000</p></div></>:<div className="m-auto text-center text-slate-400"><MessageCircle className="mx-auto mb-3 h-12 w-12"/><p className="font-black">اختر محادثة من القائمة</p></div>}</main></div>
     </div>
   );
 };
