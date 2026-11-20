@@ -1395,6 +1395,56 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
     }
   };
 
+  const MAX_BEHAVIOR_ROWS = 4;
+
+  const groupBehaviors = (list: any[]) => {
+    const groupedMap = new Map<string, {
+      label: string;
+      count: number;
+      latestDate: string;
+      latestTimestamp: number;
+      latestSession?: any;
+    }>();
+
+    list.forEach((b: any) => {
+      const label = String(translateBehavior(b?.description || '') || '').trim() || '-';
+      const parsedTime = b?.date ? new Date(b.date).getTime() : 0;
+      const timestamp = Number.isFinite(parsedTime) ? parsedTime : 0;
+      const existing = groupedMap.get(label);
+
+      if (!existing) {
+        groupedMap.set(label, {
+          label,
+          count: 1,
+          latestDate: b?.date || '',
+          latestTimestamp: timestamp,
+          latestSession: b?.session
+        });
+      } else {
+        existing.count += 1;
+        if (timestamp >= existing.latestTimestamp) {
+          existing.latestTimestamp = timestamp;
+          existing.latestDate = b?.date || existing.latestDate;
+          existing.latestSession = b?.session;
+        }
+      }
+    });
+
+    const sorted = Array.from(groupedMap.values()).sort(
+      (a, b) => b.latestTimestamp - a.latestTimestamp || b.count - a.count
+    );
+
+    const visible = sorted.slice(0, MAX_BEHAVIOR_ROWS);
+    const hiddenItems = sorted.slice(MAX_BEHAVIOR_ROWS);
+    const hiddenTotalCount = hiddenItems.reduce((sum, item) => sum + item.count, 0);
+
+    return {
+      visible,
+      hiddenTypesCount: hiddenItems.length,
+      hiddenTotalCount
+    };
+  };
+
   return (
     <div className="w-full text-black bg-white" dir={dir} data-pdf-paged-document="true">
       {safeStudents.map((student: any) => {
@@ -1405,6 +1455,8 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
         const posBehaviors = behaviors.filter((b: any) => b.type === 'positive');
         const negBehaviors = behaviors.filter((b: any) => b.type === 'negative');
         const displayPosBehaviors = posBehaviors.filter((b: any) => b.description !== 'هدوء وانضباط');
+        const groupedPosBehaviors = groupBehaviors(displayPosBehaviors);
+        const groupedNegBehaviors = groupBehaviors(negBehaviors);
         let continuousSum = 0;
         continuousTools.forEach((tool: any) => {
           const g = grades.find((r: any) => r.category.trim() === tool.name.trim());
@@ -1441,9 +1493,9 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
         const finalAverage = hasSem1Grades && hasSem2Grades ? Math.round((sem1Total + sem2Total) / 2) : null;
 
         return (
-          <div key={student.id} data-pdf-page="true" className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
+          <div key={student.id} data-pdf-page="true" className="w-full min-h-[297mm] px-8 py-6 border-b border-black page-break-after-always relative bg-white flex flex-col" style={{ pageBreakAfter: 'always', boxSizing: 'border-box' }}>
             
-            <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-4 text-black">
+            <div className="flex justify-between items-start mb-4 border-b-2 border-black pb-3 text-black">
               <div className={`text-${dir === 'rtl' ? 'right' : 'left'} w-1/3 text-sm font-bold`}>
                 <p>{t('sultanateOfOman')}</p>
                 <p>{t('ministryOfEducation')}</p>
@@ -1451,8 +1503,8 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
               </div>
 
               <div className="text-center w-1/3">
-                {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-16 object-contain mx-auto" />}
-                <h2 className="text-xl font-black underline mt-2 text-black">{t('studentLevelReport')}</h2>
+                {teacherInfo?.ministryLogo && <img src={teacherInfo.ministryLogo} className="h-14 object-contain mx-auto" />}
+                <h2 className="text-xl font-black underline mt-1 text-black">{t('studentLevelReport')}</h2>
               </div>
 
               <div className={`text-${dir === 'rtl' ? 'left' : 'right'} w-1/3 text-sm font-bold`}>
@@ -1461,12 +1513,12 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
               </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-2xl border-2 border-black mb-8 flex justify-between items-center text-black">
+            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-black mb-4 flex justify-between items-center text-black">
               <div>
-                <h3 className="text-2xl font-black mb-1">{student.name}</h3>
-                <p className="text-base text-black font-bold">{t('classLabelTemplate')} {studentClass}</p>
+                <h3 className="text-xl font-black mb-0.5">{student.name}</h3>
+                <p className="text-sm text-black font-bold">{t('classLabelTemplate')} {studentClass}</p>
               </div>
-              <div className="flex gap-4 text-xs font-bold">
+              <div className="flex gap-3 text-xs font-bold">
                 <span className="bg-emerald-100 border border-black text-emerald-900 px-3 py-1 rounded">{t('positiveLabel')} {totalPositive}</span>
                 <span className="bg-rose-100 border border-black text-rose-900 px-3 py-1 rounded">{t('negativeLabel')} {totalNegative}</span>
               </div>
@@ -1474,14 +1526,14 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
 
             {reportScope !== 'final' ? (
               <>
-            <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block text-black">{t('academicAchievement')}</h3>
+            <h3 className="font-bold text-base mb-2 border-b-2 border-black inline-block self-start text-black">{t('academicAchievement')}</h3>
 
             <table className="w-full border-collapse border border-black text-sm mb-4 text-black">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className={`border border-black p-3 text-${dir === 'rtl' ? 'right' : 'left'}`}>{t('subjectCol')}</th>
-                  <th className="border border-black p-3 text-center">{t('assessmentTool')}</th>
-                  <th className="border border-black p-3 text-center w-24">{t('degreeLabel')}</th>
+                  <th className={`border border-black px-3 py-2 text-${dir === 'rtl' ? 'right' : 'left'}`}>{t('subjectCol')}</th>
+                  <th className="border border-black px-3 py-2 text-center">{t('assessmentTool')}</th>
+                  <th className="border border-black px-3 py-2 text-center w-24">{t('degreeLabel')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1489,9 +1541,9 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
                   const g = grades.find((r: any) => String(r.category || '').trim() === String(t.name || '').trim());
                   return (
                     <tr key={t.id}>
-                      <td className={`border border-black p-3 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
-                      <td className="border border-black p-3 text-center">{t.name}</td>
-                      <td className="border border-black p-3 text-center font-bold">{g ? g.score : '-'}</td>
+                      <td className={`border border-black px-3 py-2 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
+                      <td className="border border-black px-3 py-2 text-center">{t.name}</td>
+                      <td className="border border-black px-3 py-2 text-center font-bold">{g ? g.score : '-'}</td>
                     </tr>
                   );
                 })}
@@ -1499,33 +1551,33 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
                   const g = grades.find((r: any) => r.category.trim() === finalTool.name.trim());
                   return (
                     <tr>
-                      <td className={`border border-black p-3 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
-                      <td className="border border-black p-3 text-center bg-pink-50 font-bold">{finalTool.name}</td>
-                      <td className="border border-black p-3 text-center font-black">{g ? g.score : '-'}</td>
+                      <td className={`border border-black px-3 py-2 font-bold text-${dir === 'rtl' ? 'right' : 'left'}`}>{teacherInfo?.subject || t('subjectCol')}</td>
+                      <td className="border border-black px-3 py-2 text-center bg-pink-50 font-bold">{finalTool.name}</td>
+                      <td className="border border-black px-3 py-2 text-center font-black">{g ? g.score : '-'}</td>
                     </tr>
                   );
                 })()}
                 <tr className="bg-slate-200 font-bold">
-                  <td colSpan={2} className={`border border-black p-3 text-${dir === 'rtl' ? 'right' : 'left'} text-base`}>{t('grandTotal')}</td>
-                  <td className="border border-black p-3 text-center text-lg font-black">{totalScore}</td>
+                  <td colSpan={2} className={`border border-black px-3 py-2 text-${dir === 'rtl' ? 'right' : 'left'} text-base`}>{t('grandTotal')}</td>
+                  <td className="border border-black px-3 py-2 text-center text-lg font-black">{totalScore}</td>
                 </tr>
               </tbody>
             </table>
 
               </>
             ) : (
-              <div className="mb-5 rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-5 text-center">
+              <div className="mb-4 rounded-2xl border-2 border-emerald-700 bg-emerald-50 p-4 text-center">
                 <h3 className="text-xl font-black text-emerald-900">{t('annualFinalResult')}</h3>
-                <p className="mt-2 text-sm font-bold text-emerald-800">{t('annualAverageCalculationNote')}</p>
+                <p className="mt-1.5 text-sm font-bold text-emerald-800">{t('annualAverageCalculationNote')}</p>
               </div>
             )}
 
             {reportScope === 'final' && (
-            <div className="flex border-2 border-black rounded-xl overflow-hidden mb-8 bg-amber-50">
-                <div className="bg-amber-200 p-4 border-l-2 border-black flex items-center justify-center font-black text-black">
+            <div className="flex border-2 border-black rounded-xl overflow-hidden mb-5 bg-amber-50">
+                <div className="bg-amber-200 p-3 border-l-2 border-black flex items-center justify-center font-black text-black">
                     {t('annualFinalResultLine1')}<br/>{t('annualFinalResultLine2')}
                 </div>
-                <div className="flex-1 flex justify-around items-center p-4">
+                <div className="flex-1 flex justify-around items-center p-3">
                     <div className="text-center">
                         <p className="text-xs font-bold mb-1">{t('semester1TotalShort')}</p>
                         <p className="font-black text-lg">{hasSem1Grades ? sem1Total : '-'}</p>
@@ -1546,68 +1598,104 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
             </div>
             )}
 
-            <div className="flex gap-6 mb-8">
-              <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
-                <p className="text-sm font-bold text-black mb-1">{t('absenceDays')}</p>
-                <p className="text-3xl font-black text-rose-600">{absenceCount}</p>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1 border-2 border-black p-3 rounded-xl text-center">
+                <p className="text-sm font-bold text-black mb-0.5">{t('absenceDays')}</p>
+                <p className="text-2xl font-black text-rose-600">{absenceCount}</p>
               </div>
-              <div className="flex-1 border-2 border-black p-4 rounded-xl text-center">
-                <p className="text-sm font-bold text-black mb-1">{t('truancyTimes')}</p>
-                <p className="text-3xl font-black text-purple-600">{truantCount}</p>
+              <div className="flex-1 border-2 border-black p-3 rounded-xl text-center">
+                <p className="text-sm font-bold text-black mb-0.5">{t('truancyTimes')}</p>
+                <p className="text-2xl font-black text-purple-600">{truantCount}</p>
               </div>
             </div>
 
-            <div className="mb-12">
-                <h3 className="font-bold text-lg mb-3 border-b-2 border-black inline-block text-black">{t('behaviorAndAttendanceRecord')}</h3>
-                <div className="flex gap-4 items-start">
+            <div className="mb-4">
+                <h3 className="font-bold text-base mb-2 border-b-2 border-black inline-block text-black">{t('behaviorAndAttendanceRecord')}</h3>
+                <div className="flex gap-4 items-stretch">
                     
-                    <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[150px]">
-                        <div className="bg-green-100 p-2 text-center font-bold border-b-2 border-black text-green-900 text-sm">
+                    <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[120px] flex flex-col">
+                        <div className="bg-green-100 py-1.5 px-2 text-center font-bold border-b-2 border-black text-green-900 text-sm">
                             {t('notablePositiveBehaviors')} ({displayPosBehaviors.length})
                         </div>
-                        <div className="p-2 space-y-2">
-                            {displayPosBehaviors.length > 0 ? displayPosBehaviors.map((b: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center border-b border-black/50 pb-1 last:border-0 text-sm">
-                                    <span className="font-bold text-black">{translateBehavior(b.description)}</span>
-                                    <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
-                                        <span>{new Date(b.date).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>
-                                        {b.session && <span>{t('sessionLabel')} {b.session}</span>}
-                                    </div>
-                                </div>
-                            )) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
+                        <div className="p-2 space-y-1.5 flex-1">
+                            {groupedPosBehaviors.visible.length > 0 ? (
+                              <>
+                                {groupedPosBehaviors.visible.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between items-center gap-2 border-b border-black/30 pb-1 last:border-0 text-xs">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="font-bold text-black truncate">{item.label}</span>
+                                          {item.count > 1 && (
+                                            <span className="shrink-0 bg-emerald-100 border border-emerald-700 text-emerald-900 px-1.5 py-0.5 rounded text-[10px] font-black" dir="ltr">
+                                              ×{item.count}
+                                            </span>
+                                          )}
+                                      </div>
+                                      <div className={`shrink-0 text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
+                                          {item.latestDate && <span>{new Date(item.latestDate).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>}
+                                          {item.latestSession && <span>{t('sessionLabel')} {item.latestSession}</span>}
+                                      </div>
+                                  </div>
+                                ))}
+                                {groupedPosBehaviors.hiddenTotalCount > 0 && (
+                                  <div className="text-center text-[10px] font-bold text-emerald-800 bg-emerald-50 rounded py-0.5 mt-1">
+                                    {language === 'ar'
+                                      ? `+ ${groupedPosBehaviors.hiddenTotalCount} سلوكيات إيجابية أخرى`
+                                      : `+ ${groupedPosBehaviors.hiddenTotalCount} more positive behaviors`}
+                                  </div>
+                                )}
+                              </>
+                            ) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
                         </div>
                     </div>
 
-                    <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[150px]">
-                        <div className="bg-red-100 p-2 text-center font-bold border-b-2 border-black text-red-900 text-sm">
+                    <div className="flex-1 border-2 border-black rounded-xl overflow-hidden min-h-[120px] flex flex-col">
+                        <div className="bg-red-100 py-1.5 px-2 text-center font-bold border-b-2 border-black text-red-900 text-sm">
                             {t('negativeBehaviors')} ({negBehaviors.length})
                         </div>
-                        <div className="p-2 space-y-2">
-                            {negBehaviors.length > 0 ? negBehaviors.map((b: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center border-b border-black/50 pb-1 last:border-0 text-sm">
-                                    <span className="font-bold text-black">{translateBehavior(b.description)}</span>
-                                    <div className={`text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
-                                        <span>{new Date(b.date).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>
-                                        {b.session && <span>{t('sessionLabel')} {b.session}</span>}
-                                    </div>
-                                </div>
-                            )) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
+                        <div className="p-2 space-y-1.5 flex-1">
+                            {groupedNegBehaviors.visible.length > 0 ? (
+                              <>
+                                {groupedNegBehaviors.visible.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between items-center gap-2 border-b border-black/30 pb-1 last:border-0 text-xs">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="font-bold text-black truncate">{item.label}</span>
+                                          {item.count > 1 && (
+                                            <span className="shrink-0 bg-rose-100 border border-rose-700 text-rose-900 px-1.5 py-0.5 rounded text-[10px] font-black" dir="ltr">
+                                              ×{item.count}
+                                            </span>
+                                          )}
+                                      </div>
+                                      <div className={`shrink-0 text-${dir === 'rtl' ? 'left' : 'right'} text-[10px] font-bold text-black flex flex-col items-${dir === 'rtl' ? 'end' : 'start'}`}>
+                                          {item.latestDate && <span>{new Date(item.latestDate).toLocaleDateString(language === 'ar' ? 'en-GB' : 'en-US')}</span>}
+                                          {item.latestSession && <span>{t('sessionLabel')} {item.latestSession}</span>}
+                                      </div>
+                                  </div>
+                                ))}
+                                {groupedNegBehaviors.hiddenTotalCount > 0 && (
+                                  <div className="text-center text-[10px] font-bold text-rose-800 bg-rose-50 rounded py-0.5 mt-1">
+                                    {language === 'ar'
+                                      ? `+ ${groupedNegBehaviors.hiddenTotalCount} سلوكيات سلبية أخرى`
+                                      : `+ ${groupedNegBehaviors.hiddenTotalCount} more negative behaviors`}
+                                  </div>
+                                )}
+                              </>
+                            ) : <div className="text-center text-xs text-gray-500 py-4">{t('noneFound')}</div>}
                         </div>
                     </div>
 
                 </div>
             </div>
 
-            <div className="flex justify-between items-end px-12 mt-auto text-black">
+            <div className="flex justify-between items-end px-10 pt-3 mt-auto text-black">
               <div className="text-center">
-                <p className="font-bold text-base mb-8 text-black">{t('subjectTeacherLabel')}</p>
-                <p className="text-2xl font-bold text-black">{teacherInfo?.name}</p>
+                <p className="font-bold text-base mb-6 text-black">{t('subjectTeacherLabel')}</p>
+                <p className="text-xl font-bold text-black">{teacherInfo?.name}</p>
               </div>
               <div className="text-center">
                 {teacherInfo?.stamp && <img src={teacherInfo.stamp} className="w-24 opacity-80" style={{ backgroundColor: 'transparent' }} />}
               </div>
               <div className="text-center">
-                <p className="font-bold text-base mb-8 text-black">{t('schoolPrincipalMale')}</p>
+                <p className="font-bold text-base mb-6 text-black">{t('schoolPrincipalMale')}</p>
                 <p className="font-bold text-lg text-black">........................</p>
               </div>
             </div>
