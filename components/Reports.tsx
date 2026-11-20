@@ -1623,7 +1623,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
                                 {groupedPosBehaviors.visible.map((item, idx) => (
                                   <div key={idx} className="flex justify-between items-center gap-2 border-b border-black/30 pb-1 last:border-0 text-xs">
                                       <div className="flex items-center gap-1.5 min-w-0">
-                                          <span className="font-bold text-black truncate">{item.label}</span>
+                                        <span className="font-bold text-black leading-relaxed">{item.label}</span>
                                           {item.count > 1 && (
                                             <span className="shrink-0 bg-emerald-100 border border-emerald-700 text-emerald-900 px-1.5 py-0.5 rounded text-[10px] font-black" dir="ltr">
                                               ×{item.count}
