@@ -45,7 +45,7 @@ const SOUNDS = {
 };
 
 const NEGATIVE_BEHAVIORS = [
-    { id: '1', original: 'إزعاج في الحصة', transKey: 'behNeg1', points: -2 },
+    { id: '1', original: 'عدم الانتباه وكثرة الكلام', transKey: 'behNeg1', points: -2 },
     { id: '2', original: 'الاكل اثناء الحصة', transKey: 'behNeg2', points: -2 },
     { id: '3', original: 'نسيان الكتاب والدفتر', transKey: 'behNeg3', points: -2 },
     { id: '4', original: 'تأخر عن الحصة', transKey: 'behNeg4', points: -2 },
@@ -55,16 +55,15 @@ const NEGATIVE_BEHAVIORS = [
 
 const POSITIVE_BEHAVIORS = [
     { id: 'p1', original: 'إجابة متميزة', transKey: 'behPos1', points: 2 },
-    { id: 'p2', original: 'إجابة صحيحة', transKey: 'behPos2', points: 1 },
+    { id: 'p2', original: 'قراءة جهرية', transKey: 'behPos2', points: 3 },
     { id: 'p3', original: 'واجب مميز', transKey: 'behPos3', points: 2 },
     { id: 'p4', original: 'مساعدة الزملاء', transKey: 'behPos4', points: 2 },
     { id: 'p5', original: 'مشاركة صفية متميزة', transKey: 'behPos5', points: 5 },
-    { id: 'p6', original: 'إبداع وتميز', transKey: 'behPos6', points: 3 },
-    { id: 'p7', original: 'مكافأة حل الألعاب التعليمية (10 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos7', points: 10 },
-     { id: 'p8', original: 'مكافأة حل الألعاب التعليمية (20 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos8', points: 20 },
-     { id: 'p9', original: 'مكافأة حل الألعاب التعليمية (30 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos9', points: 30 },
-     { id: 'p10', original: 'مكافأة حل الألعاب التعليمية (40 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos10', points: 40 },
-     { id: 'p11', original: 'مكافأة حل الألعاب التعليمية (50 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos11', points: 50 },
+    { id: 'p6', original: 'مكافأة حل الألعاب التعليمية (10 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos7', points: 10 },
+     { id: 'p7', original: 'مكافأة حل الألعاب التعليمية (20 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos8', points: 20 },
+     { id: 'p8', original: 'مكافأة حل الألعاب التعليمية (30 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos9', points: 30 },
+     { id: 'p9', original: 'مكافأة حل الألعاب التعليمية (40 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos10', points: 40 },
+     { id: 'p10', original: 'مكافأة حل الألعاب التعليمية (50 نقاط)', displayLabel: 'مكافأة حل الألعاب التعليمية', transKey: 'behPos11', points: 50 },
 ];
 // =========================================================================
 // 🔐 أدوات منع تكرار الطالب داخل StudentList
