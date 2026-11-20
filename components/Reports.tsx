@@ -315,15 +315,20 @@ const PrintPreviewModal: React.FC<{
     };
 
     try {
-      // Parent cards only: render each A4 sheet separately, never slice a long canvas.
-      const parentCardsDocument = element.querySelector('[data-parent-cards-document="true"]');
-      if (parentCardsDocument) {
-        const pages = Array.from(parentCardsDocument.querySelectorAll<HTMLElement>('[data-parent-cards-page="true"]'));
+      // Render multi-page documents sheet by sheet so canvas height never exceeds browser limits.
+      const pagedDocument = element.querySelector('[data-pdf-paged-document="true"], [data-parent-cards-document="true"]');
+      if (pagedDocument) {
+        const pages = Array.from(pagedDocument.querySelectorAll<HTMLElement>('[data-pdf-page="true"], [data-parent-cards-page="true"]'));
         if (pages.length === 0) return;
         await document.fonts.ready;
 
+        const orientation = landscape ? 'landscape' : 'portrait';
+        const pageWindowWidth = landscape ? 1123 : 794;
+        const pageCssWidth = landscape ? '297mm' : '210mm';
+        const isParentCards = pagedDocument.hasAttribute('data-parent-cards-document');
+
         const exportHost = document.createElement('div');
-        exportHost.style.cssText = 'position:absolute;left:-100000px;top:0;width:210mm;margin:0;padding:0;background:#fff;pointer-events:none;';
+        exportHost.style.cssText = `position:absolute;left:-100000px;top:0;width:${pageCssWidth};margin:0;padding:0;background:#fff;color:#000;pointer-events:none;`;
         exportHost.dir = dir;
         exportHost.style.fontFamily = 'Tajawal, sans-serif';
         document.body.appendChild(exportHost);
@@ -349,8 +354,8 @@ const PrintPreviewModal: React.FC<{
 
             const pageOptions = {
               ...opt,
-              html2canvas: { ...opt.html2canvas, windowWidth: 794, scrollX: 0, scrollY: 0 },
-              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+              html2canvas: { ...opt.html2canvas, windowWidth: pageWindowWidth, scrollX: 0, scrollY: 0 },
+              jsPDF: { unit: 'mm', format: 'a4', orientation },
               pagebreak: { mode: [] }
             };
             const pageWorker = html2pdf().set(pageOptions).from(sheet).toCanvas();
@@ -360,21 +365,22 @@ const PrintPreviewModal: React.FC<{
               pdf = await pageWorker.toPdf().get('pdf');
               // Replace html2pdf's automatically sliced pages with one blank A4 page.
               const generatedPages = pdf.internal.getNumberOfPages();
-              pdf.addPage('a4', 'portrait');
+              pdf.addPage('a4', orientation);
               for (let page = generatedPages; page >= 1; page -= 1) {
                 pdf.deletePage(page);
               }
               pdf.setPage(1);
             } else {
-              pdf.addPage('a4', 'portrait');
+              pdf.addPage('a4', orientation);
             }
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+            const yOffset = isParentCards ? (pageHeight - canvas.height * ratio) / 2 : 0;
             pdf.addImage(
               canvas.toDataURL('image/jpeg', 0.98), 'JPEG',
               (pageWidth - canvas.width * ratio) / 2,
-              (pageHeight - canvas.height * ratio) / 2,
+              yOffset,
               canvas.width * ratio, canvas.height * ratio
             );
             canvas.width = 0;
@@ -610,7 +616,7 @@ const AnalyticsTemplate = ({
   );
 
   return (
-    <div className="w-full text-black bg-white official-report" dir={dir}>
+    <div className="w-full text-black bg-white official-report" dir={dir} data-pdf-paged-document="true">
       <style>
         {`
           .official-report {
@@ -699,7 +705,7 @@ const AnalyticsTemplate = ({
       </style>
 
       {/* صفحة الملخص */}
-      <section className="print-page">
+      <section className="print-page" data-pdf-page="true">
         {renderHeader()}
 
         <div className="grid grid-cols-4 gap-3 text-center mb-8">
@@ -768,7 +774,7 @@ const AnalyticsTemplate = ({
         if (!studentsList || studentsList.length === 0) return null;
 
         return (
-          <section key={cat.key} className="print-page">
+          <section key={cat.key} className="print-page" data-pdf-page="true">
             {renderHeader()}
 
             <h2 className="section-title">
@@ -834,7 +840,7 @@ const AnalyticsTemplate = ({
 
       {/* صفحة غير مكتمل للنتيجة النهائية */}
       {reportScope === 'final' && selectedData.incomplete?.length > 0 && (
-        <section className="print-page">
+        <section className="print-page" data-pdf-page="true">
           {renderHeader()}
 
           <h2 className="section-title">{t('studentsWithIncompleteResults')}</h2>
@@ -876,7 +882,7 @@ const AnalyticsTemplate = ({
       )}
 
       {/* صفحة التوقيعات */}
-      <section className="print-page">
+      <section className="print-page" data-pdf-page="true">
         {renderHeader()}
 
         <div className="h-[185mm] flex flex-col justify-end">
@@ -967,10 +973,10 @@ const GradesTemplate = ({ students, tools, teacherInfo, reportScope, gradeClass 
   }
 
   return (
-    <div className="w-full text-black bg-white" dir={dir}>
+    <div className="w-full text-black bg-white" dir={dir} data-pdf-paged-document="true">
       {chunkedStudents.map((chunk, pageIndex) => (
         <React.Fragment key={pageIndex}>
-          <div className="p-8 w-full bg-white relative">
+          <div className="p-8 w-full bg-white relative" data-pdf-page="true">
             <div className="text-center mb-6 border-b-2 border-black pb-4">
               <div className="flex justify-between items-center mb-4">
                 <div className={`text-${dir === 'rtl' ? 'right' : 'left'} text-sm font-bold leading-relaxed`}>
@@ -1157,9 +1163,9 @@ const CertificatesTemplate = ({ students, settings, teacherInfo }: any) => {
   };
 
   return (
-    <div className="w-full text-black bg-white" dir={dir}>
+    <div className="w-full text-black bg-white" dir={dir} data-pdf-paged-document="true">
       {safeStudents.map((student: any, index: number) => (
-        <div key={student.id || index} className="relative mx-auto font-sans [-webkit-print-color-adjust:exact] print:shadow-none bg-white" style={{ width: '297mm', height: '210mm', pageBreakAfter: index === safeStudents.length - 1 ? 'auto' : 'always', padding: useCustomBackground ? 0 : '10mm', boxSizing: 'border-box', overflow: 'hidden', direction: dir }}>
+        <div key={student.id || index} data-pdf-page="true" className="relative mx-auto font-sans [-webkit-print-color-adjust:exact] print:shadow-none bg-white" style={{ width: '297mm', height: '210mm', pageBreakAfter: index === safeStudents.length - 1 ? 'auto' : 'always', padding: useCustomBackground ? 0 : '10mm', boxSizing: 'border-box', overflow: 'hidden', direction: dir }}>
           {useCustomBackground && <img src={safeSettings.customCertificateBackground} alt="Certificate Background" className="absolute inset-0 w-full h-full object-fill" />}
           <CertificateContent student={student} custom={useCustomBackground} />
         </div>
@@ -1390,7 +1396,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
   };
 
   return (
-    <div className="w-full text-black bg-white" dir={dir}>
+    <div className="w-full text-black bg-white" dir={dir} data-pdf-paged-document="true">
       {safeStudents.map((student: any) => {
         const studentClass = Array.isArray(student.classes) ? student.classes[0] : '-';
         const behaviors = (student.behaviors || []).filter((b: any) => reportScope === 'final' || !b.semester || b.semester === selectedSemester);
@@ -1435,7 +1441,7 @@ const ClassReportsTemplate = ({ students, teacherInfo, reportScope, assessmentTo
         const finalAverage = hasSem1Grades && hasSem2Grades ? Math.round((sem1Total + sem2Total) / 2) : null;
 
         return (
-          <div key={student.id} className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
+          <div key={student.id} data-pdf-page="true" className="w-full min-h-[297mm] p-10 border-b border-black page-break-after-always relative bg-white" style={{ pageBreakAfter: 'always' }}>
             
             <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-4 text-black">
               <div className={`text-${dir === 'rtl' ? 'right' : 'left'} w-1/3 text-sm font-bold`}>
