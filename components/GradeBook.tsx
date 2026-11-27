@@ -318,14 +318,16 @@ const GradeBook: React.FC<GradeBookProps> = ({
             const val = extractNumericScore(row[headerStr]);
             if (val !== null) {
               const toolName = cleanText(headerStr);
+              const existingGrade = newGrades.find(g => g.category.trim() === toolName.trim() && (g.semester || '1') === currentSemester);
               newGrades = newGrades.filter(g => !(g.category.trim() === toolName.trim() && (g.semester || '1') === currentSemester));
               newGrades.unshift({
-                id: Math.random().toString(36).substr(2, 9),
+                ...existingGrade,
+                id: existingGrade?.id ?? Math.random().toString(36).substr(2, 9),
                 subject: teacherInfo?.subject || t('generalSubject'),
                 category: toolName, 
                 score: val, 
                 maxScore: 0, 
-                date: new Date().toISOString(), 
+                date: existingGrade?.date ?? new Date().toISOString(), 
                 semester: currentSemester
               });
             }
@@ -435,13 +437,17 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     );
 
     if (numValue !== null) {
+      const existingGrade = (student.grades || []).find(
+        g => g.category.trim() === activeTool.name.trim() && (g.semester || '1') === currentSemester
+      );
       updatedGrades.push({
-        id: Math.random().toString(36).substr(2, 9),
+        ...existingGrade,
+        id: existingGrade?.id ?? Math.random().toString(36).substr(2, 9),
         subject: teacherInfo?.subject || t('subjectFallback'),
         category: activeTool.name,
         score: numValue,
         maxScore: activeTool.maxScore || 0,
-        date: new Date().toISOString(),
+        date: existingGrade?.date ?? new Date().toISOString(),
         semester: currentSemester
       });
     }
@@ -554,14 +560,16 @@ row['التقدير العام'] = getGradeSymbol(finalAverage);
     
     setStudents(prev => prev.map(student => {
         if (!visibleIds.has(student.id)) return student;
+        const existingGrade = (student.grades || []).find(g => g.category.trim() === bulkFillTool.name.trim() && (g.semester || '1') === currentSemester);
         const keptGrades = (student.grades || []).filter(g => !(g.category.trim() === bulkFillTool.name.trim() && (g.semester || '1') === currentSemester));
         const newGrade: GradeRecord = { 
-          id: Math.random().toString(36), 
+          ...existingGrade, 
+          id: existingGrade?.id ?? Math.random().toString(36), 
           subject: teacherInfo?.subject || t('subjectFallback'), 
           category: bulkFillTool.name, 
           score: numericScore, 
           maxScore: bulkFillTool.maxScore || 0, 
-          date: new Date().toISOString(), 
+          date: existingGrade?.date ?? new Date().toISOString(), 
           semester: currentSemester 
         };
         return { ...student, grades: [newGrade, ...keptGrades] };
